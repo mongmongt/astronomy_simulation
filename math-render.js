@@ -71,7 +71,9 @@
       [/\$\$v_obs = v_sys - v_rot \u00d7 sin\(i\) \u00d7 cos\(\u03b8\)\$\$/g,
         '$$v_{\\mathrm{obs}}=v_{\\mathrm{sys}}-v_{\\mathrm{rot}}\\sin(i)\\cos(\\theta)$$'],
       [/\$\$\u0394\u03bb = \u03bb0 \u00d7 \(v_obs \/ c\) \(c = 300,000 km\/s\)\$\$/g,
-        '$$\\Delta\\lambda=\\lambda_0\\left(\\frac{v_{\\mathrm{obs}}}{c}\\right),\\quad c=300{,}000\\,\\mathrm{km\\,s^{-1}}$$']
+        '$$\\Delta\\lambda=\\lambda_0\\left(\\frac{v_{\\mathrm{obs}}}{c}\\right),\\quad c=300{,}000\\,\\mathrm{km\\,s^{-1}}$$'],
+      [/V = \ub8e8\ud2b8\(GM\/r\)/g, '$$V=\\sqrt{\\frac{GM}{r}}$$'],
+      [/V = \u221a\(GM\/r\)/g, '$$V=\\sqrt{\\frac{GM}{r}}$$']
     ];
     const normalized = fixes
       .reduce((html, [pattern, replacement]) => html.replace(pattern, replacement), original)
@@ -96,6 +98,23 @@
       ],
       throwOnError: false,
       strict: 'ignore'
+    });
+    fitDisplayMath();
+  }
+
+  // KaTeX deliberately keeps equations on one line. Scale only exceptionally
+  // long display equations down to their column width rather than showing a
+  // horizontal scrollbar.
+  function fitDisplayMath() {
+    root.querySelectorAll('.katex-display').forEach(display => {
+      const formula = display.querySelector('.katex');
+      if (!formula) return;
+      let size = 1.42;
+      formula.style.fontSize = `${size}em`;
+      while (formula.scrollWidth > display.clientWidth && size > 0.88) {
+        size -= 0.06;
+        formula.style.fontSize = `${size}em`;
+      }
     });
   }
 
