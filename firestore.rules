@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isTeacher() {
+      return signedIn() && request.auth.token.email == 'sjm4104@gmail.com';
+    }
+    function isGoogleUser() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+    match /projects/{projectId}/likes/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && userId == request.auth.uid
+        && request.resource.data.projectId == projectId
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if isTeacher() || (signedIn() && userId == request.auth.uid);
+      allow update: if false;
+    }
+    match /feedback/{feedbackId} {
+      allow read: if isTeacher() || resource.data.status == 'published';
+      allow create: if isGoogleUser()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.projectId is string
+        && request.resource.data.type in ['question', 'guestbook']
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 1000;
+      allow update, delete: if isTeacher();
+    }
+    match /siteFeedback/{feedbackId} {
+      allow read: if isTeacher() || resource.data.status == 'published';
+      allow create: if isGoogleUser()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.type in ['impression', 'suggestion', 'question']
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 1000;
+      allow update, delete: if isTeacher();
+    }
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
