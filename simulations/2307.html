@@ -1,0 +1,2585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDM - Cosmic Distance Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons for Beautiful UI -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        .math-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        /* Glassmorphism details */
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        /* Range Slider Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #1f2937;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+            transform: scale(1.2);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.8);
+        }
+        /* Absolute/Spectral Magnitude Slider Customization (Orange) */
+        .abs-slider::-webkit-slider-thumb {
+            background: #f97316 !important;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5) !important;
+        }
+        .abs-slider::-webkit-slider-thumb:hover {
+            background: #fb923c !important;
+            box-shadow: 0 0 15px rgba(251, 146, 60, 0.8) !important;
+        }
+        /* Spectral Temperature Slider Customization (Violet) */
+        .temp-slider::-webkit-slider-thumb {
+            background: #8b5cf6 !important;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5) !important;
+        }
+        .temp-slider::-webkit-slider-thumb:hover {
+            background: #a78bfa !important;
+            box-shadow: 0 0 15px rgba(167, 139, 250, 0.8) !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- TOP HEADER & NAVIGATION TAB -->
+    <header class="glass-panel sticky top-0 z-50 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-user-astronaut text-xl animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">CDM</h1>
+                <p class="text-xs text-gray-400">Cosmic Distance Simulator (우주 거리 시뮬레이터)</p>
+            </div>
+        </div>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="flex gap-1 bg-gray-950 p-1.5 rounded-xl border border-gray-800">
+            <button id="tab-btn-pogson" onclick="switchTab('pogson')" class="px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 bg-blue-600 text-white shadow-md shadow-blue-500/20">
+                <i class="fa-solid fa-calculator mr-1.5"></i>1. 포그슨 방정식
+            </button>
+            <button id="tab-btn-supernova" onclick="switchTab('supernova')" class="px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-gray-400 hover:text-gray-200">
+                <i class="fa-solid fa-star-of-david mr-1.5 animate-pulse text-red-400"></i>2. Ia형 초신성 (피팅)
+            </button>
+            <button id="tab-btn-spectral" onclick="switchTab('spectral')" class="px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-gray-400 hover:text-gray-200">
+                <i class="fa-solid fa-circle-nodes mr-1.5 animate-pulse text-indigo-400"></i>3. 분광 관측 (H-R도)
+            </button>
+        </nav>
+    </header>
+
+    <!-- ================= TAB 1: POGSON EQUATION ================= -->
+    <div id="view-pogson" class="tab-view flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        <!-- LEFT COLUMN: MATH FORMULA & GRAPH -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            <!-- FORMULA CARD -->
+            <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
+                    <h2 class="text-sm font-bold text-blue-400 tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-wave-square"></i> 거리 지수 공식 & 포그슨 방정식
+                    </h2>
+                    <span class="text-xs bg-gray-900 border border-gray-800 text-gray-400 px-2 py-1 rounded-md">Pogson's Equation</span>
+                </div>
+
+                <div class="flex flex-col md:flex-row items-center justify-around py-4 gap-6">
+                    <div class="text-center p-4 bg-gray-950/60 rounded-xl border border-gray-800/80 w-full md:w-[48%]">
+                        <p class="text-xs text-gray-400 mb-2">거리 지수 기본 공식</p>
+                        <div class="math-font text-lg md:text-xl font-bold text-gray-100 flex items-center justify-center gap-1">
+                            <span class="text-blue-400" id="eq-m">m</span> - 
+                            <span class="text-orange-400" id="eq-M">M</span> = 
+                            <span class="text-emerald-400">5 log<sub>10</sub> d - 5</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center p-4 bg-gray-950/60 rounded-xl border border-gray-800/80 w-full md:w-[48%]">
+                        <p class="text-xs text-gray-400 mb-2">거리(d, pc) 계산 공식</p>
+                        <div class="math-font text-lg md:text-xl font-bold text-gray-100 flex items-center justify-center">
+                            d = 10<sup class="text-xs text-indigo-300 font-semibold" id="eq-calc-power">(m - M + 5) / 5</sup>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-950/20 border border-blue-900/30 rounded-xl p-4 mt-2 text-center">
+                    <span class="text-xs text-blue-400 font-bold block mb-1">실시간 대입 상태</span>
+                    <p class="math-font text-base md:text-lg font-bold text-gray-200" id="eq-dynamic-text">
+                        d = 10<sup>(6.0 - 1.0 + 5) / 5</sup> = 100.00 pc
+                    </p>
+                </div>
+            </div>
+
+            <!-- GRAPH CARD -->
+            <div class="glass-panel p-6 rounded-2xl flex-1 flex flex-col justify-between">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
+                    <h2 class="text-sm font-bold text-blue-400 tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line"></i> 거리 지수 (m - M) vs 거리 (d) 로그 그래프
+                    </h2>
+                    <span class="text-xs text-gray-400" id="current-m-M-label">현재 m - M = 5.0</span>
+                </div>
+                
+                <div class="relative w-full h-[280px] md:h-[350px] bg-gray-950 rounded-xl border border-gray-900 overflow-hidden flex items-center justify-center p-2">
+                    <canvas id="graph-canvas" class="w-full h-full"></canvas>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-3 text-center">
+                    <i class="fa-solid fa-info-circle text-blue-500 mr-1"></i> 거리가 멀어질수록 겉보기 등급과 절대 등급의 차이(m - M)인 거리 지수가 지수 함수 형태로 가파르게 증가합니다.
+                </p>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: NUMERICAL VALUES & CONTROLLERS -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            <!-- NUMERICAL INFORMATION PANEL -->
+            <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-8 -mt-8"></div>
+                <h2 class="text-sm font-bold text-indigo-400 tracking-wide border-b border-gray-800 pb-3 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high"></i> 실시간 별의 매개변수
+                </h2>
+
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between p-3 bg-gray-950/60 rounded-xl border border-gray-900">
+                        <div>
+                            <span class="text-xs text-gray-400 block font-medium">겉보기 등급 (m)</span>
+                            <span class="text-xs text-gray-500">지구에서 본 밝기</span>
+                        </div>
+                        <span class="text-2xl font-black text-blue-400 math-font" id="val-apparent">6.00</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 bg-gray-950/60 rounded-xl border border-gray-900">
+                        <div>
+                            <span class="text-xs text-gray-400 block font-medium">절대 등급 (M)</span>
+                            <span class="text-xs text-gray-500">10pc 거리 기준 원래 밝기</span>
+                        </div>
+                        <span class="text-2xl font-black text-orange-400 math-font" id="val-absolute">1.00</span>
+                    </div>
+
+                    <div class="p-4 bg-gradient-to-br from-indigo-950/30 to-purple-950/10 border border-indigo-900/40 rounded-xl">
+                        <span class="text-xs text-indigo-300 block font-bold mb-1"><i class="fa-solid fa-ruler-combined mr-1"></i>계산된 별까지의 거리 (d)</span>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-black text-white tracking-tight math-font" id="val-distance-pc">100.00</span>
+                            <span class="text-sm text-indigo-300 font-bold">pc (파섹)</span>
+                        </div>
+                        <div class="flex items-baseline gap-1.5 mt-1 border-t border-indigo-950/50 pt-2 text-xs text-gray-400">
+                            <span>≈</span>
+                            <span class="font-bold text-gray-300 math-font" id="val-distance-ly">326.16</span>
+                            <span>광년 (Light-years)</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-gray-900/40 rounded-xl border border-gray-900 text-xs">
+                        <span class="text-gray-400 font-semibold block mb-1">🌠 도달 스케일 분석</span>
+                        <span id="cosmic-scale-desc" class="text-blue-300 font-medium">우리 은하 내 이웃한 가까운 천체 영역에 위치해 있습니다.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTROLLER & 3D VISUALIZER PANEL -->
+            <div class="glass-panel p-6 rounded-2xl flex-1 flex flex-col justify-between">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wide border-b border-gray-800 pb-3 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-video"></i> 성간 시각 효과 & 컨트롤러
+                </h2>
+
+                <div class="relative w-full h-[220px] bg-black rounded-xl border border-gray-950 overflow-hidden flex flex-col items-center justify-center">
+                    <canvas id="starfield-canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                    
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 flex flex-col justify-between p-3 pointer-events-none">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] text-emerald-400/80 uppercase font-mono tracking-widest flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>SIMULATOR HUD
+                            </span>
+                            <span class="text-[10px] text-gray-500 math-font" id="sim-status-label">STATUS: IDLE</span>
+                        </div>
+                        
+                        <div class="self-center flex flex-col items-center justify-center flex-1">
+                            <div id="sim-star-target" class="w-12 h-12 rounded-full bg-white transition-all duration-300 flex items-center justify-center border-2 border-blue-300/40">
+                                <div class="w-2 h-2 bg-blue-100 rounded-full"></div>
+                            </div>
+                            <span class="text-[10px] text-blue-300 mt-2 bg-black/60 px-2 py-0.5 rounded border border-gray-800">Target Star</span>
+                        </div>
+
+                        <div class="flex justify-between text-[10px] text-gray-400">
+                            <span>Luminosity Scale: <span id="hud-lumi" class="text-orange-400">1.0x</span></span>
+                            <span>Scale factor: <span id="hud-scale" class="text-blue-400">100pc</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                    <button id="btn-start" class="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95">
+                        <i class="fa-solid fa-play"></i> 시뮬레이션 시작
+                    </button>
+                    <button id="btn-stop" class="py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-pause"></i> 중단
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ================= TAB 2: TYPE IA SUPERNOVA ================= -->
+    <div id="view-supernova" class="tab-view flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch hidden">
+        
+        <!-- LEFT COLUMN: SUPERNOVA LIGHT CURVE FITTING (8 COLS) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            <!-- INSTRUCTION & DROPDOWN HEADER -->
+            <div class="glass-panel p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-32 h-32 bg-red-500/5 rounded-full blur-2xl"></div>
+                <div>
+                    <h2 class="text-base font-black text-red-400 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-radiation animate-spin text-sm"></i> Ia형 초신성 광도 곡선 피팅 탐색기
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-1">실제 천체 관측망이 획득한 고정된 관측 데이터(적색)를 우주 표준 광도 곡선(백색)에 피팅하세요.</p>
+                </div>
+                <!-- Selection dropdown -->
+                <div class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 w-full md:w-auto">
+                    <label for="supernova-select" class="text-xs text-gray-400 shrink-0 font-medium">초신성 선택:</label>
+                    <select id="supernova-select" onchange="onSelectSupernova()" class="bg-transparent text-xs text-white font-bold outline-none cursor-pointer w-full">
+                        <option value="none" class="bg-gray-900">-- 초신성을 고르세요 --</option>
+                        <option value="sn2011fe" class="bg-gray-900">1. SN 2011fe (M101 바람개비 은하)</option>
+                        <option value="sn2014j" class="bg-gray-900">2. SN 2014J (M82 시가 은하)</option>
+                        <option value="sn1994d" class="bg-gray-900">3. SN 1994D (NGC 4526 은하)</option>
+                        <option value="sn2018gv" class="bg-gray-900">4. SN 2018gv (NGC 2525 은하)</option>
+                        <option value="sn1998bu" class="bg-gray-900">5. SN 1998bu (M96 은하)</option>
+                        <option value="sn1972e" class="bg-gray-900">6. SN 1972E (NGC 5253 은하)</option>
+                        <option value="sn1989b" class="bg-gray-900">7. SN 1989B (M66 은하)</option>
+                        <option value="sn1990n" class="bg-gray-900">8. SN 1990N (NGC 4639 은하)</option>
+                        <option value="sn1999cl" class="bg-gray-900">9. SN 1999cl (M88 은하)</option>
+                        <option value="sn2005cf" class="bg-gray-900">10. SN 2005cf (MCG-01-39-003 은하)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- FITTING GRAPH CANVAS CARD -->
+            <div class="glass-panel p-6 rounded-2xl flex-1 flex flex-col justify-between relative">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-800 pb-3 mb-4 gap-2">
+                    <span class="text-xs text-gray-400 font-bold bg-gray-900 border border-gray-800 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                        <span id="fit-status-dot" class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                        <span id="fit-status-text">초신성을 선택해 주세요</span>
+                    </span>
+                    <div class="flex items-center gap-4 text-xs">
+                        <span class="text-gray-400">정렬 정밀도: <span id="fit-precision" class="font-bold text-yellow-400 math-font">0.0%</span></span>
+                        <button onclick="autoFitSupernova()" class="bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 px-3 py-1 rounded-lg text-[11px] font-bold text-red-300 transition-colors">컴퓨터 자동 피팅</button>
+                    </div>
+                </div>
+
+                <!-- Canvas plot area -->
+                <div class="relative w-full h-[320px] md:h-[380px] bg-gray-950 rounded-xl border border-gray-900 overflow-hidden flex items-center justify-center p-2 cursor-grab active:cursor-grabbing">
+                    <canvas id="supernova-canvas" class="w-full h-full"></canvas>
+                    <!-- Loading & Instruction state overlay -->
+                    <div id="sn-loading-overlay" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-center p-6 gap-3 z-10 transition-opacity duration-300">
+                        <i class="fa-solid fa-satellite-dish text-4xl text-blue-500 animate-bounce"></i>
+                        <h3 class="text-sm font-bold text-gray-200">초신성을 상단 우측에서 선택하세요</h3>
+                        <p class="text-xs text-gray-400 max-w-sm">실제 NASA 망원경 및 지상 관측 데이터를 불러와 정밀 광도 데이터 포인트 환경을 세팅합니다.</p>
+                    </div>
+                    <!-- Alignment Guide Text Bubble -->
+                    <div id="fit-click-guide" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-indigo-950/80 border border-indigo-700/60 text-white text-[11px] font-bold px-4 py-1.5 rounded-full animate-bounce pointer-events-none shadow-lg shadow-indigo-500/20">
+                        <i class="fa-solid fa-hand-pointer mr-1"></i> 피팅 완료! 곡선의 임의의 좌표(점)를 클릭하면 거리 연산이 시작됩니다.
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between items-center text-[10px] text-gray-400 mt-3 gap-2">
+                    <span><i class="fa-solid fa-circle text-white mr-1 text-[8px]"></i> 백색 실선: 절대등급 표준 템플릿 ($M_B = -19.3$ peak)</span>
+                    <span><i class="fa-solid fa-circle text-red-500 mr-1 text-[8px]"></i> 적색 고정 관측점: 실제 망원경 관측 데이터 ($m_B$ 겉보기등급 분포)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: IA CALCULATION PANEL (4 COLS) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- COSNMIC DISTANCE CALCULATION BOX -->
+            <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl"></div>
+                <h2 class="text-sm font-bold text-red-400 tracking-wide border-b border-gray-800 pb-3 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-dot"></i> 계산된 초신성 거리 지수
+                </h2>
+
+                <div class="flex flex-col gap-4">
+                    <!-- Standard Formula Render -->
+                    <div class="bg-gray-950 p-4 rounded-xl border border-gray-900 text-center">
+                        <span class="text-[10px] text-gray-500 block mb-1">천문 거리 모듈러스 연산</span>
+                        <div class="math-font text-sm font-bold text-indigo-400">
+                            m - M = 5 log<sub>10</sub> d - 5
+                        </div>
+                    </div>
+
+                    <!-- Apparent / Absolute point dynamic details -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 bg-gray-950/60 rounded-xl border border-gray-900 text-center">
+                            <span class="text-[10px] text-gray-400 block font-medium">선택된 m (겉보기)</span>
+                            <span class="text-lg font-black text-blue-400 math-font" id="sn-point-apparent">-</span>
+                        </div>
+                        <div class="p-3 bg-gray-950/60 rounded-xl border border-gray-900 text-center">
+                            <span class="text-[10px] text-gray-400 block font-medium">선택된 M (절대)</span>
+                            <span class="text-lg font-black text-orange-400 math-font" id="sn-point-absolute">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Distance Modulus output -->
+                    <div class="p-3.5 bg-gray-950/60 rounded-xl border border-gray-900 flex justify-between items-center">
+                        <span class="text-xs text-gray-400 font-medium">도출된 거리 지수 (m - M)</span>
+                        <span class="text-xl font-bold text-emerald-400 math-font" id="sn-point-modulus">-</span>
+                    </div>
+
+                    <!-- Final Distance calculation -->
+                    <div class="p-4 bg-gradient-to-br from-red-950/20 to-indigo-950/10 border border-red-900/40 rounded-xl">
+                        <span class="text-xs text-red-300 block font-bold mb-1">
+                            <i class="fa-solid fa-space-shuttle mr-1"></i> 은하까지의 최종 산출 거리 (d)
+                        </span>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-2xl font-black text-white tracking-tight math-font" id="sn-distance-pc">측정 대기 중</span>
+                            <span class="text-xs text-red-300 font-bold" id="sn-distance-unit"></span>
+                        </div>
+                        <div class="flex items-baseline gap-1.5 mt-1 border-t border-red-950/30 pt-2 text-[11px] text-gray-400">
+                            <span>광년 환산 d:</span>
+                            <span class="font-bold text-gray-300 math-font" id="sn-distance-ly">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Real Supernova Reference Info -->
+                    <div class="p-4 bg-gray-900/60 rounded-xl border border-gray-900/80 text-xs overflow-y-auto max-h-[170px]">
+                        <span class="text-red-400 font-black block mb-2"><i class="fa-solid fa-square-poll-horizontal mr-1"></i>정밀 천문학 분석 보고서 (NASA/HST)</span>
+                        <div id="sn-real-ref" class="text-gray-300 leading-relaxed font-light">
+                            초신성을 선택해 피팅을 수행하면 해당 천체의 관측적 역사, 모은하 특징 및 광학적 중요성이 포함된 고정밀 보고서가 갱신됩니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ================= TAB 3: SPECTROSCOPIC OBSERVATION ================= -->
+    <div id="view-spectral" class="tab-view flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch hidden">
+        
+        <!-- LEFT COLUMN: ABSORPTION LINE INTENSITIES, SPECTRUM & DISTANCE MODULUS CALCULATION (7 COLS) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            <!-- ABSORPTION LINE INTENSITIES CARD -->
+            <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl"></div>
+                <div class="flex flex-col border-b border-gray-800 pb-3 mb-4">
+                    <h2 class="text-sm font-bold text-indigo-400 tracking-wide flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-chart-line"></i> Absorption Line Intensities (원소별 흡수선 세기 곡선)
+                    </h2>
+                    <!-- Header reflecting mockup type and sub-characteristics -->
+                    <div class="text-center bg-gray-950/70 p-3 rounded-xl border border-gray-900 my-1">
+                        <div class="text-xs font-bold text-slate-100 tracking-wider">
+                            Spectral Type : <span id="spectral-lbl-type" class="text-indigo-400 font-mono">A8</span> &nbsp;&nbsp;&nbsp;&nbsp; 
+                            Temperature : <span id="spectral-lbl-temp" class="text-emerald-400 font-mono">7340 K</span>
+                        </div>
+                        <div class="text-[10px] text-indigo-300/80 italic font-mono mt-1" id="spectral-lbl-desc">
+                            (moderate hydrogen, moderate ionized metal lines)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Line Strength Canvas with slider and dragging interaction -->
+                <div class="relative w-full h-[240px] bg-gray-950 rounded-xl border border-gray-900 overflow-hidden cursor-ew-resize">
+                    <canvas id="spectral-intensities-canvas" class="w-full h-full"></canvas>
+                </div>
+                <div class="text-[10px] text-gray-500 mt-1 text-center font-mono">
+                    <i class="fa-solid fa-arrows-left-right text-indigo-500 mr-1"></i> 곡선 영역을 마우스나 터치로 좌우로 드래그하여 분광 온도 축을 손쉽게 조작할 수 있습니다!
+                </div>
+            </div>
+
+            <!-- SIMULATED SPECTRUM CARD -->
+            <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+                <h2 class="text-xs font-bold text-indigo-400 tracking-wide mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-barcode"></i> Simulated Spectrum (항성 합성 흡수 스펙트럼)
+                </h2>
+                <!-- High-res Spectrum Bar -->
+                <div class="relative w-full h-[55px] bg-black rounded-lg border border-gray-900 p-0.5">
+                    <canvas id="spectrum-canvas" class="w-full h-full rounded"></canvas>
+                </div>
+                <div class="flex justify-between text-[9px] text-gray-500 math-font px-2 mt-1">
+                    <span>380 nm (Ultraviolet)</span>
+                    <span>480 nm</span>
+                    <span>580 nm</span>
+                    <span>700 nm (Infrared)</span>
+                </div>
+            </div>
+
+            <!-- DISTANCE MODULUS CALCULATION CARD -->
+            <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+                <h2 class="text-xs font-bold text-indigo-400 tracking-wide border-b border-gray-800 pb-3 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-calculator"></i> Distance Modulus Calculation (거리 지수 공식 대입판)
+                </h2>
+                
+                <div class="flex flex-col gap-4 py-2">
+                    <div class="bg-gray-950 p-4 rounded-xl border border-gray-900 text-center relative">
+                        <span class="text-[10px] text-gray-500 block mb-2 font-mono uppercase tracking-wider">분광 시차 거리 방정식</span>
+                        <div class="math-font text-base md:text-xl font-bold text-indigo-400 flex items-center justify-center gap-2">
+                            <span>m<sub>v</sub></span>
+                            <span class="text-gray-500">-</span>
+                            <span>M<sub>v</sub></span>
+                            <span class="text-gray-500">=</span>
+                            <span class="text-emerald-400 font-medium">-5 + 5 log<sub>10</sub> d</span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive values matching mockup photo -->
+                    <div class="bg-indigo-950/20 border border-indigo-900/30 rounded-xl p-5 text-center">
+                        <span class="text-[10px] text-indigo-400 font-bold block mb-2 uppercase tracking-widest font-mono">실시간 매개변수 대입 결과</span>
+                        <div class="math-font text-base md:text-2xl font-black text-gray-100 flex items-center justify-center gap-3">
+                            <span class="text-blue-400" id="calc-sub-apparent">1.0</span>
+                            <span class="text-gray-600 font-light">-</span>
+                            <span class="text-orange-400" id="calc-sub-absolute">2.8</span>
+                            <span class="text-gray-600 font-light">=</span>
+                            <span class="text-emerald-400">-5 + 5 log<sub>10</sub></span>
+                            <span class="text-indigo-400" id="calc-sub-distance">4.32</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: HR DIAGRAM & STAR ATTRIBUTES (5 COLS) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            <!-- HR DIAGRAM CARD -->
+            <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
+                    <h2 class="text-sm font-bold text-indigo-400 tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-star-half-stroke"></i> HR Diagram (헤르츠스프룽-러셀도)
+                    </h2>
+                    <span class="text-[10px] text-gray-500 math-font" id="hr-top-readout">T = 7,340 K | L = 10^1.2 L☉</span>
+                </div>
+
+                <!-- HR Diagram Canvas -->
+                <div class="relative w-full h-[320px] md:h-[380px] bg-gray-950 rounded-xl border border-gray-900 overflow-hidden p-1">
+                    <canvas id="hr-diagram-canvas" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <!-- STAR ATTRIBUTES CARD -->
+            <div class="glass-panel p-6 rounded-2xl flex-grow flex flex-col justify-between relative overflow-hidden">
+                <h2 class="text-sm font-bold text-indigo-400 tracking-wide border-b border-gray-800 pb-3 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders"></i> Star Attributes (조작 변인 및 물리량 설정)
+                </h2>
+
+                <div class="flex flex-col gap-5 justify-center flex-1">
+                    <!-- Apparent Magnitude (m_v) Slider -->
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex justify-between items-center text-xs">
+                            <label for="slider-spectral-mv" class="text-blue-400 font-bold flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>apparent magnitude (겉보기 등급, m<sub>v</sub>)
+                            </label>
+                            <span class="bg-blue-950 text-blue-300 font-bold px-2 py-0.5 rounded math-font" id="spectral-apparent-val">1.0</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] text-gray-500 font-mono">-5.0</span>
+                            <input id="slider-spectral-mv" type="range" min="-5.0" max="20.0" step="0.1" value="1.0" class="flex-1" oninput="updateSpectralCalculations()">
+                            <span class="text-[10px] text-gray-500 font-mono">20.0</span>
+                        </div>
+                    </div>
+
+                    <!-- Luminosity Class Radio Buttons -->
+                    <div class="flex flex-col gap-2">
+                        <span class="text-xs text-orange-400 font-bold flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-orange-500"></span>luminosity class (광도 계급 분류)
+                        </span>
+                        <div class="grid grid-cols-4 gap-2 bg-gray-950/70 p-3 rounded-xl border border-gray-900 text-[11px] font-mono">
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="lum-class" value="Ia" class="accent-orange-500" onchange="updateSpectralCalculations()">
+                                <span class="font-bold text-slate-300">Ia <span class="text-[8px] text-gray-500">(초거성)</span></span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="lum-class" value="Ib" class="accent-orange-500" onchange="updateSpectralCalculations()">
+                                <span class="font-bold text-slate-300">Ib <span class="text-[8px] text-gray-500">(초거성)</span></span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="lum-class" value="II" class="accent-orange-500" onchange="updateSpectralCalculations()">
+                                <span class="font-bold text-slate-300">II <span class="text-[8px] text-gray-500">(밝은거성)</span></span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="lum-class" value="III" class="accent-orange-500" onchange="updateSpectralCalculations()">
+                                <span class="font-bold text-slate-300">III <span class="text-[8px] text-gray-500">(거성)</span></span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="lum-class" value="IV" class="accent-orange-500" onchange="updateSpectralCalculations()">
+                                <span class="font-bold text-slate-300">IV <span class="text-[8px] text-gray-500">(준거성)</span></span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="lum-class" value="V" class="accent-orange-500" checked onchange="updateSpectralCalculations()">
+                                <span class="font-bold text-slate-300">V <span class="text-[8px] text-gray-500">(주계열)</span></span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="lum-class" value="VI" class="accent-orange-500" onchange="updateSpectralCalculations()">
+                                <span class="font-bold text-slate-300">VI <span class="text-[8px] text-gray-500">(준왜성)</span></span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="lum-class" value="VII" class="accent-orange-500" onchange="updateSpectralCalculations()">
+                                <span class="font-bold text-slate-300">VII <span class="text-[8px] text-gray-500">(백색왜성)</span></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Extra Temperature Slider for precise syncing -->
+                    <div class="flex flex-col gap-1.5 mt-1 border-t border-gray-800/60 pt-3">
+                        <div class="flex justify-between items-center text-xs">
+                            <label for="slider-spectral-temp-val" class="text-indigo-400 font-bold flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>temperature (표면 온도 축 조작, K)
+                            </label>
+                            <span class="bg-indigo-950 text-indigo-300 font-bold px-2 py-0.5 rounded math-font" id="slider-spectral-temp-readout">7340 K</span>
+                        </div>
+                        <input id="slider-spectral-temp-val" type="range" min="2000" max="45000" step="100" value="7340" class="w-full temp-slider" oninput="onSpectralTempSliderInput()">
+                    </div>
+                </div>
+
+                <!-- Final Calculations Result Display Block -->
+                <div class="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-gray-800 text-xs">
+                    <div class="p-2 bg-gray-950/70 border border-gray-900 rounded-xl text-center">
+                        <span class="text-[9px] text-gray-500 block">Absolute Mag (M<sub>v</sub>)</span>
+                        <span class="text-sm font-black text-orange-400 math-font" id="lbl-absolute-result">+2.80</span>
+                    </div>
+                    <div class="p-2 bg-gradient-to-r from-emerald-950/10 to-indigo-950/10 border border-emerald-900/30 rounded-xl text-center">
+                        <span class="text-[9px] text-emerald-400 block font-bold">Computed Distance (d)</span>
+                        <span class="text-sm font-black text-white math-font" id="lbl-distance-result">4.32 pc</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- BOTTOM CONTROL RANGE SLIDER PANEL (FOR TAB 1 ONLY) -->
+    <footer id="footer-pogson" class="glass-panel w-full p-6 border-t border-gray-800 mt-6 bg-gray-950/90 z-40 transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-12">
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="bg-indigo-600 p-2.5 rounded-xl text-white">
+                    <i class="fa-solid fa-sliders text-lg"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-400 block font-semibold uppercase tracking-wider">Parameters</span>
+                    <h3 class="text-sm font-black text-gray-200">조작 변인 설정 패널 (포그슨)</h3>
+                </div>
+            </div>
+
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                <!-- Apparent Magnitude (m) Control Slider -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="slider-apparent" class="text-blue-400 font-bold flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>겉보기 등급 (m)
+                        </label>
+                        <span class="bg-blue-950 text-blue-300 font-bold px-2 py-0.5 rounded math-font" id="slider-apparent-val">6.00</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] text-gray-500 font-mono">-10.0 (밝음)</span>
+                        <input id="slider-apparent" type="range" min="-10.0" max="30.0" step="0.1" value="6.0" class="flex-1">
+                        <span class="text-[10px] text-gray-500 font-mono">30.0 (어두움)</span>
+                    </div>
+                </div>
+
+                <!-- Absolute Magnitude (M) Control Slider -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="slider-absolute" class="text-orange-400 font-bold flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-orange-500"></span>절대 등급 (M)
+                        </label>
+                        <span class="bg-orange-950 text-orange-300 font-bold px-2 py-0.5 rounded math-font" id="slider-absolute-val">1.00</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] text-gray-500 font-mono">-10.0 (밝음)</span>
+                        <input id="slider-absolute" type="range" min="-10.0" max="20.0" step="0.1" value="1.0" class="flex-1 abs-slider">
+                        <span class="text-[10px] text-gray-500 font-mono">20.0 (어두움)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- BOTTOM CONTROL PANEL FOR TAB 2 (SUPERNOVA FITTING) -->
+    <footer id="footer-supernova" class="glass-panel w-full p-6 border-t border-gray-800 mt-6 bg-gray-950/90 z-40 transition-all duration-300 hidden">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-12">
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="bg-red-600 p-2.5 rounded-xl text-white">
+                    <i class="fa-solid fa-compress text-lg"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-400 block font-semibold uppercase tracking-wider">Fitting Console</span>
+                    <h3 class="text-sm font-black text-gray-200">초신성 템플릿 피팅 콘솔</h3>
+                </div>
+            </div>
+
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                <!-- Apparent Offset / Guessed Distance Modulus Shift Slider -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="control-y-offset" class="text-blue-400 font-bold flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>수직 피팅 제어 (거리 지수 m-M 보정)
+                        </label>
+                        <span id="control-y-val" class="text-indigo-300 font-bold math-font bg-gray-900 px-2 py-0.5 rounded">0.0</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] text-gray-500 font-mono">15.0 (가까움)</span>
+                        <input id="control-y-offset" type="range" min="15.0" max="40.0" step="0.01" value="25.0" class="flex-1" oninput="onFittingControlInput()" disabled>
+                        <span class="text-[10px] text-gray-500 font-mono">40.0 (멂)</span>
+                    </div>
+                </div>
+
+                <!-- Time Alignment Shift Slider -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="control-x-offset" class="text-orange-400 font-bold flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-orange-500"></span>수평 피팅 제어 (Days From Peak 타임 시프트)
+                        </label>
+                        <span id="control-x-val" class="text-indigo-300 font-bold math-font bg-gray-900 px-2 py-0.5 rounded">0.0</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] text-gray-500 font-mono">-100일 (이전)</span>
+                        <input id="control-x-offset" type="range" min="-100" max="100" step="0.1" value="0" class="flex-1 abs-slider" oninput="onFittingControlInput()" disabled>
+                        <span class="text-[10px] text-gray-500 font-mono">+100일 (이후)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="resetFittingGame()" class="shrink-0 py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-bold transition-all duration-200">
+                <i class="fa-solid fa-arrow-rotate-left mr-1"></i> 피팅 초기화
+            </button>
+        </div>
+    </footer>
+
+    <!-- INTERACTIVE SCRIPTS -->
+    <script>
+        // Active Tab tracker
+        let activeTabId = "pogson";
+
+        // Tab switching logic
+        function switchTab(tabId) {
+            activeTabId = tabId;
+            document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+            
+            // 안전하게 존재할 때만 classList를 조작하도록 Optional Chaining (?.) 적용
+            document.getElementById('footer-pogson')?.classList.add('hidden');
+            document.getElementById('footer-supernova')?.classList.add('hidden');
+            document.getElementById('footer-spectral')?.classList.add('hidden');
+            
+            const btnPogson = document.getElementById('tab-btn-pogson');
+            const btnSupernova = document.getElementById('tab-btn-supernova');
+            const btnSpectral = document.getElementById('tab-btn-spectral');
+
+            if (btnPogson) btnPogson.className = "px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-gray-400 hover:text-gray-200";
+            if (btnSupernova) btnSupernova.className = "px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-gray-400 hover:text-gray-200";
+            if (btnSpectral) btnSpectral.className = "px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-gray-400 hover:text-gray-200";
+
+            if (tabId === 'pogson') {
+                document.getElementById('view-pogson')?.classList.remove('hidden');
+                document.getElementById('footer-pogson')?.classList.remove('hidden');
+                if (btnPogson) btnPogson.className = "px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 bg-blue-600 text-white shadow-md shadow-blue-500/20";
+                resizeCanvas();
+                startSimulation();
+            } else if (tabId === 'supernova') {
+                document.getElementById('view-supernova')?.classList.remove('hidden');
+                document.getElementById('footer-supernova')?.classList.remove('hidden');
+                if (btnSupernova) btnSupernova.className = "px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 bg-red-600 text-white shadow-md shadow-red-500/20";
+                stopSimulation();
+                resizeSupernovaCanvas();
+            } else if (tabId === 'spectral') {
+                document.getElementById('view-spectral')?.classList.remove('hidden');
+                document.getElementById('footer-spectral')?.classList.remove('hidden');
+                if (btnSpectral) btnSpectral.className = "px-4 py-2 text-xs font-bold rounded-lg transition-all duration-300 bg-indigo-600 text-white shadow-md shadow-indigo-500/20";
+                stopSimulation();
+                resizeSpectralCanvases();
+                updateSpectralCalculations();
+            }
+        }
+
+        // ================= TAB 1 JS CODE =================
+        const sliderApparent = document.getElementById('slider-apparent');
+        const sliderAbsolute = document.getElementById('slider-absolute');
+        const sliderApparentVal = document.getElementById('slider-apparent-val');
+        const sliderAbsoluteVal = document.getElementById('slider-absolute-val');
+
+        const valApparent = document.getElementById('val-apparent');
+        const valAbsolute = document.getElementById('val-absolute');
+        const valDistancePc = document.getElementById('val-distance-pc');
+        const valDistanceLy = document.getElementById('val-distance-ly');
+        const cosmicScaleDesc = document.getElementById('cosmic-scale-desc');
+
+        const eqM = document.getElementById('eq-m');
+        const eqM_cap = document.getElementById('eq-M');
+        const eqCalcPower = document.getElementById('eq-calc-power');
+        const eqDynamicText = document.getElementById('eq-dynamic-text');
+        
+        const graphCanvas = document.getElementById('graph-canvas');
+        const currentM_M_Label = document.getElementById('current-m-M-label');
+
+        const starfieldCanvas = document.getElementById('starfield-canvas');
+        const simStarTarget = document.getElementById('sim-star-target');
+        const hudLumi = document.getElementById('hud-lumi');
+        const hudScale = document.getElementById('hud-scale');
+        const simStatusLabel = document.getElementById('sim-status-label');
+        const btnStart = document.getElementById('btn-start');
+        const btnStop = document.getElementById('btn-stop');
+
+        let m = parseFloat(sliderApparent.value);
+        let M = parseFloat(sliderAbsolute.value);
+        let calculatedDistance = 100.0;
+        let animationRunning = false;
+        let animationFrameId = null;
+
+        const ctxGraph = graphCanvas.getContext('2d');
+        
+        function resizeCanvas() {
+            if (graphCanvas.clientWidth === 0) return;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = graphCanvas.getBoundingClientRect();
+            graphCanvas.width = rect.width * dpr;
+            graphCanvas.height = rect.height * dpr;
+            ctxGraph.scale(dpr, dpr);
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const width = graphCanvas.clientWidth;
+            const height = graphCanvas.clientHeight;
+            if (width === 0) return;
+            ctxGraph.clearRect(0, 0, width, height);
+
+            const paddingLeft = 55;
+            const paddingRight = 20;
+            const paddingTop = 20;
+            const paddingBottom = 40;
+
+            const graphWidth = width - paddingLeft - paddingRight;
+            const graphHeight = height - paddingTop - paddingBottom;
+
+            const minX = -15;
+            const maxX = 35;
+            const minYLog = -1;
+            const maxYLog = 8;
+
+            function getPixelX(valX) {
+                return paddingLeft + ((valX - minX) / (maxX - minX)) * graphWidth;
+            }
+            function getPixelY(valYLog) {
+                return paddingTop + graphHeight - ((valYLog - minYLog) / (maxYLog - minYLog)) * graphHeight;
+            }
+
+            ctxGraph.strokeStyle = '#1e293b';
+            ctxGraph.lineWidth = 1;
+            ctxGraph.font = '9px "JetBrains Mono"';
+            ctxGraph.fillStyle = '#64748b';
+
+            for (let xVal = minX; xVal <= maxX; xVal += 5) {
+                const px = getPixelX(xVal);
+                ctxGraph.beginPath();
+                ctxGraph.moveTo(px, paddingTop);
+                ctxGraph.lineTo(px, paddingTop + graphHeight);
+                ctxGraph.stroke();
+                ctxGraph.fillText(xVal, px - 6, paddingTop + graphHeight + 15);
+            }
+
+            for (let yPower = minYLog; yPower <= maxYLog; yPower++) {
+                const py = getPixelY(yPower);
+                ctxGraph.beginPath();
+                ctxGraph.moveTo(paddingLeft, py);
+                ctxGraph.lineTo(paddingLeft + graphWidth, py);
+                ctxGraph.stroke();
+
+                let dStr = '';
+                if (yPower === -1) dStr = "0.1";
+                else if (yPower === 0) dStr = "1";
+                else if (yPower === 1) dStr = "10";
+                else if (yPower === 3) dStr = "1k";
+                else if (yPower === 6) dStr = "1M";
+                else if (yPower === 8) dStr = "100M";
+                else dStr = `10^${yPower}`;
+
+                ctxGraph.fillText(dStr + " pc", 10, py + 3);
+            }
+
+            ctxGraph.strokeStyle = '#475569';
+            ctxGraph.lineWidth = 1.5;
+            ctxGraph.beginPath();
+            ctxGraph.moveTo(paddingLeft, paddingTop);
+            ctxGraph.lineTo(paddingLeft, paddingTop + graphHeight);
+            ctxGraph.lineTo(paddingLeft + graphWidth, paddingTop + graphHeight);
+            ctxGraph.stroke();
+
+            ctxGraph.fillStyle = '#94a3b8';
+            ctxGraph.font = '10px "Noto Sans KR"';
+            ctxGraph.fillText("거리 지수 (m - M)", paddingLeft + graphWidth / 2 - 40, paddingTop + graphHeight + 34);
+            
+            ctxGraph.save();
+            ctxGraph.translate(15, paddingTop + graphHeight / 2 + 20);
+            ctxGraph.rotate(-Math.PI / 2);
+            ctxGraph.fillText("거리 d (pc, 로그 스케일)", 0, 0);
+            ctxGraph.restore();
+
+            ctxGraph.strokeStyle = '#3b82f6';
+            ctxGraph.lineWidth = 2.5;
+            ctxGraph.beginPath();
+            
+            let first = true;
+            for (let xVal = minX; xVal <= maxX; xVal += 0.2) {
+                const logR = (xVal + 5) / 5;
+                if (logR >= minYLog && logR <= maxYLog) {
+                    const px = getPixelX(xVal);
+                    const py = getPixelY(logR);
+                    if (first) {
+                        ctxGraph.moveTo(px, py);
+                        first = false;
+                    } else {
+                        ctxGraph.lineTo(px, py);
+                    }
+                }
+            }
+            ctxGraph.stroke();
+
+            const curDiff = m - M;
+            const curDistanceLog = (curDiff + 5) / 5;
+            const currentX = getPixelX(curDiff);
+            const currentY = getPixelY(curDistanceLog);
+
+            ctxGraph.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ctxGraph.lineWidth = 1.2;
+            ctxGraph.setLineDash([4, 4]);
+
+            ctxGraph.beginPath();
+            ctxGraph.moveTo(currentX, currentY);
+            ctxGraph.lineTo(currentX, paddingTop + graphHeight);
+            ctxGraph.stroke();
+
+            ctxGraph.beginPath();
+            ctxGraph.moveTo(currentX, currentY);
+            ctxGraph.lineTo(paddingLeft, currentY);
+            ctxGraph.stroke();
+
+            ctxGraph.setLineDash([]);
+
+            if (currentX >= paddingLeft && currentX <= paddingLeft + graphWidth && currentY >= paddingTop && currentY <= paddingTop + graphHeight) {
+                ctxGraph.fillStyle = '#ef4444';
+                ctxGraph.shadowColor = '#ef4444';
+                ctxGraph.shadowBlur = 10;
+                ctxGraph.beginPath();
+                ctxGraph.arc(currentX, currentY, 6, 0, Math.PI * 2);
+                ctxGraph.fill();
+                ctxGraph.shadowBlur = 0;
+                
+                ctxGraph.strokeStyle = '#ffffff';
+                ctxGraph.lineWidth = 1.5;
+                ctxGraph.beginPath();
+                ctxGraph.arc(currentX, currentY, 9, 0, Math.PI * 2);
+                ctxGraph.stroke();
+            }
+        }
+
+        const ctxStar = starfieldCanvas.getContext('2d');
+        let stars = [];
+        const numStars = 120;
+        let starSpeedMultiplier = 1;
+
+        function initStars() {
+            const width = starfieldCanvas.clientWidth;
+            const height = starfieldCanvas.clientHeight;
+            if (width === 0) return;
+            starfieldCanvas.width = width;
+            starfieldCanvas.height = height;
+
+            stars = [];
+            for (let i = 0; i < numStars; i++) {
+                stars.push({
+                    x: (Math.random() - 0.5) * width,
+                    y: (Math.random() - 0.5) * height,
+                    z: Math.random() * width,
+                    color: Math.random() > 0.8 ? '#93c5fd' : '#ffffff'
+                });
+            }
+        }
+
+        function drawStarfield() {
+            if (!animationRunning) return;
+
+            const width = starfieldCanvas.width;
+            const height = starfieldCanvas.height;
+
+            ctxStar.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctxStar.fillRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            for (let i = 0; i < stars.length; i++) {
+                let s = stars[i];
+                s.z -= 1.8 * starSpeedMultiplier;
+
+                if (s.z <= 0) {
+                    s.x = (Math.random() - 0.5) * width;
+                    s.y = (Math.random() - 0.5) * height;
+                    s.z = width;
+                }
+
+                const px = (s.x / s.z) * width * 0.8 + centerX;
+                const py = (s.y / s.z) * height * 0.8 + centerY;
+                const size = ((width - s.z) / width) * 2;
+
+                if (px >= 0 && px <= width && py >= 0 && py <= height) {
+                    ctxStar.fillStyle = s.color;
+                    ctxStar.beginPath();
+                    ctxStar.arc(px, py, Math.max(0.2, size), 0, Math.PI * 2);
+                    ctxStar.fill();
+                }
+            }
+            animationFrameId = requestAnimationFrame(drawStarfield);
+        }
+
+        function updatePogsonEquation() {
+            m = parseFloat(sliderApparent.value);
+            M = parseFloat(sliderAbsolute.value);
+
+            sliderApparentVal.innerText = m.toFixed(1);
+            sliderAbsoluteVal.innerText = M.toFixed(1);
+            valApparent.innerText = m.toFixed(2);
+            valAbsolute.innerText = M.toFixed(2);
+
+            const exponent = (m - M + 5) / 5;
+            calculatedDistance = Math.pow(10, exponent);
+            const distanceLy = calculatedDistance * 3.26156;
+
+            if (calculatedDistance >= 1e6) {
+                valDistancePc.innerText = (calculatedDistance / 1e6).toFixed(2) + ' M';
+            } else if (calculatedDistance >= 1e3) {
+                valDistancePc.innerText = (calculatedDistance / 1e3).toFixed(2) + ' k';
+            } else {
+                valDistancePc.innerText = calculatedDistance.toFixed(2);
+            }
+            valDistanceLy.innerText = distanceLy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            eqM.innerText = m.toFixed(1);
+            eqM_cap.innerText = M.toFixed(1);
+            eqCalcPower.innerText = `(${m.toFixed(1)} - ${M.toFixed(1)} + 5) / 5`;
+            
+            let powerSimplified = exponent.toFixed(2);
+            eqDynamicText.innerHTML = `d = 10<sup>${powerSimplified}</sup> = ${calculatedDistance.toLocaleString(undefined, { maximumFractionDigits: 2 })} pc`;
+            currentM_M_Label.innerText = `현재 m - M = ${(m - M).toFixed(1)}`;
+
+            let scaleDesc = "";
+            if (calculatedDistance < 10) {
+                scaleDesc = "초근접 우주: 태양계 인근의 최근접 이웃 항성계 영역입니다.";
+            } else if (calculatedDistance < 100) {
+                scaleDesc = "태양계 근처: 주위 약 100pc 범위의 국부 성간 구름대 영역입니다.";
+            } else if (calculatedDistance < 1000) {
+                scaleDesc = "오리온 팔 내부: 우리 은하 나선팔 안의 주요 성운들이 위치한 구역입니다.";
+            } else if (calculatedDistance < 10000) {
+                scaleDesc = "은하수 구역: 우리 은하의 거대한 원반 중심 및 구상 성단 구역에 접어듭니다.";
+            } else if (calculatedDistance < 100000) {
+                scaleDesc = "우리 은하 끝: 우리 은하의 물리적 은하 후광 영역을 공전하고 있습니다.";
+            } else {
+                scaleDesc = "안드로메다 및 은하 밖: 거대한 국부 은하군과 아득한 외부 은하들의 세계입니다.";
+            }
+            cosmicScaleDesc.innerText = scaleDesc;
+
+            updateTargetStarGraphics();
+            drawGraph();
+        }
+
+        function updateTargetStarGraphics() {
+            const exponent = (m - M + 5) / 5;
+            let luminosityFactor = 1.0;
+            if (calculatedDistance > 0) {
+                luminosityFactor = Math.pow(10 / calculatedDistance, 2);
+            }
+
+            if (luminosityFactor < 0.001) {
+                hudLumi.innerText = luminosityFactor.toExponential(2) + "x";
+            } else {
+                hudLumi.innerText = luminosityFactor.toFixed(3) + "x";
+            }
+
+            let distScaleString = "100pc";
+            if (calculatedDistance >= 1e6) distScaleString = "은하 외부";
+            else if (calculatedDistance >= 1e3) distScaleString = "심우주 외곽";
+            else distScaleString = "은하계 성단";
+            hudScale.innerText = distScaleString;
+
+            let starSize = 10 + (25 / (0.5 + exponent));
+            starSize = Math.max(4, Math.min(starSize, 45));
+
+            let glowRadius = 5 + (35 / (0.5 + exponent));
+            glowRadius = Math.max(2, Math.min(glowRadius, 60));
+
+            let starColorGlow = 'rgba(255, 255, 255, 0.9)';
+            if (M < 0) {
+                starColorGlow = 'rgba(59, 130, 246, 0.85)';
+            } else if (M < 5) {
+                starColorGlow = 'rgba(253, 224, 71, 0.85)';
+            } else {
+                starColorGlow = 'rgba(249, 115, 22, 0.85)';
+            }
+
+            simStarTarget.style.width = `${starSize}px`;
+            simStarTarget.style.height = `${starSize}px`;
+            simStarTarget.style.boxShadow = `0 0 ${glowRadius}px ${glowRadius/3}px ${starColorGlow}`;
+            simStarTarget.style.backgroundColor = starColorGlow;
+            starSpeedMultiplier = Math.max(0.5, exponent * 1.5);
+        }
+
+        function startSimulation() {
+            if (animationRunning) return;
+            animationRunning = true;
+            simStatusLabel.innerText = "STATUS: WARPING";
+            simStatusLabel.classList.add('text-emerald-400');
+            simStatusLabel.classList.remove('text-gray-500');
+            initStars();
+            drawStarfield();
+        }
+
+        function stopSimulation() {
+            if (!animationRunning) return;
+            animationRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            simStatusLabel.innerText = "STATUS: IDLE";
+            simStatusLabel.classList.remove('text-emerald-400');
+            simStatusLabel.classList.add('text-gray-500');
+            ctxStar.fillStyle = '#000000';
+            ctxStar.fillRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
+        }
+
+        sliderApparent.addEventListener('input', updatePogsonEquation);
+        sliderAbsolute.addEventListener('input', updatePogsonEquation);
+        btnStart.addEventListener('click', startSimulation);
+        btnStop.addEventListener('click', stopSimulation);
+
+        // ================= TAB 2: TYPE IA SUPERNOVA JS CODE =================
+        const snSelect = document.getElementById('supernova-select');
+        const snCanvas = document.getElementById('supernova-canvas');
+        const ctxSn = snCanvas.getContext('2d');
+        const snLoadingOverlay = document.getElementById('sn-loading-overlay');
+        const fitClickGuide = document.getElementById('fit-click-guide');
+
+        const fitStatusDot = document.getElementById('fit-status-dot');
+        const fitStatusText = document.getElementById('fit-status-text');
+        const fitPrecisionLabel = document.getElementById('fit-precision');
+
+        const snPointApparent = document.getElementById('sn-point-apparent');
+        const snPointAbsolute = document.getElementById('sn-point-absolute');
+        const snPointModulus = document.getElementById('sn-point-modulus');
+        const snDistancePc = document.getElementById('sn-distance-pc');
+        const snDistanceUnit = document.getElementById('sn-distance-unit');
+        const snDistanceLy = document.getElementById('sn-distance-ly');
+        const snRealRef = document.getElementById('sn-real-ref');
+
+        const sliderControlY = document.getElementById('control-y-offset');
+        const sliderControlX = document.getElementById('control-x-offset');
+        const valControlY = document.getElementById('control-y-val');
+        const valControlX = document.getElementById('control-x-val');
+
+        // Real Scientific Database of 10 Famous SNe Ia
+        const supernovaDatabase = {
+            sn2011fe: {
+                name: "SN 2011fe",
+                galaxy: "M101 (바람개비 은하)",
+                galaxyType: "Sc (나선은하)",
+                trueDistanceModulus: 29.04,
+                trueDistancePc: 6400000,
+                apparentPeak: 9.9,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    SN 2011fe는 2011년 8월 M101 바람개비 은하에서 발견되었습니다. 지구와 불과 6.4 Mpc(약 2100만 광년) 거리에 위치하여 우주 먼지에 의한 빛의 차단(성간 소광) 효과가 매우 희박한 '골든 스탠다드' 천체입니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    NASA의 허블 우주 망원경(HST)과 지상 멀티 필터 망원경 군단이 대량의 가시광선-자외선 분광 스펙트럼 데이터를 누적했습니다. 이 초신성의 데이터는 순수한 찬드라세카르 질량(1.44 M☉) 백색 왜성 모델의 광도 진화를 완벽히 입증하여 우주 표준 촛불을 보정하는 핵심 척도가 되었습니다.
+                `
+            },
+            sn2014j: {
+                name: "SN 2014J",
+                galaxy: "M82 (시가 은하)",
+                galaxyType: "Irregular (불규칙 스타버스트 은하)",
+                trueDistanceModulus: 27.73,
+                trueDistancePc: 3500000,
+                apparentPeak: 10.5,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    2014년 1월 예비 관측 도중 우연히 발견된 역사적인 초신성입니다. 별 형성이 매우 격렬히 일어나는 M82 은하 내부에 위치해 있어, 성간 먼지 가스를 다량 통과하며 나타나는 극적인 붉어짐(적색화)을 잘 보여줍니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    성간 적색화(Interstellar Reddening) 현상이 초신성 관측을 어떻게 교란시키는지 분석하는 최고의 실험실이 되었습니다. NASA 찬드라 X선 망원경 및 HST의 공동 관측을 통해 우주 공간의 성간 먼지 구성(규산염, 흑연 등)과 파장에 따른 소광 계수 $R_V$ 값이 일반 은하와 다름을 입증했습니다.
+                `
+            },
+            sn1994d: {
+                name: "SN 1994D",
+                galaxy: "NGC 4526",
+                galaxyType: "S0 (렌즈상 은하)",
+                trueDistanceModulus: 31.10,
+                trueDistancePc: 16600000,
+                apparentPeak: 11.8,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    1994년 가을 렌즈상 은하인 NGC 4526 외곽 부근에서 포착되었습니다. 먼지 원반 구조보다 위쪽에 외로이 위치한 덕분에 다른 별이나 가스의 간섭 없이 깨끗한 고해상도 이미지가 촬영되었습니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    HST 광학 카메라가 촬영한 최고의 초신성 표본 이미지 중 하나로 교과서에 자주 인용됩니다. 소광 효과가 극소화되어 우주 가속 팽창과 우주 상수의 초기 연구에 절대적인 기여를 남겼습니다.
+                `
+            },
+            sn2018gv: {
+                name: "SN 2018gv",
+                galaxy: "NGC 2525",
+                galaxyType: "SBc (막대나선은하)",
+                trueDistanceModulus: 31.60,
+                trueDistancePc: 21200000,
+                apparentPeak: 12.8,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    2018년 1월에 포착된 이 초신성은 NASA 허블 우주 망원경이 1년에 걸쳐 폭발 초기부터 소멸 과정까지를 '타임랩스(시계열 동영상)'로 상세하게 추적 촬영하여 일반 대중에게도 큰 감동을 주었던 천체입니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    우주 팽창 속도를 정의하는 허블-르메트르 법칙의 고정밀 보정에 사용되었습니다. 세페이드 변광성을 품고 있는 모은하에 Ia형 초신성이 동시에 관측되는 다중 거리 사다리 연계 관측에 핵심 기여를 했습니다.
+                `
+            },
+            sn1998bu: {
+                name: "SN 1998bu",
+                galaxy: "M96 (Leo I 은하군)",
+                galaxyType: "SABab (중간나선은하)",
+                trueDistanceModulus: 29.90,
+                trueDistancePc: 9600000,
+                apparentPeak: 12.2,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    1998년 5월 사자자리 은하군에 위치한 M96 은하에서 발견되었습니다. 지구와 가까운 거리 덕분에 적외선 및 가시광선 파장 영역에서 광도가 시시각각 줄어드는 과정이 풍부하게 모니터링되었습니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    이 초신성은 필립스 관계(Phillips Relation; 폭발 후 감소 기울기가 가파를수록 절대광도가 낮다는 법칙)의 수학적 모형 정교화에 지대한 공헌을 하였습니다. 적외선(H, J band) 관측을 통해 소광 영향을 최소화하며 실제 거리를 보완했습니다.
+                `
+            },
+            sn1972e: {
+                name: "SN 1972E",
+                galaxy: "NGC 5253",
+                galaxyType: "Im (마젤란형 불규칙은하)",
+                trueDistanceModulus: 27.60,
+                trueDistancePc: 3300000,
+                apparentPeak: 8.5,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    1972년 5월에 폭발한 현대 초신성 우주론의 '원조' 격인 천체입니다. 당시 기준으로 사상 유례없는 최고 밝기인 8.5등급까지 상승하여 망원경 없이 쌍안경만으로도 관측이 가능했던 거대 초신성입니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    Ia형 초신성의 폭발 가스 속에서 철, 코발트, 니켈의 방사성 붕괴($^{56}\text{Ni} \rightarrow {}^{56}\text{Co} \rightarrow {}^{56}\text{Fe}$) 에너지 공급 구조를 최초로 증명했습니다. 지상 분광학적 관측 기법을 초신성에 최초 정밀 적용한 관측 자산입니다.
+                `
+            },
+            sn1989b: {
+                name: "SN 1989B",
+                galaxy: "M66 (사자자리 삼중은하)",
+                galaxyType: "SAb (나선은하)",
+                trueDistanceModulus: 30.10,
+                trueDistancePc: 10500000,
+                apparentPeak: 12.0,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    1989년 사자자리 삼중은하 중 하나인 소용돌이 모양의 M66 은하 중심부 부근 나선팔 내부에서 폭발했습니다. 은하 원반 가스가 겹치는 복잡한 성간 환경에 위치한 대표적인 초신성입니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    은하 나선팔 내부의 '소광 보정 곡선 필터'를 실증 검증하는 연구 모델로 천문학자들이 자주 인용합니다. 다색 광전 측광법(UBVRI) 분석을 통해 우주 거리를 유도할 때 은하 내 공간적 소광 불확실성이 미치는 변동 범위를 체계적으로 도출했습니다.
+                `
+            },
+            sn1990n: {
+                name: "SN 1990N",
+                galaxy: "NGC 4639",
+                galaxyType: "SAb (막대나선은하)",
+                trueDistanceModulus: 31.70,
+                trueDistancePc: 22000000,
+                apparentPeak: 12.7,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    1990년 여름에 처녀자리 은하단 소속인 NGC 4639 은하에서 포착되었습니다. 이 은하는 허블 우주 망원경이 초신성의 '세페이드 변광성 검정 거리'를 유도하기 위해 선택한 주요 관측 은하였습니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    우주의 절대 크기를 알아내는 세페이드 자와 초신성 우주론 자의 직접 교차 검정에 기초 공헌을 세웠습니다. 두 자가 완벽하게 한 곳의 물리적 은하 거리를 가리킴을 밝혀내 우주 팽창을 설명하는 데 신뢰도를 더했습니다.
+                `
+            },
+            sn1999cl: {
+                name: "SN 1999cl",
+                galaxy: "M88 (처녀자리 은하단)",
+                galaxyType: "SAb (나선은하)",
+                trueDistanceModulus: 31.15,
+                trueDistancePc: 17000000,
+                apparentPeak: 13.7,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    1999년 처녀자리 은하단 소속의 활발한 중간나선은하 M88 내부 깊숙이 위치한 나선팔에서 폭발했습니다. 다른 무소광 초신성과 비교 시 겉보기 등급이 어둡게 감소하여 성간 소광을 크게 보정해야 했던 사례입니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    초신성 광도 곡선 패키지의 필터 보정 분석에 중요한 한계 테스트베드를 지원했습니다. 우주론 데이터 분석팀은 이 초신성을 정밀 보정하여 최종 초신성 우주론 그룹(SCP)의 우주 가속 팽창 최종 기여 천체 목록에 성공적으로 삽입했습니다.
+                `
+            },
+            sn2005cf: {
+                name: "SN 2005cf",
+                galaxy: "MCG-01-39-003",
+                galaxyType: "S0/a (렌즈상-나선 전이 은하)",
+                trueDistanceModulus: 32.30,
+                trueDistancePc: 28800000,
+                apparentPeak: 14.3,
+                referenceText: `
+                    <strong>[관측 개요 & 역사]</strong><br>
+                    2005년 비교적 먼 거리에 고립되어 공전하는 특이 형태 은하에서 고출력 탐사 카메라에 의해 사냥된 초신성입니다. 폭발 약 10일 전의 지극히 극단적인 초기 단계부터 관측 장치에 추적되었습니다.<br><br>
+                    <strong>[우주론적 가치]</strong><br>
+                    초신성 폭발 초기에 방출되는 고에너지 자외선 분광 데이터를 가장 광범위하게 수집한 물리적 아카이브를 가집니다. 이를 통해 탄소-산소 백색 왜성의 핵융합 연쇄 반응 파동이 표면 껍질층에 도달하는 유체역학적 충격 모델 연구를 크게 가속화시켰습니다.
+                `
+            }
+        };
+
+        let activeSnKey = "none";
+        let activeSnData = null;
+        
+        // Fitting alignment values
+        let userOffsetDiffY = 25.0; // Current guessed distance modulus (m - M)
+        let userOffsetX = 0;        // Current guessed time shift (Days)
+        let isFittedSuccessfully = false;
+
+        // User Click Highlight State on Curve
+        let selectedCurvePoint = null; 
+
+        // Simulated Actual Observational Data Points (Fixed array per supernova to represent real NASA data)
+        // These points remain rigidly placed relative to each other!
+        let realObservationalPoints = [];
+
+        // Standard Absolute Light Curve mathematical model
+        // Peak is at Day 0, Peak Absolute Magnitude is always -19.3
+        function getStandardAbsoluteMagnitude(days) {
+            if (days < -18) return -15.0;
+            if (days <= 0) {
+                // Parabolic rise from -15 at day -18 to -19.3 at day 0
+                return -19.3 + 0.01327 * Math.pow(days, 2);
+            } else if (days <= 20) {
+                // Rapid decay from -19.3 to -17.5
+                return -19.3 + 0.12 * days - 0.0015 * Math.pow(days, 2);
+            } else {
+                // Linear decay tail: about 0.015 mag/day
+                let base = -17.5 + 0.015 * (days - 20);
+                return Math.min(base, -10.0); // Bound magnitude limits
+            }
+        }
+
+        // Generate static actual observation points with noise when a supernova is selected
+        // Represents real NASA database curves with realistic scatter, non-uniform intervals, and gaps
+        function generateRealObservationPoints(supernova) {
+            const points = [];
+            // Real observations are not perfectly spaced. This uses real-world style uneven intervals
+            const baseTimes = [-16.5, -14.2, -11.1, -8.4, -5.2, -2.1, 0.3, 2.8, 5.9, 8.7, 11.2, 14.5, 18.2, 23.1, 28.4, 34.2, 42.1, 51.5, 63.2, 78.0, 95.3, 118.1, 145.2, 180.3, 220.1, 270.4, 325.2];
+            
+            // Deterministic seeded random based on the supernova's name so points remain fixed once loaded
+            let seed = 0;
+            for (let i = 0; i < supernova.name.length; i++) {
+                seed += supernova.name.charCodeAt(i);
+            }
+            function seededRandom() {
+                let x = Math.sin(seed++) * 10000;
+                return x - Math.floor(x);
+            }
+
+            baseTimes.forEach(day => {
+                // SNe Ia can have slight stretch factor changes
+                const stretchFactor = 1.0 + (seededRandom() - 0.5) * 0.08;
+                const standardAbs = getStandardAbsoluteMagnitude(day / stretchFactor);
+                
+                // Noise simulates telescope resolution and sky conditions (dimmer objects have slightly larger scatter)
+                const errorScale = day > 100 ? 0.35 : 0.15;
+                const noise = (seededRandom() - 0.5) * errorScale;
+                
+                // Drop ~15% of points randomly to simulate weather breaks and visibility window gaps in astronomy
+                if (seededRandom() > 0.15) { 
+                    points.push({
+                        t_obs: parseFloat(day.toFixed(1)),
+                        m_obs: parseFloat((standardAbs + supernova.trueDistanceModulus + noise).toFixed(2))
+                    });
+                }
+            });
+            return points;
+        }
+
+        function resizeSupernovaCanvas() {
+            if (snCanvas.clientWidth === 0) return;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = snCanvas.getBoundingClientRect();
+            snCanvas.width = rect.width * dpr;
+            snCanvas.height = rect.height * dpr;
+            ctxSn.scale(dpr, dpr);
+            drawSupernovaGraph();
+        }
+
+        // Main rendering loops for Supernova Curve graph
+        function drawSupernovaGraph() {
+            const width = snCanvas.clientWidth;
+            const height = snCanvas.clientHeight;
+            if (width === 0) return;
+            ctxSn.clearRect(0, 0, width, height);
+
+            const paddingLeft = 55;
+            const paddingRight = 55;
+            const paddingTop = 30;
+            const paddingBottom = 40;
+
+            const graphWidth = width - paddingLeft - paddingRight;
+            const graphHeight = height - paddingTop - paddingBottom;
+
+            // X-Axis bounds (Days from peak of template): -50 to 350
+            const minX = -50;
+            const maxX = 350;
+
+            // Y-Axis Left (Absolute Magnitude M): -10 (bottom) to -22 (top)
+            const minY_Abs = -10;
+            const maxY_Abs = -22;
+
+            // Coordinate system conversion helpers
+            function getPixelX(valX) {
+                return paddingLeft + ((valX - minX) / (maxX - minX)) * graphWidth;
+            }
+            function getPixelY_Abs(valY) {
+                // magnitude scale is inverted
+                return paddingTop + ((valY - minY_Abs) / (maxY_Abs - minY_Abs)) * graphHeight;
+            }
+
+            // Draw grid lines
+            ctxSn.strokeStyle = '#1e293b';
+            ctxSn.lineWidth = 1;
+            ctxSn.font = '9px "JetBrains Mono"';
+
+            // X-Grid & Labels
+            for (let xVal = minX; xVal <= maxX; xVal += 50) {
+                const px = getPixelX(xVal);
+                ctxSn.beginPath();
+                ctxSn.moveTo(px, paddingTop);
+                ctxSn.lineTo(px, paddingTop + graphHeight);
+                ctxSn.stroke();
+                ctxSn.fillStyle = '#64748b';
+                ctxSn.fillText(xVal, px - 10, paddingTop + graphHeight + 15);
+            }
+
+            // Y-Grid lines and Left axis ticks (Absolute Magnitude)
+            for (let yVal = minY_Abs; yVal >= maxY_Abs; yVal--) {
+                const py = getPixelY_Abs(yVal);
+                ctxSn.beginPath();
+                ctxSn.moveTo(paddingLeft, py);
+                ctxSn.lineTo(paddingLeft + graphWidth, py);
+                ctxSn.stroke();
+
+                ctxSn.fillStyle = '#f97316';
+                ctxSn.fillText(yVal.toFixed(0), paddingLeft - 22, py + 3);
+            }
+
+            // Draw Right Axis (Apparent Magnitude m)
+            // Displays Apparent magnitude aligned with standard template absolute curve + currently adjusted user modulus
+            for (let yVal = minY_Abs; yVal >= maxY_Abs; yVal--) {
+                const py = getPixelY_Abs(yVal);
+                const rightMagVal = yVal + userOffsetDiffY;
+                ctxSn.fillStyle = '#3b82f6';
+                ctxSn.fillText(rightMagVal.toFixed(1), paddingLeft + graphWidth + 10, py + 3);
+            }
+
+            // Draw Boundary Axes
+            ctxSn.strokeStyle = '#475569';
+            ctxSn.lineWidth = 1.5;
+            ctxSn.beginPath();
+            ctxSn.moveTo(paddingLeft, paddingTop);
+            ctxSn.lineTo(paddingLeft, paddingTop + graphHeight);
+            ctxSn.lineTo(paddingLeft + graphWidth, paddingTop + graphHeight);
+            ctxSn.lineTo(paddingLeft + graphWidth, paddingTop);
+            ctxSn.stroke();
+
+            // Label axes headers
+            ctxSn.fillStyle = '#94a3b8';
+            ctxSn.font = '10px "Noto Sans KR"';
+            ctxSn.fillText("폭발 최고점 기준 일수 (Days From Peak)", paddingLeft + graphWidth / 2 - 95, paddingTop + graphHeight + 32);
+            
+            ctxSn.fillStyle = '#f97316'; // Left (Absolute)
+            ctxSn.fillText("절대 등급 (M_B)", paddingLeft - 45, paddingTop - 12);
+
+            ctxSn.fillStyle = '#3b82f6'; // Right (Apparent)
+            ctxSn.fillText("겉보기 등급 (m_B)", paddingLeft + graphWidth + 2, paddingTop - 12);
+
+            if (activeSnKey === "none") return;
+
+            // 1. Draw STANDARD ABSOLUTE TEMPLATE CURVE (White Solid Line)
+            // This represents M_B absolute curve which is static at t=0, peak=-19.3
+            ctxSn.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctxSn.lineWidth = 2.5;
+            ctxSn.beginPath();
+            let first = true;
+            for (let d = minX; d <= maxX; d += 2) {
+                const mAbs = getStandardAbsoluteMagnitude(d);
+                const px = getPixelX(d);
+                const py = getPixelY_Abs(mAbs);
+                if (first) {
+                    ctxSn.moveTo(px, py);
+                    first = false;
+                } else {
+                    ctxSn.lineTo(px, py);
+                }
+            }
+            ctxSn.stroke();
+
+            // 2. Draw OBSERVED DATA POINTS (Red Scattered Points)
+            ctxSn.fillStyle = '#ef4444';
+            realObservationalPoints.forEach(pt => {
+                const plotX_val = pt.t_obs + userOffsetX;
+                const plotY_absVal = pt.m_obs - userOffsetDiffY;
+
+                const px = getPixelX(plotX_val);
+                const py = getPixelY_Abs(plotY_absVal);
+
+                if (px >= paddingLeft && px <= paddingLeft + graphWidth && py >= paddingTop && py <= paddingTop + graphHeight) {
+                    // Draw point outer glow
+                    ctxSn.shadowColor = 'rgba(239, 68, 68, 0.5)';
+                    ctxSn.shadowBlur = 4;
+                    ctxSn.beginPath();
+                    ctxSn.arc(px, py, 4.5, 0, Math.PI * 2);
+                    ctxSn.fill();
+                    ctxSn.shadowBlur = 0; // reset
+                    
+                    ctxSn.strokeStyle = '#ffffff';
+                    ctxSn.lineWidth = 0.8;
+                    ctxSn.stroke();
+                }
+            });
+
+            // 3. Draw Selected Curve Point details (if clicked on curve)
+            if (selectedCurvePoint) {
+                const px = getPixelX(selectedCurvePoint.xVal);
+                const py = getPixelY_Abs(selectedCurvePoint.yAbs);
+
+                if (px >= paddingLeft && px <= paddingLeft + graphWidth && py >= paddingTop && py <= paddingTop + graphHeight) {
+                    // Draw purple crosshair lines
+                    ctxSn.strokeStyle = 'rgba(139, 92, 246, 0.6)';
+                    ctxSn.lineWidth = 1.5;
+                    ctxSn.setLineDash([4, 4]);
+
+                    // to Left Absolute axis
+                    ctxSn.beginPath();
+                    ctxSn.moveTo(px, py);
+                    ctxSn.lineTo(paddingLeft, py);
+                    ctxSn.stroke();
+
+                    // to Right Apparent axis
+                    ctxSn.beginPath();
+                    ctxSn.moveTo(px, py);
+                    ctxSn.lineTo(paddingLeft + graphWidth, py);
+                    ctxSn.stroke();
+
+                    // to Bottom Days axis
+                    ctxSn.beginPath();
+                    ctxSn.moveTo(px, py);
+                    ctxSn.lineTo(px, paddingTop + graphHeight);
+                    ctxSn.stroke();
+                    ctxSn.setLineDash([]);
+
+                    // Draw target circle
+                    ctxSn.fillStyle = '#8b5cf6';
+                    ctxSn.shadowColor = '#8b5cf6';
+                    ctxSn.shadowBlur = 12;
+                    ctxSn.beginPath();
+                    ctxSn.arc(px, py, 6, 0, Math.PI * 2);
+                    ctxSn.fill();
+                    ctxSn.shadowBlur = 0;
+
+                    ctxSn.strokeStyle = '#ffffff';
+                    ctxSn.lineWidth = 2;
+                    ctxSn.beginPath();
+                    ctxSn.arc(px, py, 9, 0, Math.PI * 2);
+                    ctxSn.stroke();
+                }
+            }
+        }
+
+        // Helper to reset the calculation readout values
+        function resetCalculatorUI() {
+            snPointApparent.innerText = "-";
+            snPointAbsolute.innerText = "-";
+            snPointModulus.innerText = "-";
+            snDistancePc.innerText = "측정 대기 중";
+            snDistanceUnit.innerText = "";
+            snDistanceLy.innerText = "-";
+        }
+
+        // Dropdown select trigger
+        function onSelectSupernova() {
+            const key = snSelect.value;
+            activeSnKey = key;
+
+            if (key === "none") {
+                snLoadingOverlay.classList.remove('hidden');
+                snLoadingOverlay.style.opacity = '1';
+                fitClickGuide.classList.add('hidden');
+                activeSnData = null;
+                resetCalculatorUI();
+                return;
+            }
+
+            // Smoothly remove loading overlay
+            snLoadingOverlay.style.opacity = '0';
+            setTimeout(() => {
+                snLoadingOverlay.classList.add('hidden');
+            }, 300);
+
+            activeSnData = supernovaDatabase[key];
+
+            // Generate deterministic fixed telescope observation data points
+            realObservationalPoints = generateRealObservationPoints(activeSnData);
+
+            // Set initial randomized alignment error offsets for the fitting game
+            userOffsetX = Math.floor(Math.random() * 80) - 40; // -40 to +40 days shift
+            userOffsetDiffY = activeSnData.trueDistanceModulus + (Math.random() * 6 - 3); // true +- 3 modulus offset
+
+            // Enable and update Bottom fitting sliders
+            sliderControlX.disabled = false;
+            sliderControlY.disabled = false;
+
+            sliderControlX.value = userOffsetX;
+            sliderControlY.value = userOffsetDiffY.toFixed(2);
+            valControlX.innerText = userOffsetX.toFixed(1);
+            valControlY.innerText = userOffsetDiffY.toFixed(2);
+
+            // Reset selection states
+            isFittedSuccessfully = false;
+            selectedCurvePoint = null;
+            fitClickGuide.classList.add('hidden');
+
+            // Rich historical astronomy analysis updater
+            snRealRef.innerHTML = `
+                <div class="text-sm font-bold text-red-400 mb-1 border-b border-gray-800 pb-1">
+                    ${activeSnData.name} <span class="text-gray-400 text-xs">/ ${activeSnData.galaxy}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-[10px] bg-gray-950 p-2 rounded border border-gray-900 mb-2">
+                    <div><span class="text-gray-500">모은하 유형:</span> ${activeSnData.galaxyType}</div>
+                    <div><span class="text-gray-500">실제 측정 거리:</span> ${(activeSnData.trueDistancePc/1e6).toFixed(2)} Mpc</div>
+                    <div><span class="text-gray-500">참고 거리 지수:</span> ${activeSnData.trueDistanceModulus.toFixed(2)}</div>
+                    <div><span class="text-gray-500">최대 겉보기 등급:</span> ${activeSnData.apparentPeak.toFixed(1)} 등급</div>
+                </div>
+                <p class="font-light text-gray-300">${activeSnData.referenceText}</p>
+            `;
+
+            checkFittingStatus();
+            resizeSupernovaCanvas();
+        }
+
+        function resetFittingGame() {
+            if (activeSnKey === "none") return;
+            onSelectSupernova();
+        }
+
+        function onFittingControlInput() {
+            if (activeSnKey === "none") return;
+
+            userOffsetX = parseFloat(sliderControlX.value);
+            userOffsetDiffY = parseFloat(sliderControlY.value);
+
+            valControlX.innerText = userOffsetX.toFixed(1);
+            valControlY.innerText = userOffsetDiffY.toFixed(2);
+
+            checkFittingStatus();
+            resizeSupernovaCanvas();
+        }
+
+        // Automatic Computer Fitting solver (Animates alignment sliders)
+        function autoFitSupernova() {
+            if (activeSnKey === "none") return;
+
+            let targetX = 0; // True alignment peak offset
+            let targetY = activeSnData.trueDistanceModulus; // True distance modulus
+
+            let step = 0;
+            const stepsMax = 25;
+            const diffX = targetX - userOffsetX;
+            const diffY = targetY - userOffsetDiffY;
+
+            function animateFitting() {
+                if (step < stepsMax) {
+                    userOffsetX += diffX / stepsMax;
+                    userOffsetDiffY += diffY / stepsMax;
+
+                    sliderControlX.value = userOffsetX.toFixed(1);
+                    sliderControlY.value = userOffsetDiffY.toFixed(2);
+                    valControlX.innerText = userOffsetX.toFixed(1);
+                    valControlY.innerText = userOffsetDiffY.toFixed(2);
+
+                    checkFittingStatus();
+                    resizeSupernovaCanvas();
+
+                    step++;
+                    requestAnimationFrame(animateFitting);
+                } else {
+                    userOffsetX = targetX;
+                    userOffsetDiffY = targetY;
+                    sliderControlX.value = userOffsetX;
+                    sliderControlY.value = userOffsetDiffY.toFixed(2);
+                    valControlX.innerText = userOffsetX.toFixed(1);
+                    valControlY.innerText = userOffsetDiffY.toFixed(2);
+                    checkFittingStatus();
+                    resizeSupernovaCanvas();
+                }
+            }
+            animateFitting();
+        }
+
+        // Evaluate fitting accuracy percentages
+        function checkFittingStatus() {
+            if (!activeSnData) return;
+
+            const errX = Math.abs(userOffsetX); // distance from Peak (0 days)
+            const errY = Math.abs(userOffsetDiffY - activeSnData.trueDistanceModulus); // distance from true modulus
+
+            const maxAllowedErrX = 40;
+            const maxAllowedErrY = 3.0;
+            
+            const rawAccX = Math.max(0, 100 - (errX / maxAllowedErrX) * 100);
+            const rawAccY = Math.max(0, 100 - (errY / maxAllowedErrY) * 100);
+
+            // Combining accuracy weighted heavily on vertical magnitude fit (60%) and time shift (40%)
+            const totalAccuracy = (rawAccX * 0.4) + (rawAccY * 0.6);
+            fitPrecisionLabel.innerText = totalAccuracy.toFixed(1) + "%";
+
+            // Threshold for successful fitting (97.5% precision)
+            if (totalAccuracy >= 97.5) {
+                isFittedSuccessfully = true;
+                fitStatusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping";
+                fitStatusText.innerText = "피팅 성공! 이제 점을 클릭하세요.";
+                fitStatusText.className = "text-emerald-400 font-bold";
+                fitClickGuide.classList.remove('hidden');
+
+                if (!selectedCurvePoint) {
+                    calculatePointDistances(0); // Peak default click
+                }
+            } else {
+                isFittedSuccessfully = false;
+                fitStatusDot.className = "w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse";
+                fitStatusText.innerText = "곡선을 정밀 정렬해 주세요.";
+                fitStatusText.className = "text-yellow-400 font-bold";
+                fitClickGuide.classList.add('hidden');
+                resetCalculatorUI();
+            }
+        }
+
+        // Trigger distance calculations on canvas curve click
+        snCanvas.addEventListener('mousedown', (e) => {
+            if (!isFittedSuccessfully || activeSnKey === "none" || isDragging) return;
+
+            const rect = snCanvas.getBoundingClientRect();
+            const clickX_canvas = (e.clientX - rect.left);
+            
+            const paddingLeft = 55;
+            const paddingRight = 55;
+            const graphWidth = snCanvas.clientWidth - paddingLeft - paddingRight;
+            const minX = -50;
+            const maxX = 350;
+
+            const valX = minX + ((clickX_canvas - paddingLeft) / graphWidth) * (maxX - minX);
+
+            if (valX >= minX && valX <= maxX) {
+                calculatePointDistances(valX);
+            }
+        });
+
+        function calculatePointDistances(daysFromPeak) {
+            if (!activeSnData) return;
+
+            const xValRounded = Math.round(daysFromPeak);
+            
+            // Absolute magnitude of the Standard Absolute Curve at this theoretical day
+            const mAbs = getStandardAbsoluteMagnitude(xValRounded);
+            // Apparent magnitude aligned with currently matched Distance Modulus (userOffsetDiffY)
+            const mApp = mAbs + userOffsetDiffY;
+
+            selectedCurvePoint = {
+                xVal: xValRounded,
+                yAbs: mAbs,
+                yApp: mApp
+            };
+
+            // Sync values to calculation outputs
+            snPointApparent.innerText = mApp.toFixed(2);
+            snPointAbsolute.innerText = mAbs.toFixed(2);
+
+            const computedModulus = mApp - mAbs;
+            snPointModulus.innerText = computedModulus.toFixed(2);
+
+            // Compute distance via d = 10^((m-M+5)/5) pc
+            const exponent = (computedModulus + 5) / 5;
+            const distancePc = Math.pow(10, exponent);
+            const distanceLy = distancePc * 3.26156;
+
+            if (distancePc >= 1e6) {
+                snDistancePc.innerText = (distancePc / 1e6).toFixed(2);
+                snDistanceUnit.innerText = "Mpc (메가파섹)";
+            } else if (distancePc >= 1e3) {
+                snDistancePc.innerText = (distancePc / 1e3).toFixed(2);
+                snDistanceUnit.innerText = "kpc (킬로파섹)";
+            } else {
+                snDistancePc.innerText = distancePc.toFixed(2);
+                snDistanceUnit.innerText = "pc (파섹)";
+            }
+
+            snDistanceLy.innerText = distanceLy.toLocaleString(undefined, { maximumFractionDigits: 0 }) + " 광년";
+
+            // Redraw with crosshair marker
+            resizeSupernovaCanvas();
+        }
+
+        // Drag graph curves directly using cursor triggers (Precise 1:1 mouse tracking)
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let initialOffsetX = 0;
+        let initialOffsetY = 0;
+
+        snCanvas.addEventListener('mousedown', (e) => {
+            if (activeSnKey === "none") return;
+            const rect = snCanvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            
+            const paddingLeft = 55;
+            const paddingRight = 55;
+            if (clickX > paddingLeft && clickX < snCanvas.clientWidth - paddingRight) {
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                initialOffsetX = userOffsetX;
+                initialOffsetY = userOffsetDiffY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            // Direct measurement of graph physical dimensions in pixels
+            const rect = snCanvas.getBoundingClientRect();
+            const paddingLeft = 55;
+            const paddingRight = 55;
+            const paddingTop = 30;
+            const paddingBottom = 40;
+            
+            const graphWidth = rect.width - paddingLeft - paddingRight;
+            const graphHeight = rect.height - paddingTop - paddingBottom;
+
+            // Convert pixels delta to exact coordinate values
+            // Horizontal range: -50 to 350 (400 Days)
+            const daysPerPixel = 400 / graphWidth;
+            // Vertical range: -10 to -22 (12 Magnitudes)
+            const magPerPixel = 12 / graphHeight;
+
+            const deltaX_px = e.clientX - dragStartX;
+            const deltaY_px = e.clientY - dragStartY;
+
+            // 1:1 Tracking Physics: 
+            // Dragging right (positive delta) shifts red points right (increases userOffsetX)
+            const newOffsetX = initialOffsetX + (deltaX_px * daysPerPixel);
+            
+            // Dragging down (positive deltaY) should shift red points down visually on screen.
+            // Absolute Magnitude scale goes from -22 (top) to -10 (bottom).
+            // A visual shift down means plotY_absVal becomes a larger (less negative) absolute magnitude.
+            // plotY_absVal = pt.m_obs - userOffsetDiffY.
+            // For plotY_absVal to increase (moving down the screen/axis), userOffsetDiffY must decrease.
+            // Hence, dragging down (positive deltaY) decreases userOffsetDiffY.
+            // Mathematically: userOffsetDiffY_new = userOffsetDiffY_old - (deltaY_px * magPerPixel)
+            const newOffsetY = initialOffsetY - (deltaY_px * magPerPixel);
+
+            // Bound outputs to valid slider limits
+            sliderControlX.value = Math.max(-100, Math.min(100, newOffsetX)).toFixed(1);
+            sliderControlY.value = Math.max(15.0, Math.min(40.0, newOffsetY)).toFixed(2);
+
+            userOffsetX = parseFloat(sliderControlX.value);
+            userOffsetDiffY = parseFloat(sliderControlY.value);
+
+            valControlX.innerText = userOffsetX.toFixed(1);
+            valControlY.innerText = userOffsetDiffY.toFixed(2);
+
+            checkFittingStatus();
+            resizeSupernovaCanvas();
+        });
+
+        window.addEventListener('mouseup', () => {
+            setTimeout(() => { isDragging = false; }, 50); // prevents click event collision immediately on release
+        });
+
+        // Touch triggers for mobile screens
+        snCanvas.addEventListener('touchstart', (e) => {
+            if (activeSnKey === "none" || e.touches.length === 0) return;
+            const rect = snCanvas.getBoundingClientRect();
+            const clickX = e.touches[0].clientX - rect.left;
+            const paddingLeft = 55;
+            const paddingRight = 55;
+            
+            if (clickX > paddingLeft && clickX < snCanvas.clientWidth - paddingRight) {
+                isDragging = true;
+                dragStartX = e.touches[0].clientX;
+                dragStartY = e.touches[0].clientY;
+                initialOffsetX = userOffsetX;
+                initialOffsetY = userOffsetDiffY;
+            }
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length === 0) return;
+
+            const rect = snCanvas.getBoundingClientRect();
+            const paddingLeft = 55;
+            const paddingRight = 55;
+            const paddingTop = 30;
+            const paddingBottom = 40;
+            
+            const graphWidth = rect.width - paddingLeft - paddingRight;
+            const graphHeight = rect.height - paddingTop - paddingBottom;
+
+            const daysPerPixel = 400 / graphWidth;
+            const magPerPixel = 12 / graphHeight;
+
+            const deltaX_px = e.touches[0].clientX - dragStartX;
+            const deltaY_px = e.touches[0].clientY - dragStartY;
+
+            const newOffsetX = initialOffsetX + (deltaX_px * daysPerPixel);
+            const newOffsetY = initialOffsetY - (deltaY_px * magPerPixel);
+
+            sliderControlX.value = Math.max(-100, Math.min(100, newOffsetX)).toFixed(1);
+            sliderControlY.value = Math.max(15.0, Math.min(40.0, newOffsetY)).toFixed(2);
+
+            userOffsetX = parseFloat(sliderControlX.value);
+            userOffsetDiffY = parseFloat(sliderControlY.value);
+
+            valControlX.innerText = userOffsetX.toFixed(1);
+            valControlY.innerText = userOffsetDiffY.toFixed(2);
+
+            checkFittingStatus();
+            resizeSupernovaCanvas();
+        });
+
+        window.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // ================= TAB 3: SPECTROSCOPIC OBSERVATION JS CODE =================
+        const sliderSpectralMv = document.getElementById('slider-spectral-mv');
+        // sliderSpectralT 변수가 전역으로 정상 정의되도록 temperature input 요소를 할당합니다.
+        const sliderSpectralT = document.getElementById('slider-spectral-temp-val');
+        const sliderSpectralTempVal = document.getElementById('slider-spectral-temp-val');
+
+        const labelSpectralMv = document.getElementById('spectral-apparent-val');
+        const labelSpectralTempReadout = document.getElementById('slider-spectral-temp-readout');
+
+        const spectralClassBadge = document.getElementById('spectral-class-badge');
+        const spectralTypeText = document.getElementById('spectral-type-text');
+        const spectralLinesDesc = document.getElementById('spectral-lines-desc');
+
+        const calcSubApparent = document.getElementById('calc-sub-apparent');
+        const calcSubAbsolute = document.getElementById('calc-sub-absolute');
+        const calcSubDistance = document.getElementById('calc-sub-distance');
+
+        const valSpectralDistancePc = document.getElementById('val-spectral-distance-pc');
+        const valSpectralDistanceLy = document.getElementById('val-spectral-distance-ly');
+
+        const hrTopReadout = document.getElementById('hr-top-readout');
+
+        const lblAbsoluteResult = document.getElementById('lbl-absolute-result');
+        const lblDistanceResult = document.getElementById('lbl-distance-result');
+
+        const intensitiesCanvas = document.getElementById('spectral-intensities-canvas');
+        const ctxIntensities = intensitiesCanvas.getContext('2d');
+
+        const spectrumCanvas = document.getElementById('spectrum-canvas');
+        const ctxSpectrum = spectrumCanvas.getContext('2d');
+
+        const hrDiagramCanvas = document.getElementById('hr-diagram-canvas');
+        const ctxHrDiag = hrDiagramCanvas.getContext('2d');
+
+        const spectralLblType = document.getElementById('spectral-lbl-type');
+        const spectralLblTemp = document.getElementById('spectral-lbl-temp');
+        const spectralLblDesc = document.getElementById('spectral-lbl-desc');
+
+        // Scientific boundaries for spectral sub-classes (O-B-A-F-G-K-M mapping)
+        const anchorTemps = [
+            { t: 45000, idx: 0.0 }, // O0
+            { t: 30000, idx: 1.0 }, // B0
+            { t: 9500,  idx: 2.0 }, // A0
+            { t: 7200,  idx: 3.0 }, // F0
+            { t: 6000,  idx: 4.0 }, // G0
+            { t: 5250,  idx: 5.0 }, // K0
+            { t: 3850,  idx: 6.0 }, // M0
+            { t: 2000,  idx: 7.0 }  // M9
+        ];
+
+        // Empirical Absolute Magnitudes points for Luminosity Classes (Ia, Ib, II, III, IV, V, VI, VII)
+        const msPoints = [
+            [45000, -5.7], [30000, -4.0], [20000, -2.0], [15000, -0.2], 
+            [9500, 0.6], [8200, 1.4], [7200, 2.7], [6000, 4.4], 
+            [5250, 5.8], [4350, 7.5], [3850, 9.0], [2000, 14.5]
+        ];
+        
+        const giantPoints = [
+            [45000, -3.5], [30000, -3.0], [20000, -2.5], [15000, -1.8], 
+            [9500, -0.5], [8200, 0.0], [7200, 0.5], [6000, 0.8], 
+            [5250, 1.0], [4350, 0.5], [3850, -0.2], [2000, -1.2]
+        ];
+
+        const supergiantPointsIa = [
+            [45000, -8.2], [30000, -8.3], [20000, -8.4], [15000, -8.5], 
+            [9500, -8.4], [8200, -8.3], [7200, -8.2], [6000, -8.0], 
+            [5250, -7.8], [4350, -7.5], [3850, -7.2], [2000, -7.0]
+        ];
+
+        const supergiantPointsIb = [
+            [45000, -6.5], [30000, -6.6], [20000, -6.7], [15000, -6.8], 
+            [9500, -6.7], [8200, -6.6], [7200, -6.5], [6000, -6.4], 
+            [5250, -6.2], [4350, -6.0], [3850, -5.8], [2000, -5.5]
+        ];
+
+        const subdwarfPoints = [
+            [9500, 3.5], [8200, 4.2], [7200, 5.5], [6000, 7.0], 
+            [5250, 8.2], [4350, 9.8], [3850, 11.2], [2000, 16.5]
+        ];
+
+        const whiteDwarfPoints = [
+            [25000, 10.2], [20000, 10.7], [15000, 11.3], [9500, 12.0],
+            [8200, 12.5], [7200, 13.1], [6000, 13.8], [5250, 14.3],
+            [4350, 15.1], [3850, 15.8]
+        ];
+
+        function getSpectralIndex(T) {
+            if (T >= anchorTemps[0].t) return 0.0;
+            if (T <= anchorTemps[anchorTemps.length - 1].t) return 7.0;
+            for (let i = 0; i < anchorTemps.length - 1; i++) {
+                const t0 = anchorTemps[i].t;
+                const t1 = anchorTemps[i + 1].t;
+                const idx0 = anchorTemps[i].idx;
+                const idx1 = anchorTemps[i + 1].idx;
+                if (T <= t0 && T >= t1) {
+                    return idx0 + (T - t0) / (t1 - t0) * (idx1 - idx0);
+                }
+            }
+            return 4.0;
+        }
+
+        function getTempFromSpectralIndex(idx) {
+            if (idx <= 0) return anchorTemps[0].t;
+            if (idx >= 7.0) return anchorTemps[anchorTemps.length - 1].t;
+            for (let i = 0; i < anchorTemps.length - 1; i++) {
+                const idx0 = anchorTemps[i].idx;
+                const idx1 = anchorTemps[i + 1].idx;
+                const t0 = anchorTemps[i].t;
+                const t1 = anchorTemps[i + 1].t;
+                if (idx >= idx0 && idx <= idx1) {
+                    return t0 + (idx - idx0) / (idx1 - idx0) * (t1 - t0);
+                }
+            }
+            return 5800;
+        }
+
+        function getDetailedSpectralType(T) {
+            const idx = getSpectralIndex(T);
+            const classKeys = ["O", "B", "A", "F", "G", "K", "M"];
+            const mainIdx = Math.floor(idx);
+            const letter = classKeys[Math.min(6, mainIdx)];
+            let subclass = Math.floor((idx % 1) * 10);
+            if (subclass < 0) subclass = 0;
+            if (subclass > 9) subclass = 9;
+            return letter + subclass;
+        }
+
+        function getStellarDescription(T) {
+            const idx = getSpectralIndex(T);
+            if (idx < 1.0) return "(dominant ionized helium, strong neutral helium lines)";
+            if (idx < 2.0) return "(dominant neutral helium, moderate hydrogen lines)";
+            if (idx < 3.0) return "(dominant hydrogen, moderate ionized metal lines)";
+            if (idx < 4.0) return "(moderate hydrogen, moderate ionized metal lines)";
+            if (idx < 5.0) return "(dominant ionized metal, moderate neutral metal lines)";
+            if (idx < 6.0) return "(dominant neutral metal, moderate ionized metal lines)";
+            return "(dominant molecular band, weak neutral metals)";
+        }
+
+        function interpolateM(T, points) {
+            if (T >= points[0][0]) return points[0][1];
+            if (T <= points[points.length - 1][0]) return points[points.length - 1][1];
+            for (let i = 0; i < points.length - 1; i++) {
+                const t0 = points[i][0];
+                const t1 = points[i + 1][0];
+                const m0 = points[i][1];
+                const m1 = points[i + 1][1];
+                if (T <= t0 && T >= t1) {
+                    return m0 + (T - t0) / (t1 - t0) * (m1 - m0);
+                }
+            }
+            return 4.8;
+        }
+
+        function getAbsoluteMagnitudeForClass(T, lumClass) {
+            const mIa = interpolateM(T, supergiantPointsIa);
+            const mIb = interpolateM(T, supergiantPointsIb);
+            const mIII = interpolateM(T, giantPoints);
+            const mV = interpolateM(T, msPoints);
+            const mVI = interpolateM(T, subdwarfPoints);
+            const mVII = interpolateM(T, whiteDwarfPoints);
+
+            switch(lumClass) {
+                case "Ia": return mIa;
+                case "Ib": return mIb;
+                case "II": return 0.5 * (mIb + mIII);
+                case "III": return mIII;
+                case "IV": return 0.5 * (mIII + mV);
+                case "V": return mV;
+                case "VI": return mVI;
+                case "VII": return mVII;
+                default:
+                    return mV;
+            }
+        }
+
+        // Draw Interactive Absorption Line Intensities (O-B-A-F-G-K-M curves matching image_745548.png)
+        function drawIntensitiesCanvas(currentT) {
+            const w = intensitiesCanvas.clientWidth;
+            const h = intensitiesCanvas.clientHeight;
+            if (w === 0) return;
+
+            intensitiesCanvas.width = w;
+            intensitiesCanvas.height = h;
+            ctxIntensities.clearRect(0, 0, w, h);
+
+            const paddingLeft = 45;
+            const paddingRight = 20;
+            const paddingTop = 25;
+            const paddingBottom = 40;
+
+            const graphWidth = w - paddingLeft - paddingRight;
+            const graphHeight = h - paddingTop - paddingBottom;
+
+            function getPixelX(idx) {
+                return paddingLeft + (idx / 7.0) * graphWidth;
+            }
+
+            // Draw clean background bounding box
+            ctxIntensities.strokeStyle = '#334155';
+            ctxIntensities.lineWidth = 1.5;
+            ctxIntensities.strokeRect(paddingLeft, paddingTop, graphWidth, graphHeight);
+
+            // X-Axis Subdivisions and Labels (O, B, A, F, G, K, M)
+            ctxIntensities.fillStyle = '#94a3b8';
+            ctxIntensities.font = 'bold 11px "JetBrains Mono"';
+            const classes = ["O", "B", "A", "F", "G", "K", "M"];
+            classes.forEach((letter, i) => {
+                const px = getPixelX(i + 0.5);
+                ctxIntensities.fillText(letter, px - 4, paddingTop + graphHeight + 15);
+                
+                // Segment boundary tick marks
+                const tickX = getPixelX(i + 1);
+                if (i < 6) {
+                    ctxIntensities.beginPath();
+                    ctxIntensities.moveTo(tickX, paddingTop + graphHeight);
+                    ctxIntensities.lineTo(tickX, paddingTop + graphHeight - 6);
+                    ctxIntensities.stroke();
+                }
+            });
+
+            // Y Axis Labels
+            ctxIntensities.save();
+            ctxIntensities.translate(15, paddingTop + graphHeight / 2 + 35);
+            ctxIntensities.rotate(-Math.PI / 2);
+            ctxIntensities.font = 'bold 10px "Noto Sans KR"';
+            ctxIntensities.fillText("Line Strength", 0, 0);
+            ctxIntensities.restore();
+
+            ctxIntensities.font = 'bold 10px "Noto Sans KR"';
+            ctxIntensities.fillText("Spectral Type", paddingLeft + graphWidth/2 - 35, paddingTop + graphHeight + 30);
+
+            // Compute math formulas for absorption line peaks
+            function getY_IonizedHelium(idx) { return Math.exp(-Math.pow(idx - 0.2, 2) / 0.35); }
+            function getY_NeutralHelium(idx) { return Math.exp(-Math.pow(idx - 1.2, 2) / 0.5); }
+            function getY_Hydrogen(idx) { return Math.exp(-Math.pow(idx - 2.1, 2) / 0.6); }
+            function getY_IonizedMetals(idx) { return Math.exp(-Math.pow(idx - 3.6, 2) / 0.85); }
+            function getY_NeutralMetals(idx) { return Math.exp(-Math.pow(idx - 5.3, 2) / 0.9); }
+            function getY_Molecules(idx) { return Math.exp(-Math.pow(idx - 6.8, 2) / 0.45); }
+
+            const curves = [
+                { fn: getY_IonizedHelium, color: '#f97316', label: "Ionized Helium" },
+                { fn: getY_NeutralHelium, color: '#3b82f6', label: "Neutral Helium" },
+                { fn: getY_Hydrogen, color: '#ef4444', label: "Hydrogen" },
+                { fn: getY_IonizedMetals, color: '#22c55e', label: "Ionized Metals" },
+                { fn: getY_NeutralMetals, color: '#ec4899', label: "Neutral Metals" },
+                { fn: getY_Molecules, color: '#a16207', label: "Molecules" }
+            ];
+
+            // Plot continuous lines on graph
+            curves.forEach(curve => {
+                ctxIntensities.strokeStyle = curve.color;
+                ctxIntensities.lineWidth = 2.5;
+                ctxIntensities.beginPath();
+                let first = true;
+                for (let xIdx = 0; xIdx <= 7.0; xIdx += 0.05) {
+                    const px = getPixelX(xIdx);
+                    const rawY = curve.fn(xIdx);
+                    const py = paddingTop + graphHeight - (rawY * 0.82 * graphHeight);
+                    if (first) {
+                        ctxIntensities.moveTo(px, py);
+                        first = false;
+                    } else {
+                        ctxIntensities.lineTo(px, py);
+                    }
+                }
+                ctxIntensities.stroke();
+
+                // Draw embedded labels on graph dynamically
+                ctxIntensities.fillStyle = curve.color;
+                ctxIntensities.font = '9px "Noto Sans KR"';
+                if (curve.label === "Ionized Helium") ctxIntensities.fillText("Ionized Helium", getPixelX(0.05), paddingTop + 35);
+                else if (curve.label === "Neutral Helium") ctxIntensities.fillText("Neutral Helium", getPixelX(0.7), paddingTop + 80);
+                else if (curve.label === "Hydrogen") ctxIntensities.fillText("Hydrogen", getPixelX(1.75), paddingTop + 30);
+                else if (curve.label === "Ionized Metals") ctxIntensities.fillText("Ionized Metals", getPixelX(3.1), paddingTop + 42);
+                else if (curve.label === "Neutral Metals") ctxIntensities.fillText("Neutral Metals", getPixelX(4.5), paddingTop + 42);
+                else if (curve.label === "Molecules") ctxIntensities.fillText("Molecules", getPixelX(6.05), paddingTop + 35);
+            });
+
+            // Draw CURRENT TEMPERATURE vertical slider bar
+            const curIdx = getSpectralIndex(currentT);
+            const sliderX = getPixelX(curIdx);
+
+            ctxIntensities.strokeStyle = '#ef4444';
+            ctxIntensities.lineWidth = 1.5;
+            ctxIntensities.beginPath();
+            ctxIntensities.moveTo(sliderX, paddingTop - 8);
+            ctxIntensities.lineTo(sliderX, paddingTop + graphHeight);
+            ctxIntensities.stroke();
+
+            // Downward pointing slider triangle at top
+            ctxIntensities.fillStyle = '#ef4444';
+            ctxIntensities.beginPath();
+            ctxIntensities.moveTo(sliderX - 6, paddingTop - 8);
+            ctxIntensities.lineTo(sliderX + 6, paddingTop - 8);
+            ctxIntensities.lineTo(sliderX, paddingTop - 1);
+            ctxIntensities.closePath();
+            ctxIntensities.fill();
+        }
+
+        // Draw spectrum background and absorption lines overlay
+        function drawSpectrum(T) {
+            const w = spectrumCanvas.clientWidth;
+            const h = spectrumCanvas.clientHeight;
+            if (w === 0) return;
+            
+            spectrumCanvas.width = w;
+            spectrumCanvas.height = h;
+            ctxSpectrum.clearRect(0, 0, w, h);
+            
+            // Draw continuous background rainbow spectrum
+            for (let x = 0; x < w; x++) {
+                const lambda = 380 + (x / w) * (700 - 380);
+                ctxSpectrum.fillStyle = nmToRGB(lambda);
+                ctxSpectrum.fillRect(x, 0, 1, h);
+            }
+
+            // Calculate current line intensity multipliers
+            const idx = getSpectralIndex(T);
+            const hIntensity = Math.exp(-Math.pow(idx - 2.1, 2) / 0.6);
+            const caIntensity = Math.exp(-Math.pow(idx - 3.6, 2) / 0.85);
+            const heIntensity = Math.exp(-Math.pow(idx - 1.2, 2) / 0.5);
+            const naIntensity = Math.exp(-Math.pow(idx - 5.3, 2) / 0.9);
+            const tioIntensity = idx > 5.5 ? (idx - 5.5) / 1.5 : 0;
+
+            function drawLine(lambda, intensity, width = 1.5) {
+                if (intensity <= 0.05) return;
+                const x = ((lambda - 380) / (700 - 380)) * w;
+                ctxSpectrum.fillStyle = `rgba(0, 0, 0, ${Math.min(0.95, intensity * 0.95)})`;
+                ctxSpectrum.fillRect(x - width/2, 0, width, h);
+            }
+
+            // Overlay absorption lines
+            drawLine(656.3, hIntensity, 2);   // H-alpha
+            drawLine(486.1, hIntensity, 1.8); // H-beta
+            drawLine(434.0, hIntensity, 1.5); // H-gamma
+            drawLine(410.2, hIntensity, 1.2); // H-delta
+
+            drawLine(393.4, caIntensity, 2.5); // Ca II K
+            drawLine(396.8, caIntensity, 2.5); // Ca II H
+
+            drawLine(447.1, heIntensity, 1.5); // He I
+            drawLine(587.6, heIntensity, 1.5); // He I
+
+            drawLine(589.0, naIntensity, 2.0); // Na I D
+
+            if (tioIntensity > 0) {
+                const tioBands = [476.0, 516.0, 544.0, 615.0];
+                tioBands.forEach(center => {
+                    const startX = ((center - 12 - 380) / (700 - 380)) * w;
+                    const endX = ((center + 12 - 380) / (700 - 380)) * w;
+                    const grad = ctxSpectrum.createLinearGradient(startX, 0, endX, 0);
+                    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                    grad.addColorStop(0.5, `rgba(0, 0, 0, ${tioIntensity * 0.7})`);
+                    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctxSpectrum.fillStyle = grad;
+                    ctxSpectrum.fillRect(startX, 0, endX - startX, h);
+                });
+            }
+        }
+
+        // Draw H-R Diagram following the structural divisions of image_745541.png & image_745548.png
+        function drawHRDiagramCanvas(currentT, currentM) {
+            const w = hrDiagramCanvas.clientWidth;
+            const h = hrDiagramCanvas.clientHeight;
+            if (w === 0) return;
+
+            hrDiagramCanvas.width = w;
+            hrDiagramCanvas.height = h;
+            ctxHrDiag.clearRect(0, 0, w, h);
+
+            const paddingLeft = 45;
+            const paddingRight = 20;
+            const paddingTop = 20;
+            const paddingBottom = 40;
+
+            const graphWidth = w - paddingLeft - paddingRight;
+            const graphHeight = h - paddingTop - paddingBottom;
+
+            // X-Axis Logarithmic: Temperature from 50,000K (left) to 2,000K (right)
+            const minT = 2000;
+            const maxT = 50000;
+            const logMinT = Math.log10(minT);
+            const logMaxT = Math.log10(maxT);
+
+            // Y-Axis Linear: Absolute Magnitude from -10 (top) to +17 (bottom)
+            const minY_Abs = -10;
+            const maxY_Abs = 17;
+
+            function getPixelX(tVal) {
+                const logVal = Math.log10(tVal);
+                const pct = (logVal - logMinT) / (logMaxT - logMinT);
+                return paddingLeft + (1 - pct) * graphWidth;
+            }
+            function getPixelY(mVal) {
+                return paddingTop + ((mVal - minY_Abs) / (maxY_Abs - minY_Abs)) * graphHeight;
+            }
+
+            // Draw grid lines
+            ctxHrDiag.strokeStyle = '#1e293b';
+            ctxHrDiag.lineWidth = 1;
+            ctxHrDiag.font = '8px "JetBrains Mono"';
+            ctxHrDiag.fillStyle = '#64748b';
+
+            // X Ticks (Temperature log intervals matching photo)
+            const tempTicks = [50000, 25000, 10000, 5000, 2500];
+            tempTicks.forEach(t => {
+                const px = getPixelX(t);
+                ctxHrDiag.beginPath();
+                ctxHrDiag.moveTo(px, paddingTop);
+                ctxHrDiag.lineTo(px, paddingTop + graphHeight);
+                ctxHrDiag.stroke();
+                ctxHrDiag.fillText(t.toLocaleString(), px - 12, paddingTop + graphHeight + 12);
+            });
+
+            // Y Ticks (Absolute Magnitude)
+            for (let mVal = -10; mVal <= 15; mVal += 5) {
+                const py = getPixelY(mVal);
+                ctxHrDiag.beginPath();
+                ctxHrDiag.moveTo(paddingLeft, py);
+                ctxHrDiag.lineTo(paddingLeft + graphWidth, py);
+                ctxHrDiag.stroke();
+                ctxHrDiag.fillText((mVal >= 0 ? "+" : "") + mVal, paddingLeft - 22, py + 3);
+            }
+
+            // Bounding box frame outline
+            ctxHrDiag.strokeStyle = '#475569';
+            ctxHrDiag.lineWidth = 1.5;
+            ctxHrDiag.strokeRect(paddingLeft, paddingTop, graphWidth, graphHeight);
+
+            // Axes labels
+            ctxHrDiag.fillStyle = '#94a3b8';
+            ctxHrDiag.font = 'bold 9px "Noto Sans KR"';
+            ctxHrDiag.fillText("Temperature (K)", paddingLeft + graphWidth / 2 - 38, paddingTop + graphHeight + 28);
+            
+            ctxHrDiag.save();
+            ctxHrDiag.translate(14, paddingTop + graphHeight / 2 + 35);
+            ctxHrDiag.rotate(-Math.PI / 2);
+            ctxHrDiag.fillText("절대 등급 (Absolute Magnitude, Mv)", 0, 0);
+            ctxHrDiag.restore();
+
+            // RENDER COLOURED SPECTRAL BANDS (Ia, Ib, II, III, IV, V, VI, VII zones matching photo)
+            // 1. Supergiants (I) (Light-blue oval at top)
+            ctxHrDiag.fillStyle = 'rgba(59, 130, 246, 0.08)';
+            ctxHrDiag.beginPath();
+            ctxHrDiag.ellipse(getPixelX(12000), getPixelY(-7.5), 100, 22, -0.06, 0, Math.PI * 2);
+            ctxHrDiag.fill();
+            ctxHrDiag.strokeStyle = 'rgba(59, 130, 246, 0.2)';
+            ctxHrDiag.stroke();
+            ctxHrDiag.fillStyle = 'rgba(147, 197, 253, 0.5)';
+            ctxHrDiag.font = 'bold italic 8px "Noto Sans KR"';
+            ctxHrDiag.fillText("Supergiants (I)", getPixelX(14000), getPixelY(-7.2));
+
+            // 2. Giants (III) (Light-orange oval on right)
+            ctxHrDiag.fillStyle = 'rgba(249, 115, 22, 0.08)';
+            ctxHrDiag.beginPath();
+            ctxHrDiag.ellipse(getPixelX(4200), getPixelY(1.0), 40, 24, 0.1, 0, Math.PI * 2);
+            ctxHrDiag.fill();
+            ctxHrDiag.strokeStyle = 'rgba(249, 115, 22, 0.2)';
+            ctxHrDiag.stroke();
+            ctxHrDiag.fillStyle = 'rgba(251, 146, 60, 0.5)';
+            ctxHrDiag.fillText("Giants (III)", getPixelX(4500), getPixelY(0.8));
+
+            // 3. Dwarfs (V) (Diagonal light-green band representing Main Sequence)
+            ctxHrDiag.fillStyle = 'rgba(34, 197, 94, 0.05)';
+            ctxHrDiag.strokeStyle = 'rgba(34, 197, 94, 0.25)';
+            ctxHrDiag.lineWidth = 14;
+            ctxHrDiag.beginPath();
+            let first = true;
+            for (let t = 2000; t <= 45000; t += 1000) {
+                const py = getPixelY(interpolateM(t, msPoints));
+                const px = getPixelX(t);
+                if (first) { ctxHrDiag.moveTo(px, py); first = false; }
+                else ctxHrDiag.lineTo(px, py);
+            }
+            ctxHrDiag.stroke();
+            ctxHrDiag.fillStyle = 'rgba(74, 222, 128, 0.5)';
+            ctxHrDiag.fillText("Dwarfs (V)", getPixelX(18000), getPixelY(1.2));
+
+            // 4. White Dwarfs (VII) (Bottom gray-white cluster band)
+            ctxHrDiag.fillStyle = 'rgba(148, 163, 184, 0.05)';
+            ctxHrDiag.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+            ctxHrDiag.lineWidth = 10;
+            ctxHrDiag.beginPath();
+            first = true;
+            for (let t = 3850; t <= 25000; t += 1000) {
+                const py = getPixelY(interpolateM(t, whiteDwarfPoints));
+                const px = getPixelX(t);
+                if (first) { ctxHrDiag.moveTo(px, py); first = false; }
+                else ctxHrDiag.lineTo(px, py);
+            }
+            ctxHrDiag.stroke();
+            ctxHrDiag.fillStyle = 'rgba(148, 163, 184, 0.5)';
+            ctxHrDiag.fillText("White Dwarfs (VII)", getPixelX(14000), getPixelY(12.5));
+
+            // Plot current active star position as pulsing target marker
+            const starX = getPixelX(currentT);
+            const starY = getPixelY(currentM);
+
+            if (starX >= paddingLeft && starX <= paddingLeft + graphWidth && starY >= paddingTop && starY <= paddingTop + graphHeight) {
+                ctxHrDiag.fillStyle = '#ffffff';
+                ctxHrDiag.shadowColor = '#8b5cf6';
+                ctxHrDiag.shadowBlur = 10;
+                ctxHrDiag.beginPath();
+                ctxHrDiag.arc(starX, starY, 6.5, 0, Math.PI * 2);
+                ctxHrDiag.fill();
+                ctxHrDiag.shadowBlur = 0; // reset
+
+                ctxHrDiag.strokeStyle = '#8b5cf6';
+                ctxHrDiag.lineWidth = 2.0;
+                ctxHrDiag.beginPath();
+                ctxHrDiag.arc(starX, starY, 9.5, 0, Math.PI * 2);
+                ctxHrDiag.stroke();
+            }
+        }
+
+        // Calculation mapping for Spectroscopic Parallax Module
+        function updateSpectralCalculations() {
+            if (activeTabId !== 'spectral') return;
+
+            const mvVal = parseFloat(sliderSpectralMv.value);
+            const tVal = parseFloat(sliderSpectralT.value);
+
+            // Capture active selected radio button value for Luminosity Class (Ia to VII)
+            const lumClassRadio = document.querySelector('input[name="lum-class"]:checked');
+            const lumClass = lumClassRadio ? lumClassRadio.value : "V";
+
+            // Sync slider inputs
+            labelSpectralMv.innerText = mvVal.toFixed(1);
+            sliderSpectralTempVal.value = tVal;
+            labelSpectralTempReadout.innerText = tVal.toLocaleString() + " K";
+
+            // Get absolute magnitude and spectral info based on temperature & class
+            const absoluteM = getAbsoluteMagnitudeForClass(tVal, lumClass);
+            lblAbsoluteResult.innerText = (absoluteM >= 0 ? "+" : "") + absoluteM.toFixed(2);
+
+            // Update sub-characteristics textual displays
+            const spectralType = getDetailedSpectralType(tVal);
+            const spectralDesc = getStellarDescription(tVal);
+
+            if (spectralClassBadge) spectralClassBadge.innerText = `Class ${spectralType}${lumClass}`;
+            if (spectralTypeText) spectralTypeText.innerHTML = `${spectralType}형 분광 분류 (${lumClass} 광도형)`;
+            if (spectralLinesDesc) spectralLinesDesc.innerHTML = getStellarDescription(tVal);
+
+            // Sync intensities graph header textual elements
+            if (spectralLblType) spectralLblType.innerText = spectralType;
+            if (spectralLblTemp) spectralLblTemp.innerText = tVal.toLocaleString() + " K";
+            if (spectralLblDesc) spectralLblDesc.innerHTML = spectralDesc;
+
+            // Distance calculations
+            const computedModulus = mvVal - absoluteM;
+            const exponent = (computedModulus + 5) / 5;
+            const distancePc = Math.pow(10, exponent);
+            const distanceLy = distancePc * 3.26156;
+
+            // Update calculation substitution blocks exactly as mockup
+            if (calcSubApparent) calcSubApparent.innerText = mvVal.toFixed(1);
+            if (calcSubAbsolute) calcSubAbsolute.innerText = absoluteM.toFixed(2);
+            if (calcSubDistance) calcSubDistance.innerText = distancePc.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+            if (lblDistanceResult) lblDistanceResult.innerText = `${distancePc.toLocaleString(undefined, { maximumFractionDigits: 2 })} pc`;
+
+            if (hrTopReadout) hrTopReadout.innerText = `T = ${tVal.toLocaleString()} K | M_v = ${(absoluteM >= 0 ? '+' : '')}${absoluteM.toFixed(2)}`;
+
+            // Redraw spectrum and line strengths graphs
+            drawSpectrum(tVal);
+            drawIntensitiesCanvas(tVal);
+            drawHRDiagramCanvas(tVal, absoluteM);
+        }
+
+        // Connect slider inputs to calculations loop
+        function onSpectralTempSliderInput() {
+            sliderSpectralT.value = sliderSpectralTempVal.value;
+            updateSpectralCalculations();
+        }
+
+        // Continuous drag gestures for line strength graph
+        let isIntensitiesDragging = false;
+
+        if (intensitiesCanvas) {
+            intensitiesCanvas.addEventListener('mousedown', (e) => {
+                isIntensitiesDragging = true;
+                handleIntensitiesPointer(e);
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isIntensitiesDragging) handleIntensitiesPointer(e);
+            });
+
+            window.addEventListener('mouseup', () => {
+                isIntensitiesDragging = false;
+            });
+
+            // Touch event listeners for mobile devices
+            intensitiesCanvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 0) return;
+                isIntensitiesDragging = true;
+                handleIntensitiesPointer(e.touches[0]);
+            });
+
+            window.addEventListener('touchmove', (e) => {
+                if (isIntensitiesDragging && e.touches.length > 0) handleIntensitiesPointer(e.touches[0]);
+            });
+
+            window.addEventListener('touchend', () => {
+                isIntensitiesDragging = false;
+            });
+        }
+
+        function handleIntensitiesPointer(pointer) {
+            const rect = intensitiesCanvas.getBoundingClientRect();
+            const clickX = pointer.clientX - rect.left;
+            
+            const paddingLeft = 45;
+            const paddingRight = 20;
+            const graphWidth = rect.width - paddingLeft - paddingRight;
+
+            // X-index maps linearly from 0 (O) to 7 (M)
+            const pct = Math.max(0, Math.min(1, (clickX - paddingLeft) / graphWidth));
+            const targetIdx = pct * 7.0;
+
+            // Derive surface temperature back from spectral index
+            const targetTemp = getTempFromSpectralIndex(targetIdx);
+            
+            sliderSpectralT.value = targetTemp;
+            sliderSpectralTempVal.value = targetTemp;
+            updateSpectralCalculations();
+        }
+
+        function resizeSpectralCanvases() {
+            if (activeTabId !== 'spectral') return;
+            updateSpectralCalculations();
+        }
+
+        // RGB color interpolator for continuous spectrum background
+        function nmToRGB(wavelength) {
+            let r, g, b, factor;
+            if (wavelength >= 380 && wavelength < 440) {
+                r = -(wavelength - 440) / (440 - 380);
+                g = 0.0;
+                b = 1.0;
+            } else if (wavelength >= 440 && wavelength < 490) {
+                r = 0.0;
+                g = (wavelength - 440) / (490 - 440);
+                b = 1.0;
+            } else if (wavelength >= 490 && wavelength < 510) {
+                r = 0.0;
+                g = 1.0;
+                b = -(wavelength - 510) / (510 - 490);
+            } else if (wavelength >= 510 && wavelength < 580) {
+                r = (wavelength - 510) / (580 - 510);
+                g = 1.0;
+                b = 0.0;
+            } else if (wavelength >= 580 && wavelength < 645) {
+                r = 1.0;
+                g = -(wavelength - 645) / (645 - 580);
+                b = 0.0;
+            } else if (wavelength >= 645 && wavelength <= 780) {
+                r = 1.0;
+                g = 0.0;
+                b = 0.0;
+            } else {
+                r = 0.0;
+                g = 0.0;
+                b = 0.0;
+            }
+
+            if (wavelength >= 380 && wavelength < 420) {
+                factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+            } else if (wavelength >= 420 && wavelength < 701) {
+                factor = 1.0;
+            } else if (wavelength >= 701 && wavelength <= 780) {
+                factor = 0.3 + 0.7 * (780 - wavelength) / (780 - 701);
+            } else {
+                factor = 0.0;
+            }
+
+            const R = Math.round(r * factor * 255);
+            const G = Math.round(g * factor * 255);
+            const B = Math.round(b * factor * 255);
+            return `rgb(${R}, ${G}, ${B})`;
+        }
+
+        // ================= GLOBAL SCRIPT LOADERS =================
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            resizeSupernovaCanvas();
+            resizeSpectralCanvases();
+            initStars();
+        });
+
+        window.onload = function() {
+            resizeCanvas();
+            resizeSupernovaCanvas();
+            resizeSpectralCanvases();
+            initStars();
+            updatePogsonEquation();
+            startSimulation();
+        };
+    </script>
+</body>
+</html>

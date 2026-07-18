@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급지구과학 - 쌍성계 통합 시뮬레이터</title>
+    <!-- Tailwind CSS CDN 사용 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 커스텀 슬라이더 스타일링 및 폰트 개선 */
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #2d3748;
+            height: 6px;
+            border-radius: 9999px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- 헤더 영역 -->
+    <header class="bg-slate-900 border-b border-slate-800 py-4 px-6 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <span class="bg-indigo-600/30 text-indigo-400 text-xs font-semibold px-3 py-1 rounded-full border border-indigo-500/30">고급 지구과학 [수행평가 3·4차시 통합 고도화 최종본]</span>
+                <h1 class="text-2xl font-bold tracking-tight mt-1 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
+                    쌍성계 유형별 동역학 분석 및 다중 천체물리 모의 장치
+                </h1>
+            </div>
+            <div class="text-sm text-slate-400 bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80 text-center md:text-right">
+                ✨ <strong>주요 기능:</strong> 시선속도 도플러 효과 & 주변감광 물리 보정 기능 탑재
+            </div>
+        </div>
+    </header>
+
+    <!-- 쌍성계 유형 선택 탭 버튼 그룹 -->
+    <section class="bg-slate-950/50 border-b border-slate-800/60 py-3 px-6">
+        <div class="max-w-7xl mx-auto flex flex-wrap gap-2.5 justify-center">
+            <button id="tab-detached" class="px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold border transition-all duration-200 bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/30 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
+                분리형 식쌍성 (Detached)
+            </button>
+            <button id="tab-semidetached" class="px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold border transition-all duration-200 bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                반분리형 식쌍성 (Semi-detached)
+            </button>
+            <button id="tab-contact" class="px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold border transition-all duration-200 bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                접촉형 식쌍성 (Contact)
+            </button>
+            <button id="tab-optical" class="px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold border transition-all duration-200 bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                광학 이중성 (Optical Double)
+            </button>
+        </div>
+    </section>
+
+    <!-- 메인 대시보드 콘텐츠 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- [좌측] 슬라이드 패널 (컨트롤 타워) -->
+        <section class="lg:col-span-3 flex flex-col gap-5 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-sm overflow-y-auto max-h-[85vh]">
+            <div class="border-b border-slate-800 pb-2">
+                <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    조작 변인 조종판
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">물리량과 우주 환경 요소를 마음껏 조절해 보세요.</p>
+            </div>
+
+            <!-- 별 1 컨트롤 그룹 -->
+            <div id="star1-panel" class="space-y-4 bg-slate-950/40 p-4 rounded-xl border transition-all duration-300">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold flex items-center gap-1.5" id="star1-title-text">
+                        <span id="star1-color-indicator" class="w-2.5 h-2.5 rounded-full transition-colors duration-300"></span>
+                        주성 (Star 1)
+                    </h3>
+                    <span id="star1-spectral" class="text-xs font-mono">K형 주계열성</span>
+                </div>
+                <!-- 별 1 질량 -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">질량 ($M_1$)</span>
+                        <span id="m1-val" class="font-bold">1.50 M☉</span>
+                    </div>
+                    <input type="range" id="mass1" min="0.5" max="3.0" step="0.1" value="1.5" class="w-full">
+                </div>
+                <!-- 별 1 반지름 -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">반지름 ($R_1$)</span>
+                        <span id="r1-val" class="font-bold">1.40 R☉</span>
+                    </div>
+                    <input type="range" id="radius1" min="0.8" max="2.5" step="0.05" value="1.4" class="w-full">
+                </div>
+                <!-- 별 1 표면 온도 -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">표면 온도 ($T_1$)</span>
+                        <span id="t1-val" class="font-bold">4,000 K</span>
+                    </div>
+                    <input type="range" id="temp1" min="2000" max="15000" step="100" value="4000" class="w-full">
+                </div>
+            </div>
+
+            <!-- 별 2 컨트롤 그룹 -->
+            <div id="star2-panel" class="space-y-4 bg-slate-950/40 p-4 rounded-xl border transition-all duration-300">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold flex items-center gap-1.5" id="star2-title-text">
+                        <span id="star2-color-indicator" class="w-2.5 h-2.5 rounded-full transition-colors duration-300"></span>
+                        동반성 (Star 2)
+                    </h3>
+                    <span id="star2-spectral" class="text-xs font-mono">A형 주계열성</span>
+                </div>
+                <!-- 별 2 질량 -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">질량 ($M_2$)</span>
+                        <span id="m2-val" class="font-bold">1.00 M☉</span>
+                    </div>
+                    <input type="range" id="mass2" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full">
+                </div>
+                <!-- 별 2 반지름 -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">반지름 ($R_2$)</span>
+                        <span id="r2-val" class="font-bold">0.80 R☉</span>
+                    </div>
+                    <input type="range" id="radius2" min="0.4" max="2.0" step="0.05" value="0.8" class="w-full">
+                </div>
+                <!-- 별 2 표면 온도 -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">표면 온도 ($T_2$)</span>
+                        <span id="t2-val" class="font-bold">9,500 K</span>
+                    </div>
+                    <input type="range" id="temp2" min="2000" max="15000" step="100" value="9500" class="w-full">
+                </div>
+            </div>
+
+            <!-- 우주 성간 환경 제어 패널 (성간물질 및 거성 설정) -->
+            <div id="interstellar-panel" class="space-y-4 bg-slate-950/40 p-4 rounded-xl border border-emerald-500/20">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-emerald-400 flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        성간 환경 & 장애물 제어
+                    </h3>
+                </div>
+                <!-- 성간 물질 밀도 -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">성간물질 먼지 밀도</span>
+                        <span id="dust-val" class="text-emerald-400 font-bold">0% (맑음)</span>
+                    </div>
+                    <input type="range" id="dustDensity" min="0" max="80" step="5" value="0" class="w-full">
+                </div>
+                <!-- 주변 적색거성 엄폐 배치 스위치 -->
+                <div class="space-y-2 pt-2 border-t border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400">전면 적색거성 엄폐 배치</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="giantToggle" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 지구과학 심화 물리 스위치 -->
+            <div class="space-y-4 bg-slate-950/40 p-4 rounded-xl border border-indigo-500/25">
+                <h3 class="text-xs font-bold text-indigo-300 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                    학술적 심화 효과 설정
+                </h3>
+                <!-- 주변 감광 효과 스위치 -->
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-slate-400">주변 감광 효과 (Limb Darkening)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="limbToggle" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+                <!-- 시선 속도 및 도플러 효과 스위치 -->
+                <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                    <span class="text-xs text-slate-400">도플러 편이 표출 (Doppler Shift)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="dopplerToggle" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 시계(카메라) 내려다보는 각도 & 궤도 경사각 컨트롤러 -->
+            <div class="space-y-4 bg-slate-950/40 p-4 rounded-xl border border-slate-800">
+                <h3 class="text-xs font-semibold text-slate-300">시선 기하 정보 설정</h3>
+                
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-indigo-400">내려다보는 각도</span>
+                        <span id="pitch-val" class="text-indigo-400 font-bold">25°</span>
+                    </div>
+                    <input type="range" id="cameraPitch" min="0" max="90" step="1" value="25" class="w-full">
+                </div>
+
+                <div class="space-y-1.5 pt-2 border-t border-slate-800">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">궤도 경사각 ($i$)</span>
+                        <span id="inc-val" class="text-slate-200 font-bold">90°</span>
+                    </div>
+                    <input type="range" id="inclination" min="75" max="90" step="0.5" value="90" class="w-full">
+                </div>
+            </div>
+        </section>
+
+        <!-- [중앙] 입체 쌍성 궤도 캔버스 (도플러 효과 및 공간 확보를 위해 col-span-6으로 확장, 세로 크기 확대) -->
+        <section class="lg:col-span-6 flex flex-col bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+            <div class="bg-slate-950/60 p-4 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    입체(3D) 쌍성 공전 시뮬레이션 및 실시간 분광 스펙트럼
+                </h2>
+                <span id="camera-view-label" class="text-xs bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 px-2.5 py-0.5 rounded-full">상공 25° 시선</span>
+            </div>
+            
+            <div class="flex-grow relative bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-950 to-slate-900 flex items-center justify-center min-h-[450px] lg:min-h-[520px]">
+                <canvas id="orbitCanvas" class="absolute inset-0 w-full h-full"></canvas>
+                
+                <!-- 기하학적 정보 오버레이 -->
+                <div class="absolute top-3 left-3 bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 text-[11px] font-mono space-y-1 z-10">
+                    <div id="barycenter-info" class="text-slate-400"><span class="inline-block w-2 h-2 bg-emerald-400 rounded-full mr-1.5"></span>질량 중심: (0, 0)</div>
+                    <div class="text-orange-400" id="r1-dist">궤도 반경 a₁: 1.40 AU</div>
+                    <div class="text-blue-400" id="r2-dist">궤도 반경 a₂: 2.10 AU</div>
+                </div>
+
+                <!-- 식 현상 상태 안내기 -->
+                <div class="absolute bottom-[105px] right-3 bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-medium animate-none z-10" id="eclipseStatus">
+                    식 미발생 상태
+                </div>
+            </div>
+        </section>
+
+        <!-- [우측] 광도 변화 그래프 캔버스 (비율 조정하여 조화로운 밸런스 유지) -->
+        <section class="lg:col-span-3 flex flex-col bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+            <div class="bg-slate-950/60 p-4 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    실시간 광도 곡선 (Light Curve)
+                </h2>
+                <span class="text-xs text-indigo-400 font-mono">Relative Flux</span>
+            </div>
+
+            <div class="flex-grow p-4 bg-slate-950/40 flex flex-col justify-between min-h-[300px]">
+                <div class="relative flex-grow w-full">
+                    <canvas id="lightCurveCanvas" class="w-full h-full"></canvas>
+                </div>
+                <!-- 그래프 마커 가이드 정보 -->
+                <div class="mt-2 grid grid-cols-1 gap-2 text-[10px] text-slate-400 bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-1.5 h-3 bg-red-500 rounded-sm"></span>
+                        <span><strong>주극소:</strong> 표면 온도가 높은 '주성'이 뒤로 숨음</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-1.5 h-3 bg-yellow-500 rounded-sm"></span>
+                        <span><strong>부극소:</strong> 온도가 낮은 '동반성'이 뒤로 숨음</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 학술적 이론 해설 & 시뮬레이션 구현 의의 대형 패널 -->
+    <section class="max-w-7xl w-full mx-auto p-4 md:p-6 mb-4 space-y-6">
+        <!-- 메인 학술 설명 패널 -->
+        <div class="bg-gradient-to-br from-slate-900 to-slate-950 p-6 md:p-8 rounded-3xl border border-slate-800 shadow-2xl">
+            <div class="border-b border-indigo-500/20 pb-4 mb-6">
+                <span class="bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold tracking-wider uppercase px-3 py-1 rounded-full">Educational Research & Analysis</span>
+                <h2 id="theory-title" class="text-xl md:text-2xl font-bold mt-2 text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-blue-200 flex items-center gap-2">
+                    분리형 식쌍성의 천문학적 특징과 탐구
+                </h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-sm text-slate-300 leading-relaxed">
+                <!-- 좌측 카드: 천문학적 핵심 이론 -->
+                <div class="bg-slate-900/50 p-5 md:p-6 rounded-2xl border border-slate-800/80">
+                    <h3 class="text-indigo-400 font-bold mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        천문학적 핵심 이론 (Scientific Theories)
+                    </h3>
+                    <p id="theory-mechanism">
+                        분리형 식쌍성(Detached Binary)은 두 항성이 각각 상대의 기하학적 중력 한계 영역인 <strong>'로슈 로브(Roche Lobe)'</strong>를 넘어가지 않고 그 안에서 안정적으로 유지되는 형태를 말합니다. 이 때문에 두 별은 구형에 아주 가까운 독립된 모양을 유지하며, 가스의 이동이나 물리적 물질 혼합이 거의 나타나지 않습니다.
+                    </p>
+                    <ul id="theory-features" class="mt-4 space-y-2 text-xs text-slate-400">
+                        <li class="flex items-start gap-1.5"><span class="text-indigo-400 font-bold">•</span> 광도 변화가 급격하고 정교하게 끊어져 가림 현상이 시작되는 제1접촉점부터 끝나는 제4접촉점까지 명확한 평탄 구간이 존재합니다.</li>
+                        <li class="flex items-start gap-1.5"><span class="text-indigo-400 font-bold">•</span> 슈테판-볼츠만 법칙을 적용한 순수한 기하학적 면적 감소만으로 광도 하락량이 완벽하게 계산됩니다.</li>
+                    </ul>
+                </div>
+
+                <!-- 우측 카드: 시뮬레이션 구현 의의 -->
+                <div class="bg-slate-900/50 p-5 md:p-6 rounded-2xl border border-slate-800/80">
+                    <h3 class="text-emerald-400 font-bold mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                        시뮬레이션 구현 및 탐구의 의의 (Educational Significance)
+                    </h3>
+                    <p id="theory-significance">
+                        물리적 속박이 뚜렷한 실제 쌍성계와 관측적 겉보기 이중성을 비교하고, 중력적 영향선(로슈 로브)의 침범 여부가 항성의 모양(구형/타원체/눈물방울) 및 광도 곡선 형태에 어떤 동역학적 상관관계를 유발하는지 실시간 조작 변인을 통해 검증할 수 있습니다. 
+                    </p>
+                    <ul id="theory-significance-features" class="mt-4 space-y-2 text-xs text-slate-400">
+                        <li class="flex items-start gap-1.5"><span class="text-emerald-400 font-bold">•</span> 별의 질량과 반지름을 조작하여 공통 질량 중심과 개별 공전 궤도 반경의 역학적 비대칭(케플러 법칙)을 확인합니다.</li>
+                        <li class="flex items-start gap-1.5"><span class="text-emerald-400 font-bold">•</span> 지구 대기에 의한 성간 소광 및 파장에 따른 산란(적색화 현상)을 모의 실험함으로써 지구 관측 한계점 극복 방안을 탐구합니다.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 수행평가 고득점 대비 '본 시뮬레이션의 기본 가정' 패널 -->
+        <div class="bg-gradient-to-br from-slate-900 to-slate-950 p-6 md:p-8 rounded-3xl border border-indigo-500/20 shadow-2xl">
+            <div class="border-b border-indigo-500/20 pb-4 mb-4">
+                <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold tracking-wider uppercase px-3 py-1 rounded-full">Theoretical Foundation: Simulation Assumptions</span>
+                <h3 class="text-lg md:text-xl font-bold mt-2 text-emerald-300">
+                    본 시뮬레이션의 기본 학술적 가정 (Basic Assumptions of This Simulation)
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">※ 본 장치는 고등 교과 천문 관측 이론 학습을 위해 다음의 이론적 물리 가정을 적용하여 모델링되었습니다.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-400">
+                <div class="bg-slate-950/40 p-4 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-slate-200 mb-1.5">1. 완벽한 등속 원 궤도($e=0$) 가정</h4>
+                    <p class="leading-relaxed">두 천체의 실제 공전 궤도는 타원형인 경우가 일반적이나, 본 시뮬레이터에서는 고등 과정의 기본 궤도 방정식 해석과 직관적 주기를 관찰하기 위해 케플러 제1법칙의 이심률을 0으로 둔 <strong>원 공전 궤도</strong>로 통일하여 연산합니다.</p>
+                </div>
+                <div class="bg-slate-950/40 p-4 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-slate-200 mb-1.5">2. 조석 변형 및 광휘 물리 보정 단순화</h4>
+                    <p class="leading-relaxed">접촉쌍성계와 반분리 식쌍성계에서 발생하는 항성의 가스 유출 및 외형 일그러짐은 기하학적 2D 찌그러짐 변환(Scale matrix)을 적용해 묘사했습니다. 실제 정밀 천체물리에서 일어나는 상대성 중력 감광 효과(Gravity Darkening)와 반사광 보정은 간소화되었습니다.</p>
+                </div>
+                <div class="bg-slate-950/40 p-4 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-slate-200 mb-1.5">3. 균일한 등방성 성간 물질의 감쇠</h4>
+                    <p class="leading-relaxed">성간 가스 및 먼지에 따른 소광(Extinction)을 지수함수적 흡수 공식(Beer-Lambert 법칙)으로 도출했습니다. 탐구 상의 균질성을 확보하고자 시선 경로 전체에 성간 먼지가 공간적으로 <strong>균일하게 조밀 밀집되어 있다는 가정</strong>을 포함합니다.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- [하단] 재생 제어 패널 및 공용 메타 데이터 -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-4 md:p-6 shadow-2xl">
+        <div class="max-w-7xl mx-auto flex flex-col gap-4">
+            <!-- 재생 및 스피드 컨트롤러 -->
+            <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <div class="flex items-center gap-3">
+                    <button id="playPauseBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2 rounded-lg text-sm transition-all duration-150 flex items-center gap-2 shadow-lg shadow-blue-900/30">
+                        <span id="playIcon" class="hidden">▶ 재생</span>
+                        <span id="pauseIcon" class="inline">⏸ 일시정지</span>
+                    </button>
+                    <button id="resetBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm px-4 py-2 rounded-lg transition-colors">
+                        초기화
+                    </button>
+                </div>
+
+                <!-- 공전 속도 슬라이더 -->
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-400">공전 속도</span>
+                    <input type="range" id="orbitSpeed" min="0.1" max="2" step="0.1" value="0.8" class="w-32">
+                    <span id="speed-val" class="text-xs text-blue-400 font-mono font-bold">0.8x</span>
+                </div>
+
+                <!-- 실시간 상태 수치 디스플레이 -->
+                <div class="text-xs text-slate-300 font-mono flex gap-4">
+                    <div>위상 (Phase): <span id="currentPhase" class="text-indigo-400 font-bold">0.00π</span></div>
+                    <div>상대 밝기: <span id="currentFlux" class="text-emerald-400 font-bold">100.0%</span></div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 시뮬레이션 핵심 스크립트 -->
+    <script>
+        // -------------------------------------------------------------
+        // 1. 초기 변수 및 상태 정의
+        // -------------------------------------------------------------
+        const state = {
+            activeType: 'detached', // detached, semidetached, contact, optical
+            m1: 1.5,        // 별 1 질량
+            r1: 1.4,        // 별 1 반지름
+            t1: 4000,       // 별 1 표면온도 (K)
+            
+            m2: 1.0,        // 별 2 질량
+            r2: 0.8,        // 별 2 반지름
+            t2: 9500,       // 별 2 표면온도 (K)
+            
+            dustDensity: 0, // 성간먼지 밀도 (0 ~ 80%)
+            hasGiant: false,// 적색거성 장애물 배치 여부
+            
+            // 심화 물리 옵션 상태
+            limbDarkening: false, 
+            showDoppler: true,    
+            
+            inclination: 90,// 궤도 경사각
+            cameraPitch: 25,// 카메라가 내려다보는 피치 각도 (0 ~ 90도)
+            speed: 0.8,     // 시뮬레이션 공전 속도
+            phase: 0,       // 현재 공전 위상 (0 ~ 2 * Math.PI)
+            isPlaying: true // 애니메이션 제어 상태
+        };
+
+        const TOTAL_DISTANCE = 3.5; // 두 별 사이의 총 거리
+        let gasParticles = [];      // 반분리형용 가스 입자 시스템 배열
+        
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const orbitCtx = orbitCanvas.getContext('2d');
+        const graphCanvas = document.getElementById('lightCurveCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        // -------------------------------------------------------------
+        // 2. DOM 요소 연결 및 입력 핸들러 설정
+        // -------------------------------------------------------------
+        const inputs = {
+            mass1: document.getElementById('mass1'),
+            radius1: document.getElementById('radius1'),
+            temp1: document.getElementById('temp1'),
+            mass2: document.getElementById('mass2'),
+            radius2: document.getElementById('radius2'),
+            temp2: document.getElementById('temp2'),
+            dustDensity: document.getElementById('dustDensity'),
+            giantToggle: document.getElementById('giantToggle'),
+            limbToggle: document.getElementById('limbToggle'), 
+            dopplerToggle: document.getElementById('dopplerToggle'), 
+            cameraPitch: document.getElementById('cameraPitch'),
+            inclination: document.getElementById('inclination'),
+            orbitSpeed: document.getElementById('orbitSpeed'),
+            playPauseBtn: document.getElementById('playPauseBtn'),
+            resetBtn: document.getElementById('resetBtn')
+        };
+
+        const displays = {
+            m1: document.getElementById('m1-val'),
+            r1: document.getElementById('r1-val'),
+            t1: document.getElementById('t1-val'),
+            m2: document.getElementById('m2-val'),
+            r2: document.getElementById('r2-val'),
+            t2: document.getElementById('t2-val'),
+            dust: document.getElementById('dust-val'),
+            pitch: document.getElementById('pitch-val'),
+            cameraViewLabel: document.getElementById('camera-view-label'),
+            inc: document.getElementById('inc-val'),
+            speed: document.getElementById('speed-val'),
+            r1Dist: document.getElementById('r1-dist'),
+            r2Dist: document.getElementById('r2-dist'),
+            eclipseStatus: document.getElementById('eclipseStatus'),
+            currentPhase: document.getElementById('currentPhase'),
+            currentFlux: document.getElementById('currentFlux'),
+            playIcon: document.getElementById('playIcon'),
+            pauseIcon: document.getElementById('pauseIcon'),
+            star1Color: document.getElementById('star1-color-indicator'),
+            star2Color: document.getElementById('star2-color-indicator'),
+            star1Spec: document.getElementById('star1-spectral'),
+            star2Spec: document.getElementById('star2-spectral'),
+            star1Title: document.getElementById('star1-title-text'), // 동적 명칭 변경용
+            star2Title: document.getElementById('star2-title-text')  // 동적 명칭 변경용
+        };
+
+        const theoryDoms = {
+            title: document.getElementById('theory-title'),
+            mechanism: document.getElementById('theory-mechanism'),
+            features: document.getElementById('theory-features'),
+            significance: document.getElementById('theory-significance'),
+            significanceFeatures: document.getElementById('theory-significance-features')
+        };
+
+        // -------------------------------------------------------------
+        // 3. 온도 기반 흑체 복사 및 성간 적색화 혼합 색상 계산
+        // -------------------------------------------------------------
+        function getStarColorAndSpectral(temp, dustDensity) {
+            let baseColor;
+            
+            if (temp < 3700) {
+                baseColor = { rgb: [249, 115, 22], spectral: 'M형 적색왜성', hex: '#f97316' };
+            } else if (temp < 5200) {
+                baseColor = { rgb: [251, 191, 36], spectral: 'K형 주계열성', hex: '#fbbf24' };
+            } else if (temp < 6000) {
+                baseColor = { rgb: [254, 240, 138], spectral: 'G형 황색왜성', hex: '#fef08a' };
+            } else if (temp < 7500) {
+                baseColor = { rgb: [248, 250, 252], spectral: 'F형 주계열성', hex: '#f8fafc' };
+            } else if (temp < 10000) {
+                baseColor = { rgb: [224, 242, 254], spectral: 'A형 백색성', hex: '#e0f2fe' };
+            } else if (temp < 30000) {
+                baseColor = { rgb: [147, 197, 253], spectral: 'B형 청백색성', hex: '#93c5fd' };
+            } else {
+                baseColor = { rgb: [59, 130, 246], spectral: 'O형 청색초거성', hex: '#3b82f6' };
+            }
+
+            // 성간 적색화 적용
+            const reddeningFactor = dustDensity / 100;
+            let r = baseColor.rgb[0];
+            let g = Math.max(50, Math.floor(baseColor.rgb[1] * (1 - reddeningFactor * 0.75)));
+            let b = Math.max(20, Math.floor(baseColor.rgb[2] * (1 - reddeningFactor * 0.95)));
+
+            const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+
+            return {
+                hex: hex,
+                spectral: baseColor.spectral,
+                rgb: [r, g, b]
+            };
+        }
+
+        // -------------------------------------------------------------
+        // 4. 물리 계산 엔진
+        // -------------------------------------------------------------
+        function calculateFlux(phaseVal) {
+            if (state.activeType === 'optical') {
+                const extinctionFactor = Math.exp(-state.dustDensity / 55);
+                return {
+                    ratio: 1.0 * extinctionFactor,
+                    type: "식 없음 (광학 이중성)",
+                    a1: 0,
+                    a2: 0
+                };
+            }
+
+            let L1 = Math.pow(state.r1, 2) * Math.pow(state.t1 / 1000, 4);
+            let L2 = Math.pow(state.r2, 2) * Math.pow(state.t2 / 1000, 4);
+            
+            if (state.activeType === 'contact') {
+                const avgTemp = (state.t1 + state.t2) / 2;
+                L1 = Math.pow(state.r1, 2) * Math.pow(avgTemp / 1000, 4);
+                L2 = Math.pow(state.r2, 2) * Math.pow(avgTemp / 1000, 4);
+            }
+
+            const totalUnocculted = L1 + L2;
+
+            const totalMass = state.m1 + state.m2;
+            const a1 = TOTAL_DISTANCE * (state.m2 / totalMass);
+            const a2 = TOTAL_DISTANCE * (state.m1 / totalMass);
+
+            const radInc = (state.inclination * Math.PI) / 180;
+            const cosInc = Math.cos(radInc);
+            const sinInc = Math.sin(radInc);
+
+            const x1 = a1 * Math.cos(phaseVal);
+            const y1 = a1 * Math.sin(phaseVal) * cosInc;
+            const z1 = a1 * Math.sin(phaseVal) * sinInc; 
+
+            const x2 = a2 * Math.cos(phaseVal + Math.PI);
+            const y2 = a2 * Math.sin(phaseVal + Math.PI) * cosInc;
+            const z2 = a2 * Math.sin(phaseVal + Math.PI) * sinInc;
+
+            const dx = x1 - x2;
+            const dy = y1 - y2;
+            const d = Math.sqrt(dx*dx + dy*dy);
+
+            let visibleFlux = totalUnocculted;
+            let eclipseType = "식 미발생";
+
+            let shapeEffect = 1.0;
+            if (state.activeType === 'contact') {
+                shapeEffect = 1.0 - 0.08 * Math.pow(Math.cos(phaseVal), 2);
+            }
+
+            const R1 = state.r1;
+            const R2 = state.r2;
+
+            if (d < R1 + R2) {
+                let area = circleIntersectionArea(R1, R2, d);
+                
+                if (state.limbDarkening) {
+                    const normalizedOverlap = 1 - (d / (R1 + R2));
+                    area = area * (1.0 - 0.15 * Math.sin(Math.PI * (1 - normalizedOverlap)));
+                }
+
+                const J1 = L1 / (Math.PI * R1 * R1);
+                const J2 = L2 / (Math.PI * R2 * R2);
+
+                if (z1 > z2) {
+                    const occultedFlux = area * J2;
+                    visibleFlux = totalUnocculted - occultedFlux;
+                    
+                    if (state.activeType === 'contact') {
+                        eclipseType = "연속 식 발생 (W UMa형)";
+                    } else {
+                        const symmetryOffset = (state.activeType === 'semidetached') ? 0.96 : 1.0;
+                        visibleFlux = totalUnocculted - (occultedFlux * symmetryOffset);
+                        eclipseType = (state.t2 >= state.t1) ? "주극소 (Primary)" : "부극소 (Secondary)";
+                    }
+                } else {
+                    const occultedFlux = area * J1;
+                    visibleFlux = totalUnocculted - occultedFlux;
+                    
+                    if (state.activeType === 'contact') {
+                        eclipseType = "연속 식 발생 (W UMa형)";
+                    } else {
+                        eclipseType = (state.t1 >= state.t2) ? "주극소 (Primary)" : "부극소 (Secondary)";
+                    }
+                }
+            }
+
+            // 적색거성 장애물 엄폐식 연산
+            if (state.hasGiant) {
+                const xG = 1.6;
+                const yG = -0.1 * cosInc;
+                const rG = 1.0;
+
+                const dG1 = Math.sqrt(Math.pow(x1 - xG, 2) + Math.pow(y1 - yG, 2));
+                if (dG1 < R1 + rG && z1 < 1.0) {
+                    const areaG1 = circleIntersectionArea(R1, rG, dG1);
+                    const J1 = L1 / (Math.PI * R1 * R1);
+                    visibleFlux -= areaG1 * J1;
+                    eclipseType = "거성 엄폐 (Occultation)";
+                }
+
+                const dG2 = Math.sqrt(Math.pow(x2 - xG, 2) + Math.pow(y2 - yG, 2));
+                if (dG2 < R2 + rG && z2 < 1.0) {
+                    const areaG2 = circleIntersectionArea(R2, rG, dG2);
+                    const J2 = L2 / (Math.PI * R2 * R2);
+                    visibleFlux -= areaG2 * J2;
+                    eclipseType = "거성 엄폐 (Occultation)";
+                }
+            }
+
+            visibleFlux = Math.max(0.0, visibleFlux) * shapeEffect;
+            let rawRatio = visibleFlux / totalUnocculted;
+
+            // 성간 소광 수식 반영
+            const extinctionFactor = Math.exp(-state.dustDensity / 55); 
+            const finalRatio = rawRatio * extinctionFactor;
+
+            return {
+                ratio: finalRatio,
+                type: eclipseType,
+                a1: a1,
+                a2: a2,
+                l1: L1,
+                l2: L2
+            };
+        }
+
+        function circleIntersectionArea(r1, r2, d) {
+            if (d >= r1 + r2) return 0;
+            if (d <= Math.abs(r1 - r2)) {
+                const rMin = Math.min(r1, r2);
+                return Math.PI * rMin * rMin;
+            }
+            const r1Sq = r1 * r1;
+            const r2Sq = r2 * r2;
+            const dSq = d * d;
+
+            const phi1 = 2 * Math.acos((r1Sq + dSq - r2Sq) / (2 * r1 * d));
+            const phi2 = 2 * Math.acos((r2Sq + dSq - r1Sq) / (2 * r2 * d));
+
+            const term1 = 0.5 * r1Sq * (phi1 - Math.sin(phi1));
+            const term2 = 0.5 * r2Sq * (phi2 - Math.sin(phi2));
+
+            return term1 + term2;
+        }
+
+        // 반분리형 가스 입자 시스템 연산
+        function updateGasStreamParticles(pt1, pt2) {
+            if (state.activeType !== 'semidetached') {
+                gasParticles = [];
+                return;
+            }
+            
+            const isStar1Hotter = state.t1 >= state.t2;
+            const donor = isStar1Hotter ? pt2 : pt1;
+            const gainer = isStar1Hotter ? pt1 : pt2;
+
+            if (state.isPlaying && Math.random() < 0.45) {
+                gasParticles.push({
+                    progress: 0,
+                    speed: 0.015 + Math.random() * 0.01,
+                    size: 1.2 + Math.random() * 2,
+                    alpha: 0.8 + Math.random() * 0.2
+                });
+            }
+
+            for (let i = gasParticles.length - 1; i >= 0; i--) {
+                const p = gasParticles[i];
+                p.progress += p.speed;
+                p.alpha -= 0.005;
+
+                if (p.progress >= 1.0 || p.alpha <= 0) {
+                    gasParticles.splice(i, 1);
+                }
+            }
+            
+            return { donor, gainer };
+        }
+
+        // -------------------------------------------------------------
+        // 5. 실시간 컨트롤러 변경 값 반영 및 레이아웃 동기화
+        // -------------------------------------------------------------
+        function updateStateFromInputs() {
+            state.m1 = parseFloat(inputs.mass1.value);
+            state.r1 = parseFloat(inputs.radius1.value);
+            state.t1 = parseInt(inputs.temp1.value);
+            
+            state.m2 = parseFloat(inputs.mass2.value);
+            state.r2 = parseFloat(inputs.radius2.value);
+            state.t2 = parseInt(inputs.temp2.value);
+
+            state.dustDensity = parseInt(inputs.dustDensity.value);
+            state.hasGiant = inputs.giantToggle.checked;
+            
+            state.limbDarkening = inputs.limbToggle.checked;
+            state.showDoppler = inputs.dopplerToggle.checked;
+
+            state.cameraPitch = parseFloat(inputs.cameraPitch.value); 
+            state.inclination = parseFloat(inputs.inclination.value);
+            state.speed = parseFloat(inputs.orbitSpeed.value);
+
+            displays.m1.innerText = state.m1.toFixed(2) + " M☉";
+            displays.r1.innerText = state.r1.toFixed(2) + " R☉";
+            displays.t1.innerText = state.t1.toLocaleString() + " K";
+            
+            displays.m2.innerText = state.m2.toFixed(2) + " M☉";
+            displays.r2.innerText = state.r2.toFixed(2) + " R☉";
+            displays.t2.innerText = state.t2.toLocaleString() + " K";
+
+            displays.dust.innerText = state.dustDensity === 0 ? "0% (맑음)" : `${state.dustDensity}% (소광 발생)`;
+
+            displays.pitch.innerText = state.cameraPitch.toFixed(0) + "°";
+            displays.cameraViewLabel.innerText = state.cameraPitch === 0 ? "정면 시선 (0°)" : state.cameraPitch === 90 ? "수직 위 탑 뷰 (90°)" : `상공 ${state.cameraPitch.toFixed(0)}° 시선`;
+            displays.inc.innerText = state.inclination.toFixed(1) + "°";
+            displays.speed.innerText = state.speed.toFixed(1) + "x";
+
+            const isStar1Primary = state.t1 >= state.t2;
+
+            const star1Panel = document.getElementById('star1-panel');
+            const star2Panel = document.getElementById('star2-panel');
+
+            if (isStar1Primary) {
+                displays.star1Title.innerHTML = `<span id="star1-color-indicator" class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>주성 (Primary Star 1)`;
+                displays.star1Title.className = "text-sm font-bold text-orange-400 flex items-center gap-1.5";
+                star1Panel.className = "space-y-4 bg-slate-950/40 p-4 rounded-xl border border-orange-500/40 transition-all duration-300";
+
+                displays.star2Title.innerHTML = `<span id="star2-color-indicator" class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>동반성 (Companion Star 2)`;
+                displays.star2Title.className = "text-sm font-bold text-blue-400 flex items-center gap-1.5";
+                star2Panel.className = "space-y-4 bg-slate-950/40 p-4 rounded-xl border border-blue-500/20 transition-all duration-300";
+            } else {
+                displays.star1Title.innerHTML = `<span id="star1-color-indicator" class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>동반성 (Companion Star 1)`;
+                displays.star1Title.className = "text-sm font-bold text-blue-400 flex items-center gap-1.5";
+                star1Panel.className = "space-y-4 bg-slate-950/40 p-4 rounded-xl border border-blue-500/20 transition-all duration-300";
+
+                displays.star2Title.innerHTML = `<span id="star2-color-indicator" class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>주성 (Primary Star 2)`;
+                displays.star2Title.className = "text-sm font-bold text-orange-400 flex items-center gap-1.5";
+                star2Panel.className = "space-y-4 bg-slate-950/40 p-4 rounded-xl border border-orange-500/40 transition-all duration-300";
+            }
+
+            const spec1 = getStarColorAndSpectral(state.t1, state.dustDensity);
+            const spec2 = getStarColorAndSpectral(state.t2, state.dustDensity);
+
+            displays.star1Color.style.backgroundColor = spec1.hex;
+            displays.star2Color.style.backgroundColor = spec2.hex;
+            displays.star1Spec.innerText = spec1.spectral;
+            displays.star2Spec.innerText = spec2.spectral;
+
+            const calc = calculateFlux(state.phase);
+            if (state.activeType === 'optical') {
+                displays.r1Dist.innerText = `궤도 없음`;
+                displays.r2Dist.innerText = `궤도 없음`;
+            } else {
+                displays.r1Dist.innerText = `궤도 반경 a₁: ${(calc.a1 * 0.4).toFixed(2)} AU`;
+                displays.r2Dist.innerText = `궤도 반경 a₂: ${(calc.a2 * 0.4).toFixed(2)} AU`;
+            }
+        }
+
+        Object.keys(inputs).forEach(key => {
+            if (inputs[key] && key !== 'playPauseBtn' && key !== 'resetBtn' && key !== 'giantToggle' && key !== 'limbToggle' && key !== 'dopplerToggle') {
+                inputs[key].addEventListener('input', updateStateFromInputs);
+            }
+        });
+        inputs.giantToggle.addEventListener('change', updateStateFromInputs);
+        inputs.limbToggle.addEventListener('change', updateStateFromInputs); 
+        inputs.dopplerToggle.addEventListener('change', updateStateFromInputs); 
+
+        inputs.playPauseBtn.addEventListener('click', () => {
+            state.isPlaying = !state.isPlaying;
+            if (state.isPlaying) {
+                displays.playIcon.classList.add('hidden');
+                displays.pauseIcon.classList.remove('hidden');
+            } else {
+                displays.playIcon.classList.remove('hidden');
+                displays.pauseIcon.classList.add('hidden');
+            }
+        });
+
+        // 쌍성계 유형별 Tab 전환 기능 및 프리셋 매핑
+        const tabs = {
+            detached: document.getElementById('tab-detached'),
+            semidetached: document.getElementById('tab-semidetached'),
+            contact: document.getElementById('tab-contact'),
+            optical: document.getElementById('tab-optical')
+        };
+
+        const academicData = {
+            detached: {
+                title: "분리형 식쌍성의 천문학적 특징과 탐구",
+                mechanism: "분리형 식쌍성(Detached Binary)은 두 항성이 각각 상대의 기하학적 중력 한계 영역인 '로슈 로브(Roche Lobe)'를 넘어가지 않고 그 안에서 안정적으로 유지되는 형태를 말합니다. 이 때문에 두 별은 구형에 아주 가까운 독립된 모양을 유지하며, 가스의 이동이나 물리적 물질 혼합이 거의 나타나지 않습니다.",
+                features: [
+                    "광도 변화가 급격하고 정교하게 끊어져 가림 현상이 시작되는 제1접촉점부터 끝나는 제4접촉점까지 명확한 평탄 구간이 존재합니다.",
+                    "슈테판-볼츠만 법칙을 적용한 순수한 기하학적 면적 감소만으로 광도 하락량이 완벽하게 계산됩니다."
+                ],
+                significance: "물리적 속박이 뚜렷한 실제 쌍성계와 관측적 겉보기 이중성을 비교하고, 중력적 영향선(로슈 로브)의 침범 여부가 항성의 모양(구형/타원체/눈물방울) 및 광도 곡선 형태에 어떤 동역학적 상관관계를 유발하는지 실시간 조작 변인을 통해 검증할 수 있습니다.",
+                sigFeatures: [
+                    "별의 질량과 반지름을 조작하여 공통 질량 중심과 개별 공전 궤도 반경의 역학적 비대칭(케플러 법칙)을 확인합니다.",
+                    "지구 대기에 의한 성간 소광 및 파장에 따른 산란(적색화 현상)을 모의 실험함으로써 지구 관측 한계점 극복 방안을 탐구합니다."
+                ],
+                presets: { m1: 1.5, r1: 1.4, t1: 4000, m2: 1.0, r2: 0.8, t2: 9500, inc: 90, pitch: 25 }
+            },
+            semidetached: {
+                title: "반분리형 식쌍성과 '알골 패러독스(Algol Paradox)' 탐구",
+                mechanism: "반분리형 식쌍성(Semi-detached Binary)은 한쪽 별(일반적으로 수명이 다해 가스 거성이 되어가는 동반성)이 자신의 로슈 로브를 가득 채우면서, 내측 라그랑주점(L₁)을 통해 상대 주성의 강한 중력장으로 물질이 빨려 들어가는 '질량 이동(Mass Transfer)' 단계에 진입한 쌍성계입니다. 가스 제트 스트림이 발생합니다.",
+                features: [
+                    "유입되는 고온의 가스 디스크가 주성 주변을 감싸면서, 광도 곡선의 양쪽 날개가 비대칭적으로 일그러지는 특징이 나타납니다.",
+                    "질량 중심의 변화로 인해 공전 주기가 미세하게 빨라지거나 변동하는 동역학적 상태를 보입니다."
+                ],
+                significance: "지구과학 II 항성의 진화 과정에서 다루는 '알골 역설'을 직관적으로 증명하는 도구입니다. 더 진화한 별이 질량이 작은 상태로 관측되는 이유가 과거 격렬한 로슈 로브 범람으로 인해 상대방에게 무지막지한 질량을 강탈당했기 때문이라는 항성 진화의 수수께끼를 수학적·시각적 가스 유체 시스템으로 정밀 검증할 수 있습니다.",
+                sigFeatures: [
+                    "질량 유동 시스템(Gas Stream Particles)의 실시간 흐름을 투사하여 항성 간의 상호 에너지 간섭 메커니즘을 시각화합니다.",
+                    "조석력으로 인해 흘려보내는 별의 단면이 중력 방향으로 눈물방울 모양(Ellipsoid)으로 일그러지는 기하학적 형태 변화를 보여줍니다."
+                ],
+                presets: { m1: 2.2, r1: 1.1, t1: 11000, m2: 0.8, r2: 1.7, t2: 4500, inc: 89, pitch: 35 }
+            },
+            contact: {
+                title: "접촉 식쌍성과 공동 대기(Common Envelope)의 조석 물리",
+                mechanism: "접촉 식쌍성(Contact Binary)은 두 별이 모두 로슈 로브를 초과하여 범람하면서, 마치 하나의 '공동 고온 엔벨로프(Common Envelope)' 대기층을 겉으로 공유하게 된 독특한 통합형 쌍성계입니다. 두 별은 서로 완벽하게 맞닿아 열적 교환을 진행하기 때문에, 분광형이나 온도가 매우 유사한 수준으로 조율됩니다.",
+                features: [
+                    "두 별의 온도가 열교환으로 극히 동기화되므로, 주극소와 부극소의 광도 하락 깊이가 놀라울 정도로 일정하게 깊습니다.",
+                    "계속 회전하면서 찌그러진 조석 타원체의 겉보기 단면적이 실시간으로 연속 변하므로, 그래프에 평평한 직선 구간이 아예 나타나지 않고 파도 모양으로 완만하게 일렁입니다."
+                ],
+                significance: "우주 극단 환경에서의 항성 병합 단계 및 조석 변형률을 계량적으로 탐색할 수 있습니다. 두 구체가 조석력에 의해 어떻게 변형되며, 단면적의 코사인 함수적 변화가 광도 전체의 완만한 주기적 구배를 형성하는지 관측적 의미를 추출해 줍니다.",
+                sigFeatures: [
+                    "두 항성이 합체된 형태로 도는 3D 조석 일그러짐 현상을 묘사하고, 이에 상응하는 매끄러운 곡선 광도 매핑을 수행합니다.",
+                    "주극소와 부극소의 깊이가 비슷해지는 '온도 동화 현상'을 실시간으로 확인하고 물리학적 열역학 법칙을 관찰합니다."
+                ],
+                presets: { m1: 1.2, r1: 1.3, t1: 5800, m2: 1.0, r2: 1.2, t2: 5600, inc: 88, pitch: 20 }
+            },
+            optical: {
+                title: "광학 이중성(Optical Double)의 기하학적 허상과 증명",
+                mechanism: "광학 이중성은 사실 물리적으로 중력 구속을 공유하지 않는 '가짜 쌍성'입니다. 지구 관측자의 시선 방향에서만 우연히 같은 직선상에 배치되어 쌍성으로 오인되는 것이며, 실제로는 두 항성의 거리가 성간 공간에서 수백 광년 이상 아득하게 떨어져 있습니다.",
+                features: [
+                    "중력적으로 전혀 묶여 있지 않으므로 공통 질량 중심 회전이 없으며, 서로 다른 고유 운동 선을 그리며 흘러갈 뿐입니다.",
+                    "동일한 평면 궤도가 아니므로 상호 식(Eclipse) 현상이 일어날 수 없으며, 광도 변화 그래프가 평탄한 기저선을 유지합니다."
+                ],
+                significance: "고급 지구과학의 핵심 단원인 '항성의 시차와 고유 운동' 개념을 입증할 수 있는 핵심적인 증명 시뮬레이션입니다. 겉보기에 쌍성처럼 보이는 천체들이 실제로는 속박되지 않은 허상임을 고유운동 궤적 조절을 통해 밝혀내어, 분광 시차 및 백색 왜성 고유 측정법 등의 분석 가치를 드높입니다.",
+                sigFeatures: [
+                    "회전 궤도 가이드를 완전 배제하고, 우주를 가로질러 서로 다르게 흘러가는 고유 우주 운동 궤적을 3차원으로 투영하여 대조합니다.",
+                    "식 현상이 배제된 플랫한 광도 곡선을 통해, 물리적 식쌍성과 겉보기 이중성을 과학적으로 완벽하게 감별해 내는 비교 능력을 배양합니다."
+                ],
+                presets: { m1: 1.5, r1: 1.0, t1: 6000, m2: 1.2, r2: 1.5, t2: 8000, inc: 90, pitch: 25 }
+            }
+        };
+
+        function switchBinaryType(type) {
+            state.activeType = type;
+            
+            Object.keys(tabs).forEach(key => {
+                const tab = tabs[key];
+                if (key === type) {
+                    tab.className = "px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold border transition-all duration-200 bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/30 flex items-center gap-2";
+                    tab.querySelector('span').className = "w-2.5 h-2.5 rounded-full bg-white animate-pulse";
+                } else {
+                    tab.className = "px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold border transition-all duration-200 bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 flex items-center gap-2";
+                    tab.querySelector('span').className = "w-2.5 h-2.5 rounded-full " + (key === 'semidetached' ? 'bg-orange-500' : key === 'contact' ? 'bg-red-500' : 'bg-slate-400');
+                }
+            });
+
+            const barycenterInfo = document.getElementById('barycenter-info');
+            if (type === 'optical') {
+                barycenterInfo.innerText = "물리적 중력 묶임 없음 (고유운동 다름)";
+            } else {
+                barycenterInfo.innerHTML = `<span class="inline-block w-2 h-2 bg-emerald-400 rounded-full mr-1.5"></span>질량 중심: (0, 0)`;
+            }
+
+            const info = academicData[type];
+            theoryDoms.title.innerText = info.title;
+            theoryDoms.mechanism.innerHTML = info.mechanism;
+            
+            theoryDoms.features.innerHTML = info.features.map(f => `<li class="flex items-start gap-1.5"><span class="text-indigo-400 font-bold">•</span> ${f}</li>`).join('');
+            theoryDoms.significance.innerHTML = info.significance;
+            theoryDoms.significanceFeatures.innerHTML = info.sigFeatures.map(f => `<li class="flex items-start gap-1.5"><span class="text-emerald-400 font-bold">•</span> ${f}</li>`).join('');
+
+            inputs.mass1.value = info.presets.m1;
+            inputs.radius1.value = info.presets.r1;
+            inputs.temp1.value = info.presets.t1;
+            inputs.mass2.value = info.presets.m2;
+            inputs.radius2.value = info.presets.r2;
+            inputs.temp2.value = info.presets.t2;
+            inputs.inclination.value = info.presets.inc;
+            inputs.cameraPitch.value = info.presets.pitch;
+
+            gasParticles = [];
+
+            updateStateFromInputs();
+        }
+
+        Object.keys(tabs).forEach(key => {
+            tabs[key].addEventListener('click', () => switchBinaryType(key));
+        });
+
+        inputs.resetBtn.addEventListener('click', () => {
+            switchBinaryType(state.activeType); 
+        });
+
+        // -------------------------------------------------------------
+        // 6. 그래픽스 및 렌더링 루프 (도플러 스펙트럼 편이폭 미세 보정 완료)
+        // -------------------------------------------------------------
+        function resizeCanvases() {
+            const orbitContainer = orbitCanvas.parentElement;
+            orbitCanvas.width = orbitContainer.clientWidth;
+            orbitCanvas.height = orbitContainer.clientHeight;
+
+            const graphContainer = graphCanvas.parentElement;
+            graphCanvas.width = graphContainer.clientWidth;
+            graphCanvas.height = graphContainer.clientHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvases);
+
+        function drawBackgroundStars(ctx, width, height) {
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 40; i++) {
+                const x = (Math.sin(i * 1234) * 0.5 + 0.5) * width;
+                const y = (Math.cos(i * 5678) * 0.5 + 0.5) * height;
+                const size = (Math.sin(i * 999) * 0.5 + 0.5) * 1.5;
+                ctx.globalAlpha = 0.3 + (Math.sin(state.phase * 2 + i) * 0.3);
+                ctx.fillRect(x, y, size, size);
+            }
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawDustNebula(ctx, w, h) {
+            if (state.dustDensity === 0) return;
+            
+            ctx.save();
+            const alpha = state.dustDensity / 130;
+            const grad = ctx.createRadialGradient(w/2, h/2, 50, w/2, h/2, Math.max(w, h)/1.2);
+            grad.addColorStop(0, `rgba(124, 45, 18, ${alpha})`); 
+            grad.addColorStop(0.5, `rgba(67, 20, 7, ${alpha * 0.7})`);
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+            ctx.restore();
+        }
+
+        // 🌟 [심화] 실시간 분광 스펙트럼 흡수선 편이폭 미세 보정
+        function drawDopplerSpectrum(ctx, w, h, radialVel1, radialVelocity2) {
+            if (!state.showDoppler || state.activeType === 'optical') return;
+
+            const specX = 20;
+            const specY = h - 65;
+            const specW = w - 40;
+            const specH = 30;
+
+            ctx.save();
+
+            // 1. 관측창 배경 테두리 그리기
+            ctx.fillStyle = '#070a13';
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.rect(specX - 4, specY - 22, specW + 8, specH + 34);
+            ctx.fill();
+            ctx.stroke();
+
+            // 타이틀 레이블
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillText('실시간 관측 스펙트럼 (H-α 흡수선 변이 추적기)', specX, specY - 10);
+
+            // 2. O-B-A-F-G-K-M 무지개색 그라데이션 광원 스트립 그리기
+            const rainbowGrad = ctx.createLinearGradient(specX, 0, specX + specW, 0);
+            rainbowGrad.addColorStop(0, '#3b82f6'); // Blue (고온 B형 영역)
+            rainbowGrad.addColorStop(0.25, '#22c55e'); // Green (F-G형 영역)
+            rainbowGrad.addColorStop(0.5, '#eab308'); // Yellow (G-K형 영역)
+            rainbowGrad.addColorStop(0.75, '#f97316'); // Orange
+            rainbowGrad.addColorStop(1, '#ef4444'); // Red (저온 M형 영역)
+
+            ctx.fillStyle = rainbowGrad;
+            ctx.fillRect(specX, specY, specW, specH);
+
+            // 3. 흡수선 중심선 가이드 그리기 (정지 상태의 파장선 656.3nm)
+            const restLineX = specX + specW / 2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(restLineX, specY);
+            ctx.lineTo(restLineX, specY + specH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 정지 상태 레이블
+            ctx.fillStyle = '#64748b';
+            ctx.font = '8px monospace';
+            ctx.fillText('λ₀ (656.3 nm)', restLineX - 25, specY + specH + 10);
+
+            // 🌟 4. [보정 완료] 스펙트럼 내 도플러 편이폭 미세 조정
+            // 기존 specW * 0.18에서 specW * 0.06 으로 축소하여 흡수선이 너무 과도하게 바깥으로 탈출하지 않도록 보정
+            const shiftAmplitude = specW * 0.06; 
+
+            // 별 1 흡수선 그리기
+            const shift1 = radialVel1 * shiftAmplitude;
+            const line1X = restLineX + shift1;
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = '#ea580c';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.moveTo(line1X, specY);
+            ctx.lineTo(line1X, specY + specH);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 별 2 흡수선 그리기
+            const shift2 = radialVelocity2 * shiftAmplitude;
+            const line2X = restLineX + shift2;
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = '#2563eb';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.moveTo(line2X, specY);
+            ctx.lineTo(line2X, specY + specH);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 편이 방향 글자 오버레이
+            ctx.fillStyle = '#60a5fa';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillText('◀ 청색편이 (Blue-shift)', specX + 4, specY - 10);
+            
+            ctx.fillStyle = '#f87171';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillText('적색편이 (Red-shift) ▶', specX + specW - 85, specY - 10);
+
+            ctx.restore();
+        }
+
+        function drawOrbitSimulation() {
+            const w = orbitCanvas.width;
+            const h = orbitCanvas.height;
+            const cx = w / 2;
+            const cy = h / 2 - 35; 
+            const scale = Math.min(w, h) / 7.5; 
+
+            orbitCtx.clearRect(0, 0, w, h);
+            drawBackgroundStars(orbitCtx, w, h);
+
+            const info = calculateFlux(state.phase);
+            const a1 = info.a1 * scale;
+            const a2 = info.a2 * scale;
+            const radInc = (state.inclination * Math.PI) / 180;
+            const cosInc = Math.cos(radInc);
+            const sinInc = Math.sin(radInc);
+
+            const camAngle = -state.cameraPitch * Math.PI / 180; 
+            const cosC = Math.cos(camAngle);
+            const sinC = Math.sin(camAngle);
+
+            function project(x, y, z) {
+                return {
+                    x: cx + x,
+                    y: cy + (y * cosC - z * sinC)
+                };
+            }
+
+            const radVelocity1 = Math.cos(state.phase);
+            const radVelocity2 = Math.cos(state.phase + Math.PI);
+
+            if (state.activeType === 'optical') {
+                const distOffset = 1.6 * scale;
+                const x1 = -distOffset + (state.phase / (2 * Math.PI)) * distOffset * 2;
+                const y1 = distOffset * 0.4;
+                const z1 = -scale * 0.5; 
+
+                const x2 = distOffset * 0.8 - (state.phase / (2 * Math.PI)) * distOffset * 2.5;
+                const y2 = -distOffset * 0.3;
+                const z2 = scale * 1.5;  
+
+                const pt1 = project(x1, y1, z1);
+                const pt2 = project(x2, y2, z2);
+
+                const radiusScale = scale * 0.45;
+                const r1Scaled = state.r1 * radiusScale;
+                const r2Scaled = state.r2 * radiusScale;
+
+                if (z1 < z2) {
+                    drawStar(orbitCtx, pt1.x, pt1.y, r1Scaled, state.t1, false, 0, 0, 1);
+                    drawStar(orbitCtx, pt2.x, pt2.y, r2Scaled, state.t2, false, 0, 0, 2);
+                } else {
+                    drawStar(orbitCtx, pt2.x, pt2.y, r2Scaled, state.t2, false, 0, 0, 2);
+                    drawStar(orbitCtx, pt1.x, pt1.y, r1Scaled, state.t1, false, 0, 0, 1);
+                }
+
+                orbitCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+                orbitCtx.lineWidth = 1.5;
+                orbitCtx.setLineDash([4, 4]);
+                orbitCtx.beginPath();
+                orbitCtx.moveTo(cx - distOffset, cy + y1);
+                orbitCtx.lineTo(cx + distOffset, cy + y1);
+                orbitCtx.stroke();
+                
+                orbitCtx.beginPath();
+                orbitCtx.moveTo(cx + distOffset * 0.8, cy + y2);
+                orbitCtx.lineTo(cx - distOffset * 1.7, cy + y2);
+                orbitCtx.stroke();
+                orbitCtx.setLineDash([]);
+                
+            } else {
+                // 1. Star 1의 공전 궤도선 그리기
+                orbitCtx.save();
+                orbitCtx.strokeStyle = 'rgba(249, 115, 22, 0.7)';
+                orbitCtx.lineWidth = 1.8;
+                orbitCtx.shadowColor = '#ea580c';
+                orbitCtx.shadowBlur = 6;
+                orbitCtx.setLineDash([5, 5]);
+                orbitCtx.beginPath();
+                for (let i = 0; i <= 100; i++) {
+                    const theta = (i / 100) * 2 * Math.PI;
+                    const x = a1 * Math.cos(theta);
+                    const y = a1 * Math.sin(theta) * cosInc;
+                    const z = a1 * Math.sin(theta) * sinInc;
+                    const pt = project(x, y, z);
+                    if (i === 0) orbitCtx.moveTo(pt.x, pt.y);
+                    else orbitCtx.lineTo(pt.x, pt.y);
+                }
+                orbitCtx.stroke();
+                orbitCtx.restore();
+
+                // 2. Star 2의 공전 궤도선 그리기
+                orbitCtx.save();
+                orbitCtx.strokeStyle = 'rgba(59, 130, 246, 0.7)';
+                orbitCtx.lineWidth = 1.8;
+                orbitCtx.shadowColor = '#2563eb';
+                orbitCtx.shadowBlur = 6;
+                orbitCtx.setLineDash([5, 5]);
+                orbitCtx.beginPath();
+                for (let i = 0; i <= 100; i++) {
+                    const theta = (i / 100) * 2 * Math.PI;
+                    const x = a2 * Math.cos(theta);
+                    const y = a2 * Math.sin(theta) * cosInc;
+                    const z = a2 * Math.sin(theta) * sinInc;
+                    const pt = project(x, y, z);
+                    if (i === 0) orbitCtx.moveTo(pt.x, pt.y);
+                    else orbitCtx.lineTo(pt.x, pt.y);
+                }
+                orbitCtx.stroke();
+                orbitCtx.restore();
+
+                if (state.activeType === 'contact') {
+                    orbitCtx.strokeStyle = 'rgba(16, 185, 129, 0.2)';
+                    orbitCtx.lineWidth = 1;
+                    orbitCtx.setLineDash([2, 4]);
+                    orbitCtx.beginPath();
+                    orbitCtx.ellipse(cx, cy, (a1 + a2) * 1.05, (a1 + a2) * 1.05 * cosInc, 0, 0, 2 * Math.PI);
+                    orbitCtx.stroke();
+                    orbitCtx.setLineDash([]);
+                }
+
+                // 3. 공통질량중심 표시
+                const baryCenter = project(0, 0, 0);
+                orbitCtx.fillStyle = '#34d399';
+                orbitCtx.beginPath();
+                orbitCtx.arc(baryCenter.x, baryCenter.y, 6, 0, 2 * Math.PI);
+                orbitCtx.fill();
+
+                // 4. 실시간 각 항성의 3D 좌표 추출
+                const x1_3d = a1 * Math.cos(state.phase);
+                const y1_3d = a1 * Math.sin(state.phase) * cosInc;
+                const z1_3d = a1 * Math.sin(state.phase) * sinInc; 
+
+                const x2_3d = a2 * Math.cos(state.phase + Math.PI);
+                const y2_3d = a2 * Math.sin(state.phase + Math.PI) * cosInc;
+                const z2_3d = a2 * Math.sin(state.phase + Math.PI) * sinInc;
+
+                const pt1 = project(x1_3d, y1_3d, z1_3d);
+                const pt2 = project(x2_3d, y2_3d, z2_3d);
+
+                const depth1 = y1_3d * (-sinC) + z1_3d * cosC;
+                const depth2 = y2_3d * (-sinC) + z2_3d * cosC;
+
+                const radiusScale = scale * 0.45;
+                const r1Scaled = state.r1 * radiusScale;
+                const r2Scaled = state.r2 * radiusScale;
+
+                const xG = 1.6 * scale;
+                const yG = -0.1 * scale * cosInc;
+                const zG = 0.5 * scale * sinInc;
+                const ptG = project(xG, yG, zG);
+                const rGScaled = 1.0 * radiusScale;
+                const depthG = yG * (-sinC) + zG * cosC;
+
+                // 질량 흐름 계산 갱신
+                updateGasStreamParticles(pt1, pt2);
+
+                const renderStack = [
+                    { id: 'star1', depth: depth1, draw: () => {
+                        const isDistorted = (state.activeType === 'contact' || state.activeType === 'semidetached');
+                        drawStar(orbitCtx, pt1.x, pt1.y, r1Scaled, state.t1, isDistorted, Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x), radVelocity1, 1);
+                    }},
+                    { id: 'star2', depth: depth2, draw: () => {
+                        const isDistorted = (state.activeType === 'contact' || state.activeType === 'semidetached');
+                        drawStar(orbitCtx, pt2.x, pt2.y, r2Scaled, state.t2, isDistorted, Math.atan2(pt1.y - pt2.y, pt1.x - pt2.x), radVelocity2, 2);
+                    }}
+                ];
+                
+                if (state.hasGiant) {
+                    renderStack.push({ id: 'giant', depth: depthG - 1.2, draw: () => drawGiantRedStar(orbitCtx, ptG.x, ptG.y, rGScaled * 1.6) });
+                }
+
+                renderStack.sort((a, b) => b.depth - a.depth); 
+                renderStack.forEach(star => star.draw());
+
+                if (state.activeType === 'semidetached' && gasParticles.length > 0) {
+                    orbitCtx.save();
+                    gasParticles.forEach(p => {
+                        const isStar1Hotter = state.t1 >= state.t2;
+                        const px = isStar1Hotter ? (pt2.x + (pt1.x - pt2.x) * p.progress) : (pt1.x + (pt2.x - pt1.x) * p.progress);
+                        const py = isStar1Hotter ? (pt2.y + (pt1.y - pt2.y) * p.progress) : (pt1.y + (pt2.y - pt1.y) * p.progress);
+                        
+                        orbitCtx.fillStyle = `rgba(244, 63, 94, ${p.alpha})`; 
+                        orbitCtx.beginPath();
+                        orbitCtx.arc(px, py, p.size, 0, 2 * Math.PI);
+                        orbitCtx.fill();
+                    });
+                    orbitCtx.restore();
+                }
+            }
+
+            drawDustNebula(orbitCtx, w, h);
+
+            // 지구 관측자 시선 방향 화살표 마커
+            orbitCtx.save();
+            orbitCtx.translate(45, h - 145); 
+            orbitCtx.strokeStyle = '#ef4444';
+            orbitCtx.fillStyle = '#ef4444';
+            orbitCtx.lineWidth = 2.5;
+            orbitCtx.shadowColor = '#ef4444';
+            orbitCtx.shadowBlur = 6;
+            
+            const arrowLength = 25 * Math.cos(camAngle);
+            orbitCtx.beginPath();
+            orbitCtx.moveTo(0, arrowLength / 2 + 5);
+            orbitCtx.lineTo(0, -arrowLength / 2 - 5);
+            orbitCtx.stroke();
+            
+            orbitCtx.beginPath();
+            orbitCtx.moveTo(-5, -arrowLength / 2);
+            orbitCtx.lineTo(0, -arrowLength / 2 - 10);
+            orbitCtx.lineTo(5, -arrowLength / 2);
+            orbitCtx.fill();
+            
+            orbitCtx.font = 'bold 10px sans-serif';
+            orbitCtx.fillStyle = '#f87171';
+            orbitCtx.shadowBlur = 0;
+            orbitCtx.fillText('지구 관측자 시선', 12, -2);
+            orbitCtx.restore();
+
+            // 실시간 분광 스펙트럼 렌더링 호출
+            drawDopplerSpectrum(orbitCtx, w, h, radVelocity1, radVelocity2);
+
+            displays.eclipseStatus.innerText = info.type;
+            if (info.type.includes("주극소")) {
+                displays.eclipseStatus.className = "absolute bottom-[105px] right-3 bg-red-950/80 text-red-400 px-3 py-1.5 rounded-lg border border-red-800/80 text-xs font-bold animate-pulse z-10";
+            } else if (info.type.includes("부극소")) {
+                displays.eclipseStatus.className = "absolute bottom-[105px] right-3 bg-yellow-950/80 text-yellow-400 px-3 py-1.5 rounded-lg border border-yellow-800/80 text-xs font-bold animate-pulse z-10";
+            } else if (info.type.includes("거성")) {
+                displays.eclipseStatus.className = "absolute bottom-[105px] right-3 bg-indigo-950/80 text-indigo-400 px-3 py-1.5 rounded-lg border border-indigo-800/80 text-xs font-bold animate-pulse z-10";
+            } else if (info.type.includes("연속")) {
+                displays.eclipseStatus.className = "absolute bottom-[105px] right-3 bg-rose-950/80 text-rose-300 px-3 py-1.5 rounded-lg border border-rose-800/80 text-xs font-bold animate-pulse z-10";
+            } else {
+                displays.eclipseStatus.className = "absolute bottom-[105px] right-3 bg-slate-950/80 text-slate-400 px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-medium z-10";
+            }
+        }
+
+        // 항성 그리기
+        function drawStar(ctx, x, y, radius, temp, isDistorted = false, angle = 0, radVelocity = 0, starNum = 1) {
+            const spec = getStarColorAndSpectral(temp, state.dustDensity);
+            let r = spec.rgb[0];
+            let g = spec.rgb[1];
+            let b = spec.rgb[2];
+
+            const isStar1Primary = state.t1 >= state.t2;
+            const starLabel = (starNum === 1) 
+                ? (isStar1Primary ? "주성 (Star 1)" : "동반성 (Star 1)")
+                : (isStar1Primary ? "동반성 (Star 2)" : "주성 (Star 2)");
+
+            // 도플러 시각화 효과
+            if (state.showDoppler && state.activeType !== 'optical') {
+                const glowSize = Math.abs(radVelocity) * radius * 1.5;
+                if (radVelocity > 0.05 && glowSize > 1) { // 멀어짐 (적색편이)
+                    const glowGrad = ctx.createRadialGradient(x, y, radius, x, y + radVelocity * 25, radius + glowSize * 2);
+                    glowGrad.addColorStop(0, 'rgba(239, 68, 68, 0.7)');
+                    glowGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+                    ctx.fillStyle = glowGrad;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius + glowSize * 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    r = Math.min(255, r + 45);
+                    g = Math.max(0, g - 25);
+                    b = Math.max(0, b - 45);
+                } else if (radVelocity < -0.05 && glowSize > 1) { // 다가옴 (청색편이)
+                    const glowGrad = ctx.createRadialGradient(x, y, radius, x, y + radVelocity * 25, radius + glowSize * 2);
+                    glowGrad.addColorStop(0, 'rgba(59, 130, 246, 0.8)');
+                    glowGrad.addColorStop(1, 'rgba(59, 130, 246, 0)');
+                    ctx.fillStyle = glowGrad;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius + glowSize * 2, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    b = Math.min(255, b + 60);
+                    r = Math.max(0, r - 45);
+                    g = Math.max(0, g - 15);
+                }
+            }
+
+            ctx.save();
+            ctx.translate(x, y);
+            
+            if (isDistorted) {
+                ctx.rotate(angle);
+                ctx.scale(1.35, 0.9); 
+            }
+
+            const grad = ctx.createRadialGradient(-radius/3, -radius/3, radius * 0.05, 0, 0, radius);
+            grad.addColorStop(0, '#ffffff'); 
+            grad.addColorStop(0.2, `rgb(${Math.min(255, r + 50)}, ${Math.min(255, g + 50)}, ${Math.min(255, b + 50)})`);
+            grad.addColorStop(0.6, `rgb(${r}, ${g}, ${b})`);
+            
+            if (state.limbDarkening) {
+                grad.addColorStop(0.85, `rgba(${Math.floor(r * 0.5)}, ${Math.floor(g * 0.5)}, ${Math.floor(b * 0.5)}, 0.8)`);
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            } else {
+                grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            }
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 1.3, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.55)`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+
+            // 항성 이름 및 시선 속도 상태 텍스트
+            ctx.save();
+            ctx.fillStyle = '#f1f5f9';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillText(starLabel, x - 25, y - radius - 15);
+
+            if (state.showDoppler && state.activeType !== 'optical') {
+                ctx.font = '8px monospace';
+                if (radVelocity > 0.1) {
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillText(`[후퇴] +${(radVelocity * 45).toFixed(1)} km/s`, x - 30, y - radius - 5);
+                } else if (radVelocity < -0.1) {
+                    ctx.fillStyle = '#3b82f6';
+                    ctx.fillText(`[접근] ${(radVelocity * 45).toFixed(1)} km/s`, x - 30, y - radius - 5);
+                }
+            }
+            ctx.restore();
+
+            // 도플러 시선 속도 화살표 벡터 드로잉 
+            if (state.showDoppler && state.activeType !== 'optical') {
+                ctx.save();
+                const vectorLen = radVelocity * 45; 
+                if (Math.abs(vectorLen) > 3) {
+                    ctx.strokeStyle = (radVelocity > 0) ? '#ef4444' : '#3b82f6'; 
+                    ctx.lineWidth = 3; 
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x, y - vectorLen);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = (radVelocity > 0) ? '#ef4444' : '#3b82f6';
+                    ctx.beginPath();
+                    ctx.arc(x, y - vectorLen, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        // 적색 거성 그리기 함수
+        function drawGiantRedStar(ctx, x, y, radius) {
+            ctx.save();
+            const grad = ctx.createRadialGradient(x - radius/3, y - radius/3, radius * 0.05, x, y, radius);
+            grad.addColorStop(0, '#ffedd5'); 
+            grad.addColorStop(0.3, '#dc2626');
+            grad.addColorStop(0.7, '#991b1b');
+            grad.addColorStop(1, 'rgba(153, 27, 27, 0)');
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 1.2, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(220, 38, 38, 0.45)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 9px monospace';
+            ctx.fillText('적색 거성 (Giant)', x - 35, y + radius + 12);
+            ctx.restore();
+        }
+
+        // 실시간 광도 곡선 그래프 플로팅
+        function drawLightCurve() {
+            const w = graphCanvas.width;
+            const h = graphCanvas.height;
+            const paddingLeft = 40;
+            const paddingRight = 15;
+            const paddingTop = 20;
+            const paddingBottom = 30;
+
+            const plotWidth = w - paddingLeft - paddingRight;
+            const plotHeight = h - paddingTop - paddingBottom;
+
+            graphCtx.clearRect(0, 0, w, h);
+
+            graphCtx.strokeStyle = '#1e293b';
+            graphCtx.lineWidth = 1;
+            
+            for (let i = 0; i <= 4; i++) {
+                const y = paddingTop + (plotHeight * i / 4);
+                graphCtx.beginPath();
+                graphCtx.moveTo(paddingLeft, y);
+                graphCtx.lineTo(w - paddingRight, y);
+                graphCtx.stroke();
+                
+                graphCtx.fillStyle = '#64748b';
+                graphCtx.font = '9px monospace';
+                const percent = (100 - (i * 25)).toFixed(0) + "%";
+                graphCtx.fillText(percent, 8, y + 3);
+            }
+
+            const phaseLabels = [
+                { x: 0, text: '0' },
+                { x: 0.25, text: '0.5π' },
+                { x: 0.5, text: '1.0π' },
+                { x: 0.75, text: '1.5π' },
+                { x: 1, text: '2.0π' }
+            ];
+            phaseLabels.forEach(lbl => {
+                const x = paddingLeft + (plotWidth * lbl.x);
+                graphCtx.fillStyle = '#64748b';
+                graphCtx.font = '9px monospace';
+                graphCtx.fillText(lbl.text, x - 10, h - 12);
+            });
+
+            graphCtx.strokeStyle = '#6366f1';
+            graphCtx.lineWidth = 2.5;
+            graphCtx.beginPath();
+
+            let firstPoint = true;
+            const pointsCount = 200;
+            const minScale = 0.0; 
+
+            for (let i = 0; i <= pointsCount; i++) {
+                const checkPhase = (i / pointsCount) * 2 * Math.PI;
+                const calc = calculateFlux(checkPhase);
+                
+                const normalizedFlux = (calc.ratio - minScale) / (1.0 - minScale);
+                const px = paddingLeft + (i / pointsCount) * plotWidth;
+                const py = paddingTop + plotHeight * (1 - normalizedFlux);
+
+                if (firstPoint) {
+                    graphCtx.moveTo(px, py);
+                    firstPoint = false;
+                } else {
+                    graphCtx.lineTo(px, py);
+                }
+            }
+            graphCtx.stroke();
+
+            const currentRatio = (state.phase / (2 * Math.PI)) % 1.0;
+            const currentCalc = calculateFlux(state.phase);
+            
+            const currentNormalized = (currentCalc.ratio - minScale) / (1.0 - minScale);
+            const currentX = paddingLeft + currentRatio * plotWidth;
+            const currentY = paddingTop + plotHeight * (1 - currentNormalized);
+
+            graphCtx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+            graphCtx.setLineDash([2, 3]);
+            graphCtx.beginPath();
+            graphCtx.moveTo(currentX, paddingTop);
+            graphCtx.lineTo(currentX, h - paddingBottom);
+            graphCtx.stroke();
+            graphCtx.setLineDash([]); 
+
+            graphCtx.fillStyle = '#10b981';
+            graphCtx.beginPath();
+            graphCtx.arc(currentX, currentY, 6, 0, 2 * Math.PI);
+            graphCtx.fill();
+            
+            graphCtx.strokeStyle = '#ffffff';
+            graphCtx.lineWidth = 1.5;
+            graphCtx.beginPath();
+            graphCtx.arc(currentX, currentY, 6, 0, 2 * Math.PI);
+            graphCtx.stroke();
+
+            displays.currentPhase.innerText = (state.phase / Math.PI).toFixed(2) + "π";
+            displays.currentFlux.innerText = (currentCalc.ratio * 100).toFixed(1) + "%";
+        }
+
+        function tick() {
+            if (state.isPlaying) {
+                const phaseIncrement = 0.015 * state.speed;
+                state.phase = (state.phase + phaseIncrement) % (2 * Math.PI);
+            }
+
+            drawOrbitSimulation();
+            drawLightCurve();
+
+            requestAnimationFrame(tick);
+        }
+
+        window.onload = function() {
+            resizeCanvases();
+            switchBinaryType('detached'); 
+            
+            tick();
+        };
+    </script>
+</body>
+</html>

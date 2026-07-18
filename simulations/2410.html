@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중력 렌즈 효과 시뮬레이터</title>
+    <!-- Tailwind CSS 사용 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 아이콘 사용 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MathJax 수식 렌더링 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        /* Pulse Animation for interactive viewer */
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.03); opacity: 1; }
+        }
+        .pulse-view {
+            animation: pulse-glow 2s infinite;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col font-sans overflow-hidden bg-gray-950">
+
+    <!-- 헤더 영역 (컴팩트 헤더) -->
+    <header class="bg-gray-900 border-b border-gray-800 px-6 py-2.5 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 shrink-0 select-none">
+        <div>
+            <h1 class="text-lg md:text-xl font-bold text-sky-400 flex items-center gap-2">
+                <i class="fa-solid fa-circle-nodes"></i>
+                우주 물리 시뮬레이션: 중력 렌즈 보기 (Gravitational Lensing)
+            </h1>
+            <p class="text-[10px] text-gray-400">질량에 의한 시공간 왜곡과 빛의 경로 굴절 및 중력 렌즈 방정식 계산</p>
+        </div>
+        <div class="flex gap-2 text-[10px] bg-gray-950 px-2.5 py-1 rounded border border-gray-800">
+            <span class="text-yellow-400 font-bold">참고 상수:</span>
+            <span class="text-gray-300">광속 $c \approx 3 \times 10^8 \text{ m/s}$</span>
+            <span class="text-gray-500">|</span>
+            <span class="text-gray-300">중력상수 $G \approx 6.67 \times 10^{-11} \text{ m}^3\text{kg}^{-1}\text{s}^{-2}$</span>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 (Viewport 맞춤형 스크롤 없는 구조) -->
+    <main class="flex-1 grid grid-cols-1 xl:grid-cols-4 gap-3 p-3 overflow-hidden min-h-0">
+        
+        <!-- 왼쪽: 메인 우주 시뮬레이션 및 관측 뷰 (Canvas 영역 - 3개 열 차지) -->
+        <div class="xl:col-span-3 flex flex-col gap-3 h-full min-h-0">
+            
+            <!-- 상단: 시뮬레이션 Canvas 패널 (고정 유연 구조) -->
+            <div class="relative bg-black rounded-xl border border-gray-800 overflow-hidden shadow-2xl flex-1 flex flex-col min-h-0">
+                <!-- 캔버스 자체 -->
+                <div class="relative flex-1 bg-gradient-to-b from-gray-950 to-black min-h-0">
+                    <canvas id="simulationCanvas" class="absolute top-0 left-0 w-full h-full block cursor-pointer"></canvas>
+                    
+                    <!-- 접고 펼칠 수 있는 인터랙티브 조작 안내 배너 -->
+                    <div id="guideContainer" class="absolute top-2 left-2 bg-gray-900/95 backdrop-blur-md p-2.5 rounded-lg border border-gray-700/50 text-[11px] max-w-xs z-10 transition-all duration-300 select-none">
+                        <div class="flex justify-between items-center gap-3 cursor-pointer" id="btnToggleGuide" title="조작 안내 접기/펼치기">
+                            <span class="font-bold text-sky-400 text-xs flex items-center gap-1">
+                                <i class="fa-solid fa-lightbulb text-yellow-400"></i> 조작 안내
+                            </span>
+                            <span class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded text-[9px] flex items-center gap-1 font-medium transition">
+                                <span id="guideToggleText">접기</span>
+                                <i id="guideToggleIcon" class="fa-solid fa-chevron-up"></i>
+                            </span>
+                        </div>
+                        <div id="guideContent" class="space-y-1 mt-1.5 text-gray-300 transition-all duration-300">
+                            <div class="border-t border-gray-800 pt-1">• <b>마우스 상하 드래그</b>: 퀘이사(실제 원래 위치)를 상하로 드래그하여 정렬 각도 오차($\beta$)를 조작할 수 있습니다.</div>
+                            <div>• <b>은하 좌우 드래그</b>: 은하의 위치를 드래그하여 관측자-렌즈 거리를 조작할 수 있습니다.</div>
+                            <div>• <b>실시간 광선 추적</b>: 퀘이사에서 지구로 쏟아지는 광자 입자(실제 빛의 경로)와 겉보기 관측선(상으로 이어지는 오렌지색 선)을 대조해보세요.</div>
+                        </div>
+                    </div>
+
+                    <!-- 실시간 뷰포트 선택 및 레이블 안내 -->
+                    <div class="absolute top-2 right-2 bg-gray-900/80 backdrop-blur-md p-2 rounded-lg border border-gray-700/50 text-[10px] flex flex-col gap-0.5 pointer-events-none z-10">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 bg-yellow-400 rounded-full inline-block"></span>
+                            <span>광원 (퀘이사) 실제 위치</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 bg-orange-500 rounded-full inline-block"></span>
+                            <span>지구에서 관측되는 가상 이미지 (상)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-0.5 bg-cyan-400 inline-block"></span>
+                            <span>실제 빛의 굴절 경로 (광자 흐름)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-0.5 border-t border-dashed border-orange-500 inline-block"></span>
+                            <span>겉보기 관측 경로 (완벽한 직선 연장선)</span>
+                        </div>
+                    </div>
+
+                    <!-- 아인슈타인 링 실시간 미니 뷰포트 (우측 하단) -->
+                    <div id="btnOpenFullscreen" class="absolute bottom-2 right-2 bg-gray-900/90 hover:bg-gray-800/95 cursor-pointer backdrop-blur-md p-2 rounded-xl border border-gray-700 hover:border-sky-500 w-36 h-40 flex flex-col z-10 transition-all duration-200 group">
+                        <div class="text-[9px] text-gray-300 font-bold text-center mb-0.5 flex justify-between items-center">
+                            <span>지구 관측자 시점 뷰</span>
+                            <span class="text-[8px] text-sky-400"><i class="fa-solid fa-magnifying-glass-plus animate-bounce"></i> 크게보기</span>
+                        </div>
+                        <div class="flex-1 bg-black rounded-lg border border-gray-800 overflow-hidden relative">
+                            <canvas id="observerCanvas" class="w-full h-full block"></canvas>
+                        </div>
+                        <div class="text-[8px] text-center text-gray-500 mt-0.5 group-hover:text-sky-300 transition duration-150">클릭하면 전체화면 전환</div>
+                    </div>
+                </div>
+
+                <!-- 시뮬레이션 제어 플레이바 (Canvas 하단) -->
+                <div class="bg-gray-900 px-3 py-2 border-t border-gray-800 flex flex-wrap items-center justify-between gap-3 shrink-0 z-20 select-none">
+                    <div class="flex items-center gap-2">
+                        <button id="btnPlay" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition duration-200">
+                            <i id="playIcon" class="fa-solid fa-pause"></i> <span id="playText">일시정지</span>
+                        </button>
+                        <button id="btnReset" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition duration-200">
+                            <i class="fa-solid fa-arrow-rotate-left"></i> 초기화
+                        </button>
+                    </div>
+                    
+                    <!-- 교과서 연동형 뷰 모드 셀렉터 -->
+                    <div class="flex items-center gap-3 bg-gray-950 px-3 py-1 rounded-lg border border-gray-800 text-[11px]">
+                        <span class="text-gray-400 font-bold">표시 모드:</span>
+                        <label class="flex items-center gap-1 cursor-pointer text-gray-300 hover:text-white transition">
+                            <input type="radio" name="viewMode" value="original" class="text-sky-500 focus:ring-0 cursor-pointer">
+                            <span>원래 위치</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer text-gray-300 hover:text-white transition">
+                            <input type="radio" name="viewMode" value="observed" checked class="text-sky-500 focus:ring-0 cursor-pointer">
+                            <span>관측된 위치</span>
+                        </label>
+                    </div>
+
+                    <div class="text-[10px] text-gray-400 flex items-center gap-1.5">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="systemStatus">실시간 계산 엔진 작동 중</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 하단: 정밀 제어 슬라이더 (조작 변인 설정 패널) -->
+            <div class="bg-gray-900/80 p-3.5 rounded-xl border border-gray-800 grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 select-none">
+                <!-- 1. 렌즈 천체 질량 (M) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-sky-400 flex items-center gap-1">
+                            <i class="fa-solid fa-weight-hanging"></i> 렌즈 은하 질량 ($M$)
+                        </label>
+                        <span id="valMassText" class="text-[10px] font-semibold bg-gray-850 px-1.5 py-0.5 rounded border border-gray-700 text-yellow-300">
+                            $1.0 \times 10^{12} \, M_\odot$
+                        </span>
+                    </div>
+                    <input type="range" id="inputMass" min="0.1" max="5.0" step="0.1" value="1.0" class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                    <p class="text-[10px] text-gray-400">아인슈타인 반지름($\theta_E$)과 굴절각($\alpha$)이 질량에 비례하여 작동합니다.</p>
+                </div>
+
+                <!-- 2. 임팩트 파라미터 (d, R) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                            <i class="fa-solid fa-ruler-horizontal"></i> 광원-렌즈 임팩트 거리 ($d_1$, $R$)
+                        </label>
+                        <span id="valDistanceDText" class="text-[10px] font-semibold bg-gray-850 px-1.5 py-0.5 rounded border border-gray-700 text-yellow-300">
+                            $15.0 \text{ kpc}$
+                        </span>
+                    </div>
+                    <input type="range" id="inputImpact" min="1.0" max="45.0" step="0.5" value="15.0" class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    <p class="text-[10px] text-gray-400">빛의 실제 경로가 은하 중심을 통과하는 최단 접근 거리입니다.</p>
+                </div>
+
+                <!-- 3. 관측자-렌즈 거리 (d_2, D_L) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-indigo-400 flex items-center gap-1">
+                            <i class="fa-solid fa-arrows-left-right"></i> 관측자-렌즈 거리 ($d_2, D_L$)
+                        </label>
+                        <span id="valDistanceD2Text" class="text-[10px] font-semibold bg-gray-850 px-1.5 py-0.5 rounded border border-gray-700 text-yellow-300">
+                            $400 \text{ Mpc}$
+                        </span>
+                    </div>
+                    <input type="range" id="inputDistanceL" min="100" max="800" step="10" value="400" class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    <p class="text-[10px] text-gray-400">지구와 중력 렌즈 은하 사이의 거리를 조절합니다.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 수식 해설 및 실시간 계산 수치 패널 (1개 열 차지 - 내부 스크롤 적용) -->
+        <div class="flex flex-col gap-3 h-full overflow-y-auto pr-1 min-h-0">
+            
+            <!-- 실시간 계산 수치 대시보드 (컴팩트 카드 구성) -->
+            <div class="bg-gray-900 p-4 rounded-xl border border-gray-800 space-y-3 shrink-0">
+                <h2 class="text-sm font-bold text-yellow-400 border-b border-gray-800 pb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-calculator"></i> 실시간 연산 및 물리값 출력
+                </h2>
+                
+                <div class="space-y-2">
+                    <!-- 독립된 수치 해석용 천체 물리 상수 정보 테이블 패널 -->
+                    <div class="p-2.5 bg-slate-950 rounded-lg border border-indigo-900/40 space-y-1.5">
+                        <div class="text-[10px] text-indigo-300 font-bold border-b border-gray-900 pb-1 flex items-center gap-1">
+                            <i class="fa-solid fa-atom"></i> 연산 적용 우주 물리 상수 ($Constants$)
+                        </div>
+                        <div class="grid grid-cols-1 gap-0.5 text-[10px] text-gray-300 font-sans">
+                            <div class="flex justify-between border-b border-gray-900/30 pb-0.5">
+                                <span class="text-gray-400">중력 상수 ($G$)</span>
+                                <span class="font-mono text-indigo-200">$6.674 \times 10^{-11} \text{ m}^3\text{kg}^{-1}\text{s}^{-2}$</span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-900/30 pb-0.5">
+                                <span class="text-gray-400">진공 광속 ($c$)</span>
+                                <span class="font-mono text-indigo-200">$2.998 \times 10^8 \text{ m/s}$</span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-900/30 pb-0.5">
+                                <span class="text-gray-400">태양 질량 ($M_\odot$)</span>
+                                <span class="font-mono text-indigo-200">$1.989 \times 10^{30} \text{ kg}$</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">파섹 단위 ($1 \text{ kpc}$)</span>
+                                <span class="font-mono text-indigo-200">$3.086 \times 10^{19} \text{ m}$</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 1. 총 굴절각 -->
+                    <div class="p-2.5 bg-gray-950 rounded-lg border border-gray-800/80 space-y-1">
+                        <div class="flex justify-between items-center border-b border-gray-900 pb-1">
+                            <span class="text-[11px] text-gray-400 font-semibold">1. 빛의 총 굴절각 ($\alpha$)</span>
+                            <span id="calcAlpha" class="font-bold text-sky-400 text-xs">1.15" (arcsec)</span>
+                        </div>
+                        <div class="py-1 flex justify-center bg-gray-900/50 rounded overflow-x-auto text-[10px]" id="formulaAlpha">
+                            $$\alpha = \frac{4GM}{c^2 R}$$
+                        </div>
+                    </div>
+
+                    <!-- 2. 아인슈타인 반지름 -->
+                    <div class="p-2.5 bg-gray-950 rounded-lg border border-gray-800/80 space-y-1">
+                        <div class="flex justify-between items-center border-b border-gray-900 pb-1">
+                            <span class="text-[11px] text-gray-400 font-semibold">2. 아인슈타인 반지름 ($\theta_E$)</span>
+                            <span id="calcThetaE" class="font-bold text-emerald-400 text-xs">1.84" (arcsec)</span>
+                        </div>
+                        <div class="py-1 flex justify-center bg-gray-900/50 rounded overflow-x-auto text-[10px]" id="formulaThetaE">
+                            $$\theta_E = \sqrt{\frac{4GM}{c^2} \frac{D_{LS}}{D_L D_S}}$$
+                        </div>
+                    </div>
+
+                    <!-- 3. 광원의 실제 각위치 -->
+                    <div class="p-2.5 bg-gray-950 rounded-lg border border-gray-800/80 space-y-1">
+                        <div class="flex justify-between items-center border-b border-gray-900 pb-1">
+                            <span class="text-[11px] text-gray-400 font-semibold">3. 광원의 실제 각위치 ($\beta$)</span>
+                            <span id="calcBeta" class="font-bold text-yellow-400 text-xs">0.82" (arcsec)</span>
+                        </div>
+                        <div class="py-1 flex justify-center bg-gray-900/50 rounded overflow-x-auto text-[10px]" id="formulaBeta">
+                            $$\beta = \theta - \alpha \frac{D_{LS}}{D_S}$$
+                        </div>
+                    </div>
+
+                    <!-- 4. 관측되는 상의 위치 -->
+                    <div class="p-2.5 bg-gray-950 rounded-lg border border-gray-800/80 space-y-1">
+                        <span class="text-[11px] text-gray-400 font-semibold block">4. 관측되는 두 상의 각위치 ($\theta_{1,2}$)</span>
+                        <div id="calcTheta" class="font-bold text-orange-400 text-[11px] py-1 bg-gray-900/50 rounded text-center">
+                            θ₁ = 2.31", θ₂ = -1.45"
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 핵심 과학 원리 및 수식 가이드 -->
+            <div class="bg-gray-900 p-4 rounded-xl border border-gray-800 space-y-3 shrink-0">
+                <h2 class="text-sm font-bold text-indigo-400 border-b border-gray-800 pb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap"></i> 중력 렌즈 원리 교실
+                </h2>
+                
+                <div class="space-y-3 text-[11px] leading-relaxed text-gray-300">
+                    <div>
+                        <h3 class="font-bold text-sky-300 mb-0.5">1. 아인슈타인의 시공간 굴절</h3>
+                        <p class="text-gray-400">
+                            아인슈타인의 일반 상대성 이론에 의하면, 질량이 큰 천체 주변은 시공간이 휘어집니다. 이 뒤를 통과하는 빛은 휘어진 시공간의 최단경로(측지선)를 따라 진행하므로 마치 볼록 렌즈를 통과한 것처럼 경로가 굴절됩니다.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-sky-300 mb-0.5">2. 총 굴절각 공식 ($\alpha$)</h3>
+                        <p class="text-gray-400">
+                            $G$는 중력상수, $M$은 렌즈 천체의 질량, $c$는 광속, $R$은 광선이 천체 중심에서 가장 가까워지는 거리(임팩트 파라미터)입니다. 질량이 클수록, 또 가까이 지날수록 굴절각이 강해집니다.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-sky-300 mb-0.5">3. 중력 렌즈 방정식</h3>
+                        <p class="text-gray-400">
+                            $\beta$는 실제 광원의 각도 위치, $\theta$는 관측되는 겉보기 상의 각도 위치입니다. $D_{LS}$는 렌즈와 광원 사이의 거리, $D_S$는 관측자와 광원 사이의 거리입니다. 이 방정식을 풀면 관측자가 보는 상의 개수와 모양을 완벽하게 재구성할 수 있습니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 전체화면 모달 구조 (수식 패널이 좌우 캔버스를 절대 침범하지 않도록 병렬 Grid 구성으로 완벽 교정) -->
+    <div id="fullscreenModal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300 select-none">
+        <div class="absolute top-4 right-4 flex gap-4 items-center">
+            <span class="text-xs text-gray-400 font-medium bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800">
+                <i class="fa-solid fa-expand text-sky-400"></i> 고해상도 아인슈타인 링 물리 시뮬레이션 모드
+            </span>
+            <button id="btnCloseFullscreen" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg hover:shadow-red-500/20 flex items-center gap-1.5">
+                <i class="fa-solid fa-xmark"></i> 닫기 (Exit)
+            </button>
+        </div>
+        
+        <!-- 전체화면 내부 설명 가이드 -->
+        <div class="text-center max-w-lg mb-6 px-4">
+            <h3 class="text-xl font-bold text-yellow-400">지구 관측자 시점 확대 뷰</h3>
+            <p class="text-xs text-gray-400 mt-1">
+                실제 퀘이사 위치각 오차($\beta$)에 의해 분기되는 두 아크(상 1, 상 2)의 실시간 대칭성 및 아인슈타인 반지름 가이드를 전면 투사합니다.
+            </p>
+        </div>
+
+        <!-- [수정 사항] 화면 종횡비 왜곡을 완전히 복원하기 위해 강제 flex-row 대신, 반응형 뷰포트에 맞춘 완벽 1:1 보장 flex 컨테이너 구축 -->
+        <div class="flex flex-col xl:flex-row gap-8 items-center justify-center max-w-[95vw] max-h-[75vh]">
+            <!-- 왼쪽: 고해상도 고리 드로잉 캔버스 보호 영역 (w와 h가 뷰포트 높이에 엄격히 바인딩된 aspect-square 고정 컨테이너) -->
+            <div class="relative w-[50vh] h-[55vh] max-w-[85vw] max-h-[85vw] aspect-square bg-black rounded-2xl border border-gray-800 shadow-2xl p-3 flex items-center justify-center">
+                <canvas id="fullscreenObserverCanvas" class="w-full h-full block rounded-xl aspect-square"></canvas>
+            </div>
+
+            <!-- 오른쪽: 실시간 연산 & 수식 가이드 카드 (가로 정렬 구조로 절대 링 영역을 침범하지 않음) -->
+            <div id="fullscreenInfoCard" class="bg-slate-900/90 p-4 rounded-xl border border-gray-800/80 w-[280px] text-xs text-gray-300 shadow-2xl space-y-3.5 shrink-0">
+                <div class="font-bold text-sky-400 text-xs border-b border-gray-800/80 pb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-square-root-variable"></i> 실시간 연산 & 수식 가이드
+                </div>
+                
+                <!-- 1. 빛의 총 굴절각 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-gray-400">
+                        <span class="font-semibold text-[11px]">총 굴절각 ($\alpha$)</span>
+                        <span id="fsAlphaVal" class="text-sky-400 font-bold text-xs">0.000"</span>
+                    </div>
+                    <div class="bg-gray-950 p-2 rounded text-center text-[10px] text-gray-400 font-mono">
+                        $\alpha = \frac{4GM}{c^2 R}$
+                    </div>
+                </div>
+
+                <!-- 2. 아인슈타인 반지름 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-gray-400">
+                        <span class="font-semibold text-[11px]">아인슈타인 반지름 ($\theta_E$)</span>
+                        <span id="fsThetaEVal" class="text-emerald-400 font-bold text-xs">0.000"</span>
+                    </div>
+                    <div class="bg-gray-950 p-2 rounded text-center text-[10px] text-gray-400 font-mono">
+                        $\theta_E = \sqrt{\frac{4GM}{c^2}\frac{D_{LS}}{D_L D_S}}$
+                    </div>
+                </div>
+
+                <!-- 3. 광원의 원래 각위치 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-gray-400">
+                        <span class="font-semibold text-[11px]">광원 각위치 ($\beta$)</span>
+                        <span id="fsBetaVal" class="text-yellow-400 font-bold text-xs">0.000"</span>
+                    </div>
+                    <div class="bg-gray-950 p-2 rounded text-center text-[10px] text-gray-400 font-mono">
+                        $\beta = \theta - \alpha\frac{D_{LS}}{D_S}$
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 푸터 영역 (매우 컴팩트) -->
+    <footer class="bg-gray-950 border-t border-gray-900 px-6 py-2 text-center text-[10px] text-gray-600 shrink-0 select-none">
+        <p>© 2026 중력 렌즈 시뮬레이터 프로젝트. 과학적 계산 모델 및 인터랙티브 캔버스 물리 엔진 탑재.</p>
+    </footer>
+
+    <!-- 시뮬레이션 구동 자바스크립트 엔진 -->
+    <script>
+        // 1. 상수 정의 (실제 천문 스케일을 화면 좌표계에 맞게 환산하기 위한 상수들)
+        const G = 4.30091e-3; // pc * (km/s)^2 / M_sun (천문학 단위계)
+        const C_SPEED = 299792.458; // km/s (광속)
+        
+        // 시뮬레이터 상태 변수
+        let isPlaying = true;
+        let animationFrameId = null;
+        let time = 0; // 애니메이션 흐름용 프레임 타임
+
+        // 화면 자동 확대 축소(Scale) 관련 인터폴레이션 변수
+        let currentScale = 1.0;
+        let targetScale = 1.0;
+
+        // 퀘이사 -> 지구 굴절 경로상의 광자 입자(Photon Wave Packet) 그룹 배열
+        let photons = [];
+        let observerPulseRadius = 0; // 지구에 도달했을 때 번지는 리셉터 검출 감지 파동
+
+        // 2. DOM 요소 취득
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        const obsCanvas = document.getElementById('observerCanvas');
+        const obsCtx = obsCanvas.getContext('2d');
+
+        // 전체화면 관측 뷰 관련 돔
+        const fullscreenModal = document.getElementById('fullscreenModal');
+        const fullscreenObserverCanvas = document.getElementById('fullscreenObserverCanvas');
+        const fullscreenObserverCtx = fullscreenObserverCanvas.getContext('2d');
+        const btnOpenFullscreen = document.getElementById('btnOpenFullscreen');
+        const btnCloseFullscreen = document.getElementById('btnCloseFullscreen');
+        let isFullscreenMode = false;
+
+        const inputMass = document.getElementById('inputMass');
+        const inputImpact = document.getElementById('inputImpact');
+        const inputDistanceL = document.getElementById('inputDistanceL');
+
+        const valMassText = document.getElementById('valMassText');
+        const valDistanceDText = document.getElementById('valDistanceDText');
+        const valDistanceD2Text = document.getElementById('valDistanceD2Text');
+
+        const calcAlpha = document.getElementById('calcAlpha');
+        const calcThetaE = document.getElementById('calcThetaE');
+        const calcBeta = document.getElementById('calcBeta');
+        const calcTheta = document.getElementById('calcTheta');
+
+        // 전체화면 전용 수치 표시 돔 취득
+        const fsAlphaVal = document.getElementById('fsAlphaVal');
+        const fsThetaEVal = document.getElementById('fsThetaEVal');
+        const fsBetaVal = document.getElementById('fsBetaVal');
+
+        const btnPlay = document.getElementById('btnPlay');
+        const btnReset = document.getElementById('btnReset');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+
+        // 접기/펼치기 제어용 엘리먼트 획득
+        const btnToggleGuide = document.getElementById('btnToggleGuide');
+        const guideContent = document.getElementById('guideContent');
+        const guideToggleText = document.getElementById('guideToggleText');
+        const guideToggleIcon = document.getElementById('guideToggleIcon');
+
+        // 3. 우주 객체 물리 매개변수 정의 (조작 변인 연동)
+        let simState = {
+            mass: parseFloat(inputMass.value), // 은하 질량 (단위: 10^12 태양 질량, M_sun)
+            impactR: parseFloat(inputImpact.value), // 영향 거리 (단위: kpc)
+            distL: parseFloat(inputDistanceL.value), // 관측자-렌즈 거리 (단위: Mpc)
+            distS: 800, // 관측자-광원 거리 (고정 값: 800 Mpc)
+            quasarYOffset: 0, // 퀘이사의 기본 수직 어긋남 각을 0(완벽한 일직선 정렬 상태)으로 세팅
+            draggedObject: null // 드래그 중인 객체 탐지
+        };
+
+        // 4. 드래그 가능 핸들러 좌표 지정
+        let lensPos = { x: 0, y: 0, radius: 24 };
+        let quasarPos = { x: 0, y: 0, radius: 12 };
+        let observerPos = { x: 0, y: 0, radius: 15 };
+
+        // Y축 물리 좌표 스케일러 보조 변수
+        const centerY = () => canvas.height / 2;
+
+        // y좌표 출력 시 현재 계산된 scale 비율을 적용해 상하 한계를 화면 내부로 밀어 넣음
+        function getScaledY(realY) {
+            const cy = centerY();
+            return cy + (realY - cy) * currentScale;
+        }
+
+        // 마우스 드래그 충돌 판정 시 역연산을 위한 스케일 복원
+        function getRealYFromScaled(scaledY) {
+            const cy = centerY();
+            return cy + (scaledY - cy) / currentScale;
+        }
+
+        // 5. 캔버스 리사이즈 함수 (반응형 뷰 지원)
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            obsCanvas.width = obsCanvas.parentElement.clientWidth;
+            obsCanvas.height = obsCanvas.parentElement.clientHeight;
+
+            // [수정 사항] 전체화면 캔버스 종횡비 왜곡 방지 및 실제 렌더링 너비 보정
+            // HTML상의 style 종횡비에 완벽히 동기화되도록 offsetWidth/offsetHeight 기준 1:1 반응형 크기 자동 부여
+            const fsSize = Math.min(fullscreenObserverCanvas.clientWidth, fullscreenObserverCanvas.clientHeight) || 580;
+            fullscreenObserverCanvas.width = fsSize;
+            fullscreenObserverCanvas.height = fsSize;
+
+            // 좌표 배치 업데이트
+            updateObjectsPositions();
+        }
+
+        // 오브젝트 화면 좌표 환산
+        function updateObjectsPositions() {
+            const padding = 80;
+            // 지구 관측자 위치 (우측 끝)
+            observerPos.x = canvas.width - padding;
+            observerPos.y = canvas.height / 2;
+
+            // 은하 렌즈 위치 (중앙 부근, 거리에 따라 X축 유동 조절)
+            const minX = padding + 100;
+            const maxX = observerPos.x - 150;
+            const distRatio = (simState.distL - 100) / 700; // 0 ~ 1 사이
+            lensPos.x = minX + distRatio * (maxX - minX);
+            lensPos.y = canvas.height / 2;
+
+            // 퀘이사 광원 위치 (좌측 끝)
+            quasarPos.x = padding;
+            quasarPos.y = (canvas.height / 2) + simState.quasarYOffset;
+        }
+
+        // 전체화면 감상 전환 이벤트 로직 연동
+        btnOpenFullscreen.addEventListener('click', () => {
+            isFullscreenMode = true;
+            fullscreenModal.classList.remove('hidden');
+            setTimeout(() => {
+                fullscreenModal.classList.remove('opacity-0');
+                fullscreenModal.classList.add('opacity-100');
+                resizeCanvas(); // 모달이 렌더링되어 크기를 획득한 직후 좌표계를 한 번 더 전면 보정합니다.
+            }, 10);
+            if (!isPlaying) draw();
+        });
+
+        // 전체화면 닫기 모드
+        btnCloseFullscreen.addEventListener('click', () => {
+            isFullscreenMode = false;
+            fullscreenModal.classList.remove('opacity-100');
+            fullscreenModal.classList.add('opacity-0');
+            setTimeout(() => {
+                fullscreenModal.classList.add('hidden');
+            }, 300);
+            if (!isPlaying) draw();
+        });
+
+        // 조작 배너 접기/펼치기 인터랙션 로직 구현
+        btnToggleGuide.addEventListener('click', () => {
+            if (guideContent.classList.contains('hidden')) {
+                // 펼치기
+                guideContent.classList.remove('hidden');
+                guideToggleText.textContent = "접기";
+                guideToggleIcon.className = "fa-solid fa-chevron-up";
+            } else {
+                // 접기 (안내 글씨가 사라져 퀘이사 영역을 완벽하게 관찰 가능)
+                guideContent.classList.add('hidden');
+                guideToggleText.textContent = "펼치기";
+                guideToggleIcon.className = "fa-solid fa-chevron-down";
+            }
+        });
+
+        // 6. 이벤트 리스너 등록
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('DOMContentLoaded', () => {
+            resizeCanvas();
+            updateValues();
+            if (isPlaying) {
+                animationLoop();
+            }
+        });
+
+        // 슬라이더 입력 반응형 업데이트
+        inputMass.addEventListener('input', () => {
+            simState.mass = parseFloat(inputMass.value);
+            updateValues();
+        });
+
+        inputImpact.addEventListener('input', () => {
+            simState.impactR = parseFloat(inputImpact.value);
+            updateValues(); // 퀘이사 위치가 슬라이더 이동에 영향받지 않고 일직선 정렬을 그대로 유지함
+        });
+
+        inputDistanceL.addEventListener('input', () => {
+            simState.distL = parseFloat(inputDistanceL.value);
+            updateValues();
+        });
+
+        // 표시 모드 변경 핸들러
+        document.querySelectorAll('input[name="viewMode"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                updateValues();
+                if (!isPlaying) draw();
+            });
+        });
+
+        // 7. 실시간 물리량 계산 및 수식 바인딩 함수
+        function updateValues() {
+            // 사용자 표시 텍스트 갱신
+            valMassText.innerHTML = `$${simState.mass.toFixed(1)} \\times 10^{12} \\, M_\\odot$`;
+            valDistanceDText.innerHTML = `$${simState.impactR.toFixed(1)} \\text{ kpc}$`;
+            valDistanceD2Text.innerHTML = `$${simState.distL.toFixed(0)} \\text{ Mpc}$`;
+
+            // 물리 계산 공식 적용
+            const M = simState.mass * 1e12; // 태양 질량 단위로 환산
+            const R = simState.impactR * 3.0857e19; // kpc 단위를 m 단위로 환산
+            const M_kg = M * 1.989e30; // kg 단위 환산
+            
+            // 굴절각 (α) 계산: 4GM / c^2 R (라디안 단위)
+            const G_si = 6.6743e-11;
+            const c_si = 299792458;
+            const alphaRad = (4 * G_si * M_kg) / (Math.pow(c_si, 2) * R);
+            const alphaArcsec = alphaRad * 206265;
+
+            // 아인슈타인 반지름각 (θ_E) 계산
+            const DL = simState.distL;
+            const DS = simState.distS;
+            const DLS = DS - DL; // 단순 직선형 평탄 우주 기준
+            
+            const thetaERad = Math.sqrt((4 * G_si * M_kg / Math.pow(c_si, 2)) * ((DLS * 3.0857e22) / ((DL * 3.0857e22) * (DS * 3.0857e22))));
+            const thetaEArcsec = thetaERad * 206265 * 1e5; // 시각적 왜곡 조절 스케일러 적용
+
+            // 실제 광원 각위치 (β) - 기하학적 임팩트 거리 기준 환산
+            const betaArcsec = (Math.abs(simState.quasarYOffset) / 50) * thetaEArcsec;
+
+            // 중력 렌즈 방정식 해 구하기
+            const disc = Math.sqrt(betaArcsec * betaArcsec + 4 * thetaEArcsec * thetaEArcsec);
+            const theta1 = (betaArcsec + disc) / 2;
+            const theta2 = (betaArcsec - disc) / 2;
+
+            // 돔 요소에 물리 결과값 업데이트
+            calcAlpha.innerHTML = `${alphaArcsec.toFixed(3)}"`;
+            calcThetaE.innerHTML = `${(thetaEArcsec / 10).toFixed(3)}"`;
+            calcBeta.innerHTML = `${(betaArcsec / 10).toFixed(3)}"`;
+            
+            if (betaArcsec < 0.05) {
+                calcTheta.innerHTML = `대칭 정렬형 아인슈타인 고리 형성! (반지름각 $\\approx ${(thetaEArcsec/10).toFixed(2)}"$)`;
+            } else {
+                calcTheta.innerHTML = `θ₁ = ${(theta1/10).toFixed(2)}", θ₂ = ${(theta2/10).toFixed(2)}"`;
+            }
+
+            // 전체화면 전용 수치 오버레이 업데이트
+            if (fsAlphaVal) fsAlphaVal.textContent = `${alphaArcsec.toFixed(3)}"`;
+            if (fsThetaEVal) fsThetaEVal.textContent = `${(thetaEArcsec / 10).toFixed(3)}"`;
+            if (fsBetaVal) fsBetaVal.textContent = `${(betaArcsec / 10).toFixed(3)}"`;
+
+            // LaTeX 수식을 분수식 및 대치값을 포함하는 미려한 수식으로 완전히 재구성
+            document.getElementById('formulaAlpha').innerHTML = `$$\\alpha = \\frac{4GM}{c^2 R} = \\frac{4G \\cdot (${simState.mass.toFixed(1)} \\times 10^{12} M_\\odot)}{c^2 \\cdot (${simState.impactR.toFixed(1)} \\text{ kpc})} \\approx ${alphaArcsec.toFixed(3)}"$$`;
+            document.getElementById('formulaThetaE').innerHTML = `$$\\theta_E = \\sqrt{\\frac{4GM}{c^2}\\frac{D_{LS}}{D_L D_S}} \\approx ${(thetaEArcsec/10).toFixed(3)}"$$`;
+            document.getElementById('formulaBeta').innerHTML = `$$\\beta = \\theta - \\alpha\\frac{D_{LS}}{D_S} \\approx ${(betaArcsec/10).toFixed(3)}"$$`;
+
+            // LaTeX 수식 실시간 렌더링 리트리거
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise();
+            }
+
+            // 오브젝트 위치 재지정
+            updateObjectsPositions();
+
+            // 자동 스케일링 타겟 연산
+            calculateAutoScaling(alphaArcsec);
+        }
+
+        // 자동 확대/축소 스케일러 연산 로직
+        function calculateAutoScaling(alphaArcsec) {
+            const mFactor = simState.mass;
+            const rFactor = simState.impactR;
+            const bendStrength = (mFactor / rFactor) * 80;
+
+            const controlY2_upper = observerPos.y - (observerPos.y - (lensPos.y - 60)) * 0.5 - bendStrength;
+            const controlY2_lower = observerPos.y - (observerPos.y - (lensPos.y + 60)) * 0.5 + bendStrength;
+
+            // 지구 도달 접선 연장선 기울기
+            const slopeUpper = (observerPos.y - controlY2_upper) / (observerPos.x - (lensPos.x + 80));
+            const slopeLower = (observerPos.y - controlY2_lower) / (observerPos.x - (lensPos.x + 80));
+
+            // 가상 관측 상의 Y좌표 연산
+            const virtualY1 = observerPos.y - (observerPos.x - quasarPos.x) * slopeUpper;
+            const virtualY2 = observerPos.y - (observerPos.x - quasarPos.x) * slopeLower;
+
+            const cy = centerY();
+            // 화면 중심을 기준한 최외곽 요소들의 최대 상하 격차(Y Offset) 구하기
+            const maxYOffset = Math.max(
+                Math.abs(quasarPos.y - cy),
+                Math.abs(virtualY1 - cy),
+                Math.abs(virtualY2 - cy),
+                Math.abs(controlY2_upper - cy),
+                Math.abs(controlY2_lower - cy),
+                100 // 최소 기준 마진
+            );
+
+            // 가이드라인 및 조작 안내 오버레이창에 가리지 않는 여유 폭 지정
+            const safeHeight = cy - 90; 
+            
+            // 타겟 배율(Scale) 도출 및 보정 범위 제한 (0.15배 축소 ~ 1.1배 확대)
+            const target = safeHeight / maxYOffset;
+            targetScale = Math.max(0.2, Math.min(1.2, target));
+        }
+
+        // 8. 마우스 및 터치 인터랙션 (드래그 앤 드롭)
+        let isDragging = false;
+        let selectedObject = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 드래그 대상 판정 시, 드로잉된 가상의 축소 스케일링된 Y 좌표와 대조함
+            const scaledQuasarY = getScaledY(quasarPos.y);
+            const scaledLensY = getScaledY(lensPos.y);
+
+            if (getDistance(mouseX, mouseY, quasarPos.x, scaledQuasarY) < quasarPos.radius + 15) {
+                selectedObject = 'quasar';
+                isDragging = true;
+            } else if (getDistance(mouseX, mouseY, lensPos.x, scaledLensY) < lensPos.radius + 15) {
+                selectedObject = 'lens';
+                isDragging = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const scaledQuasarY = getScaledY(quasarPos.y);
+            const scaledLensY = getScaledY(lensPos.y);
+
+            // 마우스 커서 반응 스타일 변경
+            if (getDistance(mouseX, mouseY, quasarPos.x, scaledQuasarY) < quasarPos.radius + 15 ||
+                getDistance(mouseX, mouseY, lensPos.x, scaledLensY) < lensPos.radius + 15) {
+                canvas.style.cursor = 'ns-resize';
+            } else {
+                canvas.style.cursor = 'default';
+            }
+
+            if (isDragging && selectedObject) {
+                if (selectedObject === 'quasar') {
+                    // 마우스 좌표의 변화를 스케일 비율로 역산해 물리 상태(Y Offset)에 기록
+                    const realY = getRealYFromScaled(mouseY);
+                    const limit = canvas.height * 2.5; // 확대 시 원래 높이를 자유롭게 넘나들 수 있게 조치
+                    simState.quasarYOffset = Math.max(-limit, Math.min(limit, realY - (canvas.height / 2)));
+                } else if (selectedObject === 'lens') {
+                    // X축 이동에 따른 관측자-렌즈 거리 연동
+                    const padding = 80;
+                    const obsX = canvas.width - padding;
+                    const minX = padding + 100;
+                    const maxX = obsX - 150;
+                    
+                    const clampedX = Math.max(minX, Math.min(maxX, mouseX));
+                    const ratio = (clampedX - minX) / (maxX - minX);
+                    simState.distL = 100 + ratio * 700;
+                    inputDistanceL.value = simState.distL;
+                }
+                updateValues();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            selectedObject = null;
+        });
+
+        // 모바일 터치 대응
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = touch.clientX - rect.left;
+                const mouseY = touch.clientY - rect.top;
+
+                const scaledQuasarY = getScaledY(quasarPos.y);
+                const scaledLensY = getScaledY(lensPos.y);
+
+                if (getDistance(mouseX, mouseY, quasarPos.x, scaledQuasarY) < quasarPos.radius + 20) {
+                    selectedObject = 'quasar';
+                    isDragging = true;
+                } else if (getDistance(mouseX, mouseY, lensPos.x, scaledLensY) < lensPos.radius + 20) {
+                    selectedObject = 'lens';
+                    isDragging = true;
+                }
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDragging && selectedObject && e.touches.length > 0) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const mouseY = touch.clientY - rect.top;
+                const mouseX = touch.clientX - rect.left;
+
+                if (selectedObject === 'quasar') {
+                    const realY = getRealYFromScaled(mouseY);
+                    simState.quasarYOffset = realY - (canvas.height / 2);
+                } else if (selectedObject === 'lens') {
+                    const padding = 80;
+                    const obsX = canvas.width - padding;
+                    const minX = padding + 100;
+                    const maxX = obsX - 150;
+                    const clampedX = Math.max(minX, Math.min(maxX, mouseX));
+                    const ratio = (clampedX - minX) / (maxX - minX);
+                    simState.distL = 100 + ratio * 700;
+                    inputDistanceL.value = simState.distL;
+                }
+                updateValues();
+            }
+        });
+
+        canvas.addEventListener('touchend', () => {
+            isDragging = false;
+            selectedObject = null;
+        });
+
+        function getDistance(x1, y1, x2, y2) {
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+
+        // 3차 베지에 공식 기반 좌표 보간 함수 (광자 이동 경로 시각화 구현용)
+        function getBezierPoint(t, p0, p1, p2, p3) {
+            const cx = 3 * (p1.x - p0.x);
+            const bx = 3 * (p2.x - p1.x) - cx;
+            const ax = p3.x - p0.x - cx - bx;
+
+            const cy = 3 * (p1.y - p0.y);
+            const by = 3 * (p2.y - p1.y) - cy;
+            const ay = p3.y - p0.y - cy - by;
+
+            const x = ax * Math.pow(t, 3) + bx * Math.pow(t, 2) + cx * t + p0.x;
+            const y = ay * Math.pow(t, 3) + by * Math.pow(t, 2) + cy * t + p0.y;
+
+            return { x, y };
+        }
+
+        // 9. 시뮬레이션 제어 버튼 이벤트 바인딩
+        btnPlay.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.className = "fa-solid fa-pause";
+                playText.textContent = "일시정지";
+                document.getElementById('systemStatus').textContent = "실시간 계산 엔진 작동 중";
+                animationLoop();
+            } else {
+                playIcon.className = "fa-solid fa-play";
+                playText.textContent = "재생";
+                document.getElementById('systemStatus').textContent = "일시정지됨";
+                cancelAnimationFrame(animationFrameId);
+            }
+        });
+
+        btnReset.addEventListener('click', () => {
+            inputMass.value = 1.0;
+            inputImpact.value = 15.0;
+            inputDistanceL.value = 400;
+            
+            simState.mass = 1.0;
+            simState.impactR = 15.0;
+            simState.distL = 400;
+            simState.quasarYOffset = 0; // 초기 리셋 시에도 오프셋을 0으로 만들어 완벽한 일직선을 보장합니다.
+            photons = [];
+            observerPulseRadius = 0;
+
+            // 라디오 버튼 기본값으로 복원
+            document.querySelector('input[name="viewMode"][value="observed"]').checked = true;
+
+            updateValues();
+            if (!isPlaying) {
+                draw();
+            }
+        });
+
+        // 10. 메인 드로잉 렌더링 시스템 (Canvas 2D Graphics)
+        function draw() {
+            // 부드러운 스케일링 이동 연출을 위한 선형 보간 적용
+            currentScale = currentScale * 0.92 + targetScale * 0.08;
+
+            // 배경 초기화
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 우주 배경 미세 성운, 별빛 효과 표현
+            drawCosmicBackground();
+
+            // 가이드라인 및 격자 드로잉
+            drawGuidelines();
+
+            // 맥동하는 부드러운 성운 광채로 시공간 왜곡 묘사
+            drawGravityWell();
+
+            // 빛의 실제 휘어짐 경로 연산 및 드로잉
+            drawLightPaths();
+
+            // 천체 오브젝트 표시 (지구, 렌즈은하, 퀘이사)
+            drawObjects();
+
+            // 우측 하단 아인슈타인 링 평면 뷰 업데이트
+            drawEinsteinObserverView();
+        }
+
+        function drawCosmicBackground() {
+            // 미세 별 렌더링
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            for (let i = 0; i < 30; i++) {
+                const starX = (Math.sin(i * 333) * 0.5 + 0.5) * canvas.width;
+                const starY = (Math.cos(i * 777) * 0.5 + 0.5) * canvas.height;
+                const starSize = (i % 3 === 0) ? 1.5 : 0.8;
+                ctx.beginPath();
+                ctx.arc(starX, starY, starSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawGuidelines() {
+            // 중심 광축 가로선
+            ctx.beginPath();
+            ctx.setLineDash([6, 6]);
+            ctx.strokeStyle = 'rgba(75, 85, 99, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.moveTo(40, canvas.height / 2);
+            ctx.lineTo(canvas.width - 40, canvas.height / 2);
+            ctx.stroke();
+            ctx.setLineDash([]); // 대시라인 복구
+        }
+
+        function drawGravityWell() {
+            const scaledLensY = getScaledY(lensPos.y);
+            const glowRadius = lensPos.radius * (2.0 + Math.abs(Math.sin(time * 0.04)) * 0.4) * Math.sqrt(simState.mass);
+            
+            // 은하의 중심부에 부드럽게 집중되는 중력 발광 레이어 생성
+            const lensGlow = ctx.createRadialGradient(
+                lensPos.x, scaledLensY, 2,
+                lensPos.x, scaledLensY, glowRadius
+            );
+            lensGlow.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+            lensGlow.addColorStop(0.3, 'rgba(14, 165, 233, 0.12)');
+            lensGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = lensGlow;
+            ctx.beginPath();
+            ctx.arc(lensPos.x, scaledLensY, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawLightPaths() {
+            const mFactor = simState.mass;
+            const rFactor = simState.impactR;
+            const bendStrength = (mFactor / rFactor) * 80; 
+
+            const scaledQuasarY = getScaledY(quasarPos.y);
+            const scaledObserverY = getScaledY(observerPos.y);
+
+            // 상단 경로의 Bezier 제어 좌표 연산
+            const controlX1_upper = lensPos.x - 100;
+            const controlY1_upper = scaledQuasarY + (getScaledY(lensPos.y - 60) - scaledQuasarY) * 0.5;
+            const controlX2_upper = lensPos.x + 80;
+            const controlY2_upper = scaledObserverY - (scaledObserverY - getScaledY(lensPos.y - 60)) * 0.5 - bendStrength * currentScale;
+
+            // 하단 경로의 Bezier 제어 좌표 연산
+            const controlX1_lower = lensPos.x - 100;
+            const controlY1_lower = scaledQuasarY + (getScaledY(lensPos.y + 60) - scaledQuasarY) * 0.5;
+            const controlX2_lower = lensPos.x + 80;
+            const controlY2_lower = scaledObserverY - (scaledObserverY - getScaledY(lensPos.y + 60)) * 0.5 + bendStrength * currentScale;
+
+            // 관측자(지구) 위치에서의 각 Bezier 끝점의 기하학적 입사 탄젠트 각도 구하기
+            const slopeUpper = (scaledObserverY - controlY2_upper) / (observerPos.x - controlX2_upper);
+            const slopeLower = (scaledObserverY - controlY2_lower) / (observerPos.x - controlX2_lower);
+
+            // 지구에서 유입된 접선 기울기를 직진 연장한 가상 이미지 위치(X축은 퀘이사 평면에 투영)
+            const virtualX1 = quasarPos.x;
+            const virtualY1 = scaledObserverY - (observerPos.x - quasarPos.x) * slopeUpper;
+
+            const virtualX2 = quasarPos.x;
+            const virtualY2 = scaledObserverY - (observerPos.x - quasarPos.x) * slopeLower;
+
+            const viewMode = document.querySelector('input[name="viewMode"]:checked')?.value || 'observed';
+
+            // --- 1. 실제 빛의 굴절 경로 투사 ---
+            ctx.lineWidth = 2.5;
+            ctx.shadowBlur = 0;
+
+            // 상단 실제 빛의 굴절 경로 그리기
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.45)'; // 기본 베이스 가이드 시안
+            ctx.moveTo(quasarPos.x, scaledQuasarY);
+            ctx.bezierCurveTo(controlX1_upper, controlY1_upper, controlX2_upper, controlY2_upper, observerPos.x, scaledObserverY);
+            ctx.stroke();
+
+            // 하단 실제 빛의 굴절 경로 그리기
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.45)';
+            ctx.moveTo(quasarPos.x, scaledQuasarY);
+            ctx.bezierCurveTo(controlX1_lower, controlY1_lower, controlX2_lower, controlY2_lower, observerPos.x, scaledObserverY);
+            ctx.stroke();
+
+            // 3차 베지에 공식을 통한 실제 빛 흐름(광자 이동) 애니메이션 렌더링
+            if (isPlaying && time % 25 === 0) {
+                photons.push({ t: 0, path: 'upper' });
+                photons.push({ t: 0, path: 'lower' });
+            }
+
+            // 실시간 광자 정보 업데이트 및 시각화
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#22d3ee';
+            
+            for (let i = photons.length - 1; i >= 0; i--) {
+                const p = photons[i];
+                if (isPlaying) {
+                    p.t += 0.007; // 광선 전파 속도 조절
+                }
+
+                // 지구에 완전히 입사하여 도달한 광자 제거 및 리셉션 펄스 가중치 충전
+                if (p.t >= 1) {
+                    photons.splice(i, 1);
+                    observerPulseRadius = 1; // 펄스 리액션 활성화
+                    continue;
+                }
+
+                // 3차 Bezier 제어 점 매개 변수
+                let p0, p1, p2, p3;
+                if (p.path === 'upper') {
+                    p0 = { x: quasarPos.x, y: scaledQuasarY };
+                    p1 = { x: controlX1_upper, y: controlY1_upper };
+                    p2 = { x: controlX2_upper, y: controlY2_upper };
+                    p3 = { x: observerPos.x, y: scaledObserverY };
+                } else {
+                    p0 = { x: quasarPos.x, y: scaledQuasarY };
+                    p1 = { x: controlX1_lower, y: controlY1_lower };
+                    p2 = { x: controlX2_lower, y: controlY2_lower };
+                    p3 = { x: observerPos.x, y: scaledObserverY };
+                }
+
+                // 현재 시점의 곡선상 물리 좌표 산출
+                const pt = getBezierPoint(p.t, p0, p1, p2, p3);
+
+                // 흐르는 혜성 형태의 광선 패킷 꼬리 장식 그리기
+                const trailLength = 5;
+                for (let k = 0; k < trailLength; k++) {
+                    const tailT = Math.max(0, p.t - k * 0.015);
+                    const tailPt = getBezierPoint(tailT, p0, p1, p2, p3);
+                    ctx.fillStyle = `rgba(34, 211, 238, ${1.0 - (k / trailLength)})`;
+                    ctx.beginPath();
+                    ctx.arc(tailPt.x, tailPt.y, 4 - (k * 0.5), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.shadowBlur = 0; // 그림자 초기화
+
+            // --- 2. 표시 모드에 따른 분기 투사 ---
+            if (viewMode === 'observed') {
+                // [관측된 위치 모드]: 관측자가 인지하는 완벽한 100% 가상 관측 직선 (주황 점선)
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.85)'; // 교과서 수록 겉보기 관측선 컬러
+                ctx.setLineDash([5, 4]);
+
+                // 지구(관측자) -> 겉보기 상단 퀘이사 상 1까지의 굴절 없는 직선 연장선
+                ctx.beginPath();
+                ctx.moveTo(observerPos.x, scaledObserverY);
+                ctx.lineTo(virtualX1, virtualY1);
+                ctx.stroke();
+
+                // 지구(관측자) -> 겉보기 하단 퀘이사 상 2까지의 굴절 없는 직선 연장선
+                ctx.beginPath();
+                ctx.moveTo(observerPos.x, scaledObserverY);
+                ctx.lineTo(virtualX2, virtualY2);
+                ctx.stroke();
+                ctx.setLineDash([]); // 리셋
+
+                // 지구에서 관측한 허상(Apparent Images) 그리기
+                ctx.fillStyle = 'rgba(249, 115, 22, 0.95)';
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#f97316';
+                
+                ctx.beginPath();
+                ctx.arc(quasarPos.x, virtualY1, 7, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(quasarPos.x, virtualY2, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0; // 그림자 복구
+
+                // 상 라벨 추가
+                ctx.fillStyle = '#f97316';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillText("관측된 퀘이사 위치 (상 1)", virtualX1 + 12, virtualY1 + 4);
+                ctx.fillText("관측된 퀘이사 위치 (상 2)", virtualX2 + 12, virtualY2 + 4);
+
+            } else {
+                // [원래 위치 모드]: 은하가 없을 때 퀘이사에서 방출되어 곧바로 도달했을 직진 안내 가이드선
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = 'rgba(234, 179, 8, 0.4)';
+                ctx.setLineDash([5, 5]);
+                
+                ctx.beginPath();
+                ctx.moveTo(quasarPos.x, scaledQuasarY);
+                ctx.lineTo(observerPos.x, scaledObserverY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = 'rgba(234, 179, 8, 0.8)';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillText("은하가 없을 때 실제 도달했을 직선 빛의 경로", quasarPos.x + 90, (scaledQuasarY + scaledObserverY) / 2 - 12);
+            }
+        }
+
+        function drawObjects() {
+            const scaledLensY = getScaledY(lensPos.y);
+            const scaledObserverY = getScaledY(observerPos.y);
+            const scaledQuasarY = getScaledY(quasarPos.y);
+
+            // --- A. 렌즈 은하천체 ---
+            const spiralGlow = ctx.createRadialGradient(
+                lensPos.x, scaledLensY, 0,
+                lensPos.x, scaledLensY, lensPos.radius
+            );
+            spiralGlow.addColorStop(0, '#ffffff');
+            spiralGlow.addColorStop(0.2, '#93c5fd');
+            spiralGlow.addColorStop(0.6, '#1d4ed8');
+            spiralGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = spiralGlow;
+            ctx.beginPath();
+            ctx.arc(lensPos.x, scaledLensY, lensPos.radius * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 은하 나선팔 모양 데코레이션
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let angle = 0; angle < Math.PI * 4; angle += 0.1) {
+                const r = angle * 2.2;
+                const armX1 = lensPos.x + Math.cos(angle + time * 0.02) * r;
+                const armY1 = scaledLensY + Math.sin(angle + time * 0.02) * r;
+                if (angle === 0) ctx.moveTo(armX1, armY1);
+                else ctx.lineTo(armX1, armY1);
+            }
+            ctx.stroke();
+
+            // 은하 정보 라벨
+            ctx.fillStyle = '#93c5fd';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("중력 렌즈 은하", lensPos.x, scaledLensY - lensPos.radius - 8);
+
+            // --- B. 지구 관측자 ---
+            const earthGlow = ctx.createRadialGradient(
+                observerPos.x, scaledObserverY, 0,
+                observerPos.x, scaledObserverY, observerPos.radius
+            );
+            earthGlow.addColorStop(0, '#6ee7b7');
+            earthGlow.addColorStop(0.4, '#059669');
+            earthGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            
+            ctx.fillStyle = earthGlow;
+            ctx.beginPath();
+            ctx.arc(observerPos.x, scaledObserverY, observerPos.radius * 1.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 지구 본체 구형
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(observerPos.x, scaledObserverY, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 지구 충돌 감지 파동 링 드로잉
+            if (observerPulseRadius > 0) {
+                ctx.strokeStyle = `rgba(16, 185, 129, ${1 - observerPulseRadius})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(observerPos.x, scaledObserverY, observerPos.radius * (1.6 + observerPulseRadius * 2.5), 0, Math.PI * 2);
+                ctx.stroke();
+                
+                if (isPlaying) {
+                    observerPulseRadius += 0.04;
+                    if (observerPulseRadius >= 1) {
+                        observerPulseRadius = 0; // 펄스 소멸
+                    }
+                }
+            }
+
+            // 지구 본체 구형
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(observerPos.x, scaledObserverY, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#a7f3d0';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText("지구 (관측자)", observerPos.x, scaledObserverY - observerPos.radius - 8);
+
+            // --- C. 원래 퀘이사 광원 ---
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = '#fbbf24';
+            ctx.fillStyle = '#fbbf24'; // 활기찬 황색
+            ctx.beginPath();
+            ctx.arc(quasarPos.x, scaledQuasarY, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#fde047';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText("퀘이사 (실제 원래 위치)", quasarPos.x, scaledQuasarY - 12);
+        }
+
+        // 지구 관측자 시점의 실시간 대칭 링/아크 렌더러
+        function drawEinsteinObserverView() {
+            // 미니 캔버스 먼저 그리기
+            renderObserverOnCanvas(obsCanvas, obsCtx, false);
+
+            // 전체화면 모드인 경우 고해상도로 전체화면 캔버스에 추가로 투영 렌더링 진행
+            if (isFullscreenMode) {
+                renderObserverOnCanvas(fullscreenObserverCanvas, fullscreenObserverCtx, true);
+            }
+        }
+
+        // 공용 렌더링 서브 엔진 함수
+        function renderObserverOnCanvas(cElement, cCtx, isLarge) {
+            cCtx.fillStyle = '#020617';
+            cCtx.fillRect(0, 0, cElement.width, cElement.height);
+
+            const centerX = cElement.width / 2;
+            const centerY = cElement.height / 2;
+
+            // 렌즈 중심 격자선
+            cCtx.strokeStyle = 'rgba(30, 41, 59, 0.5)';
+            cCtx.lineWidth = 0.8;
+            cCtx.beginPath();
+            cCtx.moveTo(0, centerY);
+            cCtx.lineTo(cElement.width, centerY);
+            cCtx.moveTo(centerX, 0);
+            cCtx.lineTo(centerX, cElement.height);
+            cCtx.stroke();
+
+            // 물리 변인에서 계산된 아인슈타인 반지름 결정
+            const mFactor = simState.mass;
+            const baseThetaE = Math.sqrt(mFactor) * 35; 
+            
+            // 퀘이사 실제 편향 방향 보존
+            const rawYOffset = simState.quasarYOffset; 
+            const betaOffset = Math.abs(rawYOffset) * 0.9; // 오프셋 스케일 보정
+
+            // 아인슈타인 반지름 가이드라인 시인성 강화 (전체화면 모드 대응)
+            if (isLarge) {
+                cCtx.strokeStyle = 'rgba(56, 189, 248, 0.65)'; // 밝고 선명한 스카이블루 점선
+                cCtx.lineWidth = 1.5;
+                cCtx.setLineDash([6, 6]); // 더 길고 명확한 격자 점선 구조
+            } else {
+                cCtx.strokeStyle = 'rgba(14, 165, 233, 0.25)';
+                cCtx.lineWidth = 0.8;
+                cCtx.setLineDash([3, 5]);
+            }
+            cCtx.beginPath();
+            cCtx.arc(centerX, centerY, baseThetaE, 0, Math.PI * 2);
+            cCtx.stroke();
+            cCtx.setLineDash([]);
+            cCtx.lineWidth = 0.8; // 기본 두께 복구
+
+            // 중심 렌즈 은하 광채 투영
+            const centerGalaxyGlow = cCtx.createRadialGradient(
+                centerX, centerY, 0,
+                centerX, centerY, 15
+            );
+            centerGalaxyGlow.addColorStop(0, 'rgba(147, 197, 253, 0.4)');
+            centerGalaxyGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            cCtx.fillStyle = centerGalaxyGlow;
+            cCtx.beginPath();
+            cCtx.arc(centerX, centerY, 15, 0, Math.PI * 2);
+            cCtx.fill();
+
+            // 고리 왜곡 물리 렌더링 시작
+            if (betaOffset < 2) {
+                // 광원 일직선 직렬 정렬: 완전하고 일정한 대칭의 아인슈타인 링 형성
+                cCtx.strokeStyle = 'rgba(249, 115, 22, 0.85)';
+                cCtx.lineWidth = 4;
+                cCtx.shadowBlur = 8;
+                cCtx.shadowColor = '#f97316';
+                cCtx.beginPath();
+                cCtx.arc(centerX, centerY, baseThetaE, 0, Math.PI * 2);
+                cCtx.stroke();
+                cCtx.shadowBlur = 0;
+            } else {
+                // 비대칭 어긋남 발생: 호(Arc) 분리식 물리 렌더링
+                const isQuasarUpper = rawYOffset < 0;
+
+                // 1차 상 (Major Image, 외곽에 크게 생기는 지배적인 밝은 호)
+                const arc1Radius = baseThetaE + (betaOffset * 0.15);
+                const arc1AngleWidth = Math.max(0.2, Math.PI - (betaOffset * 0.025));
+                const arc1Thickness = Math.max(3, 4 + (12 / (betaOffset * 0.08 + 1)));
+
+                // 2차 상 (Minor Image, 안쪽에 작게 생기는 부호 상)
+                const arc2Radius = Math.max(6, baseThetaE - (betaOffset * 0.22));
+                const arc2AngleWidth = Math.max(0.08, Math.PI - (betaOffset * 0.042));
+                const arc2Thickness = Math.max(1.2, 3 - (betaOffset * 0.025));
+
+                // 렌더링 시작
+                cCtx.shadowBlur = 6;
+                cCtx.shadowColor = '#f97316';
+
+                if (isQuasarUpper) {
+                    // 퀘이사가 위쪽에 편향됨 -> 주요 상(arc1)은 위쪽, 보조 상(arc2)은 아래쪽에 정렬
+                    cCtx.strokeStyle = 'rgba(249, 115, 22, 0.9)';
+                    cCtx.lineWidth = arc1Thickness;
+                    cCtx.beginPath();
+                    cCtx.arc(centerX, centerY, arc1Radius, -Math.PI/2 - arc1AngleWidth/2, -Math.PI/2 + arc1AngleWidth/2);
+                    cCtx.stroke();
+
+                    cCtx.strokeStyle = 'rgba(249, 115, 22, 0.5)';
+                    cCtx.lineWidth = arc2Thickness;
+                    cCtx.beginPath();
+                    cCtx.arc(centerX, centerY, arc2Radius, Math.PI/2 - arc2AngleWidth/2, Math.PI/2 + arc2AngleWidth/2);
+                    cCtx.stroke();
+                } else {
+                    // 퀘이사가 아래쪽에 편향됨 -> 주요 상(arc1)은 아래쪽, 보조 상(arc2)은 위쪽에 정렬
+                    cCtx.strokeStyle = 'rgba(249, 115, 22, 0.9)';
+                    cCtx.lineWidth = arc1Thickness;
+                    cCtx.beginPath();
+                    cCtx.arc(centerX, centerY, arc1Radius, Math.PI/2 - arc1AngleWidth/2, Math.PI/2 + arc1AngleWidth/2);
+                    cCtx.stroke();
+
+                    cCtx.strokeStyle = 'rgba(249, 115, 22, 0.5)';
+                    cCtx.lineWidth = arc2Thickness;
+                    cCtx.beginPath();
+                    cCtx.arc(centerX, centerY, arc2Radius, -Math.PI/2 - arc2AngleWidth/2, -Math.PI/2 + arc2AngleWidth/2);
+                    cCtx.stroke();
+                }
+                cCtx.shadowBlur = 0;
+            }
+
+            // 고해상도 확대 모드인 경우 텍스트 및 아인슈타인 반지름 라벨링 고도화 기입
+            if (isLarge) {
+                cCtx.fillStyle = '#38bdf8';
+                cCtx.font = 'bold 13px sans-serif';
+                cCtx.shadowBlur = 4;
+                cCtx.shadowColor = '#0284c7'; // 눈에 띄게 은은한 백글로우 섀도 추가
+                cCtx.fillText("Einstein Radius (θ_E)", centerX + 10, centerY - baseThetaE - 8);
+                cCtx.shadowBlur = 0;
+                
+                cCtx.fillStyle = '#f97316';
+                cCtx.font = 'bold 11px sans-serif';
+                cCtx.fillText("상 1 (Major Arc)", centerX + 10, centerY - (baseThetaE * 1.4) + (rawYOffset > 0 ? baseThetaE * 0.8 : 0));
+                cCtx.fillText("상 2 (Minor Arc)", centerX + 10, centerY + (baseThetaE * 0.6) - (rawYOffset > 0 ? baseThetaE * 0.8 : 0));
+            }
+        }
+
+        // 12. 메인 애니메이션 무한 루프 시스템
+        function animationLoop() {
+            if (isPlaying) {
+                time++;
+                draw();
+                animationFrameId = requestAnimationFrame(animationLoop);
+            }
+        }
+
+    </script>
+</body>
+</html>

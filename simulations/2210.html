@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>외계 행성 탐사 시뮬레이션</title>
+    <!-- Tailwind CSS (현대적인 다크 모드 UI 지원) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons (아이콘 라이브러리) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* 우주 분위기의 네온 글로우 효과 */
+        .neon-glow-blue {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(59, 130, 246, 0.4);
+            box-shadow: inset 0 0 12px rgba(59, 130, 246, 0.2);
+        }
+        .neon-glow-red {
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.8), 0 0 20px rgba(239, 68, 68, 0.4);
+            box-shadow: inset 0 0 12px rgba(239, 68, 68, 0.2);
+        }
+        .neon-glow-yellow {
+            text-shadow: 0 0 10px rgba(234, 179, 8, 0.8), 0 0 20px rgba(234, 179, 8, 0.4);
+        }
+        /* 크롬 슬라이더 커스텀 디자인 */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 0 8px #3b82f6;
+            transition: background 0.15s ease-in-out;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+            box-shadow: 0 0 12px #60a5fa;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center py-6 px-4 selection:bg-blue-600 selection:text-white">
+
+    <div class="w-full max-w-6xl flex flex-col gap-5">
+        
+        <!-- 0. 헤더 영역 -->
+        <header class="text-center py-4 border-b border-slate-800">
+            <h1 class="text-3xl md:text-4xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-yellow-200 font-orbitron mb-1">
+                &lt;외계 행성 탐사 시뮬레이션&gt;
+            </h1>
+            <p class="text-xs text-slate-400 font-light">
+                고급 지구과학 탐구 수행평가 — 공통 질량 중심 운동과 시선 속도법(도플러 효과) 가상 실험실
+            </p>
+        </header>
+
+        <!-- 1. 맨위 (스펙트럼 분석기) -->
+        <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-2xl backdrop-blur-md">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-blue-400 flex items-center gap-1">
+                    <i data-lucide="activity" class="w-4 h-4 animate-pulse"></i> 실시간 별빛 스펙트럼 분석 장치 (도플러 효과 관측기)
+                </span>
+                <span class="text-[10px] text-slate-500">관측 기준 파장: 589.300nm</span>
+            </div>
+            
+            <!-- 스펙트럼 캔버스 -->
+            <div class="relative w-full h-14 bg-black rounded-lg overflow-hidden border border-slate-700">
+                <canvas id="spectrumCanvas" class="w-full h-full block"></canvas>
+            </div>
+            
+            <div class="flex justify-between text-[10px] md:text-[11px] text-slate-400 mt-1.5 px-1">
+                <span class="text-blue-400 font-bold flex items-center gap-1">
+                    <i data-lucide="arrow-left" class="w-3 h-3"></i> 청색편이 (단파장 이동 / 접근)
+                </span>
+                <span class="text-slate-500 font-bold">중앙 기준선 (정지 상태 파장)</span>
+                <span class="text-red-400 font-bold flex items-center gap-1">
+                    적색편이 (장파장 이동 / 후퇴) <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                </span>
+            </div>
+        </section>
+
+        <!-- Main Dashboard Layout (공전 궤도 및 슬라이더가 왼쪽, 실시간 데이터 피드백이 오른쪽) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            
+            <!-- [A] 좌측 패널 (공전 궤도 애니메이션 + 슬라이더 조종판) -> 12칸 중 8칸 확보 -->
+            <div class="lg:col-span-8 flex flex-col gap-4">
+                
+                <!-- 공전 궤도 가상 스크린 -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-2xl backdrop-blur-md flex flex-col items-center relative">
+                    <div class="w-full flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-yellow-500 flex items-center gap-1">
+                            <i data-lucide="orbit" class="w-4 h-4 text-yellow-500"></i> 외계 행성계 공전 평면도 (정면 관측 부감도 — 초점: 공통 질량 중심)
+                        </span>
+                        <div class="flex gap-1.5">
+                            <button id="btnPlayPause" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1">
+                                <i id="playIcon" data-lucide="pause" class="w-3 h-3"></i> <span id="playText">일시정지</span>
+                            </button>
+                            <button id="btnReset" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1">
+                                <i data-lucide="rotate-ccw" class="w-3 h-3"></i> 초기화
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="relative w-full h-[360px] bg-slate-950/95 rounded-xl overflow-hidden border border-slate-800 flex justify-center items-center">
+                        <canvas id="orbitCanvas" class="w-full h-full block"></canvas>
+                        
+                        <!-- 관측자 시선 가이드 -->
+                        <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-slate-900/95 border border-blue-500/30 px-3 py-1 rounded-full text-[10px] text-blue-300 flex items-center gap-1.5 shadow-lg">
+                            <i data-lucide="telescope" class="w-3.5 h-3.5 text-blue-400 animate-pulse"></i>
+                            <span>지구 관측자의 시선 방향 (화면 아래쪽 ⬇️)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 가상 실험 조종판 (공전 궤도 스크린 바로 아래로 배치 - 3단 레이아웃) -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-2xl backdrop-blur-md">
+                    <h3 class="text-xs font-bold text-slate-400 mb-3 tracking-wider flex items-center gap-1">
+                        <i data-lucide="sliders" class="w-4 h-4 text-blue-500"></i> 가상 실험 변인 통제 조종판
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- 슬라이더 1: 행성의 질량 -->
+                        <div class="flex flex-col gap-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                            <div class="flex justify-between items-center">
+                                <label for="massSlider" class="text-[10.5px] font-bold text-slate-300 flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-blue-400"></span> 1. 행성 질량 ($M_p$)
+                                </label>
+                                <span class="text-[11px] font-orbitron font-bold text-blue-400 bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/50">
+                                    <span id="massValue">5</span> M<sub>Jup</sub>
+                                </span>
+                            </div>
+                            <input type="range" id="massSlider" min="1" max="10" step="0.5" value="5" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer mt-1">
+                            <p class="text-[9px] text-slate-500 leading-tight">
+                                질량이 커질수록 공통 질량 중심이 외곽으로 이동하며, 별의 흔들림 반경과 시선 속도가 비례하여 증가합니다.
+                            </p>
+                        </div>
+
+                        <!-- 슬라이더 2: 공전 궤도 반지름 -->
+                        <div class="flex flex-col gap-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                            <div class="flex justify-between items-center">
+                                <label for="radiusSlider" class="text-[10.5px] font-bold text-slate-300 flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-400"></span> 2. 궤도 반지름 ($a_p$)
+                                </label>
+                                <span class="text-[11px] font-orbitron font-bold text-indigo-400 bg-indigo-950/50 px-2 py-0.5 rounded-full border border-indigo-900/50">
+                                    <span id="radiusValue">100</span> AU
+                                </span>
+                            </div>
+                            <input type="range" id="radiusSlider" min="50" max="200" step="5" value="100" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer mt-1">
+                            <p class="text-[9px] text-slate-500 leading-tight">
+                                반지름이 커질수록 케플러 제3법칙에 의해 공전 속도가 크게 감소합니다.
+                            </p>
+                        </div>
+
+                        <!-- 슬라이더 3: 궤도 이심률 -->
+                        <div class="flex flex-col gap-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                            <div class="flex justify-between items-center">
+                                <label for="eccSlider" class="text-[10.5px] font-bold text-slate-300 flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 3. 궤도 이심률 ($e$)
+                                </label>
+                                <span class="text-[11px] font-orbitron font-bold text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-900/50">
+                                    <span id="eccValue">0.00</span>
+                                </span>
+                            </div>
+                            <input type="range" id="eccSlider" min="0" max="0.6" step="0.05" value="0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer mt-1">
+                            <p class="text-[9px] text-slate-500 leading-tight">
+                                이심률이 클수록 궤도가 납작해지며, 근일점 통과 시 가속되어 비대칭 운동이 일어납니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- [B] 우측 패널 (실시간 상태 판정기 + 정량 정보 디스플레이) -> 12칸 중 4칸 확보 -->
+            <div class="lg:col-span-4 flex flex-col gap-4">
+                
+                <!-- 1. 현재 스펙트럼 편이 판정 -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col justify-center items-center text-center shadow-lg flex-1 min-h-[140px] transition-all duration-300">
+                    <span class="text-[11px] font-semibold text-slate-400 mb-2 flex items-center gap-1">
+                        <i data-lucide="eye" class="w-3.5 h-3.5 text-indigo-400"></i> 실시간 도플러 효과 편이 판정
+                    </span>
+                    <div id="statusIndicator" class="text-lg md:text-xl font-black tracking-wider px-4 py-3 rounded-xl bg-slate-950 border w-full flex justify-center items-center min-h-[64px] transition-all duration-300">
+                        대기 중...
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-2">중심별이 접근하면 청색편이, 후퇴하면 적색편이가 일어납니다.</p>
+                </div>
+
+                <!-- 2. 실시간 편이량 수치 디스플레이 -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col justify-center items-center text-center shadow-lg flex-1 min-h-[140px]">
+                    <span class="text-[11px] font-semibold text-slate-400 mb-2 flex items-center gap-1">
+                        <i data-lucide="calculator" class="w-3.5 h-3.5 text-blue-400"></i> 실시간 파장 변화량 ($\Delta\lambda$)
+                    </span>
+                    <div class="bg-slate-950/80 w-full rounded-xl py-2.5 px-4 border border-slate-800 flex flex-col items-center">
+                        <div class="text-2xl font-bold font-orbitron text-slate-100 flex items-baseline gap-1">
+                            <span id="shiftValueDisplay" class="text-yellow-400 font-black">0.000</span>
+                            <span class="text-xs text-slate-400 font-normal">nm</span>
+                        </div>
+                        <span class="text-[10.5px] text-slate-400 mt-1 font-orbitron" id="shiftPercentDisplay">편이 비율: 0.0000%</span>
+                    </div>
+                </div>
+
+                <!-- 3. 물리 통계 분석 패널 (실시간 시선 속도 카드 추가 및 레이아웃 확장) -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col justify-center shadow-lg flex-1 min-h-[180px] text-xs">
+                    <span class="text-[11px] font-semibold text-slate-400 mb-3 flex items-center gap-1 border-b border-slate-800 pb-2">
+                        <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-emerald-400"></i> 우주 역학 계산 정보
+                    </span>
+                    <div class="flex flex-col gap-2">
+                        <!-- 실시간 시선 속도 카테고리 -->
+                        <div class="flex justify-between items-center border-b border-slate-800/40 pb-1.5 bg-slate-950/40 px-2.5 py-1.5 rounded-lg border border-slate-800/30">
+                            <span class="text-slate-300 font-bold text-[11px]">실시간 시선 속도 ($v_{radial}$)</span>
+                            <span id="starRadialSpeedDisplay" class="font-black text-yellow-400 font-orbitron text-[12.5px]">계산 중...</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-800/50 pb-1">
+                            <span class="text-slate-400 text-[11px]">별의 최대 시선속도 ($v_{max}$)</span>
+                            <span id="starSpeedDisplay" class="font-semibold text-slate-200 font-orbitron text-[11px]">계산 중...</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-800/50 pb-1">
+                            <span class="text-slate-400 text-[11px]">중심별 궤도 반지름 ($r_*$)</span>
+                            <span id="starOrbitRadiusDisplay" class="font-semibold text-slate-200 font-orbitron text-[11px]">계산 중...</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 text-[11px]">공전 주기 ($P$)</span>
+                            <span id="orbitPeriodDisplay" class="font-semibold text-slate-200 font-orbitron text-[11px]">계산 중...</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- 5. 고급 지구과학 수행평가 리포트 도우미 (이론/한계점 정리) -->
+        <section class="bg-slate-900/50 border border-slate-800/60 rounded-2xl p-5 shadow-lg">
+            <button id="toggleGuideBtn" class="w-full flex justify-between items-center text-slate-400 hover:text-slate-100 transition focus:outline-none">
+                <span class="text-xs font-bold tracking-wider flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-4 h-4 text-emerald-500"></i> ⭐️ 수행평가 제출용 리포트 작성 가이드 (이론 및 과학적 한계점)
+                </span>
+                <i id="guideChevron" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            
+            <div id="guideContent" class="hidden mt-4 pt-4 border-t border-slate-800 text-xs text-slate-400 flex flex-col gap-4 leading-relaxed">
+                <div>
+                    <h4 class="font-bold text-slate-200 mb-1">1. 과학적 핵심 원리: 도플러 효과(Doppler Effect)와 이심률</h4>
+                    <p>
+                        행성과 항성(중심별)은 서로의 중력적 영향으로 인해 우주 공간의 공통 질량 중심(Barycenter)을 기준으로 마주 보며 공전 운동을 합니다. 행성이 가려져 보이지 않더라도 중심별은 공전 운동을 하므로, 지구 관측자 시선 방향으로 주기적으로 다가오거나 멀어집니다. 이 때문에 빛의 <strong>도플러 효과</strong>가 나타나 별빛의 파장이 변합니다. 별이 관측자에게 다가올 때는 파장이 짧아져 <strong>청색편이(Blueshift)</strong>가 일어나 대표 흡수선이 단파장 영역(왼쪽/파란색)으로 치우치고, 멀어질 때는 파장이 길어져 <strong>적색편이(Redshift)</strong>가 일어나 장파장 영역(오른쪽/빨간색)으로 치우칩니다.
+                        <br><br>
+                        여기에 <strong>이심률(Eccentricity, $e$)</strong> 슬라이더를 도입하면 궤도가 타원형으로 변형됩니다. 이심률이 커질수록 <strong>케플러 제3법칙(조화의 법칙) 및 케플러 제2법칙(면적 속도 일정의 법칙)</strong>에 의해 중심별이 근일점을 지날 때 급격히 가속되고, 원일점을 지날 때 매우 서서히 진행됩니다. 이 비등속 공전 운동으로 인해 흡수선의 좌우 운동 속도가 대칭을 이루지 않고 한쪽 영역에서는 빠르게 스윕(Sweep)하고 반대쪽 영역에서는 오래 머무는 비대칭적 도플러 효과가 선명하게 관측됩니다.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-200 mb-1">2. 보조 물리 법칙: 케플러 법칙과 공전 주기 ($P$)</h4>
+                    <p>
+                        도플러 효과 분석의 기초가 되는 궤도 운동 연산에는 <strong>케플러 제3법칙(조화의 법칙)</strong>이 사용됩니다. 행성의 공전 주기($P$)와 궤도 장반경(반지름, $a$) 사이에는 $P^2 \propto a^3$이라는 물리적 법칙이 성립합니다. 따라서 조작 변인 중 하나인 공전 반지름 슬라이더 값을 늘리면 공전 속도가 크게 감소하여 도플러 효과의 변화 주기 역시 길어지게 됩니다.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-200 mb-1">3. 변인 조작에 따른 도플러 편이폭 상관관계 분석</h4>
+                    <ul class="list-disc list-inside flex flex-col gap-1 pl-1">
+                        <li><strong>행성의 질량($M_p$) 효과:</strong> $M_p$가 커지면 공통 질량 중심 공식($M_* r_* = M_p r_p$)에 따라 중심별의 회전 궤도 반경($r_*$)이 비례하여 넓어집니다. 따라서 중심별의 최대 공전 속도가 빨라져 대표 흡수선의 좌우 진동 폭(최대 도플러 편이 폭)이 뚜렷하게 넓어집니다.</li>
+                        <li><strong>공전 궤도 반지름($a_p$) 효과:</strong> $a_p$가 증가하면 케플러 제3법칙에 의해 공전 주기가 길어져 궤도 속도가 확연하게 감소합니다. 이로 인해 중심별의 공전 속도가 느려지고 스펙트럼의 편이량이 극히 미세해져 검은 선의 진동 움직임이 현저히 줄어듭니다.</li>
+                        <li><strong>궤도 이심률($e$) 효과:</strong> 이심률이 커질수록 근일점에서 중심별의 순간 속도가 비약적으로 증가하므로, 도플러 변화 곡선의 순간 기울기(가속성)가 극대화되어 흡수선이 파란색 영역에서 빨간색 영역으로 급격하게 교차 이동하게 됩니다.</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-950/60 p-3.5 rounded-xl border border-amber-900/30">
+                    <h4 class="font-bold text-amber-400 mb-1.5 flex items-center gap-1">
+                        <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-500"></i> 4. 과학적 단순화 및 한계점 (평가 기준 만족용 핵심 서술 분야!)
+                    </h4>
+                    <p class="text-[11px] mb-2">
+                        본 가상 시뮬레이션은 정밀한 시각화와 조작 편의성을 제공하기 위해 실제 우주 환경을 일부 단순화하여 설계되었습니다. 보고서의 <strong>[과학적 한계점]</strong> 란에 아래의 내용을 기재할 것을 권장합니다.
+                    </p>
+                    <ul class="list-disc list-inside flex flex-col gap-1.5 pl-1 text-[11px] text-slate-400">
+                        <li><strong>천체 질량 및 크기비의 비현실적 왜곡 (Visual Over-Scaling):</strong> 실제 태양 대비 목성의 질량은 약 0.1%(1/1000) 수준이며 크기는 10%에 불과합니다. 실제 스케일을 그대로 반영하면 별의 미세 흔들림($r_*$)이 거의 0픽셀에 수렴하여 시각적 분석이 불가능합니다. 따라서 본 시뮬레이션은 중심별($M_*=100$) 대비 행성 질량($M_p=1 \sim 10$)을 별의 1%~10% 수준으로 대폭 확대하여 흔들림 운동을 역동적으로 왜곡·구현했습니다.</li>
+                        <li><strong>공전 주기에 미치는 행성 질량 배제:</strong> 실제 뉴턴 역학 상 공전 주기는 두 천체 질량의 합($M_* + M_p$)에도 연동되어 변화합니다. 본 시뮬레이션에서는 변인 조작 분석의 직관성을 위해 케플러 제3법칙을 단순화하여 주기가 오직 공전 반지름($a_p$)에만 영향받도록 공식($P \propto a_p^{1.5}$)을 통제했습니다.</li>
+                        <li><strong>공전 궤도 경사각($i$)의 고정:</strong> 실제 도플러 탐사 시선 속도는 관측자와 궤도면의 기울기인 경사각($i$)에 따라 $v_{obs} = v \sin i$로 감쇄되지만, 본 프로그램은 도플러 효과가 가장 완벽하게 성립하는 이상적인 상태인 경사각 $i = 90^\circ$만을 가정하고 연산되었습니다.</li>
+                        <li><strong>지연 시간(Retarded Time) 효과의 배제:</strong> 실제 우주에서 방출되어 지구에 도달한 빛은 과거 시점에 별이 가졌던 위치와 속도 정보를 담고 있습니다(지연 시간 효과). 본 시뮬레이션에서는 연산 최적화를 위해 중심별의 실시간 시선 속도에 따라 전체 파동의 물성치가 순간적으로 변하도록 단순화하여 묘사했습니다.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- 푸터 -->
+    <footer class="mt-8 text-slate-600 text-[10px] text-center pb-8">
+        <p>© 2026 Advanced Earth Science Simulation. All rights reserved.</p>
+        <p class="mt-1">바이브코딩(Gemini Canvas Mode)으로 빌드된 지구과학 과정중심 수행평가 최적화 시뮬레이터</p>
+    </footer>
+
+    <!-- 시뮬레이션 구동 자바스크립트 엔진 -->
+    <script>
+        // 1. DOM 요소 취득
+        const spectrumCanvas = document.getElementById('spectrumCanvas');
+        const specCtx = spectrumCanvas.getContext('2d');
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const orbitCtx = orbitCanvas.getContext('2d');
+
+        const massSlider = document.getElementById('massSlider');
+        const radiusSlider = document.getElementById('radiusSlider');
+        const eccSlider = document.getElementById('eccSlider');
+        
+        const massValueText = document.getElementById('massValue');
+        const radiusValueText = document.getElementById('radiusValue');
+        const eccValueText = document.getElementById('eccValue');
+
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const btnReset = document.getElementById('btnReset');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+
+        const statusIndicator = document.getElementById('statusIndicator');
+        const shiftValueDisplay = document.getElementById('shiftValueDisplay');
+        const shiftPercentDisplay = document.getElementById('shiftPercentDisplay');
+        const starRadialSpeedDisplay = document.getElementById('starRadialSpeedDisplay');
+        const starSpeedDisplay = document.getElementById('starSpeedDisplay');
+        const starOrbitRadiusDisplay = document.getElementById('starOrbitRadiusDisplay');
+        const orbitPeriodDisplay = document.getElementById('orbitPeriodDisplay');
+
+        const toggleGuideBtn = document.getElementById('toggleGuideBtn');
+        const guideContent = document.getElementById('guideContent');
+        const guideChevron = document.getElementById('guideChevron');
+
+        // Lucide 아이콘 초기화 안전 처리
+        try {
+            lucide.createIcons();
+        } catch(e) {
+            console.log("Lucide load deferred");
+        }
+
+        // 2. 물리 시뮬레이션 상태 변수 설정
+        let isPlaying = true;
+        let theta = 0; // 공전 위상 각도 (라디안, 여기서는 진변칙 True Anomaly를 모사)
+        let wavePhase = 0; // 파동 전파 위상 애니메이션용 변수
+        
+        // 은하 스케일 파라미터 (물리 및 시각화용 최적 상보 계수)
+        const M_STAR = 100; // 중심별의 고정 상대 질량
+        const REAL_C = 300000; // 도플러 수치에 적용될 실제 빛의 속도 (300,000 km/s)
+        const REFERENCE_WAVELENGTH = 589.300; // 나트륨 흡수선 (589.300 nm)을 기준 파장으로 설정
+
+        // 행성 질량, 반지름, 이심률의 슬라이더 값 매핑 데이터
+        let m_planet = parseFloat(massSlider.value); // 1 ~ 10
+        let r_planet = parseFloat(radiusSlider.value); // 50 ~ 200
+        let e_planet = parseFloat(eccSlider.value); // 0.0 ~ 0.6
+
+        // 별과 행성의 궤적 저장용 어레이 (Fading Tail 구현용)
+        let starTrail = [];
+        let planetTrail = [];
+        const MAX_TRAIL_LENGTH = 150;
+
+        // 전체 조작 한계에서 계산될 수 있는 최대 속도의 상한값 연산 
+        const LIMIT_MASS = 10;
+        const LIMIT_RADIUS = 50;
+        const LIMIT_PERIOD = 0.10 * Math.pow(LIMIT_RADIUS, 1.5);
+        const LIMIT_OMEGA = (2 * Math.PI) / LIMIT_PERIOD;
+        const LIMIT_R_STAR = (LIMIT_MASS / M_STAR) * LIMIT_RADIUS * 1.3;
+        const MAX_VELOCITY_OVERALL = LIMIT_OMEGA * LIMIT_R_STAR; // 최적 최대 시선속도 한계점
+
+        // 3. 캔버스 해상도 고정 및 반응형 핸들링 (사이즈 0 방지 알고리즘 강화)
+        function resizeCanvases() {
+            const specParent = spectrumCanvas.parentElement;
+            const orbitParent = orbitCanvas.parentElement;
+
+            const specWidth = specParent.clientWidth || specParent.getBoundingClientRect().width || 750;
+            spectrumCanvas.width = specWidth;
+            spectrumCanvas.height = 56; // 고정 높이
+
+            const orbitWidth = orbitParent.clientWidth || orbitParent.getBoundingClientRect().width || 750;
+            orbitCanvas.width = orbitWidth;
+            orbitCanvas.height = 360;
+        }
+
+        // 초기 브라우저 윈도우 사이즈 측정 및 윈도우 리사이즈 바인딩
+        window.addEventListener('resize', resizeCanvases);
+        resizeCanvases(); 
+
+        // 4. 슬라이더 이벤트 리스너 세팅
+        massSlider.addEventListener('input', (e) => {
+            m_planet = parseFloat(e.target.value);
+            massValueText.textContent = m_planet.toFixed(1);
+            resetTrails();
+        });
+
+        radiusSlider.addEventListener('input', (e) => {
+            r_planet = parseFloat(e.target.value);
+            radiusValueText.textContent = r_planet;
+            resetTrails();
+        });
+
+        eccSlider.addEventListener('input', (e) => {
+            e_planet = parseFloat(e.target.value);
+            eccValueText.textContent = e_planet.toFixed(2);
+            resetTrails();
+        });
+
+        // 애니메이션 재설정용 궤적 클리어
+        function resetTrails() {
+            starTrail = [];
+            planetTrail = [];
+        }
+
+        // 제어 버튼 이벤트 리스너 세팅
+        btnPlayPause.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.setAttribute('data-lucide', 'pause');
+                playText.textContent = '일시정지';
+                btnPlayPause.classList.remove('bg-blue-900', 'hover:bg-blue-800');
+                btnPlayPause.classList.add('bg-slate-800', 'hover:bg-slate-700');
+            } else {
+                playIcon.setAttribute('data-lucide', 'play');
+                playText.textContent = '계속 진행';
+                btnPlayPause.classList.remove('bg-slate-800', 'hover:bg-slate-700');
+                btnPlayPause.classList.add('bg-blue-900', 'hover:bg-blue-800');
+            }
+            try { lucide.createIcons(); } catch(e){}
+        });
+
+        btnReset.addEventListener('click', () => {
+            theta = 0;
+            massSlider.value = 5;
+            radiusSlider.value = 100;
+            eccSlider.value = 0;
+            m_planet = 5;
+            r_planet = 100;
+            e_planet = 0;
+            massValueText.textContent = '5.0';
+            radiusValueText.textContent = '100';
+            eccValueText.textContent = '0.00';
+            isPlaying = true;
+            playIcon.setAttribute('data-lucide', 'pause');
+            playText.textContent = '일시정지';
+            btnPlayPause.classList.remove('bg-blue-900', 'hover:bg-blue-800');
+            btnPlayPause.classList.add('bg-slate-800', 'hover:bg-slate-700');
+            resetTrails();
+            try { lucide.createIcons(); } catch(e){}
+        });
+
+        // 5. 스펙트럼 캔버스 드로잉 로직 (도플러 효과 흡수선 렌더러)
+        function drawSpectrum(visualShiftFraction) {
+            const w = spectrumCanvas.width;
+            const h = spectrumCanvas.height;
+            if (w === 0 || h === 0) return; // 드로잉 에러 차단
+            
+            specCtx.clearRect(0, 0, w, h);
+
+            // 가시광선 무지개 그라데이션 형성 (파장 400nm ~ 700nm 모사)
+            const rainbowGrad = specCtx.createLinearGradient(0, 0, w, 0);
+            rainbowGrad.addColorStop(0.0, '#3b0066'); // 자색 (Deep Violet)
+            rainbowGrad.addColorStop(0.15, '#0000ff'); // 청색 (Blue)
+            rainbowGrad.addColorStop(0.35, '#00ffff'); // 청록 (Cyan)
+            rainbowGrad.addColorStop(0.5, '#00ff00'); // 녹색 (Green)
+            rainbowGrad.addColorStop(0.65, '#ffff00'); // 황색 (Yellow)
+            rainbowGrad.addColorStop(0.85, '#ff7f00'); // 주황 (Orange)
+            rainbowGrad.addColorStop(1.0, '#ff0000'); // 적색 (Red)
+
+            specCtx.fillStyle = rainbowGrad;
+            specCtx.fillRect(0, 0, w, h);
+
+            // 관측소 기기 느낌의 실감나는 오버레이 셰이딩 효과
+            const overlayGrad = specCtx.createLinearGradient(0, 0, 0, h);
+            overlayGrad.addColorStop(0.0, 'rgba(0,0,0,0.5)');
+            overlayGrad.addColorStop(0.2, 'rgba(0,0,0,0)');
+            overlayGrad.addColorStop(0.8, 'rgba(0,0,0,0)');
+            overlayGrad.addColorStop(1.0, 'rgba(0,0,0,0.6)');
+            specCtx.fillStyle = overlayGrad;
+            specCtx.fillRect(0, 0, w, h);
+
+            // 도플러 효과에 의한 검은 선(흡수선)의 편이 좌표 연산
+            const baseLineX = w / 2; // 스펙트럼의 정중앙 기준점
+            
+            // 검은색 흡수선이 최대로 진동할 수 있는 픽셀 영역 바운더리 (중앙 기준 양옆 44%)
+            const maxShiftPixel = w * 0.44; 
+            
+            // visualShiftFraction에 기초해 흡수선 이동 (-1 ~ +1 범위)
+            const clampedShift = Math.max(-1.0, Math.min(1.0, visualShiftFraction));
+            const currentLineX = baseLineX - (clampedShift * maxShiftPixel);
+
+            // 단 한 개의 굵은 메인 검은색 흡수선 (나트륨 흡수선 D선 모사)
+            specCtx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
+            specCtx.lineWidth = 6;
+            specCtx.beginPath();
+            specCtx.moveTo(currentLineX, 0);
+            specCtx.lineTo(currentLineX, h);
+            specCtx.stroke();
+
+            // 도플러 편이 비교용 하얀색 정지상태 기준점선 (중앙 고정)
+            specCtx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+            specCtx.lineWidth = 1.2;
+            specCtx.setLineDash([4, 4]);
+            specCtx.beginPath();
+            specCtx.moveTo(baseLineX, 0);
+            specCtx.lineTo(baseLineX, h);
+            specCtx.stroke();
+            specCtx.setLineDash([]); // 점선 설정 해제
+        }
+
+        // 6. 메인 루프 시뮬레이션 프레임 업데이트
+        function updateAndDrawOrbit() {
+            const w = orbitCanvas.width;
+            const h = orbitCanvas.height;
+            if (w === 0 || h === 0) {
+                resizeCanvases();
+            }
+            
+            const cx = w / 2;
+            const cy = h / 2;
+            
+            orbitCtx.clearRect(0, 0, w, h);
+
+            // 물리 역학 엔진 계산 적용
+            // 1) 주기 P 구하기 (케플러 제3법칙 적용: P^2 = a^3, 최적화된 감속 비율 계수 0.10 적용)
+            const orbitPeriod = 0.10 * Math.pow(r_planet, 1.5);
+            // 평균 각속도 omega 구하기
+            const omega = (2 * Math.PI) / orbitPeriod;
+
+            // 2) 타원 궤도 속도 변화율 계산 (케플러 제2법칙: 면적 속도 일정 법칙 적용)
+            const cosTheta = Math.cos(theta);
+            const sinTheta = Math.sin(theta);
+            const e_term = 1 + e_planet * cosTheta;
+            const ecc_factor_denom = Math.pow(1 - e_planet * e_planet, 1.5);
+            const d_theta_dt = omega * (Math.pow(e_term, 2) / ecc_factor_denom);
+
+            // 3) 각도 증분 (재생 중일 때만 회전시킴 - 타원 비등속 운동 반영)
+            if (isPlaying) {
+                theta += d_theta_dt;
+                wavePhase += 0.25; // 빛의 파동 전파 위상 갱신
+                if (theta > Math.PI * 2) {
+                    theta -= Math.PI * 2;
+                }
+            }
+
+            // 4) 타원 궤도 반지름 연산 (초점이 원점인 극좌표 타원 공식: r = a*(1-e^2)/(1+e*cos(theta)))
+            const r_factor = (1 - e_planet * e_planet) / (1 + e_planet * cosTheta);
+            const r_planet_current = r_planet * r_factor;
+
+            // 공통 질량 중심 공식 적용 (M_star * r_star = m_planet * r_planet)
+            const visualScale = 1.3;
+            const r_star = (m_planet / M_STAR) * r_planet * visualScale;
+            const r_star_current = r_star * r_factor;
+
+            // 시각적 렌더링을 위한 좌표 축소 계수(DRAW_SCALE) 도입
+            const DRAW_SCALE = 0.65; 
+            const vis_r_planet_current = r_planet_current * DRAW_SCALE;
+            const vis_r_star_current = r_star_current * DRAW_SCALE;
+
+            // 5) 천체 위치 벡터 연산 (공통 질량 중심을 Focus 초점으로 둠!)
+            // 외계 행성의 좌표 (초점이 cx, cy)
+            const px = cx + vis_r_planet_current * cosTheta;
+            const py = cy + vis_r_planet_current * sinTheta;
+
+            // 중심별의 좌표
+            const sx = cx - vis_r_star_current * cosTheta;
+            const sy = cy - vis_r_star_current * sinTheta;
+
+            // 흐릿한 궤도 꼬리 효과 데이터 적재
+            if (isPlaying) {
+                starTrail.push({ x: sx, y: sy });
+                planetTrail.push({ x: px, y: py });
+                if (starTrail.length > MAX_TRAIL_LENGTH) starTrail.shift();
+                if (planetTrail.length > MAX_TRAIL_LENGTH) planetTrail.shift();
+            }
+
+            // 6) 공전 평면 드로잉 시작
+            // 배경 미세 격자망 그리기
+            orbitCtx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            orbitCtx.lineWidth = 1;
+            for (let i = 0; i < w; i += 40) {
+                orbitCtx.beginPath();
+                orbitCtx.moveTo(i, 0);
+                orbitCtx.lineTo(i, h);
+                orbitCtx.stroke();
+            }
+            for (let j = 0; j < h; j += 40) {
+                orbitCtx.beginPath();
+                orbitCtx.moveTo(0, j);
+                orbitCtx.lineTo(w, j);
+                orbitCtx.stroke();
+            }
+
+            // 타원 공전 가이드라인 그리기
+            orbitCtx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+            orbitCtx.lineWidth = 1.2;
+            orbitCtx.setLineDash([5, 5]);
+            
+            // 외계 행성의 전체 타원 궤도
+            orbitCtx.beginPath();
+            for (let a = 0; a <= Math.PI * 2; a += 0.05) {
+                let rf = (1 - e_planet * e_planet) / (1 + e_planet * Math.cos(a));
+                let rp = r_planet * rf * DRAW_SCALE;
+                let tx = cx + rp * Math.cos(a);
+                let ty = cy + rp * Math.sin(a);
+                if (a === 0) orbitCtx.moveTo(tx, ty);
+                else orbitCtx.lineTo(tx, ty);
+            }
+            orbitCtx.closePath();
+            orbitCtx.stroke();
+
+            // 중심별의 회전 궤도 (타원 흔들림)
+            orbitCtx.strokeStyle = 'rgba(234, 179, 8, 0.12)';
+            orbitCtx.beginPath();
+            for (let a = 0; a <= Math.PI * 2; a += 0.05) {
+                let rf = (1 - e_planet * e_planet) / (1 + e_planet * Math.cos(a));
+                let rs = r_star * rf * DRAW_SCALE;
+                let tx = cx - rs * Math.cos(a);
+                let ty = cy - rs * Math.sin(a);
+                if (a === 0) orbitCtx.moveTo(tx, ty);
+                else orbitCtx.lineTo(tx, ty);
+            }
+            orbitCtx.closePath();
+            orbitCtx.stroke();
+            orbitCtx.setLineDash([]);
+
+            // 타원 궤도의 근일점과 원일점 실시간 가이드 마킹 (e > 0.05 일 때 활성화)
+            if (e_planet >= 0.05) {
+                // 행성 기준의 근일점 (Periastron, theta = 0, 가장 오른쪽)
+                const p_peri_x = cx + r_planet * (1 - e_planet) * DRAW_SCALE;
+                orbitCtx.fillStyle = 'rgba(16, 185, 129, 0.4)';
+                orbitCtx.beginPath();
+                orbitCtx.arc(p_peri_x, cy, 4, 0, Math.PI * 2);
+                orbitCtx.fill();
+                orbitCtx.fillStyle = 'rgba(16, 185, 129, 0.8)';
+                orbitCtx.font = 'bold 9px Noto Sans KR';
+                orbitCtx.fillText('근일점 (Periastron)', p_peri_x - 40, cy - 8);
+
+                // 행성 기준의 원일점 (Apastron, theta = PI, 가장 왼쪽)
+                const p_apa_x = cx - r_planet * (1 + e_planet) * DRAW_SCALE;
+                orbitCtx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+                orbitCtx.beginPath();
+                orbitCtx.arc(p_apa_x, cy, 4, 0, Math.PI * 2);
+                orbitCtx.fill();
+                orbitCtx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+                orbitCtx.fillText('원일점 (Apastron)', p_apa_x - 10, cy - 8);
+            }
+
+            // 천체 잔상 꼬리 효과 그리기
+            // 행성 궤적 잔상
+            if (planetTrail.length > 1) {
+                for (let i = 1; i < planetTrail.length; i++) {
+                    const alpha = i / planetTrail.length;
+                    orbitCtx.strokeStyle = `rgba(59, 130, 246, ${alpha * 0.25})`;
+                    orbitCtx.lineWidth = 2;
+                    orbitCtx.beginPath();
+                    orbitCtx.moveTo(planetTrail[i - 1].x, planetTrail[i - 1].y);
+                    orbitCtx.lineTo(planetTrail[i].x, planetTrail[i].y);
+                    orbitCtx.stroke();
+                }
+            }
+            // 중심별 궤적 잔상
+            if (starTrail.length > 1) {
+                for (let i = 1; i < starTrail.length; i++) {
+                    const alpha = i / starTrail.length;
+                    orbitCtx.strokeStyle = `rgba(234, 179, 8, ${alpha * 0.45})`;
+                    orbitCtx.lineWidth = 2.5;
+                    orbitCtx.beginPath();
+                    orbitCtx.moveTo(starTrail[i - 1].x, starTrail[i - 1].y);
+                    orbitCtx.lineTo(starTrail[i].x, starTrail[i].y);
+                    orbitCtx.stroke();
+                }
+            }
+
+            // 천체 간 공용 질량 결합선
+            orbitCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            orbitCtx.lineWidth = 1;
+            orbitCtx.setLineDash([3, 5]);
+            orbitCtx.beginPath();
+            orbitCtx.moveTo(px, py);
+            orbitCtx.lineTo(sx, sy);
+            orbitCtx.stroke();
+            orbitCtx.setLineDash([]);
+
+            // 공통 질량 중심 붉은색 크로스 마커 (+, 타원 궤도의 실질적 '초점' 위치)
+            orbitCtx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+            orbitCtx.lineWidth = 2;
+            orbitCtx.beginPath();
+            orbitCtx.moveTo(cx - 8, cy); orbitCtx.lineTo(cx + 8, cy);
+            orbitCtx.moveTo(cx, cy - 8); orbitCtx.lineTo(cx, cy + 8);
+            orbitCtx.stroke();
+            
+            orbitCtx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+            orbitCtx.font = '10px Noto Sans KR';
+            orbitCtx.fillText('공통 질량 중심 (초점 Focus)', cx + 12, cy - 4);
+
+            // 7. 실시간 도플러 효과 편이량 및 과학 정보 연산
+            // 관측자는 화면 하단(+Y 방향)에 있으므로, Y축 속도 성분이 곧 별의 시선 속도(Radial Velocity)가 됩니다.
+            // 타원 운동 시 Y방향 속도 성분 도함수 공식 정밀 대입
+            const dr_dt = r_star_current * (e_planet * sinTheta / (1 + e_planet * cosTheta)) * d_theta_dt;
+            const velocityY = - dr_dt * sinTheta - r_star_current * cosTheta * d_theta_dt;
+            
+            // 물리 통계용 최대 시선 속도 계산 및 단품 모사 스케일 매핑
+            const maxVelocityY = omega * r_star / Math.sqrt(1 - e_planet * e_planet); 
+            const starSpeedKms = (maxVelocityY * 135).toFixed(1); // 가상 스케일 반영 최대 속도 (km/s)
+            
+            // 현재 프레임의 실시간 물리 시선 속도 (접근:+Y, 후퇴:-Y)
+            const currentRadialVelocityKms = velocityY * 135;
+
+            // 도플러 파장 계산 공식: Δλ = λ_0 * (v_r / c)
+            const deltaWavelength = REFERENCE_WAVELENGTH * (currentRadialVelocityKms / REAL_C);
+            const shiftedWavelength = REFERENCE_WAVELENGTH + deltaWavelength;
+            const shiftPercentage = (deltaWavelength / REFERENCE_WAVELENGTH) * 100;
+
+            // 전체 시스템의 최고 한계 속도 대비 실시간 Y속도 비율로 정밀 맵핑
+            const visualShiftFraction = velocityY / MAX_VELOCITY_OVERALL; 
+
+            // 수정한 시각용 편이 비율로 스펙트럼 캔버스 갱신
+            drawSpectrum(visualShiftFraction);
+
+            // 중심별에서 하단 관측자로 방출되는 '실시간 빛의 파동(Wavefront)' 전파 시각화
+            let waveColor = 'rgba(234, 179, 8, 0.4)'; // 정지 기본 황색 파장 빛
+            if (velocityY > 0.0001) {
+                // 접근 중 (청색편이: 푸른 계열 빛 발산)
+                waveColor = 'rgba(59, 130, 246, 0.65)'; 
+            } else if (velocityY < -0.0001) {
+                // 후퇴 중 (적색편이: 붉은 계열 빛 발산)
+                waveColor = 'rgba(239, 68, 68, 0.65)';
+            }
+            
+            // 파동을 그리기 위한 설정 (별의 Y축 위치에서부터 관측 캔버스 맨 아래 h까지 사인파 전파)
+            orbitCtx.strokeStyle = waveColor;
+            orbitCtx.lineWidth = 1.5;
+            orbitCtx.beginPath();
+            
+            // 파장은 편이율에 동조해 촘촘해지거나 넓어짐 (Δλ 반영)
+            const baseWavelength = 18; // 기본 파장 픽셀 스케일
+            const waveLengthFactor = baseWavelength * (1 - visualShiftFraction * 0.35); 
+            for (let y = sy; y < h; y += 2) {
+                // [수수 수정 사항 2] 파동의 amplitude가 별 중심(y=sy)에서는 0에서 출발해 자연스럽게 커지도록 엔벨로프 함수 적용!
+                const amplitude = 8 * Math.min(1.0, (y - sy) / 40.0);
+                const x = sx + amplitude * Math.sin((y - sy) / waveLengthFactor - wavePhase);
+                if (y === sy) orbitCtx.moveTo(x, y);
+                else orbitCtx.lineTo(x, y);
+            }
+            orbitCtx.stroke();
+
+            // 중심별 항성 광원 구체화
+            const starRadius = 15;
+            const starGlow = orbitCtx.createRadialGradient(sx, sy, 2, sx, sy, starRadius);
+            starGlow.addColorStop(0, '#ffffff');
+            starGlow.addColorStop(0.2, '#fef08a');
+            starGlow.addColorStop(0.7, '#eab308');
+            starGlow.addColorStop(1, 'rgba(234, 179, 8, 0)');
+            
+            orbitCtx.fillStyle = starGlow;
+            orbitCtx.beginPath();
+            orbitCtx.arc(sx, sy, starRadius * 1.5, 0, Math.PI * 2);
+            orbitCtx.fill();
+
+            orbitCtx.fillStyle = '#fef08a';
+            orbitCtx.beginPath();
+            orbitCtx.arc(sx, sy, starRadius * 0.7, 0, Math.PI * 2);
+            orbitCtx.fill();
+            
+            orbitCtx.fillStyle = '#ffffff';
+            orbitCtx.font = 'bold 9px Noto Sans KR';
+            orbitCtx.fillText('중심별', sx + starRadius, sy - 5);
+
+            // 외계 행성 구체화 (질량 비례 구체 반경 스케일링)
+            const planetRadius = 7 + (m_planet * 0.6);
+            const planetGlow = orbitCtx.createRadialGradient(px, py, 1, px, py, planetRadius);
+            planetGlow.addColorStop(0, '#93c5fd');
+            planetGlow.addColorStop(0.4, '#3b82f6');
+            planetGlow.addColorStop(1, '#1e3a8a');
+            
+            orbitCtx.fillStyle = planetGlow;
+            orbitCtx.beginPath();
+            orbitCtx.arc(px, py, planetRadius, 0, Math.PI * 2);
+            orbitCtx.fill();
+
+            orbitCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            orbitCtx.lineWidth = 0.8;
+            orbitCtx.beginPath();
+            orbitCtx.arc(px, py, planetRadius, 0, Math.PI * 2);
+            orbitCtx.stroke();
+            
+            orbitCtx.fillStyle = '#93c5fd';
+            orbitCtx.font = '9px Noto Sans KR';
+            orbitCtx.fillText('외계 행성', px + planetRadius + 4, py + 3);
+
+            // 데이터 패널 정량적 정보 연동
+            const starOrbitRadiusAu = (r_star * 0.012).toFixed(3);
+
+            // 실시간 시선 속도 (접근: +, 후퇴: - 기호 매핑) 수치 출력
+            const rvSign = currentRadialVelocityKms >= 0 ? "+" : "";
+            starRadialSpeedDisplay.textContent = `${rvSign}${currentRadialVelocityKms.toFixed(1)} km/s`;
+            
+            starSpeedDisplay.innerHTML = `${starSpeedKms} <span class="text-[10px] text-slate-400">km/s</span>`;
+            starOrbitRadiusDisplay.innerHTML = `${starOrbitRadiusAu} <span class="text-[10px] text-slate-400">AU</span>`;
+            orbitPeriodDisplay.innerHTML = `${(orbitPeriod * 0.85).toFixed(1)} <span class="text-[10px] text-slate-400">일</span>`;
+
+            // 기호 포매팅 적용 파장값 표기 (+ / -)
+            const sign = deltaWavelength >= 0 ? "+" : "";
+            shiftValueDisplay.textContent = sign + deltaWavelength.toFixed(3);
+            shiftPercentDisplay.textContent = `편이 비율: ${sign}${shiftPercentage.toFixed(4)}% (실제 파장: ${shiftedWavelength.toFixed(3)}nm)`;
+
+            // 8. 시선 운동 상태 판정 텍스트 갱신 (네온 글로우 스타일 반영)
+            const threshold = 0.0001; // 편이 제로 전환의 감도를 고도로 예리하게 세팅
+            if (velocityY > threshold) {
+                // Y좌표 증가 -> 관측자 방향 다가옴 -> 청색편이
+                statusIndicator.innerHTML = '<span class="text-blue-400 font-bold">⬇️ 청색편이 (Blueshift)</span>';
+                statusIndicator.className = "text-md md:text-lg font-black tracking-widest px-4 py-2 rounded-xl bg-blue-950/40 border border-blue-500/40 w-full flex justify-center items-center min-h-[56px] transition-all duration-300 shadow-[0_0_15px_rgba(59,130,246,0.2)] neon-glow-blue";
+            } else if (velocityY < -threshold) {
+                // Y좌표 감소 -> 위로 멀어짐 -> 적색편이
+                statusIndicator.innerHTML = '<span class="text-red-400 font-bold">⬆️ 적색편이 (Redshift)</span>';
+                statusIndicator.className = "text-md md:text-lg font-black tracking-widest px-4 py-2 rounded-xl bg-red-950/40 border border-red-500/40 w-full flex justify-center items-center min-h-[56px] transition-all duration-300 shadow-[0_0_15px_rgba(239,68,68,0.2)] neon-glow-red";
+            } else {
+                // 접선 방향 운동 시 (시선속도 0)
+                statusIndicator.innerHTML = '<span class="text-slate-400">↔️ 편이 없음 (기준 파장)</span>';
+                statusIndicator.className = "text-md md:text-lg font-black tracking-widest px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 w-full flex justify-center items-center min-h-[56px] transition-all duration-300";
+            }
+
+            // 프레임 애니메이션 루핑 예약
+            requestAnimationFrame(updateAndDrawOrbit);
+        }
+
+        // 7. 가이드 아코디언 컴포넌트 이벤트 등록
+        toggleGuideBtn.addEventListener('click', () => {
+            guideContent.classList.toggle('hidden');
+            if (guideContent.classList.contains('hidden')) {
+                guideChevron.setAttribute('data-lucide', 'chevron-down');
+            } else {
+                guideChevron.setAttribute('data-lucide', 'chevron-up');
+            }
+            try { lucide.createIcons(); } catch(e){}
+        });
+
+        // 8. 윈도우 로딩 완료 후 실질적 렌더링 엔진 시작
+        window.onload = function() {
+            resizeCanvases();
+            setTimeout(resizeCanvases, 50);
+            setTimeout(resizeCanvases, 250);
+            
+            // 시뮬레이션 루프 가동
+            updateAndDrawOrbit();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 우주 탐사 및 중력 도움 시뮬레이터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { background: #02040a; color: white; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        /* Custom styles for control panel */
+        input[type="range"] {
+            accent-color: #f59e0b;
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen">
+
+    <!-- 좌측 상단: 실시간 물리학 데이터 계기판 (HUD) -->
+    <div class="absolute top-4 left-4 p-4 bg-slate-950/85 rounded-2xl border border-slate-800/80 pointer-events-none w-64 text-xs space-y-1.5 backdrop-blur-md shadow-2xl z-10">
+        <h3 class="font-bold text-amber-400 border-b border-slate-800 pb-1 mb-1 flex items-center gap-1.5">📊 실시간 물리학 데이터 계기판</h3>
+        <div class="flex justify-between">
+            <span class="text-slate-400">우주선 속도:</span>
+            <span id="hudSpeed" class="font-mono text-emerald-400 font-bold">0.0 km/s</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-slate-400">천체 1과의 거리:</span>
+            <span id="hudTargetDistance" class="font-mono text-blue-300 font-bold">N/A km</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-slate-400 text-purple-400">최접근 거리 1 (근일점):</span>
+            <span id="hudMinDistance" class="font-mono text-purple-300 font-bold">N/A km</span>
+        </div>
+        
+        <!-- 연속 스윙바이 모드 시 유동적으로 나타날 2선 데이터 -->
+        <div id="hudTarget2Row" class="flex justify-between hidden border-t border-slate-900 pt-1">
+            <span class="text-slate-400">천체 2와의 거리:</span>
+            <span id="hudTargetDistance2" class="font-mono text-cyan-300 font-bold">N/A km</span>
+        </div>
+        <div id="hudMinDistance2Row" class="flex justify-between hidden">
+            <span class="text-slate-400 text-pink-400">최접근 거리 2 (근일점):</span>
+            <span id="hudMinDistance2" class="font-mono text-pink-300 font-bold">N/A km</span>
+        </div>
+
+        <div class="flex justify-between border-t border-slate-800 pt-1">
+            <span class="text-slate-400">현재 중력가속도:</span>
+            <span id="hudGravity" class="font-mono text-cyan-400">0.00 G</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-slate-400">우주선 질량비:</span>
+            <span id="hudMass" class="font-mono text-pink-400">100% (Stage 2)</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-slate-400">누적 속도 변화량 ($\Delta v$):</span>
+            <span id="hudDeltaV" class="font-mono text-yellow-400">+0.00 km/s</span>
+        </div>
+        <div class="flex justify-between border-t border-slate-800 pt-1 mt-1">
+            <span class="text-slate-400">현재 미션 상태:</span>
+            <span id="hudStatus" class="font-bold text-amber-400">대기중</span>
+        </div>
+        <div class="text-[9px] text-slate-500 pt-1 border-t border-slate-900 leading-tight">
+            * 마우스 드래그를 통해 우주 공간의 시점을 다각도로 조절할 수 있습니다.
+        </div>
+    </div>
+
+    <!-- 우측 하단: 학술용 스윙바이 시뮬레이션 제어판 -->
+    <div id="ui" class="absolute bottom-4 right-4 p-5 bg-slate-900/90 rounded-2xl backdrop-blur-md border border-slate-700/60 w-80 shadow-2xl z-10 space-y-3.5">
+        <div>
+            <h1 class="text-md font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-200">🌌 스윙바이 시뮬레이션</h1>
+            <p class="text-[10px] text-slate-400">지구 이탈 후 가외성계 중력 도움 현상의 물리적 정량 관측</p>
+        </div>
+
+        <!-- 학술 설계: 천체 개수 옵션 선택 인터페이스 -->
+        <div class="space-y-1">
+            <span class="text-xs text-slate-400 font-semibold block">🪐 조우 천체 수 (시스템 모드)</span>
+            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                <button id="btnMode1" class="py-1.5 rounded-lg font-bold border transition-all bg-amber-500/20 border-amber-500 text-amber-400">단일 시스템 (1개)</button>
+                <button id="btnMode2" class="py-1.5 rounded-lg font-bold border transition-all bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700">연속 시스템 (2개)</button>
+            </div>
+        </div>
+
+        <hr class="border-slate-800" />
+
+        <!-- 조작 변인 1: 발사 속도 -->
+        <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+                <span id="lblVel" class="text-slate-300 font-medium">초기 발사 속도 ($v_0$)</span>
+                <span id="vVal" class="text-amber-400 font-mono font-bold">6.5 km/s</span>
+            </div>
+            <input type="range" id="vel" min="2" max="25" step="0.1" value="6.5" class="w-full bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <!-- 조작 변인 2: 발사 각도 -->
+        <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-300 font-medium">정밀 조준 각도 ($\theta$)</span>
+                <span id="angleVal" class="text-amber-400 font-mono font-bold">0° (정조준)</span>
+            </div>
+            <input type="range" id="angle" min="-25" max="25" step="1" value="0" class="w-full bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer">
+            <p class="text-[9px] text-slate-400 font-light">* 조우 천체 정렬 축 기준 $\pm 25^\circ$의 유효 조준각 범위입니다.</p>
+        </div>
+
+        <!-- 조작 변인 3: 조우 행성 1 질량 -->
+        <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-300 font-medium">조우 천체 1 질량 ($M_1$)</span>
+                <span id="p2Type" class="text-amber-400 font-bold">가스 거인</span>
+            </div>
+            <input type="range" id="m2" min="10" max="150" step="1" value="65" class="w-full bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <!-- 조작 변인 4: 조우 행성 2 질량 (연속 시스템 기동 시에만 가시화) -->
+        <div id="m2Container" class="space-y-1 hidden">
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-300 font-medium">조우 천체 2 질량 ($M_2$)</span>
+                <span id="p3Type" class="text-amber-400 font-bold">가스 거인</span>
+            </div>
+            <input type="range" id="m3" min="10" max="150" step="1" value="75" class="w-full bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <hr class="border-slate-800" />
+
+        <!-- 다단계 로켓 분리 컨트롤 -->
+        <div class="space-y-1.5">
+            <span class="text-xs text-slate-400 font-semibold block">🚀 다단계 추진체 분리 제어</span>
+            <div class="grid grid-cols-2 gap-2">
+                <button id="btn1" class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 px-2 py-1.5 rounded-lg text-xs font-bold transition-all">1차 추진체 분리</button>
+                <button id="btn2" class="bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 px-2 py-1.5 rounded-lg text-xs font-bold transition-all" disabled>2차 추진체 분리</button>
+            </div>
+        </div>
+
+        <!-- 시각 레이어 표시 옵션 -->
+        <div class="space-y-1.5">
+            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" id="chkTrail" checked class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0">
+                    <span class="text-slate-300">비행 궤적 표시</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" id="chkVelVec" checked class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0">
+                    <span class="text-slate-300">속도 벡터 ($\vec{v}$)</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer col-span-2">
+                    <input type="checkbox" id="chkGravVec" checked class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0">
+                    <span class="text-slate-300">중력 가속도 벡터 ($\vec{a}_g$)</span>
+                </label>
+            </div>
+        </div>
+
+        <hr class="border-slate-800" />
+
+        <!-- 주 미션 액션 -->
+        <div class="flex gap-2">
+            <button id="btnLaunch" class="flex-1 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-bold py-2 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20">
+                시작
+            </button>
+            <button id="btnReset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2 rounded-xl text-xs transition-all">
+                초기화
+            </button>
+        </div>
+        <button id="btnCameraReset" class="w-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 text-[10px] py-1 rounded-lg transition-all">
+            카메라 뷰 초기화 (탑다운)
+        </button>
+    </div>
+
+    <!-- WebGL Rendering Canvas -->
+    <div id="canvas-container" class="w-full h-full"></div>
+
+    <!-- Canvas Rendering Zone -->
+    <canvas id="canvas" class="w-full h-full absolute top-0 left-0 pointer-events-none" style="z-index: 1;"></canvas>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let starField, gridHelper;
+        
+        // 물리 엔진 변수 설정 (Sub-stepping 8배속 상향)
+        const G = 4.2;              
+        const SUB_STEPS = 8;        
+        const STEP_DT = 0.07;       
+        let SPEED_SCALE = 1.0;
+        let isLaunched = false;
+        
+        // 시스템 모드 상태값 (1: 단일 천체 시스템, 2: 연속 천체 시스템)
+        let systemMode = 1;
+
+        // 천체 좌표 데이터 (모드 변경 시 resize()에서 재정의됨)
+        let planets = [];
+
+        let ship = { 
+            x: 0, y: 0, z: 0,
+            vx: 0, vy: 0, vz: 0, 
+            baseM: 5, m: 5, 
+            stage: 2, 
+            history: [], 
+            hasLeftEarth: false,
+            initialSpeed: 0,
+            crashed: false,
+            escaped: false,
+            maxSpeed: 0,
+            minDistance: Infinity,  // 천체 1 근일점 거리
+            minDistance2: Infinity  // 천체 2 근일점 거리
+        };
+
+        // 3D 천체 메쉬 및 부스터 파편 그룹
+        let planetMeshes = [];
+        let shipGroup;
+        let separatedStages = [];
+        let particles = [];
+        
+        // 궤도 라인 객체
+        let trailLine, predLine;
+        
+        // 화살표 벡터 헬퍼
+        let velArrow, gravArrow;
+
+        // 2D 캔버스 컨텍스트
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 초기화 가동
+        window.onload = function() {
+            init3DScene();
+            resize();
+            animate();
+        };
+
+        function init3DScene() {
+            const container = document.getElementById('canvas-container');
+            
+            // 1. 씬 생성
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x02040a, 0.0015);
+
+            // 2. 카메라 설정 (살짝 기운 웅장한 탑다운 3D 뷰)
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 5000);
+            camera.position.set(0, 360, 280);
+
+            // 3. 렌더러 생성
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // 4. 카메라 마우스 컨트롤 (OrbitControls)
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.02; // 우주선이 바닥 아래로 가지 않도록 조절
+            controls.minDistance = 50;
+            controls.maxDistance = 800;
+
+            // 5. 우주 성간 입자 (배경 별무리)
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsCount = 2000;
+            const starPositions = new Float32Array(starsCount * 3);
+            for(let i=0; i<starsCount*3; i++) {
+                starPositions[i] = (Math.random() - 0.5) * 2000;
+            }
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            const starsMaterial = new THREE.PointsMaterial({color: 0xffffff, size: 1.2, sizeAttenuation: true});
+            starField = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(starField);
+
+            // 6. 조명 배치 (행성 쉐이딩을 위한 방향성 광원 + 부드러운 환경광)
+            const ambientLight = new THREE.AmbientLight(0x222535);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            sunLight.position.set(-200, 300, 100);
+            scene.add(sunLight);
+
+            // 7. 기준 평면 격자선 그리기 (미적 가치 극대화)
+            gridHelper = new THREE.GridHelper(1000, 80, 0x1e293b, 0x0f172a);
+            gridHelper.position.y = -10;
+            scene.add(gridHelper);
+
+            // 8. 3D 화살표 벡터 초기 배치 (체크박스 여부에 따라 갱신 예정)
+            const arrowDir = new THREE.Vector3(1, 0, 0);
+            const arrowOrigin = new THREE.Vector3(0, 0, 0);
+            
+            // 속도 벡터 (Green)
+            velArrow = new THREE.ArrowHelper(arrowDir, arrowOrigin, 1, 0x2cc771, 5, 1.8);
+            // 중력 벡터 (Cyan)
+            gravArrow = new THREE.ArrowHelper(arrowDir, arrowOrigin, 1, 0x00b4d8, 5, 1.8);
+            
+            scene.add(velArrow);
+            scene.add(gravArrow);
+
+            // 9. 실시간 궤도 잔상 렌더러 지오메트리 빌드
+            const trailMat = new THREE.LineBasicMaterial({ color: 0xffeb3b, linewidth: 3 });
+            const trailGeo = new THREE.BufferGeometry();
+            trailLine = new THREE.Line(trailGeo, trailMat);
+            scene.add(trailLine);
+
+            // 미래 예측선 렌더러 지오메트리 빌드 (흰색 점선 스타일)
+            const predMat = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 4, gapSize: 3, transparent: true, opacity: 0.6 });
+            const predGeo = new THREE.BufferGeometry();
+            predLine = new THREE.Line(predGeo, predMat);
+            scene.add(predLine);
+
+            // 10. 우주선 3D 메쉬 그룹 생성
+            shipGroup = new THREE.Group();
+            scene.add(shipGroup);
+
+            // 창 크기 조절 리사이즈 감지
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        // 해상도 조절용
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            resize();
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // 모드별 물리계 배치 좌표 설정
+            if (systemMode === 1) {
+                planets = [
+                    { x: -160, y: 0, z: 90, m: 0.8, name: "출발지 (지구)" },
+                    { x: 160, y: 0, z: -90, m: parseInt(document.getElementById('m2').value), name: "조우 행성 1" }
+                ];
+            } else {
+                // 연속 스윙바이 기하학 설계: 지구 이탈 후 행성 1에서 꺾인 뒤 행성 2 방향으로 완벽하게 연속 조우되는 구도 구현
+                planets = [
+                    { x: -180, y: 0, z: 120, m: 0.8, name: "출발지 (지구)" },
+                    { x: -20, y: 0, z: 20, m: parseInt(document.getElementById('m2').value), name: "조우 행성 1" },
+                    { x: 140, y: 0, z: -60, m: parseInt(document.getElementById('m3').value), name: "조우 행성 2" }
+                ];
+            }
+
+            const distEarthToTarget = Math.sqrt((planets[1].x - planets[0].x)**2 + (planets[1].z - planets[0].z)**2);
+            const framesIn5Sec = 5 * 60; 
+            SPEED_SCALE = distEarthToTarget / (framesIn5Sec * 8 * SUB_STEPS * STEP_DT);
+            if (!isLaunched) {
+                resetSimulation();
+            }
+        }
+
+        // 천체 질량별 외형 특징 반환
+        function getPlanetInfo(m) {
+            if (m < 30) {
+                return { name: "지구형 행성", color: "#3a86ff", aura: "rgba(58, 134, 255, 0.15)", r: 16 };
+            } else if (m < 90) {
+                return { name: "가스 거인", color: "#f59e0b", aura: "rgba(245, 158, 11, 0.12)", r: 32 };
+            } else {
+                return { name: "항성 (적색거성)", color: "#ef4444", aura: "rgba(239, 68, 68, 0.25)", r: 52 };
+            }
+        }
+
+        // 천체 질량에 다른 이름 및 3D 그래픽 메쉬 리얼타임 생성
+        function updatePlanetVisuals() {
+            // 기존 3D 행성 메쉬를 가상 씬에서 정리 제거
+            planetMeshes.forEach(mesh => scene.remove(mesh));
+            planetMeshes = [];
+
+            planets.forEach((p, idx) => {
+                const info = getPlanetInfo(p.m);
+                const pGroup = new THREE.Group();
+                pGroup.position.set(p.x, p.y, p.z);
+
+                // 1. 가스 거성일 경우 토성식 입체 3D 고리 추가 (지구 제외한 조우 천체 전체에 동적 유동 매칭)
+                if (idx >= 1 && p.m >= 30 && p.m < 90) {
+                    const ringGeo = new THREE.RingGeometry(info.r * 1.3, info.r * 2.2, 64);
+                    // 3D 링을 입체적으로 눕히기
+                    ringGeo.rotateX(Math.PI / 2.3); 
+                    const ringMat = new THREE.MeshPhongMaterial({ 
+                        color: idx === 1 ? 0xe2a85c : 0x8fa9c4, // 연속 스윙바이 시 시각적 분별을 위해 링 색상 다양화
+                        side: THREE.DoubleSide, 
+                        transparent: true, 
+                        opacity: 0.7 
+                    });
+                    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+                    pGroup.add(ringMesh);
+                }
+
+                // 2. 적색거성일 경우 자체 조명 방출광(Emissive) 연출
+                const sphereGeo = new THREE.SphereGeometry(info.r, 32, 32);
+                let sphereMat;
+                if (idx >= 1 && p.m >= 90) {
+                    sphereMat = new THREE.MeshBasicMaterial({ color: info.color });
+                    // 가상 코로나 발광 연출
+                    const glowGeo = new THREE.SphereGeometry(info.r * 1.15, 32, 32);
+                    const glowMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.25, side: THREE.BackSide });
+                    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+                    pGroup.add(glowMesh);
+                } else {
+                    sphereMat = new THREE.MeshPhongMaterial({ 
+                        color: info.color, 
+                        shininess: 25,
+                        bumpScale: 0.05
+                    });
+                }
+
+                const bodyMesh = new THREE.Mesh(sphereGeo, sphereMat);
+                pGroup.add(bodyMesh);
+
+                // 3. 은은한 대기 가이드 효과
+                const auraGeo = new THREE.SphereGeometry(info.r * 1.5, 32, 32);
+                const auraMat = new THREE.MeshBasicMaterial({ 
+                    color: info.color, 
+                    transparent: true, 
+                    opacity: 0.04, 
+                    wireframe: true 
+                });
+                const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+                pGroup.add(auraMesh);
+
+                scene.add(pGroup);
+                planetMeshes.push(pGroup); // 추후 삭제를 위해 캐싱
+            });
+        }
+
+        // 시뮬레이션 상태 초기 세팅 및 리셋
+        function resetSimulation() {
+            isLaunched = false;
+            ship.stage = 2;
+            ship.crashed = false;
+            ship.escaped = false;
+            ship.hasLeftEarth = false;
+            ship.history = [];
+            ship.minDistance = Infinity;  // 최단 접근 거리 1 초기화
+            ship.minDistance2 = Infinity; // 최단 접근 거리 2 초기화
+            
+            // 3D 소품 리셋
+            separatedStages.forEach(stage => scene.remove(stage.mesh));
+            separatedStages = [];
+            particles.forEach(p => scene.remove(p.mesh));
+            particles = [];
+
+            // UI 제어 상태 원상복구
+            document.getElementById('btn1').disabled = false;
+            document.getElementById('btn2').disabled = true;
+            document.getElementById('btnLaunch').disabled = false;
+            document.getElementById('btnLaunch').classList.remove('opacity-50', 'cursor-not-allowed');
+
+            const earthInfo = getPlanetInfo(planets[0].m);
+            const launchSpeed = parseFloat(document.getElementById('vel').value);
+            const userAngleDeg = parseFloat(document.getElementById('angle').value);
+
+            // 1. 지구와 조우 행성 1의 기준 각도 산출
+            const dx = planets[1].x - planets[0].x;
+            const dz = planets[1].z - planets[0].z;
+            const baseAngle = Math.atan2(dz, dx); // 0도 정렬축
+
+            // 2. 사용자가 조절한 정밀 각도 결합
+            const finalAngle = baseAngle + (userAngleDeg * Math.PI / 180);
+
+            // 3. 지구 표면에 밀착 대기
+            const launchOffset = earthInfo.r + 5;
+            ship.x = planets[0].x + Math.cos(finalAngle) * launchOffset;
+            ship.z = planets[0].z + Math.sin(finalAngle) * launchOffset;
+            ship.y = 0; // 평면 궤도 유지
+
+            // [탈출속도 정밀 역산] 스케일에 맞춰 완벽하게 대응
+            const escapeVel = Math.sqrt((128 * G * planets[0].m) / (launchOffset * SPEED_SCALE));
+
+            // 슬라이더 최솟값 강제 갱신
+            const velInput = document.getElementById('vel');
+            velInput.min = escapeVel.toFixed(1);
+
+            document.getElementById('lblVel').innerHTML = `초기 발사 속도 ($v_0$) <span class="text-rose-400 font-bold">(탈출속도 하한: ${escapeVel.toFixed(1)} km/s)</span>`;
+
+            let targetSpeed = launchSpeed;
+            if (launchSpeed < escapeVel) {
+                targetSpeed = escapeVel;
+                velInput.value = escapeVel.toFixed(1);
+            }
+
+            // 4. 속도 벡터 주입 (SPEED_SCALE 동기화)
+            ship.vx = Math.cos(finalAngle) * targetSpeed * SPEED_SCALE;
+            ship.vy = 0;
+            ship.vz = Math.sin(finalAngle) * targetSpeed * SPEED_SCALE;
+
+            ship.initialSpeed = Math.sqrt(ship.vx * ship.vx + ship.vz * ship.vz);
+            ship.maxSpeed = ship.initialSpeed;
+
+            // 5. 3D 우주선 본체 그래픽 갱신
+            rebuildShip3D();
+
+            // HUD 라벨 초기화
+            document.getElementById('hudStatus').textContent = "대기중";
+            document.getElementById('hudStatus').className = "font-bold text-amber-400";
+            document.getElementById('hudSpeed').textContent = `${(targetSpeed).toFixed(1)} km/s`;
+            document.getElementById('hudTargetDistance').textContent = "N/A km";
+            document.getElementById('hudMinDistance').textContent = "N/A km";
+            if (systemMode === 2) {
+                document.getElementById('hudTargetDistance2').textContent = "N/A km";
+                document.getElementById('hudMinDistance2').textContent = "N/A km";
+            }
+            document.getElementById('hudGravity').textContent = "0.00 G";
+            document.getElementById('hudMass').textContent = "100% (Stage 2)";
+            document.getElementById('hudDeltaV').textContent = "+0.00 km/s";
+            document.getElementById('vVal').innerText = `${targetSpeed.toFixed(1)} km/s`;
+
+            // 슬라이더 텍스트 정보 동기화
+            document.getElementById('p2Type').innerText = getPlanetInfo(planets[1].m).name;
+            if (systemMode === 2 && planets[2]) {
+                document.getElementById('p3Type').innerText = getPlanetInfo(planets[2].m).name;
+            }
+
+            // 3D 천체 비주얼 갱신
+            updatePlanetVisuals();
+        }
+
+        // 단계에 맞는 3D 우주선 디자인 실시간 렌더링
+        function rebuildShip3D() {
+            // 기존 메쉬들 제거
+            while(shipGroup.children.length > 0){
+                shipGroup.remove(shipGroup.children[0]);
+            }
+
+            // 1. 공통 원뿔형 캡슐 본체 (White)
+            const capGeo = new THREE.ConeGeometry(2, 5, 16);
+            capGeo.rotateX(Math.PI / 2); // 정방향 회전 보정
+            const capMat = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 80 });
+            const capMesh = new THREE.Mesh(capGeo, capMat);
+            shipGroup.add(capMesh);
+
+            // 2. 1단 결합 상태일 때 추가 거대 부스터 메쉬 생성
+            if (ship.stage === 2) {
+                const bGeo = new THREE.CylinderGeometry(1.6, 1.8, 4, 16);
+                bGeo.rotateX(Math.PI / 2);
+                const bMat = new THREE.MeshPhongMaterial({ color: 0xfbbf24 });
+                const bMesh = new THREE.Mesh(bGeo, bMat);
+                bMesh.position.z = 4.5;
+                shipGroup.add(bMesh);
+
+                // 날개 디테일 추가
+                const wingGeo = new THREE.BoxGeometry(4, 0.5, 1.5);
+                const wingMat = new THREE.MeshPhongMaterial({ color: 0x475569 });
+                const wing = new THREE.Mesh(wingGeo, wingMat);
+                wing.position.z = 5.5;
+                shipGroup.add(wing);
+            } 
+            // 3. 2단 결합 상태일 때 코어 부스터 메쉬 생성
+            else if (ship.stage === 1) {
+                const bGeo = new THREE.CylinderGeometry(1.2, 1.4, 3, 16);
+                bGeo.rotateX(Math.PI / 2);
+                const bMat = new THREE.MeshPhongMaterial({ color: 0x94a3b8 });
+                const bMesh = new THREE.Mesh(bGeo, bMat);
+                bMesh.position.z = 3.5;
+                shipGroup.add(bMesh);
+            }
+
+            // 초기 위치 동기화
+            shipGroup.position.set(ship.x, ship.y, ship.z);
+        }
+
+        // 고속 물리 연산 (8배속 통합 서브 스텝 - 다중 천체 중력합 완벽 지원)
+        function physicsStep() {
+            let totalFx = 0;
+            let totalFy = 0;
+            let totalFz = 0;
+
+            planets.forEach((p) => {
+                let dx = p.x - ship.x;
+                let dy = p.y - ship.y;
+                let dz = p.z - ship.z;
+                let dist2 = dx * dx + dy * dy + dz * dz;
+                let dist = Math.sqrt(dist2);
+                const info = getPlanetInfo(p.m);
+
+                if (dist > 5) {
+                    let rNorm = dist / 8;
+                    let force = (G * p.m) / (rNorm * rNorm);
+                    totalFx += (dx / dist) * force * SPEED_SCALE;
+                    totalFy += (dy / dist) * force * SPEED_SCALE;
+                    totalFz += (dz / dist) * force * SPEED_SCALE;
+
+                    if (p.name === "출발지 (지구)" && !ship.hasLeftEarth) {
+                        if (dist > info.r + 18) {
+                            ship.hasLeftEarth = true;
+                        }
+                    }
+
+                    if (dist < info.r + 2) {
+                        if (p.name !== "출발지 (지구)" || ship.hasLeftEarth) {
+                            ship.crashed = true;
+                        }
+                    }
+                }
+            });
+
+            if (!ship.crashed && !ship.escaped) {
+                // 가속도 가산
+                ship.vx += totalFx * STEP_DT;
+                ship.vy += totalFy * STEP_DT;
+                ship.vz += totalFz * STEP_DT;
+
+                // 위치 이동
+                ship.x += ship.vx * STEP_DT;
+                ship.y += ship.vy * STEP_DT;
+                ship.z += ship.vz * STEP_DT;
+
+                const speed = Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy + ship.vz * ship.vz);
+                if (speed > ship.maxSpeed) {
+                    ship.maxSpeed = speed;
+                }
+
+                // 궤도 잔상에 추가
+                if (document.getElementById('chkTrail').checked) {
+                    ship.history.push(new THREE.Vector3(ship.x, ship.y, ship.z));
+                    if (ship.history.length > 2500) ship.history.shift();
+                }
+
+                // 태양계 이탈 한계선 지정 (다중 천체 이탈 경로 고려 확장)
+                if (Math.abs(ship.x) > 1500 || Math.abs(ship.z) > 1500) {
+                    ship.escaped = true;
+                }
+            }
+
+            // 분리된 로켓 단체들에 대한 독립적인 물리 궤적 연산 (작용-반작용 묘사)
+            separatedStages.forEach((stage) => {
+                if (stage.crashed) return;
+
+                let sFx = 0;
+                let sFy = 0;
+                let sFz = 0;
+
+                planets.forEach((p) => {
+                    let dx = p.x - stage.x;
+                    let dy = p.y - stage.y;
+                    let dz = p.z - stage.z;
+                    let dist2 = dx * dx + dy * dy + dz * dz;
+                    let dist = Math.sqrt(dist2);
+                    const info = getPlanetInfo(p.m);
+
+                    if (dist > 5) {
+                        let rNorm = dist / 8;
+                        let force = (G * p.m) / (rNorm * rNorm);
+                        sFx += (dx / dist) * force * SPEED_SCALE;
+                        sFy += (dy / dist) * force * SPEED_SCALE;
+                        sFz += (dz / dist) * force * SPEED_SCALE;
+
+                        if (dist < info.r + 2) {
+                            stage.crashed = true;
+                        }
+                    }
+                });
+
+                stage.vx += sFx * STEP_DT;
+                stage.vy += sFy * STEP_DT;
+                stage.vz += sFz * STEP_DT;
+
+                stage.x += stage.vx * STEP_DT;
+                stage.y += stage.vy * STEP_DT;
+                stage.z += stage.vz * STEP_DT;
+
+                stage.mesh.position.set(stage.x, stage.y, stage.z);
+                stage.mesh.rotateX(0.02); // 분리된 단체들의 현실적인 비행 중 회전 연출
+                stage.mesh.rotateY(0.04);
+            });
+        }
+
+        // 메인 프레임 루프 (WebGL 렌더러와 동기화)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 1. 발사 중 물리 적분 실행
+            if (isLaunched && !ship.crashed && !ship.escaped) {
+                for (let k = 0; k < SUB_STEPS; k++) {
+                    physicsStep();
+                }
+
+                // HUD 텔레메트리 연동 연산
+                const currentSpeedRaw = Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy + ship.vz * ship.vz);
+                const displaySpeed = currentSpeedRaw / SPEED_SCALE;
+                const displayInitialSpeed = ship.initialSpeed / SPEED_SCALE;
+
+                let gravityMagnitude = 0;
+                planets.forEach((p) => {
+                    let dx = p.x - ship.x;
+                    let dy = p.y - ship.y;
+                    let dz = p.z - ship.z;
+                    let dist2 = dx * dx + dy * dy + dz * dz;
+                    if (dist2 > 25) {
+                        let dist = Math.sqrt(dist2);
+                        let rNorm = dist / 8;
+                        gravityMagnitude += (G * p.m) / (rNorm * rNorm);
+                    }
+                });
+
+                // 제한 없는 양/음수 순수 편차 값(Delta-V) 도출
+                const dV = displaySpeed - displayInitialSpeed;
+                const dVSign = dV >= 0 ? "+" : "";
+
+                document.getElementById('hudSpeed').textContent = `${(displaySpeed).toFixed(1)} km/s`;
+                document.getElementById('hudGravity').textContent = `${(gravityMagnitude * 2.8).toFixed(2)} G`;
+                document.getElementById('hudDeltaV').textContent = `${dVSign}${dV.toFixed(2)} km/s`;
+                document.getElementById('hudStatus').textContent = "스윙바이 가속 비행 중";
+                document.getElementById('hudStatus').className = "font-bold text-green-400";
+
+                // 로켓 노즐 분사구 3D 입자 엔진 구동
+                spawnEngineFlameParticles();
+
+            } else if (ship.crashed) {
+                document.getElementById('hudStatus').textContent = "천체 충돌 (Crash)";
+                document.getElementById('hudStatus').className = "font-bold text-red-500 animate-pulse";
+            } else if (ship.escaped) {
+                document.getElementById('hudStatus').textContent = "성간 이탈 성공";
+                document.getElementById('hudStatus').className = "font-bold text-emerald-400";
+            }
+
+            // 2. 우주선 위치 및 자세 회전 3D 동기화
+            if (!ship.crashed) {
+                shipGroup.position.set(ship.x, ship.y, ship.z);
+                
+                // 속도 벡터의 흐름에 정밀하게 맞춰 기수가 3D 정렬되도록 조정
+                const velocityDir = new THREE.Vector3(ship.vx, ship.vy, ship.vz);
+                if (velocityDir.lengthSq() > 0.01) {
+                    velocityDir.normalize();
+                    // 기수 방향성 정렬
+                    const targetRotationY = Math.atan2(-velocityDir.z, velocityDir.x);
+                    shipGroup.rotation.y = targetRotationY;
+                }
+            } else {
+                // 충돌 시 우주선은 숨김
+                shipGroup.position.set(10000, 10000, 10000);
+            }
+
+            // 3-1. 조우 행성 1과의 3D 직선 거리 및 근일점 기록
+            const dxTarget = planets[1].x - ship.x;
+            const dzTarget = planets[1].z - ship.z;
+            const distToTarget = Math.sqrt(dxTarget * dxTarget + dzTarget * dzTarget);
+            const currentDistKm = distToTarget * 1400;
+            document.getElementById('hudTargetDistance').textContent = `${Math.round(currentDistKm).toLocaleString()} km`;
+
+            if (isLaunched && !ship.crashed && !ship.escaped) {
+                if (currentDistKm < ship.minDistance) {
+                    ship.minDistance = currentDistKm;
+                }
+                document.getElementById('hudMinDistance').textContent = `${Math.round(ship.minDistance).toLocaleString()} km`;
+            }
+
+            // 3-2. 조우 행성 2와의 3D 직선 거리 및 근일점 기록 (연속 2천체 모드 전용)
+            if (systemMode === 2 && planets[2]) {
+                const dxTarget2 = planets[2].x - ship.x;
+                const dzTarget2 = planets[2].z - ship.z;
+                const distToTarget2 = Math.sqrt(dxTarget2 * dxTarget2 + dzTarget2 * dzTarget2);
+                const currentDistKm2 = distToTarget2 * 1400;
+                document.getElementById('hudTargetDistance2').textContent = `${Math.round(currentDistKm2).toLocaleString()} km`;
+
+                if (isLaunched && !ship.crashed && !ship.escaped) {
+                    if (currentDistKm2 < ship.minDistance2) {
+                        ship.minDistance2 = currentDistKm2;
+                    }
+                    document.getElementById('hudMinDistance2').textContent = `${Math.round(ship.minDistance2).toLocaleString()} km`;
+                }
+            }
+
+            // 4. 노란색 실시간 비행 자취 궤도 그리기
+            if (document.getElementById('chkTrail').checked && ship.history.length > 1) {
+                trailLine.visible = true;
+                const positions = [];
+                ship.history.forEach(pos => {
+                    positions.push(pos.x, pos.y, pos.z);
+                });
+                trailLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                trailLine.geometry.computeBoundingSphere();
+            } else {
+                trailLine.visible = false;
+            }
+
+            // 5. 미래 발사 예측 궤적 점선 업데이트
+            drawPrediction();
+
+            // 6. 엔진 분사구 화염 입자 가라앉기 및 페이드 처리
+            updateFlameParticles();
+
+            // 7. 실시간 물리 화살표 벡터 (3D ArrowHelper) 동기화
+            updateVectorArrows();
+
+            // 2D 캔버스 초기화 및 배경 격자 그리기
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackgroundGrid();
+
+            // 8. 3D 카메라 컨트롤 댐핑 업데이트 및 렌더링
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // 분출되는 3D 화염 입자 생성
+        function spawnEngineFlameParticles() {
+            // 엔진 Nozzle 기준 뒤로 분출
+            const backDir = new THREE.Vector3(-ship.vx, -ship.vy, -ship.vz).normalize();
+            
+            for (let i = 0; i < 2; i++) {
+                const size = 0.5 + Math.random() * 0.8;
+                const pGeo = new THREE.SphereGeometry(size, 8, 8);
+                const pMat = new THREE.MeshBasicMaterial({ 
+                    color: Math.random() > 0.4 ? 0xff5500 : 0xffaa00, 
+                    transparent: true, 
+                    opacity: 1.0 
+                });
+                const pMesh = new THREE.Mesh(pGeo, pMat);
+                
+                // 노즐 뒤편에 미세한 위치 분산 오프셋 추가
+                pMesh.position.set(
+                    ship.x + backDir.x * 3 + (Math.random() - 0.5) * 1.5,
+                    ship.y + (Math.random() - 0.5) * 1.5,
+                    ship.z + backDir.z * 3 + (Math.random() - 0.5) * 1.5
+                );
+                
+                scene.add(pMesh);
+                particles.push({
+                    mesh: pMesh,
+                    vx: backDir.x * (4 + Math.random() * 4) * SPEED_SCALE,
+                    vy: (Math.random() - 0.5) * 0.8 * SPEED_SCALE,
+                    vz: backDir.z * (4 + Math.random() * 4) * SPEED_SCALE,
+                    opacity: 1.0
+                });
+            }
+        }
+
+        // 입자 소멸 페이드 루틴
+        function updateFlameParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.mesh.position.x += p.vx;
+                p.mesh.position.y += p.vy;
+                p.mesh.position.z += p.vz;
+                p.opacity -= 0.05;
+                p.mesh.material.opacity = p.opacity;
+
+                if (p.opacity <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // [3D 화살표 정밀 교정] 중력 상수와 스윙바이 굴절률 스케일을 완전 보정하여 3D Arrow 투사
+        function updateVectorArrows() {
+            // 속도 벡터 (Green)
+            if (document.getElementById('chkVelVec').checked && !ship.crashed && !ship.escaped && isLaunched) {
+                velArrow.visible = true;
+                const velVec = new THREE.Vector3(ship.vx, ship.vy, ship.vz);
+                const speed = velVec.length();
+                if (speed > 0.001) {
+                    velArrow.setDirection(velVec.clone().normalize());
+                    // 3D 공간 상에서 한눈에 보이는 가시 크기 조정
+                    velArrow.setLength(Math.min(speed * (8 / SPEED_SCALE), 120), 6, 2.0);
+                }
+                velArrow.position.set(ship.x, ship.y, ship.z);
+            } else {
+                velArrow.visible = false;
+            }
+
+            // 합성 중력 벡터 (Cyan)
+            if (document.getElementById('chkGravVec').checked && !ship.crashed && !ship.escaped && isLaunched) {
+                let tFx = 0, tFy = 0, tFz = 0;
+                planets.forEach((p) => {
+                    let dx = p.x - ship.x;
+                    let dy = p.y - ship.y;
+                    let dz = p.z - ship.z;
+                    let dist2 = dx * dx + dy * dy + dz * dz;
+                    let dist = Math.sqrt(dist2);
+                    if (dist > 5) {
+                        let rNorm = dist / 8;
+                        let force = (G * p.m) / (rNorm * rNorm);
+                        tFx += (dx / dist) * force * SPEED_SCALE;
+                        tFy += (dy / dist) * force * SPEED_SCALE;
+                        tFz += (dz / dist) * force * SPEED_SCALE;
+                    }
+                });
+
+                const gravVec = new THREE.Vector3(tFx, tFy, tFz);
+                const gravityMag = gravVec.length();
+
+                if (gravityMag > 0.0001) {
+                    gravArrow.visible = true;
+                    gravArrow.setDirection(gravVec.clone().normalize());
+                    gravArrow.setLength(Math.min(gravityMag * (240 / SPEED_SCALE), 120), 6, 2.0);
+                } else {
+                    gravArrow.visible = false;
+                }
+                gravArrow.position.set(ship.x, ship.y, ship.z);
+            } else {
+                gravArrow.visible = false;
+            }
+        }
+
+        // 미래 예측 점선 궤적 연산 (실시간 8배속 수치적분과 정확도 100% 동기화)
+        function drawPrediction() {
+            if (isLaunched || ship.crashed || ship.escaped) {
+                predLine.visible = false;
+                return;
+            }
+
+            predLine.visible = true;
+
+            let tempShip = {
+                x: ship.x, y: ship.y, z: ship.z,
+                vx: ship.vx, vy: ship.vy, vz: ship.vz,
+                hasLeftEarth: false
+            };
+
+            const predictionPoints = [];
+            const predictionSteps = 220; // 2중 스윙바이 전체 궤도 확보를 위해 예측 해상도 상향
+
+            for (let step = 0; step < predictionSteps; step++) {
+                // SUB_STEPS 루프와 물리 식을 100% 완벽 대응
+                for (let k = 0; k < SUB_STEPS; k++) {
+                    let pFx = 0, pFy = 0, pFz = 0;
+
+                    planets.forEach((p) => {
+                        let dx = p.x - tempShip.x;
+                        let dy = p.y - tempShip.y;
+                        let dz = p.z - tempShip.z;
+                        let dist2 = dx*dx + dy*dy + dz*dz;
+                        let dist = Math.sqrt(dist2);
+                        const info = getPlanetInfo(p.m);
+
+                        if (dist > 5) {
+                            let rNorm = dist / 8;
+                            let force = (G * p.m) / (rNorm * rNorm);
+                            pFx += (dx / dist) * force * SPEED_SCALE;
+                            pFy += (dy / dist) * force * SPEED_SCALE;
+                            pFz += (dz / dist) * force * SPEED_SCALE;
+
+                            if (p.name === "출발지 (지구)" && !tempShip.hasLeftEarth) {
+                                if (dist > info.r + 18) tempShip.hasLeftEarth = true;
+                            }
+                        }
+                    });
+
+                    tempShip.vx += pFx * STEP_DT;
+                    tempShip.vy += pFy * STEP_DT;
+                    tempShip.vz += pFz * STEP_DT;
+                    tempShip.x += tempShip.vx * STEP_DT;
+                    tempShip.y += tempShip.vy * STEP_DT;
+                    tempShip.z += tempShip.vz * STEP_DT;
+                }
+
+                // 충돌 감지 여부
+                let hit = false;
+                planets.forEach((p) => {
+                    let dist = Math.sqrt((p.x - tempShip.x)**2 + (p.y - tempShip.y)**2 + (p.z - tempShip.z)**2);
+                    const info = getPlanetInfo(p.m);
+                    if (dist < info.r + 2) {
+                        if (p.name !== "출발지 (지구)" || tempShip.hasLeftEarth) {
+                            hit = true;
+                        }
+                    }
+                });
+
+                predictionPoints.push(new THREE.Vector3(tempShip.x, tempShip.y, tempShip.z));
+                if (hit) break;
+            }
+
+            predLine.geometry.setFromPoints(predictionPoints);
+            predLine.geometry.computeBoundingSphere();
+        }
+
+        // 격자 가이드 그리기 (2D 배경 보조망)
+        function drawBackgroundGrid() {
+            ctx.strokeStyle = 'rgba(48, 54, 61, 0.12)';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        // --- 1차 단 분리 (3D 역추진 동체 사출 및 부스터 파편 연출) ---
+        document.getElementById('btn1').onclick = () => { 
+            if (!isLaunched || ship.stage !== 2) return;
+            
+            ship.stage = 1; 
+            document.getElementById('btn1').disabled = true; 
+            document.getElementById('btn2').disabled = false; 
+            document.getElementById('hudMass').textContent = "60% (Stage 1)";
+
+            const angle = Math.atan2(ship.vz, ship.vx);
+
+            // 1. 역추진 가스로 떨어져 나갈 1단 추진 부스터 동체 메쉬 생성
+            const stageGeo = new THREE.CylinderGeometry(1.6, 1.8, 4, 16);
+            stageGeo.rotateX(Math.PI / 2);
+            const stageMat = new THREE.MeshPhongMaterial({ color: 0xb58900 }); // 노랑 실린더
+            const stageMesh = new THREE.Mesh(stageGeo, stageMat);
+            stageMesh.position.set(ship.x, ship.y, ship.z);
+            scene.add(stageMesh);
+
+            // 떨어져 나간 단체를 3D 연산 배열에 등록
+            separatedStages.push({
+                mesh: stageMesh,
+                x: ship.x, y: ship.y, z: ship.z,
+                vx: ship.vx - Math.cos(angle) * 6.5 * SPEED_SCALE, 
+                vy: (Math.random() - 0.5) * 3 * SPEED_SCALE,
+                vz: ship.vz - Math.sin(angle) * 6.5 * SPEED_SCALE,
+                r: 5,
+                history: [],
+                crashed: false
+            });
+
+            // 2. 파편 입자 스파크 효과 분출
+            for (let k = 0; k < 12; k++) {
+                const size = 0.5 + Math.random() * 0.8;
+                const dGeo = new THREE.SphereGeometry(size, 8, 8);
+                const dMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 1.0 });
+                const dMesh = new THREE.Mesh(dGeo, dMat);
+                dMesh.position.set(ship.x, ship.y, ship.z);
+                scene.add(dMesh);
+
+                particles.push({
+                    mesh: dMesh,
+                    vx: ship.vx - Math.cos(angle) * (3 + Math.random() * 4) * SPEED_SCALE,
+                    vy: (Math.random() - 0.5) * 4 * SPEED_SCALE,
+                    vz: ship.vz - Math.sin(angle) * (3 + Math.random() * 4) * SPEED_SCALE,
+                    opacity: 1.0
+                });
+            }
+
+            // 3. 본체 추진 부스트 적용 (작용-반작용 3.2 배율)
+            const impulseBoost = 3.2 * SPEED_SCALE;
+            ship.vx += Math.cos(angle) * impulseBoost;
+            ship.vz += Math.sin(angle) * impulseBoost;
+
+            // 4. 우주선 3D 메쉬 교체 빌드
+            rebuildShip3D();
+        };
+
+        // --- 2차 단 분리 (3D 역추진 캡슐 가속 및 파편 사출) ---
+        document.getElementById('btn2').onclick = () => { 
+            if (!isLaunched || ship.stage !== 1) return;
+
+            ship.stage = 0; 
+            document.getElementById('btn2').disabled = true; 
+            document.getElementById('hudMass').textContent = "20% (Capsule)";
+
+            const angle = Math.atan2(ship.vz, ship.vx);
+
+            // 1. 역추진 사출 탱크 동체 메쉬 생성
+            const stageGeo = new THREE.CylinderGeometry(1.2, 1.4, 3, 16);
+            stageGeo.rotateX(Math.PI / 2);
+            const stageMat = new THREE.MeshPhongMaterial({ color: 0x475569 }); // 다크실버
+            const stageMesh = new THREE.Mesh(stageGeo, stageMat);
+            stageMesh.position.set(ship.x, ship.y, ship.z);
+            scene.add(stageMesh);
+
+            separatedStages.push({
+                mesh: stageMesh,
+                x: ship.x, y: ship.y, z: ship.z,
+                vx: ship.vx - Math.cos(angle) * 7.5 * SPEED_SCALE, 
+                vy: (Math.random() - 0.5) * 3 * SPEED_SCALE,
+                vz: ship.vz - Math.sin(angle) * 7.5 * SPEED_SCALE,
+                r: 3,
+                history: [],
+                crashed: false
+            });
+
+            // 2. 가스 파편 스파크 효과
+            for (let k = 0; k < 10; k++) {
+                const size = 0.4 + Math.random() * 0.6;
+                const dGeo = new THREE.SphereGeometry(size, 8, 8);
+                const dMat = new THREE.MeshBasicMaterial({ color: 0xcbd5e1, transparent: true, opacity: 0.9 });
+                const dMesh = new THREE.Mesh(dGeo, dMat);
+                dMesh.position.set(ship.x, ship.y, ship.z);
+                scene.add(dMesh);
+
+                particles.push({
+                    mesh: dMesh,
+                    vx: ship.vx - Math.cos(angle) * (3.5 + Math.random() * 4) * SPEED_SCALE,
+                    vy: (Math.random() - 0.5) * 4 * SPEED_SCALE,
+                    vz: ship.vz - Math.sin(angle) * (3.5 + Math.random() * 4) * SPEED_SCALE,
+                    opacity: 1.0
+                });
+            }
+
+            // 3. 본체 2차 추진 부스트 적용 (작용-반작용 2.6 배율)
+            const impulseBoost = 2.6 * SPEED_SCALE;
+            ship.vx += Math.cos(angle) * impulseBoost;
+            ship.vz += Math.sin(angle) * impulseBoost;
+
+            // 4. 우주선 3D 메쉬 최종 캡슐 교체 빌드
+            rebuildShip3D();
+        };
+
+        // --- 시스템 구성 변경 탭 이벤트 바인딩 ---
+        document.getElementById('btnMode1').onclick = () => {
+            if (isLaunched) return;
+            systemMode = 1;
+            document.getElementById('btnMode1').className = "py-1.5 rounded-lg font-bold border transition-all bg-amber-500/20 border-amber-500 text-amber-400";
+            document.getElementById('btnMode2').className = "py-1.5 rounded-lg font-bold border transition-all bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700";
+            document.getElementById('m2Container').classList.add('hidden');
+            
+            // HUD 가시성 조절
+            document.getElementById('hudTarget2Row').classList.add('hidden');
+            document.getElementById('hudMinDistance2Row').classList.add('hidden');
+            resize();
+        };
+
+        document.getElementById('btnMode2').onclick = () => {
+            if (isLaunched) return;
+            systemMode = 2;
+            document.getElementById('btnMode2').className = "py-1.5 rounded-lg font-bold border transition-all bg-amber-500/20 border-amber-500 text-amber-400";
+            document.getElementById('btnMode1').className = "py-1.5 rounded-lg font-bold border transition-all bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700";
+            document.getElementById('m2Container').classList.remove('hidden');
+            
+            // HUD 가시성 조절
+            document.getElementById('hudTarget2Row').classList.remove('hidden');
+            document.getElementById('hudMinDistance2Row').classList.remove('hidden');
+            resize();
+        };
+
+        // UI 컨트롤 슬라이더 이벤트 갱신
+        document.getElementById('vel').oninput = (e) => { 
+            document.getElementById('vVal').innerText = `${parseFloat(e.target.value).toFixed(1)} km/s`;
+            if (!isLaunched) resetSimulation();
+        };
+
+        document.getElementById('angle').oninput = (e) => { 
+            const val = parseInt(e.target.value);
+            document.getElementById('angleVal').innerText = val === 0 ? "0° (정조준)" : `${val > 0 ? '+' : ''}${val}°`;
+            if (!isLaunched) resetSimulation();
+        };
+
+        document.getElementById('m2').oninput = (e) => { 
+            const val = parseInt(e.target.value);
+            planets[1].m = val; 
+            document.getElementById('p2Type').innerText = getPlanetInfo(val).name;
+            if (!isLaunched) resetSimulation();
+        };
+
+        document.getElementById('m3').oninput = (e) => { 
+            const val = parseInt(e.target.value);
+            if (systemMode === 2 && planets[2]) {
+                planets[2].m = val; 
+                document.getElementById('p3Type').innerText = getPlanetInfo(val).name;
+            }
+            if (!isLaunched) resetSimulation();
+        };
+
+        // 카메라 초기 뷰 리셋
+        document.getElementById('btnCameraReset').onclick = () => {
+            controls.reset();
+            camera.position.set(0, 360, 280);
+        };
+
+        // 부스터 엔진 점화 및 발사
+        document.getElementById('btnLaunch').onclick = () => {
+            if (!isLaunched && !ship.crashed && !ship.escaped) {
+                isLaunched = true;
+                document.getElementById('btnLaunch').disabled = true;
+                document.getElementById('btnLaunch').classList.add('opacity-50', 'cursor-not-allowed');
+                document.getElementById('hudStatus').textContent = "탐사선 미션 가속 중";
+                document.getElementById('hudStatus').className = "font-bold text-green-400";
+            }
+        };
+
+        document.getElementById('btnReset').onclick = () => {
+            resetSimulation();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>달 칭동 현상 정밀 3D 시뮬레이터</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* 네온 글로우 및 맞춤형 테두리 스타일 */
+        .neon-glow-red {
+            text-shadow: 0 0 8px rgba(255, 0, 85, 0.6);
+        }
+        .neon-border-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+        /* 스크롤바 맞춤 디자인 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="bg-[#060913] text-slate-100 min-h-screen font-sans overflow-x-hidden selection:bg-cyan-500 selection:text-black">
+
+    <!-- 상단 헤더 영역 -->
+    <header class="border-b border-slate-800 bg-[#090d1c]/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-cyan-500 to-blue-600 p-2.5 rounded-xl shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-moon text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+                        달 칭동 현상 정밀 3D 시뮬레이터
+                    </h1>
+                    <p class="text-xs text-slate-400">WebGL & Three.js-based Interactive Physics Lab</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-slate-400 bg-slate-900/60 px-4 py-2 rounded-lg border border-slate-800">
+                <span><i class="fa-solid fa-circle text-rose-500 mr-1.5 animate-pulse"></i>실시간 물리 엔진 구동 중</span>
+                <span class="text-slate-600">|</span>
+                <span>지구 중심 기준계 고정</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 대시보드 구조 -->
+    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 왼쪽 섹션: 제어 콘솔 및 측정 대시보드 (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- 조작 컨트롤 콘솔 -->
+            <div class="bg-[#0b1120] rounded-2xl p-6 border border-slate-800 shadow-xl flex flex-col gap-5">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-md font-semibold text-cyan-400 tracking-wider uppercase flex items-center gap-2">
+                        <i class="fa-solid fa-sliders"></i> 물리 변수 조절 장치
+                    </h2>
+                    <span class="text-xs bg-cyan-950/80 text-cyan-400 px-2.5 py-1 rounded border border-cyan-800/50">궤도 독립변수화</span>
+                </div>
+
+                <!-- 1. 음력 삭망월 조절 슬라이더 -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-slate-300 font-medium flex items-center gap-2">
+                            <span class="text-cyan-500 font-bold">음력 시간</span> (삭망월 주기)
+                        </label>
+                        <span class="font-mono text-cyan-400 font-bold bg-slate-950 px-2.5 py-0.5 rounded border border-slate-900" id="lunar-val">14.77 일</span>
+                    </div>
+                    <input type="range" id="slider-lunar" min="0.00" max="29.53" step="0.01" value="14.77" 
+                           class="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500">
+                    
+                    <div class="grid grid-cols-4 gap-1.5 pt-1">
+                        <button onclick="setSlider('lunar', 0.00)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-1 rounded border border-slate-800/80 transition">삭 (0.00d)</button>
+                        <button onclick="setSlider('lunar', 7.38)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-1 rounded border border-slate-800/80 transition">상현 (7.38d)</button>
+                        <button onclick="setSlider('lunar', 14.77)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-1 rounded border border-slate-800/80 transition">망 (14.77d)</button>
+                        <button onclick="setSlider('lunar', 22.15)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-1 rounded border border-slate-800/80 transition">하현 (22.15d)</button>
+                    </div>
+                </div>
+
+                <!-- 2. 양력 회귀년 조절 슬라이더 -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-slate-300 font-medium flex items-center gap-2">
+                            <span class="text-yellow-500 font-bold">양력 시간</span> (회귀년 주기)
+                        </label>
+                        <span class="font-mono text-yellow-400 font-bold bg-slate-950 px-2.5 py-0.5 rounded border border-slate-900" id="solar-val">182.62 일</span>
+                    </div>
+                    <input type="range" id="slider-solar" min="0.00" max="365.24" step="0.05" value="182.62" 
+                           class="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500">
+                    
+                    <div class="grid grid-cols-4 gap-1.5 pt-1">
+                        <button onclick="setSlider('solar', 0.00)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-1 rounded border border-slate-800/80 transition">춘분 (0d)</button>
+                        <button onclick="setSlider('solar', 91.31)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-1 rounded border border-slate-800/80 transition">하지 (91.3d)</button>
+                        <button onclick="setSlider('solar', 182.62)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-1 rounded border border-slate-800/80 transition">추분 (182.6d)</button>
+                        <button onclick="setSlider('solar', 273.93)" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-1 rounded border border-slate-800/80 transition">동지 (273.9d)</button>
+                    </div>
+                </div>
+
+                <!-- 관측 가이드라인 토글 스위치 -->
+                <div class="border-t border-slate-800/60 pt-4 space-y-3">
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-eye text-cyan-400"></i> 기하학적 가이드 필터
+                    </h3>
+                    <div class="flex items-center justify-between bg-slate-950/50 p-3 rounded-xl border border-slate-900">
+                        <div>
+                            <span class="text-xs font-semibold text-cyan-400 block">시선 수직 한계선 (청록색 링)</span>
+                            <span class="text-[10px] text-slate-500 block">지구(관측선)에 수직인 관측 한계 원형 지평선</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-sight-ring" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 자동 시간 흐름 및 재생 제어 -->
+                <div class="border-t border-slate-800/60 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <button id="btn-animate" class="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 transition duration-200 shadow-lg shadow-emerald-950/20">
+                        <i class="fa-solid fa-play" id="animate-icon"></i>
+                        <span id="animate-text">시간 흐름 시작</span>
+                    </button>
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                        <span class="text-xs text-slate-400">진행 속도:</span>
+                        <select id="select-speed" class="bg-slate-950 text-slate-300 text-xs font-semibold py-1.5 px-3 rounded-lg border border-slate-800 focus:outline-none focus:border-cyan-500">
+                            <option value="0.2">매우 느리게 (0.2x)</option>
+                            <option value="0.5">느리게 (0.5x)</option>
+                            <option value="1.0" selected>보통 (1.0x)</option>
+                            <option value="2.0">빠르게 (2.0x)</option>
+                            <option value="5.0">매우 빠르게 (5.0x)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 정밀 측정 분석 모니터 -->
+            <div class="bg-[#0b1120] rounded-2xl p-6 border border-slate-800 shadow-xl flex flex-col gap-5">
+                <h2 class="text-md font-semibold text-rose-400 tracking-wider uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high"></i> 칭동 현상 실시간 계측기
+                </h2>
+
+                <!-- 뒷면 노출비 전광판 -->
+                <div class="bg-slate-950/80 p-4 rounded-xl border border-rose-950/30 text-center relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-rose-950/80 text-[9px] text-rose-400 border-l border-b border-rose-900/30 px-2 py-0.5 rounded-bl">CALCULATED VALUE</div>
+                    <p class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1">지구 기준 노출된 달의 뒷면 비율</p>
+                    <div class="flex items-baseline justify-center gap-1">
+                        <span class="text-4xl font-extrabold text-rose-500 tracking-tight neon-glow-red" id="farside-percent">0.00</span>
+                        <span class="text-lg font-bold text-rose-400">%</span>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1.5">청록색 관측선 안쪽으로 파고든 달 뒷면 지형(핑크선 바깥)의 가시 면적 백분율</p>
+                </div>
+
+                <!-- 아날로그 칭동각 슬라이더 게이지 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- 동서방향 (경도) -->
+                    <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-900 flex flex-col gap-2">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>경도 칭동 (동서)</span>
+                            <span class="font-bold text-cyan-400" id="gauge-long-text">0.0°</span>
+                        </div>
+                        <div class="relative w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                            <div class="absolute left-1/2 top-0 w-0.5 h-full bg-slate-700"></div>
+                            <div id="gauge-long-needle" class="absolute top-0 bottom-0 w-1 bg-cyan-400 rounded-full transition-all duration-100 shadow-[0_0_5px_#22d3ee]" style="left: 50%;"></div>
+                        </div>
+                        <div class="flex justify-between text-[9px] text-slate-500 px-1">
+                            <span>← 서쪽 노출</span>
+                            <span>동쪽 노출 →</span>
+                        </div>
+                    </div>
+
+                    <!-- 남북방향 (위도) -->
+                    <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-900 flex flex-col gap-2">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>위도 칭동 (남북)</span>
+                            <span class="font-bold text-purple-400" id="gauge-lat-text">0.0°</span>
+                        </div>
+                        <div class="relative w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                            <div class="absolute left-1/2 top-0 w-0.5 h-full bg-slate-700"></div>
+                            <div id="gauge-lat-needle" class="absolute top-0 bottom-0 w-1 bg-purple-400 rounded-full transition-all duration-100 shadow-[0_0_5px_#c084fc]" style="left: 50%;"></div>
+                        </div>
+                        <div class="flex justify-between text-[9px] text-slate-500 px-1">
+                            <span>← 남반구 노출</span>
+                            <span>북반구 노출 →</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 기타 우주 역학 변수 목록 -->
+                <div class="grid grid-cols-2 gap-x-6 gap-y-3.5 text-xs border-t border-slate-900 pt-4">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">관측 위상:</span>
+                        <span id="txt-phase" class="font-bold text-white">망 (보름달)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">달-지구 거리:</span>
+                        <span id="txt-distance" class="font-mono text-emerald-400 font-bold">384,400 km</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">공전 속도 상태:</span>
+                        <span id="txt-orbit-pos" class="font-bold text-slate-300">평균 속도선</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">합성 칭동각:</span>
+                        <span id="txt-total-lib" class="font-mono font-bold text-rose-400">0.00°</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 물리 분석 보고서 대시보드 -->
+            <div class="bg-gradient-to-b from-[#09152b] to-[#060a16] rounded-2xl p-6 border border-blue-900/30 shadow-xl">
+                <h3 class="text-xs font-semibold text-blue-300 tracking-wider uppercase mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap text-cyan-400"></i> 우주물리 현상 리포트
+                </h3>
+                <div class="bg-[#050912]/80 p-4 rounded-xl border border-blue-950/80 text-xs leading-relaxed text-slate-300 min-h-[120px] flex flex-col justify-center" id="insights-box">
+                    데이터 분석 중...
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 오른쪽 섹션: 3D 및 2D 캔버스 그래픽 창 (7 cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+
+            <!-- 1. 달의 3D WebGL 근접 관측 뷰 (지구 기준 시점) -->
+            <div class="bg-[#0b1120] rounded-2xl border border-slate-800 shadow-xl overflow-hidden relative flex flex-col min-h-[420px] lg:h-[500px]">
+                <!-- 시각화 창 헤더 -->
+                <div class="px-5 py-4 border-b border-slate-800/80 bg-slate-950/60 flex justify-between items-center z-10">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-moon text-cyan-400 text-xs"></i>
+                        <h2 class="text-sm font-bold tracking-wide">지구에서 본 달의 입체 모습 (3D WebGL Close-up)</h2>
+                    </div>
+                    <button id="btn-reset-cam" class="text-xs bg-slate-900 border border-slate-800 hover:bg-slate-800 px-3 py-1.5 rounded-lg text-cyan-400 font-semibold transition flex items-center gap-1.5 shadow-md">
+                        <i class="fa-solid fa-arrows-to-eye"></i> 지구 관측 정면 시점 (Z축 정렬)
+                    </button>
+                </div>
+
+                <!-- 3D Three.js 캔버스 영역 -->
+                <div id="canvas-3d-container" class="flex-grow w-full relative bg-black">
+                    <!-- 오버레이 안내 정보 카드 -->
+                    <div class="absolute bottom-4 left-4 z-10 bg-slate-950/90 p-3.5 rounded-xl border border-slate-800 text-[10px] pointer-events-none flex flex-col gap-1.5 max-w-[280px]">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-0.5 bg-[#ff0055] inline-block"></span> 
+                            <span class="font-bold text-rose-400">달 자체의 지리 경계선 ($\pm90^\circ$선)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-0.5 bg-[#06b6d4] inline-block"></span> 
+                            <span class="font-bold text-cyan-400">지구 관측 시선 한계선 (Cyan Ring)</span>
+                        </div>
+                        <p class="text-slate-400 leading-normal border-t border-slate-900/80 pt-1.5 mt-1">
+                            <strong>조작 가이드:</strong> 3D 화면을 클릭하고 드래그하면 카메라 각도를 상하좌우로 직접 회전시켜 달의 숨겨진 옆면을 구경할 수 있습니다. <span class="text-cyan-400 font-bold">청록색 링</span>은 시점에 맞춰 항상 원 윤곽선에 맞춰 자동 고정됩니다.
+                        </p>
+                    </div>
+
+                    <!-- 지구조 정보 배지 -->
+                    <div class="absolute top-4 right-4 z-10 bg-slate-950/80 px-2.5 py-1 rounded border border-slate-800 text-[9px] pointer-events-none flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> <span>지구조(Earthshine) 그림자 가시화 효과 반영</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 탑다운 2D 궤도 모식도 뷰 -->
+            <div class="bg-[#0b1120] rounded-2xl border border-slate-800 shadow-xl overflow-hidden relative flex flex-col h-[320px]">
+                <!-- 시각화 창 헤더 -->
+                <div class="px-5 py-3 border-b border-slate-800/80 bg-slate-950/60">
+                    <h2 class="text-sm font-bold tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-solar-system text-yellow-500"></i>
+                        지구-달 공전 2D 궤도 역학 모식도 (Top-down Orbit)
+                    </h2>
+                </div>
+
+                <!-- 2D 궤도 드로잉 캔버스 -->
+                <div class="flex-grow relative bg-[#05070e]">
+                    <canvas id="canvas-2d-orbit" class="absolute inset-0 w-full h-full"></canvas>
+                    <div class="absolute bottom-3 right-3 bg-slate-950/80 px-2 py-1 rounded text-[9px] text-slate-500 border border-slate-900 pointer-events-none">
+                        * 타원 궤도의 특징(근지점/원지점 속도 편차) 가독성을 위해 이심률을 실제보다 확대하여 표현했습니다.
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- 과학 설명 푸터 -->
+    <footer class="max-w-7xl mx-auto px-6 py-10 mt-10 border-t border-slate-900 text-center text-slate-500 text-xs space-y-2">
+        <p>달 칭동 시뮬레이터 - Three.js WebGL 고정밀 천체 물리 분석 엔진</p>
+        <p>물리 방정식 기반 모델: 케플러 행성공전 운동법칙 및 6.68도 자전축 장선 정렬 공식 적용</p>
+    </footer>
+
+    <!-- WebGL 3D 엔진 구동 및 인터랙티브 제어 스크립트 -->
+    <script>
+        // 우주 물리 기하 상수 정의
+        const ECCENTRICITY = 0.0549; // 실제 달 궤도 이심률
+        const VIS_ECCENTRICITY = 0.15; // 2D 평면에서의 이심 가독성 극대화 값
+        const LIBRATION_LONG_MAX = 7.9; // 최대 경도 칭동각 (도 단위)
+        const LIBRATION_LAT_MAX = 6.7; // 최대 위도 칭동각 (도 단위)
+
+        let state = {
+            lunarDays: 14.77, // 음력 삭망일수
+            solarDays: 182.62, // 양력 년중일수
+            isAnimating: false,
+            animationSpeed: 1.0,
+            showSightRing: true, // 시선 수직 한계선 노출 여부
+            calculated: null
+        };
+
+        // DOM 계통 요소 바인딩
+        const sliderLunar = document.getElementById('slider-lunar');
+        const sliderSolar = document.getElementById('slider-solar');
+        const valLunar = document.getElementById('lunar-val');
+        const valSolar = document.getElementById('solar-val');
+        const textFarside = document.getElementById('farside-percent');
+        const gaugeLongText = document.getElementById('gauge-long-text');
+        const gaugeLongNeedle = document.getElementById('gauge-long-needle');
+        const gaugeLatText = document.getElementById('gauge-lat-text');
+        const gaugeLatNeedle = document.getElementById('gauge-lat-needle');
+        const txtPhase = document.getElementById('txt-phase');
+        const txtDistance = document.getElementById('txt-distance');
+        const txtOrbitPos = document.getElementById('txt-orbit-pos');
+        const txtTotalLib = document.getElementById('txt-total-lib');
+        const btnAnimate = document.getElementById('btn-animate');
+        const animateIcon = document.getElementById('animate-icon');
+        const animateText = document.getElementById('animate-text');
+        const selectSpeed = document.getElementById('select-speed');
+        const btnResetCam = document.getElementById('btn-reset-cam');
+        const insightsBox = document.getElementById('insights-box');
+        const toggleSightRing = document.getElementById('toggle-sight-ring');
+
+        // WebGL 3D Three.js 및 2D 캔버스 엔진 핸들러
+        let renderer3d, scene3d, camera3d, moonMesh, sunLight, observationRing;
+        let canvas2d, ctx2d;
+
+        // 고속 정밀 절차적 달 표면 텍스처 맵 발생기
+        function generateProceduralMoonCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // 1. 기본 반구 지형색 도색 (앞뒷면 대조 구현)
+            ctx.fillStyle = '#cfd3dc'; // 앞면
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#bdbdaf'; // 뒷면
+            ctx.fillRect(0, 0, 256, 512);
+            ctx.fillRect(768, 0, 256, 512);
+
+            // 2. 가상의 달의 바다(어두운 평원지대) 드로잉
+            const drawMaria = (cx, cy, rx, ry, opacity = 0.22) => {
+                ctx.fillStyle = `rgba(55, 60, 72, ${opacity})`;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+                ctx.fill();
+            };
+
+            // 앞면 바다 군락 (중앙)
+            drawMaria(420, 200, 85, 65, 0.28); // 폭풍의 대양
+            drawMaria(470, 160, 55, 45, 0.26); // 비의 바다
+            drawMaria(440, 280, 50, 40, 0.23); // 구름의 바다
+            drawMaria(480, 320, 35, 30, 0.23); // 이슬의 바다
+            drawMaria(540, 150, 45, 40, 0.24); // 맑음의 바다
+            drawMaria(580, 190, 50, 35, 0.24); // 고요의 바다
+            drawMaria(610, 250, 45, 40, 0.22); // 풍요의 바다
+            drawMaria(560, 270, 40, 35, 0.22); // 감로의 바다
+            drawMaria(640, 185, 25, 25, 0.30); // 위난의 바다
+
+            // 뒷면 바다 (매우 희소)
+            drawMaria(850, 170, 25, 20, 0.18); // 모스크바의 바다
+            drawMaria(180, 330, 30, 25, 0.16); // 지혜의 바다
+
+            // 남극 에이트켄 거대 분지
+            ctx.fillStyle = 'rgba(75, 80, 95, 0.32)';
+            ctx.beginPath();
+            ctx.ellipse(60, 430, 85, 60, 0.3, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(964, 430, 85, 60, -0.3, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // 3. 충돌구(Crater) 노이즈 가미 그리기
+            const drawCrater = (x, y, r, opacity = 0.2) => {
+                ctx.strokeStyle = `rgba(0, 0, 0, ${opacity * 0.8})`;
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, 2 * Math.PI);
+                ctx.stroke();
+
+                ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 1.5})`;
+                ctx.beginPath();
+                ctx.arc(x - 1, y - 1, r, 0, 2 * Math.PI);
+                ctx.stroke();
+
+                ctx.fillStyle = `rgba(0, 0, 0, ${opacity * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(x + 0.5, y + 0.5, r - 1.2, 0, 2 * Math.PI);
+                ctx.fill();
+            };
+
+            let rSeed = 1042;
+            function random() {
+                let x = Math.sin(rSeed++) * 10000;
+                return x - Math.floor(x);
+            }
+
+            for (let i = 0; i < 450; i++) {
+                const cx = random() * canvas.width;
+                const cy = random() * canvas.height;
+                const r = 2.5 + random() * 10.5;
+                const isFar = (cx < 256 || cx > 768);
+
+                if (isFar || random() > 0.45) {
+                    drawCrater(cx, cy, r, isFar ? 0.35 : 0.22);
+                }
+            }
+
+            // 티코(Tycho) 광조 크레이터
+            const tx = 512, ty = 390;
+            drawCrater(tx, ty, 8, 0.4);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+            ctx.lineWidth = 1.0;
+            for (let a = 0; a < 360; a += 12) {
+                const rad = a * Math.PI / 180;
+                const length = 90 + random() * 160;
+                ctx.beginPath();
+                ctx.moveTo(tx, ty);
+                ctx.lineTo(tx + Math.cos(rad) * length, ty + Math.sin(rad) * length);
+                ctx.stroke();
+            }
+
+            // 코페르니쿠스 및 케플러
+            drawCrater(440, 230, 6, 0.35);
+            drawCrater(410, 240, 4, 0.3);
+
+            // 4. 아주 얇은 구면 좌표 그리드 표시
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 0.5;
+            for (let lon = -180; lon <= 180; lon += 30) {
+                const x = ((lon + 180) / 360) * canvas.width;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let lat = -90; lat <= 90; lat += 30) {
+                const y = ((90 - lat) / 180) * canvas.height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // 5. 달의 앞/뒷면 동서측 지리 자오선(90도선) 핑크선 각인
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#ff0055';
+            ctx.shadowBlur = 6;
+            
+            ctx.beginPath();
+            ctx.moveTo(256, 0);
+            ctx.lineTo(256, canvas.height);
+            ctx.moveTo(768, 0);
+            ctx.lineTo(768, canvas.height);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 6. 자도상 정보 텍스트 각인
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+            ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('앞 면 (Near Side)', 512, 80);
+            ctx.fillText('뒷 면 (Far Side)', 128, 80);
+            ctx.fillText('뒷 면 (Far Side)', 896, 80);
+
+            ctx.fillStyle = '#ff0055';
+            ctx.font = 'bold 12px monospace';
+            ctx.fillText('동측 지리 한계선 (90° E)', 768, 25);
+            ctx.fillText('서측 지리 한계선 (90° W)', 256, 25);
+
+            return canvas;
+        }
+
+        // 실시간 달 칭동 천체 역학 방정식 계산기
+        function calculateSystemState(lunarDays, solarDays) {
+            // 태양 연간 운동 위상 벡터
+            const theta_sun = (solarDays / 365.24) * 2 * Math.PI;
+
+            // 달의 상대 위상 변위 (삭망월 주기)
+            const theta_rel = (lunarDays / 29.53) * 2 * Math.PI;
+
+            // 관성 공간 내 달의 평균 공전 방위각
+            const theta_moon = theta_sun + theta_rel;
+
+            // 케플러 공식 근사치 계산에 의거한 평균 근점 이각 및 진근점 이각 (nu)
+            const M = theta_moon;
+            const nu = M + 2 * ECCENTRICITY * Math.sin(M) + 1.25 * ECCENTRICITY * ECCENTRICITY * Math.sin(2 * M);
+
+            // [경도 칭동] 타원 궤도 속도 편차에 의한 동서 흔들림 연산
+            const lib_long_deg = (M - nu) * (180 / Math.PI) * (LIBRATION_LONG_MAX / (2 * ECCENTRICITY * 180 / Math.PI));
+
+            // [위도 칭동] 달 자전축의 6.68도 기울기에 의한 상하 끄덕임 연산
+            const node = Math.PI / 2;
+            const argument_of_latitude = nu - node;
+            const lib_lat_deg = LIBRATION_LAT_MAX * Math.sin(argument_of_latitude);
+
+            // 합성 물리 칭동각 산출
+            const total_lib_deg = Math.sqrt(lib_long_deg * lib_long_deg + lib_lat_deg * lib_lat_deg);
+
+            // 타원 궤도 거리 편차 비율
+            const distance_factor = (1 - ECCENTRICITY * ECCENTRICITY) / (1 + ECCENTRICITY * Math.cos(nu));
+
+            // 지구 시선 평면에 노출되는 뒷면 영역 비율 환산
+            const total_lib_rad = total_lib_deg * (Math.PI / 180);
+            const farside_ratio = (total_lib_rad / Math.PI) * 100;
+
+            // 월상 이름 판정
+            let phaseName = "";
+            const degRel = (theta_rel * (180 / Math.PI)) % 360;
+            if (degRel < 8 || degRel > 352) phaseName = "합 / 삭 (신월, New Moon)";
+            else if (degRel >= 8 && degRel < 82) phaseName = "초승달 (Waxing Crescent)";
+            else if (degRel >= 82 && degRel < 98) phaseName = "상현달 (First Quarter)";
+            else if (degRel >= 98 && degRel < 172) phaseName = "차오르는 달 (Waxing Gibbous)";
+            else if (degRel >= 172 && degRel < 188) phaseName = "망 (보름달, Full Moon)";
+            else if (degRel >= 188 && degRel < 262) phaseName = "지기 시작하는 달 (Waning Gibbous)";
+            else if (degRel >= 262 && degRel < 278) phaseName = "하현달 (Third Quarter)";
+            else phaseName = "그믐달 (Waning Crescent)";
+
+            return {
+                theta_sun,
+                theta_moon,
+                theta_rel,
+                nu,
+                M,
+                lib_long: lib_long_deg,
+                lib_lat: lib_lat_deg,
+                total_lib: total_lib_deg,
+                distance: distance_factor,
+                farside_ratio: farside_ratio,
+                phaseName: phaseName,
+                degRel: degRel
+            };
+        }
+
+        // Three.js 3D 엔진 초기 마운트
+        function init3D() {
+            const container = document.getElementById('canvas-3d-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene3d = new THREE.Scene();
+
+            // 카메라 세팅 (Z축 정렬)
+            camera3d = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+            camera3d.position.set(0, 0, 9);
+
+            renderer3d = new THREE.WebGLRenderer({ antialias: true });
+            renderer3d.setSize(width, height);
+            renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer3d.shadowMap.enabled = true;
+            container.appendChild(renderer3d.domElement);
+
+            // 텍스처 업로드
+            const textureCanvas = generateProceduralMoonCanvas();
+            const moonTexture = new THREE.CanvasTexture(textureCanvas);
+
+            // 달 메시 구형 구조 빌드
+            const geometry = new THREE.SphereGeometry(2.5, 64, 64);
+            const material = new THREE.MeshStandardMaterial({
+                map: moonTexture,
+                roughness: 0.92,
+                metalness: 0.05
+            });
+            moonMesh = new THREE.Mesh(geometry, material);
+            scene3d.add(moonMesh);
+
+            // [지구 시선 수직 한계선 청록색 원]
+            // 외형 반경을 달 구체보다 아주 미세하게 넓혀 구체 아웃라인을 절묘하게 둘러싸도록 설계 (2.505)
+            const ringGeom = new THREE.RingGeometry(2.505, 2.53, 128);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x06b6d4, // 청록색 (Cyan)
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9
+            });
+            observationRing = new THREE.Mesh(ringGeom, ringMat);
+            scene3d.add(observationRing);
+
+            // 광원 설계: 태양광 지시선
+            sunLight = new THREE.DirectionalLight(0xfffdf0, 1.8);
+            scene3d.add(sunLight);
+
+            // 지구조 반사 필터 조명
+            const earthshineLight = new THREE.AmbientLight(0x30364d, 0.55);
+            scene3d.add(earthshineLight);
+
+            // 우주 심연용 배후 광선
+            const backlight = new THREE.DirectionalLight(0x1d4ed8, 0.25);
+            backlight.position.set(0, 0, -10);
+            scene3d.add(backlight);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-3d-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera3d.aspect = width / height;
+            camera3d.updateProjectionMatrix();
+
+            renderer3d.setSize(width, height);
+        }
+
+        // 탑다운 2D 궤도 캔버스 제어자 마운트
+        function init2D() {
+            canvas2d = document.getElementById('canvas-2d-orbit');
+            ctx2d = canvas2d.getContext('2d');
+            resize2D();
+
+            window.addEventListener('resize', resize2D);
+        }
+
+        function resize2D() {
+            const parent = canvas2d.parentElement;
+            const dpr = window.devicePixelRatio || 1;
+            canvas2d.width = parent.clientWidth * dpr;
+            canvas2d.height = parent.clientHeight * dpr;
+            ctx2d.scale(dpr, dpr);
+        }
+
+        // 탑다운 2D 궤도 드로잉
+        function draw2DOrbit(stateCalculated) {
+            const w = canvas2d.width / (window.devicePixelRatio || 1);
+            const h = canvas2d.height / (window.devicePixelRatio || 1);
+
+            ctx2d.clearRect(0, 0, w, h);
+
+            const cx = w / 2;
+            const cy = h / 2;
+
+            ctx2d.fillStyle = '#05070e';
+            ctx2d.fillRect(0, 0, w, h);
+
+            // 성단 점찍기
+            ctx2d.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            const starCoords = [
+                [25, 40], [w-45, 55], [60, h-75], [w-110, h-45], 
+                [115, 85], [w-185, 105], [225, h-125], [w-65, 225]
+            ];
+            starCoords.forEach(pt => {
+                ctx2d.fillRect(pt[0], pt[1], 1, 1);
+            });
+
+            // 1. 태양 정렬 광선 표시
+            const sunAngle = stateCalculated.theta_sun;
+            ctx2d.strokeStyle = 'rgba(234, 179, 8, 0.12)';
+            ctx2d.lineWidth = 1.0;
+            const raySpacing = 24;
+            for (let i = -6; i <= 6; i++) {
+                const perpX = Math.sin(sunAngle) * i * raySpacing;
+                const perpY = -Math.cos(sunAngle) * i * raySpacing;
+
+                const startX = cx + perpX - Math.cos(sunAngle) * 350;
+                const startY = cy + perpY - Math.sin(sunAngle) * 350;
+                const endX = cx + perpX + Math.cos(sunAngle) * 350;
+                const endY = cy + perpY + Math.sin(sunAngle) * 350;
+
+                ctx2d.beginPath();
+                ctx2d.moveTo(startX, startY);
+                ctx2d.lineTo(endX, endY);
+                ctx2d.stroke();
+            }
+
+            // 가장자리 가상 태양 원 그리기
+            const sunX = cx + Math.cos(sunAngle) * (Math.min(w, h) * 0.46);
+            const sunY = cy + Math.sin(sunAngle) * (Math.min(w, h) * 0.46);
+            ctx2d.fillStyle = '#eab308';
+            ctx2d.beginPath();
+            ctx2d.arc(sunX, sunY, 11, 0, 2 * Math.PI);
+            ctx2d.fill();
+
+            // 2. 가상 타원 공전 궤도선 표시
+            const a = Math.min(w, h) * 0.33;
+            const b = a * Math.sqrt(1 - VIS_ECCENTRICITY * VIS_ECCENTRICITY);
+            const c = a * VIS_ECCENTRICITY;
+
+            ctx2d.strokeStyle = 'rgba(71, 85, 105, 0.4)';
+            ctx2d.setLineDash([4, 4]);
+            ctx2d.lineWidth = 1.2;
+
+            ctx2d.beginPath();
+            ctx2d.ellipse(cx - c, cy, a, b, 0, 0, 2 * Math.PI);
+            ctx2d.stroke();
+            ctx2d.setLineDash([]);
+
+            ctx2d.strokeStyle = 'rgba(71, 85, 105, 0.15)';
+            ctx2d.lineWidth = 1.0;
+            ctx2d.beginPath();
+            ctx2d.moveTo(cx - c - a, cy);
+            ctx2d.lineTo(cx - c + a, cy);
+            ctx2d.stroke();
+
+            ctx2d.fillStyle = '#64748b';
+            ctx2d.font = '9px system-ui';
+            ctx2d.textAlign = 'center';
+            ctx2d.fillText('근지점 (Perigee)', cx - c + a + 15, cy - 6);
+            ctx2d.fillText('원지점 (Apogee)', cx - c - a - 15, cy - 6);
+
+            // 3. 지구 드로잉
+            ctx2d.fillStyle = '#2563eb';
+            ctx2d.beginPath();
+            ctx2d.arc(cx, cy, 12, 0, 2 * Math.PI);
+            ctx2d.fill();
+            ctx2d.fillStyle = '#16a34a';
+            ctx2d.beginPath();
+            ctx2d.arc(cx - 3, cy - 3, 4, 0, 2 * Math.PI);
+            ctx2d.arc(cx + 3, cy + 3, 3, 0, 2 * Math.PI);
+            ctx2d.fill();
+
+            // 4. 공전 중인 달 계산 좌표 그리기
+            const nu = stateCalculated.nu;
+            const r_vis = a * (1 - VIS_ECCENTRICITY * VIS_ECCENTRICITY) / (1 + VIS_ECCENTRICITY * Math.cos(nu));
+            const mx = cx + r_vis * Math.cos(nu);
+            const my = cy + r_vis * Math.sin(nu);
+
+            ctx2d.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx2d.lineWidth = 1.0;
+            ctx2d.beginPath();
+            ctx2d.moveTo(cx, cy);
+            ctx2d.lineTo(mx, my);
+            ctx2d.stroke();
+
+            // 5. 달의 위상 및 외곽선 드로잉
+            const moonRadius = 8;
+            ctx2d.fillStyle = '#1e293b';
+            ctx2d.beginPath();
+            ctx2d.arc(mx, my, moonRadius, 0, 2 * Math.PI);
+            ctx2d.fill();
+            ctx2d.fillStyle = '#fef08a';
+            ctx2d.beginPath();
+            ctx2d.arc(mx, my, moonRadius, sunAngle - Math.PI / 2, sunAngle + Math.PI / 2, false);
+            ctx2d.fill();
+
+            ctx2d.strokeStyle = '#475569';
+            ctx2d.lineWidth = 1.0;
+            ctx2d.beginPath();
+            ctx2d.arc(mx, my, moonRadius, 0, 2 * Math.PI);
+            ctx2d.stroke();
+
+            // 6. 조석 고정 방향 지시 화살표 연장선 마킹 (경도 칭동 유발원 표기)
+            const lib_long_rad = stateCalculated.lib_long * (Math.PI / 180);
+            const indicatorAngle = nu + Math.PI + lib_long_rad;
+
+            ctx2d.strokeStyle = '#ff0055';
+            ctx2d.lineWidth = 2.0;
+            ctx2d.beginPath();
+            ctx2d.moveTo(mx, my);
+            ctx2d.lineTo(mx + Math.cos(indicatorAngle) * 20, my + Math.sin(indicatorAngle) * 20);
+            ctx2d.stroke();
+
+            const arrowX = mx + Math.cos(indicatorAngle) * 20;
+            const arrowY = my + Math.sin(indicatorAngle) * 20;
+            ctx2d.fillStyle = '#ff0055';
+            ctx2d.beginPath();
+            ctx2d.arc(arrowX, arrowY, 2.5, 0, 2 * Math.PI);
+            ctx2d.fill();
+
+            ctx2d.fillStyle = '#e2e8f0';
+            ctx2d.font = 'bold 10px sans-serif';
+            ctx2d.textAlign = 'left';
+            ctx2d.fillText('달 (Moon)', mx + 12, my + 3);
+        }
+
+        // 현상의 수치 분석 리포트 내용 동적 갱신
+        function updateInsightsReport(calc) {
+            let report = "";
+            const lib_long = calc.lib_long;
+            const lib_lat = calc.lib_lat;
+
+            report += `<p class="mb-2"><strong class="text-white text-[12.5px]"><i class="fa-solid fa-satellite text-cyan-400 mr-1.5"></i> 천체 기하 물리적 변수 정밀 진단:</strong></p>`;
+
+            // 근지점 및 원지점 공전 속도 분석
+            if (calc.distance < 0.96) {
+                report += `<p class="mb-1.5">● 달이 현재 지구와 근접한 <span class="text-emerald-400 font-bold">근지점(Perigee) 부근</span>을 진입하고 있어 <strong>공전 속도가 자전 속도를 추월해 빠르게 이동 중</strong>입니다.</p>`;
+            } else if (calc.distance > 1.04) {
+                report += `<p class="mb-1.5">● 달이 현재 지구와 격리된 <span class="text-rose-400 font-bold">원지점(Apogee) 부근</span>을 진입하고 있어 <strong>공전 속도가 자전 속도에 비해 상대적으로 느리게 이동 중</strong>입니다.</p>`;
+            } else {
+                report += `<p class="mb-1.5">● 달이 현재 원지점과 근지점의 평균 영역인 점근선 궤도를 따라 평균 공전속도로 이동하고 있습니다.</p>`;
+            }
+
+            // 동서 방향 경도 칭동 분석
+            report += `<p class="mb-2"><strong>[경도 칭동 판독]</strong> `;
+            if (lib_long > 1.5) {
+                report += `현재 경도 칭동은 <span class="text-cyan-400 font-bold">+${lib_long.toFixed(1)}°</span>입니다. 자전축의 영구 방위각이 공전 진행 방향의 우측(동측)으로 밀려나감으로써 지구에서는 <span class="text-white font-semibold">서쪽 가장자리 너머의 감춰진 뒷면</span>이 시야 평면 안으로 노출됩니다.</p>`;
+            } else if (lib_long < -1.5) {
+                report += `현재 경도 칭동은 <span class="text-cyan-400 font-bold">${lib_long.toFixed(1)}°</span>입니다. 공전이 너무 빨라 자전축 기준 방향이 공전 반대 방향(서측)으로 비껴감으로써 지구에서는 <span class="text-white font-semibold">동쪽 가장자리 너머의 감춰진 뒷면</span>이 시야 평면 안으로 노출됩니다.</p>`;
+            } else {
+                report += `동서 방향의 자전 정렬 속도 편차가 미미하여 칭동 현상이 최소화된 정렬 상태를 유지하고 있습니다.</p>`;
+            }
+
+            // 남북 방향 위도 칭동 분석
+            report += `<p class="mb-1.5"><strong>[위도 칭동 판독]</strong> `;
+            if (lib_lat > 1.5) {
+                report += `현재 위도 칭동은 <span class="text-purple-400 font-bold">+${lib_lat.toFixed(1)}°</span>입니다. 달의 자전축 경사가 관측면 정면 아래쪽으로 굽혀지며 달의 <span class="text-white font-semibold">북극 부근의 정체된 뒤편 영역</span>을 더 많이 경사 관측할 수 있습니다.</p>`;
+            } else if (lib_lat < -1.5) {
+                report += `현재 위도 칭동은 <span class="text-purple-400 font-bold">${lib_lat.toFixed(1)}°</span>입니다. 달의 자전축 경사가 관측면 정면 위쪽으로 들려 올려지며 달의 <span class="text-white font-semibold">남극 부근의 정체된 뒤편 영역</span>을 더 수월하게 위로 올려다볼 수 있습니다.</p>`;
+            } else {
+                report += `남북축 상의 기울기가 시선 평면과 직교하여 안정된 남북 정렬을 나타냅니다.</p>`;
+            }
+
+            insightsBox.innerHTML = report;
+        }
+
+        // 실시간 렌더링 동적 업데이트 스레드
+        function updateSimulation() {
+            // 1. 역학 데이터 재계산
+            const calc = calculateSystemState(state.lunarDays, state.solarDays);
+            state.calculated = calc;
+
+            // 2. 왼쪽 UI 수치 텍스트 업데이트
+            valLunar.innerText = `${state.lunarDays.toFixed(2)} 일`;
+            valSolar.innerText = `${state.solarDays.toFixed(2)} 일`;
+            textFarside.innerText = calc.farside_ratio.toFixed(2);
+
+            txtPhase.innerText = calc.phaseName;
+            txtDistance.innerText = `${(calc.distance * 384400).toLocaleString(undefined, {maximumFractionDigits: 0})} km`;
+            
+            if (calc.distance < 0.96) txtOrbitPos.innerText = "근지점 영역 (속도 우세)";
+            else if (calc.distance > 1.04) txtOrbitPos.innerText = "원지점 영역 (자전 우세)";
+            else txtOrbitPos.innerText = "평균 거리선 안정 통과";
+
+            txtTotalLib.innerText = `${calc.total_lib.toFixed(2)}°`;
+
+            // 아날로그 미터 게이지 바늘 동기화
+            const needleLongPos = 50 + (calc.lib_long / LIBRATION_LONG_MAX) * 50;
+            gaugeLongNeedle.style.left = `${Math.max(0, Math.min(100, needleLongPos))}%`;
+            gaugeLongText.innerText = `${calc.lib_long >= 0 ? '+' : ''}${calc.lib_long.toFixed(1)}°`;
+
+            const needleLatPos = 50 + (calc.lib_lat / LIBRATION_LAT_MAX) * 50;
+            gaugeLatNeedle.style.left = `${Math.max(0, Math.min(100, needleLatPos))}%`;
+            gaugeLatText.innerText = `${calc.lib_lat >= 0 ? '+' : ''}${calc.lib_lat.toFixed(1)}°`;
+
+            // 3. WebGL 3D 달 로테이션 및 가이드선 제어
+            if (moonMesh) {
+                // 경도 칭동: Y축을 기준으로 동서 회전
+                moonMesh.rotation.y = -calc.lib_long * (Math.PI / 180);
+                // 위도 칭동: X축을 기준으로 남북 회전
+                moonMesh.rotation.x = -calc.lib_lat * (Math.PI / 180);
+            }
+
+            // [관측 보조 수직 원 (청록색 링) 정렬]
+            // 지구 관측 평면인 카메라 정면과 항상 정대면을 마주 보아야 하므로,
+            // 링 메시의 로컬 Z축이 카메라를 향해 마주 보게끔 매 프레임 camera3d 위치를 투영하여 lookAt 시킵니다.
+            if (observationRing) {
+                observationRing.visible = state.showSightRing;
+                observationRing.lookAt(camera3d.position);
+            }
+
+            // 태양 직접 광원 벡터 위치 업데이트
+            if (sunLight) {
+                const lightDist = 15;
+                sunLight.position.set(
+                    lightDist * Math.sin(calc.theta_rel),
+                    0,
+                    -lightDist * Math.cos(calc.theta_rel)
+                );
+            }
+
+            // 3D 프레임 렌더링 지시
+            if (renderer3d && scene3d && camera3d) {
+                renderer3d.render(scene3d, camera3d);
+            }
+
+            // 4. 2D 탑다운 공전 캔버스 업데이트
+            draw2DOrbit(calc);
+
+            // 5. 해설 패널 내용 동기화
+            updateInsightsReport(calc);
+        }
+
+        // 프레임 애니메이션 루프 핸들러
+        function animateFrame() {
+            if (state.isAnimating) {
+                const baseDt = 0.035;
+                const dt = baseDt * state.animationSpeed;
+
+                state.lunarDays = (state.lunarDays + dt) % 29.53;
+                state.solarDays = (state.solarDays + dt) % 365.24;
+
+                sliderLunar.value = state.lunarDays;
+                sliderSolar.value = state.solarDays;
+
+                updateSimulation();
+            }
+            requestAnimationFrame(animateFrame);
+        }
+
+        // 원터치 슬라이더 조정 헬퍼
+        function setSlider(type, val) {
+            if (type === 'lunar') {
+                state.lunarDays = val;
+                sliderLunar.value = val;
+            } else if (type === 'solar') {
+                state.solarDays = val;
+                sliderSolar.value = val;
+            }
+            updateSimulation();
+        }
+
+        // 컨트롤 컴포넌트 마운트 및 바인딩
+        function initControls() {
+            sliderLunar.addEventListener('input', (e) => {
+                state.lunarDays = parseFloat(e.target.value);
+                updateSimulation();
+            });
+
+            sliderSolar.addEventListener('input', (e) => {
+                state.solarDays = parseFloat(e.target.value);
+                updateSimulation();
+            });
+
+            // 관측 한계선 토글 제어 이벤트 바인딩
+            toggleSightRing.addEventListener('change', (e) => {
+                state.showSightRing = e.target.checked;
+                updateSimulation();
+            });
+
+            // 시간 구동 애니메이션 토글 바인딩
+            btnAnimate.addEventListener('click', () => {
+                state.isAnimating = !state.isAnimating;
+                if (state.isAnimating) {
+                    btnAnimate.classList.remove('from-emerald-600', 'to-teal-500');
+                    btnAnimate.classList.add('from-rose-600', 'to-red-500');
+                    animateIcon.className = "fa-solid fa-pause";
+                    animateText.innerText = "시간 흐름 정지";
+                } else {
+                    btnAnimate.classList.remove('from-rose-600', 'to-red-500');
+                    btnAnimate.classList.add('from-emerald-600', 'to-teal-500');
+                    animateIcon.className = "fa-solid fa-play";
+                    animateText.innerText = "시간 흐름 시작";
+                }
+            });
+
+            selectSpeed.addEventListener('change', (e) => {
+                state.animationSpeed = parseFloat(e.target.value);
+            });
+
+            // 지구 정면 관측 시점 (Z축 일자 정렬) 복귀 바인딩
+            btnResetCam.addEventListener('click', () => {
+                if (camera3d) {
+                    camera3d.position.set(0, 0, 9);
+                    camera3d.lookAt(0, 0, 0);
+                    updateSimulation();
+                }
+            });
+
+            // WebGL Canvas 마우스 클릭 드래깅 회전 조작 연동
+            const container3d = document.getElementById('canvas-3d-container');
+            let isDragging = false;
+            let prevMouseX = 0, prevMouseY = 0;
+
+            container3d.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+            });
+
+            container3d.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - prevMouseX;
+                const deltaY = e.clientY - prevMouseY;
+
+                const orbitRadius = camera3d.position.length();
+                
+                // 극좌표 및 방위각 변경을 통한 카메라 구면 회전 운동 구현
+                const polarAngle = Math.atan2(camera3d.position.x, camera3d.position.z) - deltaX * 0.007;
+                const elevationAngle = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, 
+                    Math.asin(camera3d.position.y / orbitRadius) + deltaY * 0.007
+                ));
+
+                camera3d.position.x = orbitRadius * Math.sin(polarAngle) * Math.cos(elevationAngle);
+                camera3d.position.z = orbitRadius * Math.cos(polarAngle) * Math.cos(elevationAngle);
+                camera3d.position.y = orbitRadius * Math.sin(elevationAngle);
+
+                camera3d.lookAt(0, 0, 0);
+
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+
+                // 회전 시 실시간 렌더링 호출
+                if (renderer3d && scene3d && camera3d) {
+                    renderer3d.render(scene3d, camera3d);
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // 모바일 터치 장비 대응을 위한 제어 연동 추가
+            container3d.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    prevMouseX = e.touches[0].clientX;
+                    prevMouseY = e.touches[0].clientY;
+                }
+            }, { passive: true });
+
+            container3d.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                const deltaX = e.touches[0].clientX - prevMouseX;
+                const deltaY = e.touches[0].clientY - prevMouseY;
+
+                const orbitRadius = camera3d.position.length();
+                const polarAngle = Math.atan2(camera3d.position.x, camera3d.position.z) - deltaX * 0.012;
+                const elevationAngle = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, 
+                    Math.asin(camera3d.position.y / orbitRadius) + deltaY * 0.012
+                ));
+
+                camera3d.position.x = orbitRadius * Math.sin(polarAngle) * Math.cos(elevationAngle);
+                camera3d.position.z = orbitRadius * Math.cos(polarAngle) * Math.cos(elevationAngle);
+                camera3d.position.y = orbitRadius * Math.sin(elevationAngle);
+
+                camera3d.lookAt(0, 0, 0);
+
+                prevMouseX = e.touches[0].clientX;
+                prevMouseY = e.touches[0].clientY;
+
+                if (renderer3d && scene3d && camera3d) {
+                    renderer3d.render(scene3d, camera3d);
+                }
+            }, { passive: true });
+
+            container3d.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+        }
+
+        // 전체 시뮬레이터 로딩 개시
+        window.onload = function() {
+            init3D();
+            init2D();
+            initControls();
+            
+            // 즉시 렌더링 파이프 구동
+            updateSimulation();
+
+            // 상시 물리 프레임 렌더 루프 작동
+            animateFrame();
+        };
+    </script>
+</body>
+</html>

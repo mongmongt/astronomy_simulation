@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>별의 일생, 그 얼마나 아름다운 것인가 - 그 아름답고도 가슴 아픈 이야기...</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons (CDN) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Three.js & OrbitControls CDNs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #010103; }
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #010103; }
+        ::-webkit-scrollbar-thumb { background: #121224; border-radius: 3px; }
+        input[type="range"]#timeline-slider { background: transparent; }
+        input[type="range"]#timeline-slider::-webkit-slider-runnable-track { background: transparent; border: none; }
+        input[type="range"]#timeline-slider::-moz-range-track { background: transparent; border: none; }
+        input[type="range"]#timeline-slider::-webkit-slider-thumb {
+            position: relative;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="text-slate-100 h-screen w-screen flex flex-col overflow-hidden select-none">
+
+    <!-- HEADER (Fixed Top) -->
+    <header class="flex-shrink-0 border-b border-slate-800 bg-slate-950/95 backdrop-blur px-6 py-3 flex justify-between items-center z-10">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20">
+                <i data-lucide="orbit" class="w-5 h-5 animate-spin" style="animation-duration: 10s;"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-indigo-400 to-purple-500 orbitron">별의 일생, 그 얼마나 아름다운 것인가</h1>
+                <p class="text-[11px] text-slate-500 font-medium">그 아름답고도 슬픈 이야기...</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-950 border border-slate-900 rounded-full px-3 py-1 text-[11px] text-slate-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <span>시뮬레이션 정상 작동 중</span>
+        </div>
+    </header>
+
+    <!-- MAIN INTERACTIVE SPACE -->
+    <main class="flex-1 flex overflow-hidden min-h-0">
+        <!-- LEFT: 3D SIMULATION VIEWPORT & STATUS DISPLAY -->
+        <section class="flex-1 relative flex flex-col bg-black overflow-hidden" id="viewport-section">
+            <div id="canvas-container" class="flex-1 relative w-full h-full">
+                <!-- Three.js Canvas -->
+                <canvas id="simCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+            </div>
+
+            <!-- SUPERNOVA DRAMATIC TEXT OVERLAY -->
+            <div id="supernova-text-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-50 opacity-0 scale-40 transition-all duration-300">
+                <h1 class="text-red-500 font-black text-5xl md:text-8xl tracking-widest drop-shadow-[0_0_35px_rgba(239,68,68,0.95)] italic" style="font-family: '궁서', 'Gungsuh', '궁서체', 'Batang', serif; transform: rotate(-12deg);">
+                    초신성 폭1발@@@!!!!!!!!
+                </h1>
+            </div>
+
+            <!-- CURRENT STAGE DISPLAY -->
+            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 w-auto min-w-[280px] max-w-md pointer-events-none">
+                <div id="stage-banner" class="bg-slate-950/95 border border-indigo-500/30 px-6 py-3 rounded-2xl flex items-center justify-center gap-3 backdrop-blur-md shadow-[0_0_25px_rgba(99,102,241,0.2)] transition-all duration-300">
+                    <span class="relative flex h-3 w-3">
+                        <span id="stage-dot-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span id="stage-dot" class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                    </span>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">현재 진화 단계</span>
+                        <span id="stage-text" class="text-sm font-black text-slate-100 tracking-wide mt-0.5">원시 수축기</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT: INSPECTOR & EDITOR PANEL WITH H-R DIAGRAM -->
+        <section class="w-80 md:w-96 border-l border-slate-900 bg-slate-950/95 flex flex-col justify-between overflow-y-auto z-10 shadow-2xl">
+            <div class="p-5 space-y-4 flex-1">
+                <div class="space-y-2">
+                    <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i> 시스템 초기화
+                    </h3>
+                    <div id="reset-protostar-card" class="cursor-pointer bg-slate-900/40 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 p-3.5 rounded-xl flex items-center justify-between transition-all group shadow-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-indigo-950 border border-indigo-500/20 flex items-center justify-center relative">
+                                <div class="absolute inset-0 bg-indigo-500/10 rounded-full animate-ping"></div>
+                                <div class="w-4.5 h-4.5 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.6)]"></div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs text-slate-200 group-hover:text-indigo-300 transition-colors">새로운 원시별 탄생 (0년)</h4>
+                                <p class="text-[10px] text-slate-500">클릭하거나 화면으로 드래그하여 초기화</p>
+                            </div>
+                        </div>
+                        <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-600 group-hover:rotate-180 transition-all duration-500"></i>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-900 pt-3 space-y-4">
+                    <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="settings-2" class="w-4 h-4 text-pink-400"></i> 초기 물리 변인 설정
+                    </h3>
+
+                    <!-- Mass Slider -->
+                    <div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl space-y-2.5 transition-all duration-300" id="mass-slider-container">
+                        <div class="flex justify-between items-center">
+                            <label class="text-[11px] font-bold text-slate-300 uppercase">항성 질량 ($M_{\odot}$)</label>
+                            <span class="orbitron text-xs font-black text-pink-400" id="mass-display">1.00 M☉</span>
+                        </div>
+                        <input id="mass-input-slider" type="range" min="0.05" max="100" step="0.05" value="1.00" class="w-full accent-indigo-500 h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <!-- Metallicity Slider -->
+                    <div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl space-y-2.5 transition-all duration-300" id="metal-slider-container">
+                        <div class="flex justify-between items-center">
+                            <div class="flex flex-col">
+                                <label class="text-[11px] font-bold text-slate-300 uppercase">중원소 함량 ($Z$)</label>
+                                <span class="text-[9px] text-emerald-500 font-medium" id="metal-label">Solar Metallicity</span>
+                            </div>
+                            <span class="orbitron text-xs font-black text-emerald-400" id="metal-display">0.020</span>
+                        </div>
+                        <input id="metal-input-slider" type="range" min="0.001" max="0.05" step="0.001" value="0.020" class="w-full accent-emerald-500 h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                        <p class="text-[9px] text-slate-500 leading-tight">금속 함량은 별의 불투명도와 크기, 수명에 중대한 직접적 영향을 미칩니다.</p>
+                    </div>
+                    <span class="text-[10px] text-amber-500 font-medium hidden" id="lock-notice">⚠️ 시간 조작 중에는 초기 설정 변인을 변경할 수 없습니다.</span>
+                </div>
+
+                <!-- Equation Box with accurate equations -->
+                <div class="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-xl space-y-1">
+                    <div class="flex justify-between text-[10px] text-indigo-400 font-bold">
+                        <span>적용 공식</span>
+                        <span id="formula-range" class="orbitron">Solar Mode</span>
+                    </div>
+                    <div class="text-center font-bold text-sm text-slate-100 py-1" id="formula-equation">L / L☉ = (M / M☉)⁴</div>
+                    <p class="text-[10px] text-slate-400 leading-tight" id="formula-explanation">복사핵-대류외피 구조를 가집니다.</p>
+                </div>
+
+                <!-- Diagnostics Log -->
+                <div class="bg-slate-900/20 border border-slate-900/80 rounded-xl p-3 text-xs space-y-2">
+                    <div class="flex justify-between"><span class="text-slate-500">진화 단계 나이:</span><span id="diag-age" class="font-bold text-slate-200">--</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">광도/온도:</span><span id="diag-phys" class="font-bold text-amber-400 orbitron">--</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">최종 운명:</span><span id="diag-fate" class="font-black text-indigo-400">--</span></div>
+                </div>
+
+                <!-- HR Diagram SVG (Highly Refined and Mathematically Precise) -->
+                <div class="relative bg-slate-950 border border-slate-900 rounded-xl overflow-hidden h-40">
+                    <svg id="hr-svg" class="w-full h-full" viewBox="0 0 300 180">
+                        <!-- Precise Grid lines matched with logarithmic math boundaries -->
+                        <g stroke="rgba(255,255,255,0.03)" stroke-width="0.8">
+                            <!-- X divisions (Temperature levels) -->
+                            <line x1="61.4" y1="10" x2="61.4" y2="160" /> <!-- 30,000 K -->
+                            <line x1="128.8" y1="10" x2="128.8" y2="160" /> <!-- 10,000 K -->
+                            <line x1="160.2" y1="10" x2="160.2" y2="160" /> <!-- 6,000 K -->
+                            <line x1="202.6" y1="10" x2="202.6" y2="160" /> <!-- 3,000 K -->
+                            
+                            <!-- Y divisions (Luminosity levels) -->
+                            <line x1="25" y1="32.7" x2="280" y2="32.7" /> <!-- 10^6 L☉ -->
+                            <line x1="25" y1="58.1" x2="280" y2="58.1" /> <!-- 10^4 L☉ -->
+                            <line x1="25" y1="83.6" x2="280" y2="83.6" /> <!-- 10^2 L☉ -->
+                            <line x1="25" y1="109.0" x2="280" y2="109.0" /> <!-- 1 L☉ -->
+                            <line x1="25" y1="134.5" x2="280" y2="134.5" /> <!-- 10^-2 L☉ -->
+                            <line x1="25" y1="160.0" x2="280" y2="160.0" /> <!-- 10^-4 L☉ -->
+                        </g>
+
+                        <!-- Zone 1: Main Sequence Precise Curve -->
+                        <path d="M 36 29 C 50 45, 100 80, 150 102 C 180 115, 200 135, 215 150" fill="none" stroke="rgba(34, 197, 94, 0.16)" stroke-width="12" stroke-linecap="round" />
+                        <text x="145" y="112" fill="rgba(34, 197, 94, 0.35)" font-size="7" font-weight="bold" transform="rotate(22 145 112)">주계열성 (Main Sequence)</text>
+
+                        <!-- Zone 2: Giants & Supergiants Precise Ellipses -->
+                        <!-- Supergiants -->
+                        <ellipse cx="160" cy="45" rx="55" ry="12" fill="rgba(239, 68, 68, 0.04)" stroke="rgba(239, 68, 68, 0.12)" stroke-dasharray="2 2" />
+                        <text x="135" y="47" fill="rgba(239, 68, 68, 0.45)" font-size="7" font-weight="bold">초거성 (Supergiants)</text>
+
+                        <!-- Red Giants -->
+                        <ellipse cx="195" cy="80" rx="25" ry="15" fill="rgba(245, 158, 11, 0.04)" stroke="rgba(245, 158, 11, 0.12)" stroke-dasharray="2 2" />
+                        <text x="180" y="82" fill="rgba(245, 158, 11, 0.45)" font-size="7" font-weight="bold">거성 (Giants)</text>
+
+                        <!-- Zone 3: White Dwarfs Precise Ellipse -->
+                        <ellipse cx="105" cy="147" rx="35" ry="10" fill="rgba(56, 189, 248, 0.04)" stroke="rgba(56, 189, 248, 0.12)" stroke-dasharray="2 2" />
+                        <text x="85" y="149" fill="rgba(56, 189, 248, 0.45)" font-size="7" font-weight="bold">백색왜성 (WD)</text>
+
+                        <!-- Logarithmic Axis Scale Markings -->
+                        <!-- Y-Axis (Luminosity) -->
+                        <text x="2" y="35" fill="#475569" font-size="6" font-family="Orbitron">10⁶ L☉</text>
+                        <text x="2" y="61" fill="#475569" font-size="6" font-family="Orbitron">10⁴ L☉</text>
+                        <text x="4" y="86" fill="#475569" font-size="6" font-family="Orbitron">10² L☉</text>
+                        <text x="8" y="112" fill="#475569" font-size="6" font-family="Orbitron">1 L☉</text>
+                        <text x="2" y="137" fill="#475569" font-size="6" font-family="Orbitron">10⁻² L☉</text>
+                        <text x="2" y="163" fill="#475569" font-size="6" font-family="Orbitron">10⁻⁴ L☉</text>
+
+                        <!-- X-Axis (Temperature) -->
+                        <text x="48" y="172" fill="#475569" font-size="6" font-family="Orbitron">30,000K</text>
+                        <text x="115" y="172" fill="#475569" font-size="6" font-family="Orbitron">10,000K</text>
+                        <text x="150" y="172" fill="#475569" font-size="6" font-family="Orbitron">6,000K</text>
+                        <text x="192" y="172" fill="#475569" font-size="6" font-family="Orbitron">3,000K</text>
+
+                        <!-- Current Star Position dot on HR -->
+                        <g id="hr-marker-group">
+                            <circle id="hr-marker-glow" cx="-50" cy="-50" r="6" fill="rgba(236, 72, 153, 0.3)"><animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite" /></circle>
+                            <circle id="hr-marker" cx="-50" cy="-50" r="3" fill="#ec4899" stroke="white" stroke-width="0.5" />
+                        </g>
+                    </svg>
+                    <div id="hr-singularity-overlay" class="hidden absolute inset-0 bg-black/90 flex items-center justify-center text-[10px] text-orange-500 orbitron">SINGULARITY</div>
+                </div>
+            </div>
+            <!-- Footer developer credit modified as requested -->
+            <div class="p-4 bg-slate-950/40 border-t border-slate-900 text-[9px] text-slate-600 text-center uppercase tracking-widest font-semibold">
+                서준혁 @ 2026
+            </div>
+        </section>
+    </main>
+
+    <!-- BOTTOM TIMELINE -->
+    <footer class="flex-shrink-0 border-t border-slate-800 bg-slate-950/95 backdrop-blur px-6 py-4 flex items-center gap-4 sm:gap-6 z-10">
+        <!-- Play/Pause Button -->
+        <button id="play-btn" class="p-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl shadow-lg shadow-indigo-500/10 transition-all flex items-center justify-center flex-shrink-0">
+            <i data-lucide="play" class="w-4 h-4 fill-current" id="play-icon"></i>
+        </button>
+
+        <div class="flex-1 flex items-center gap-4">
+            <span class="text-xs text-slate-400 font-bold whitespace-nowrap orbitron uppercase tracking-tighter hidden xs:inline">시간 조절 슬라이더:</span>
+            <div class="relative flex-1 flex items-center h-6">
+                <!-- Segmented evolutionary colored bars -->
+                <div id="timeline-track-stages" class="absolute left-0 right-0 h-1.5 rounded-full flex overflow-hidden bg-slate-900 border border-white/5"></div>
+                <input id="timeline-slider" type="range" min="0" max="1000" value="0" class="absolute left-0 right-0 w-full accent-white h-1.5 bg-transparent appearance-none cursor-pointer z-10 m-0">
+            </div>
+            <span class="orbitron text-xs font-bold text-indigo-400 w-12" id="timeline-display">0.0%</span>
+        </div>
+        <div class="h-6 w-[1px] bg-slate-800"></div>
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <span class="text-[10px] text-slate-500 uppercase hidden md:inline">Age Context:</span>
+            <span id="star-age-display" class="orbitron text-xs font-bold text-indigo-300">0.00억 년 / 100억 년</span>
+        </div>
+    </footer>
+
+    <!-- LOGICAL SCRIPTS -->
+    <script>
+        let scene, camera, renderer, controls, activeStar;
+        const particleGroup = new THREE.Group(), shockwaveGroup = new THREE.Group(), permanentNebulaGroup = new THREE.Group();
+        
+        // 시간 조작 및 재생 흐름을 관장하는 글로벌 시간 배율 제어 변수 선언
+        const timeSpeed = 3.0;
+
+        // DOM References
+        let timelineSlider, timelineDisplay, starAgeDisplay, timelineTrackStages;
+        let massSlider, massDisplay, metalSlider, metalDisplay, lockNotice;
+        let diagAge, diagPhys, diagFate, formulaEquation, formulaRange, formulaExplanation;
+        let hrMarker, hrMarkerGlow, hrSingularity;
+        let stageText, stageDot, stageDotPulse, stageBanner; // 전광판용 DOM 요소
+        let supernovaTextOverlay; // 초신성 대사 전광판용 DOM
+        let playBtn, playIcon; // 재생 버튼용 DOM
+
+        let isPlaying = false; // 자동 재생 활성화 플래그
+
+        const accretionDiskShader = {
+            vertexShader: `varying vec2 vUv; varying vec3 vPosition; void main() { vUv = uv; vPosition = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `varying vec2 vUv; varying vec3 vPosition; uniform float uTime; float gasNoise(vec2 p) { return 0.7 + 0.3 * (sin(p.x * 12.0 - uTime * 6.0) * cos(p.y * 12.0 + uTime * 4.0)); } void main() { float r = length(vPosition.xy); if (r < 2.0 || r > 15.0) discard; float angle = atan(vPosition.y, vPosition.x) + uTime * 2.5; float beaming = pow(0.5 + 0.5 * sin(angle), 4.0) * 3.5 + 0.15; float t = (r - 2.0) / 13.0; vec3 col = mix(vec3(1.0, 0.95, 0.7), vec3(0.9, 0.2, 0.0), pow(t, 0.8)); float alpha = (1.0 - smoothstep(0.7, 1.0, t)) * smoothstep(0.0, 0.15, t); gl_FragColor = vec4(col * beaming * gasNoise(vPosition.xy * 0.4) * 1.5, alpha * 0.9); }`
+        };
+
+        const lensingRingShader = {
+            vertexShader: `varying vec3 vPosition; void main() { vPosition = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `varying vec3 vPosition; uniform float uTime; void main() { float r = length(vPosition.xy); if (r < 2.0 || r > 7.0) discard; float alpha = (1.0 - smoothstep(0.6, 1.0, (r-2.0)/5.0)) * smoothstep(0.0, 0.1, (r-2.0)/5.0); gl_FragColor = vec4(vec3(0.9, 0.4, 0.0) * 1.5, alpha * 0.7); }`
+        };
+
+        // 안전한 THREE.Group 가비지 컬렉션 처리를 위한 수동 메모리 릴리즈 클리너
+        function safeClearThreeGroup(group) {
+            while(group.children.length > 0) {
+                const child = group.children[0];
+                group.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            }
+        }
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth || window.innerWidth || 800;
+            const height = container.clientHeight || window.innerHeight || 600;
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x010103, 0.0008);
+            camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+            camera.position.set(0, 70, 140);
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('simCanvas'), antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.35;
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 450;
+            controls.minDistance = 8;
+            controls.maxPolarAngle = Math.PI / 2 - 0.01;
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+            const sunLight = new THREE.PointLight(0xffffff, 1.5, 500);
+            sunLight.position.set(50, 120, 50);
+            scene.add(sunLight);
+
+            // White Grid 복원
+            const grid = new THREE.GridHelper(500, 50, 0xffffff, 0x888888);
+            grid.material.opacity = 0.22;
+            grid.material.transparent = true;
+            scene.add(grid);
+
+            scene.add(particleGroup, shockwaveGroup, permanentNebulaGroup);
+            resetToNewProtostar();
+
+            // 리사이즈 리스너 등록
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth || window.innerWidth;
+            const height = container.clientHeight || window.innerHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // 과학적으로 정밀한 질량-광도 연계 수식 & 중원소 함량(Metallicity) 수치 변환
+        function computeStellarProperties(mass, metallicity) {
+            let msLum = 1.0;
+            const Z_scale = Math.pow(0.02 / metallicity, 0.15); 
+
+            // 업로드된 수식 이미지 그대로 4개 분기점 구현
+            if (mass < 0.43) {
+                msLum = 0.23 * Math.pow(mass, 2.3);
+            } else if (mass <= 2.0) {
+                msLum = Math.pow(mass, 4.0);
+            } else if (mass <= 55.0) {
+                msLum = 1.4 * Math.pow(mass, 3.5);
+            } else {
+                msLum = 32000 * mass;
+            }
+
+            msLum *= Z_scale;
+
+            // 주계열 수명은 질량 / 광도 비율에 정밀하게 비례 (태양 기준 100억년 환산)
+            let maxAge = 10000 * (mass / msLum);
+            if (mass < 0.08) maxAge = 150000;
+
+            // 금속 함량에 따라 항성의 기본 반경(Opacity 전파)을 미세 연동 
+            const baseSize = (3 + Math.pow(mass, 0.7) * 2) * (1 + (metallicity - 0.02) * 1.5);
+            const msTemp = 5778 * Math.pow(msLum / Math.pow(baseSize/5, 2), 0.25);
+
+            let fate = (mass < 0.08) ? "갈색왜성" : (mass <= 8) ? "백색왜성" : (mass <= 20) ? "중성자별" : "블랙홀";
+            
+            let path = [];
+            if (mass < 0.08) {
+                // 1) 갈색왜성 경로 세분화
+                path = [
+                    { name: "원시 성운 수축", duration: 0.1, size: 4, color: "#5a2d0c", tempS: 3000, tempE: 2500, lumS: 0.01, lumE: 0.001 },
+                    { name: "갈색왜성 가동", duration: 1.0, size: 2, color: "#1a0a00", tempS: 2500, tempE: 1000, lumS: 0.001, lumE: 0.000005 }
+                ];
+            } else if (mass <= 8) {
+                // 2) 백색왜성 경로 세분화 (정확한 백색왜성 냉각 좌표 가이드에 안착)
+                path = [
+                    { name: "원시 수축기", duration: 0.03, size: baseSize * 1.5, color: "#ea580c", tempS: 3500, tempE: 4500, lumS: 10, lumE: msLum },
+                    { name: "주계열성", duration: 0.85, size: baseSize, color: msTemp > 10000 ? "#8ecae6" : (msTemp > 6000 ? "#ffffff" : "#ffb703"), tempS: msTemp, tempE: msTemp, lumS: msLum, lumE: msLum },
+                    { name: "거성 단계", duration: 0.98, size: baseSize * 6, color: "#ef4444", tempS: 3200, tempE: 3000, lumS: msLum * 100, lumE: msLum * 500 },
+                    { name: "행성상 성운", duration: 0.995, size: 40, color: "nebula", tempS: 3000, tempE: 50000, lumS: msLum * 500, lumE: 0.1 },
+                    { name: "백색왜성", duration: 1.0, size: 1, color: "#ffffff", tempS: 25000, tempE: 8000, lumS: 0.01, lumE: 0.0001 }
+                ];
+            } else if (mass <= 20) {
+                // 3) 중성자별 경로 세분화 (매우 뜨겁지만 극도로 어두운 좌하단 구석 좌표 가이드 안착)
+                path = [
+                    { name: "원시 수축기", duration: 0.03, size: baseSize * 1.5, color: "#ea580c", tempS: 4000, tempE: 9000, lumS: 100, lumE: msLum },
+                    { name: "주계열성", duration: 0.85, size: baseSize, color: "#8ecae6", tempS: msTemp, tempE: msTemp, lumS: msLum, lumE: msLum },
+                    { name: "거성 단계", duration: 0.98, size: baseSize * 6, color: "#ef4444", tempS: 3500, tempE: 3200, lumS: msLum * 15, lumE: msLum * 100 },
+                    { name: "초신성 폭발", duration: 0.995, size: 40, color: "supernova", tempS: 3200, tempE: 100000, lumS: msLum * 100, lumE: 1000000 },
+                    { name: "중성자별", duration: 1.0, size: 0.5, color: "#ffffff", tempS: 150000, tempE: 20000, lumS: 0.001, lumE: 0.00001 }
+                ];
+            } else {
+                // 4) 블랙홀 경로 세분화 (정확히 소멸하여 H-R 상에서 마커 숨김 유도)
+                path = [
+                    { name: "원시 수축기", duration: 0.03, size: baseSize * 1.5, color: "#ea580c", tempS: 4500, tempE: 15000, lumS: 1000, lumE: msLum },
+                    { name: "주계열성", duration: 0.85, size: baseSize, color: "#8ecae6", tempS: msTemp, tempE: msTemp, lumS: msLum, lumE: msLum },
+                    { name: "거성 단계", duration: 0.98, size: baseSize * 6, color: "#ef4444", tempS: 4000, tempE: 3400, lumS: msLum * 10, lumE: msLum * 80 },
+                    { name: "초신성 폭발", duration: 0.995, size: 40, color: "supernova", tempS: 3400, tempE: 150000, lumS: msLum * 80, lumE: 5000000 },
+                    { name: "블랙홀", duration: 1.0, size: 0.5, color: "#000000", tempS: 0, tempE: 0, lumS: 0, lumE: 0 }
+                ];
+            }
+
+            return { maxAge, fate, path };
+        }
+
+        class Star {
+            constructor(mass, metallicity) {
+                this.mass = mass; this.metallicity = metallicity;
+                this.age = 0; this.exploded = false; this.lastStage = ""; this.nebulaFormed = false;
+                this.group = new THREE.Group();
+                this.updateProperties();
+                this.build3D();
+                scene.add(this.group);
+            }
+            updateProperties() {
+                const p = computeStellarProperties(this.mass, this.metallicity);
+                this.maxAge = p.maxAge; this.fate = p.fate; this.path = p.path;
+            }
+            getCurrent() {
+                const r = Math.min(1.0, Math.max(0.0, this.age / this.maxAge));
+                let cur = this.path[0], next = this.path[0], pInS = 0;
+                for(let i=0; i<this.path.length; i++){
+                    if(r <= this.path[i].duration){
+                        cur = this.path[i];
+                        let prevD = i > 0 ? this.path[i-1].duration : 0;
+                        pInS = (r - prevD) / (cur.duration - prevD);
+                        next = this.path[i+1] || cur;
+                        break;
+                    }
+                }
+                return { 
+                    name: cur.name, 
+                    size: cur.size + (next.size - cur.size) * pInS, 
+                    color: cur.color,
+                    temp: cur.tempS + (next.tempE - cur.tempS) * pInS,
+                    lum: cur.lumS + (next.lumE - cur.lumS) * pInS
+                };
+            }
+            build3D() {
+                safeClearThreeGroup(this.group);
+                const s = this.getCurrent();
+                const col = new THREE.Color(s.color === "nebula" || s.color === "supernova" ? "#a855f7" : (s.color === "#000000" ? "#000000" : s.color));
+                
+                this.disk = null;
+                this.lensing = null;
+                this.jetConeTop = null;
+                this.jetConeBottom = null;
+
+                const core = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.5 }));
+                this.group.add(core);
+
+                // Emissive Corona Halo
+                const halo = new THREE.Mesh(new THREE.SphereGeometry(1.35, 32, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false }));
+                this.group.add(halo);
+                this.halo = halo;
+
+                if(s.color === "#000000") { // Black Hole remnant
+                    core.material.emissiveIntensity = 0;
+                    halo.visible = false;
+                    const disk = new THREE.Mesh(new THREE.RingGeometry(2.2, 14, 64), new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0 } }, vertexShader: accretionDiskShader.vertexShader, fragmentShader: accretionDiskShader.fragmentShader, side: THREE.DoubleSide, transparent: true }));
+                    disk.rotation.x = Math.PI / 2.3;
+                    this.group.add(disk);
+                    this.disk = disk;
+                    
+                    const lensing = new THREE.Mesh(new THREE.RingGeometry(2.1, 7, 64), new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0 } }, vertexShader: lensingRingShader.vertexShader, fragmentShader: lensingRingShader.fragmentShader, side: THREE.DoubleSide, transparent: true }));
+                    this.group.add(lensing);
+                    this.lensing = lensing;
+                }
+
+                if(s.name.includes("중성자별")) {
+                    core.material.color.setHex(0xffffff);
+                    core.material.emissive.setHex(0xffffff);
+                    
+                    const jetGeom = new THREE.ConeGeometry(2, 28, 16, 1, true);
+                    const jetMat = new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false });
+
+                    this.jetConeTop = new THREE.Mesh(jetGeom, jetMat);
+                    this.jetConeTop.position.y = 14;
+                    this.group.add(this.jetConeTop);
+
+                    this.jetConeBottom = new THREE.Mesh(jetGeom, jetMat);
+                    this.jetConeBottom.position.y = -14;
+                    this.jetConeBottom.rotation.z = Math.PI;
+                    this.group.add(this.jetConeBottom);
+                }
+
+                this.core = core;
+            }
+            update() {
+                const s = this.getCurrent();
+                if(this.lastStage !== s.name) { this.lastStage = s.name; this.build3D(); }
+                
+                const targetSize = s.size * 0.5;
+                this.group.scale.set(targetSize, targetSize, targetSize);
+                
+                if(this.disk) this.disk.material.uniforms.uTime.value += 0.015;
+                if(this.lensing) {
+                    this.lensing.quaternion.copy(camera.quaternion);
+                    this.lensing.material.uniforms.uTime.value += 0.012;
+                }
+
+                if (this.jetConeTop && this.jetConeBottom) {
+                    const angle = Date.now() * 0.025;
+                    this.jetConeTop.rotation.y = angle;
+                    this.jetConeBottom.rotation.y = -angle;
+                }
+                
+                // 폭발 트리거 작동 방식 고도화
+                if(s.color === "supernova") {
+                    if (!this.exploded) {
+                        this.exploded = true;
+                        flashOpacity = 1.0;
+                        shakeIntensity = 8.5;
+                        spawnExplosionParticles(0, 0, 0, "#ef4444", targetSize);
+                        spawn3DDecayingNebula(0, 0, "#b91c1c", "#4f46e5", targetSize * 1.6);
+                        
+                        // 초신성 대폭발 문구 전광판 가동 (Requirement)
+                        triggerSupernovaDramaticText();
+                    }
+                } else {
+                    if (this.exploded && this.age / this.maxAge < 0.98) {
+                        this.exploded = false;
+                    }
+                }
+
+                // 성운 트리거 복원
+                if (s.color === "nebula") {
+                    if (!this.nebulaFormed) {
+                        this.nebulaFormed = true;
+                        spawnExplosionParticles(0, 0, 0, "#a855f7", targetSize);
+                        spawn3DDecayingNebula(0, 0, "#a855f7", "#38bdf8", targetSize * 1.3);
+                    }
+                } else {
+                    if (this.nebulaFormed && this.age / this.maxAge < 0.99) {
+                        this.nebulaFormed = false;
+                    }
+                }
+            }
+        }
+
+        // 폭발 파티클 및 구형 충격파(Shockwave) 복원
+        function spawnExplosionParticles(x, y, z, baseColorHex, scale = 1) {
+            const pColor = new THREE.Color(baseColorHex);
+            const particleCount = 750;
+            
+            const positions = new Float32Array(particleCount * 3), vels = [], lifetimes = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                positions[i3] = x; positions[i3+1] = y; positions[i3+2] = z;
+
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                const speed = (5 + Math.random() * 55) * scale;
+
+                vels.push(new THREE.Vector3(
+                    speed * Math.sin(phi) * Math.cos(theta),
+                    speed * Math.sin(phi) * Math.sin(theta),
+                    speed * Math.cos(phi)
+                ));
+
+                lifetimes.push({ age: 0, maxAge: 90 + Math.random() * 110 });
+            }
+
+            const pGeom = new THREE.BufferGeometry();
+            pGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const pMat = new THREE.PointsMaterial({
+                color: pColor, size: 0.5 * scale, transparent: true, opacity: 1.0,
+                blending: THREE.AdditiveBlending, sizeAttenuation: true, depthWrite: false
+            });
+
+            const pointsObj = new THREE.Points(pGeom, pMat);
+            pointsObj.userData = { velocities: vels, lifetimes: lifetimes, initialColor: pColor, scale: scale };
+            particleGroup.add(pointsObj);
+
+            // Shockwave Ring
+            const swGeom = new THREE.RingGeometry(0.1, 1, 48);
+            const swMat = new THREE.MeshBasicMaterial({ color: pColor, side: THREE.DoubleSide, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+            const swMesh = new THREE.Mesh(swGeom, swMat);
+            swMesh.position.set(x, y, z);
+            swMesh.rotation.x = Math.PI / 2;
+            swMesh.userData = { radius: 1, maxRadius: 120 * scale, speed: 1.9 * scale, initialOpacity: 0.8 };
+            shockwaveGroup.add(swMesh);
+        }
+
+        // 볼륨감 있는 성운 구름 이펙트(3D Decaying Nebula) 복원
+        function spawn3DDecayingNebula(x, z, primeColorHex, secondaryColorHex, scale) {
+            const count = 220;
+            const geom = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+
+            const c1 = new THREE.Color(primeColorHex);
+            const c2 = new THREE.Color(secondaryColorHex);
+
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                const rRadius = Math.random() * 40 * scale;
+                const angle = Math.random() * Math.PI * 2;
+                const spreadY = (Math.random() - 0.5) * 10 * scale;
+
+                positions[i3] = x + Math.cos(angle) * rRadius;
+                positions[i3+1] = spreadY;
+                positions[i3+2] = z + Math.sin(angle) * rRadius;
+
+                const mix = THREE.MathUtils.lerp(c1.r, c2.r, Math.random());
+                const mixG = THREE.MathUtils.lerp(c1.g, c2.g, Math.random());
+                const mixB = THREE.MathUtils.lerp(c1.b, c2.b, Math.random());
+
+                colors[i3] = mix; colors[i3+1] = mixG; colors[i3+2] = mixB;
+            }
+
+            geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const mat = new THREE.PointsMaterial({
+                size: 5.0 * scale, vertexColors: true, transparent: true, opacity: 0.28,
+                blending: THREE.AdditiveBlending, depthWrite: false
+            });
+
+            const nebulaCloud = new THREE.Points(geom, mat);
+            nebulaCloud.userData = { rotSpeed: 0.001 + Math.random() * 0.0015, age: 0.0, maxAge: 3200.0, initialOpacity: 0.28 };
+            permanentNebulaGroup.add(nebulaCloud);
+        }
+
+        // 3D 뷰포트 하단 실시간 단계 전광판 색상 및 이름 동적 갱신 데코레이터 함수 (New UI Added)
+        function updateStageBannerDecorations(stageName, colorHex) {
+            if(!stageText || !stageDot || !stageDotPulse || !stageBanner) return;
+
+            stageText.innerText = stageName;
+
+            // 성운 가스 등 특수 단계별 실시간 색상 치환 보정
+            let targetColor = colorHex;
+            if (targetColor === 'nebula') targetColor = '#a855f7';
+            if (targetColor === 'supernova') targetColor = '#ef4444';
+
+            // 전광판 도트와 펄서 오라 색상 갱신
+            stageDot.style.backgroundColor = targetColor;
+            stageDotPulse.style.backgroundColor = targetColor;
+
+            // 네온 무드등 보더 라이팅 효과 동기화
+            stageBanner.style.borderColor = `${targetColor}40`;
+            stageBanner.style.boxShadow = `0 0 25px ${targetColor}20`;
+        }
+
+        // 강렬한 기울임 궁서체 초신성 팝업 트리거 가동 함수 (Requirement)
+        function triggerSupernovaDramaticText() {
+            if (!supernovaTextOverlay) return;
+
+            // 눈부신 폭발과 동시에 스케일업 되며 강렬하게 페이드인
+            supernovaTextOverlay.style.transition = 'all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            supernovaTextOverlay.style.opacity = '1';
+            supernovaTextOverlay.style.transform = 'scale(1.2)';
+
+            // 일정 시간 대치 후 스르륵 소멸
+            setTimeout(() => {
+                supernovaTextOverlay.style.transition = 'all 1.6s ease-out';
+                supernovaTextOverlay.style.opacity = '0';
+                supernovaTextOverlay.style.transform = 'scale(0.85)';
+            }, 1800);
+        }
+
+        // 자동 실행 재생 버튼 비주얼 동기화
+        function updatePlayBtnUI() {
+            if (!playIcon || !playBtn) return;
+            if (isPlaying) {
+                playIcon.setAttribute('data-lucide', 'pause');
+                playBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+                playBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+            } else {
+                playIcon.setAttribute('data-lucide', 'play');
+                playBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                playBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+            }
+            lucide.createIcons();
+        }
+
+        function syncTimelineStates(val) {
+            if(!activeStar) return;
+            activeStar.age = (val / 1000) * activeStar.maxAge;
+            const isTimeRunning = val > 0;
+            massSlider.disabled = isTimeRunning;
+            metalSlider.disabled = isTimeRunning;
+            const sliderOpacity = isTimeRunning ? '0.4' : '1';
+            document.getElementById('mass-slider-container').style.opacity = sliderOpacity;
+            document.getElementById('metal-slider-container').style.opacity = sliderOpacity;
+            lockNotice.classList.toggle('hidden', !isTimeRunning);
+            
+            const s = activeStar.getCurrent();
+            timelineDisplay.innerText = `${(val/10).toFixed(1)}%`;
+            starAgeDisplay.innerText = `${(activeStar.age/100).toFixed(2)}억 년 / ${(activeStar.maxAge/100).toFixed(1)}억 년`;
+            
+            diagAge.innerText = `${(activeStar.age/100).toFixed(2)}억 년`;
+            diagPhys.innerText = `L: ${s.lum.toFixed(2)} | T: ${Math.round(s.temp)}K`;
+            diagFate.innerText = activeStar.fate;
+
+            // 전광판 상태 실시간 갱신 가동
+            updateStageBannerDecorations(s.name, s.color);
+
+            // H-R Map 로그 스케일 연산 안전 크래시 차단 장치
+            const tempVal = Math.max(10, s.temp);
+            const lumVal = Math.max(0.0001, s.lum);
+
+            // 원시성 단계와 물리적 완전 소각(블랙홀) 단계인 경우 H-R도의 마커를 은밀히 가림
+            const isProtostar = s.name === "원시 수축기" || s.name === "원시 성운 수축";
+            const isBlackHoleSingularity = s.temp <= 0 || s.lum <= 0;
+            const isHidden = isProtostar || isBlackHoleSingularity;
+            
+            if (isHidden) {
+                hrMarker.setAttribute('visibility', 'hidden');
+                hrMarkerGlow.setAttribute('visibility', 'hidden');
+            } else {
+                hrMarker.setAttribute('visibility', 'visible');
+                hrMarkerGlow.setAttribute('visibility', 'visible');
+
+                // 1:1 Precise Logarithmic coordinate mapping (온도는 1000K~50000K, 광도는 10^-4~10^7 L☉ 범위 보호 클램핑)
+                const logT = Math.min(4.7, Math.max(3.0, Math.log10(tempVal)));
+                const logL = Math.min(7.0, Math.max(-4.0, Math.log10(lumVal)));
+
+                const tx = 30 + (240 * (1 - (logT - 3) / 1.7));
+                const ty = 160 - (140 * (logL + 4) / 11);
+                
+                hrMarker.setAttribute('cx', tx);
+                hrMarkerGlow.setAttribute('cx', tx);
+                hrMarker.setAttribute('cy', ty);
+                hrMarkerGlow.setAttribute('cy', ty);
+            }
+            
+            hrSingularity.classList.toggle('hidden', s.temp > 0);
+
+            updateFormula(activeStar.mass, activeStar.metallicity);
+        }
+
+        function updateFormula(m, z) {
+            let eq = "", ran = "", exp = "";
+            if(m < 0.08) { 
+                eq = "T_core < 10,000,000 K (핵융합 불가)"; 
+                ran = "M < 0.08 M☉ (갈색왜성)"; 
+                exp = "질량이 낮아 수소 핵융합 발화 한계에 미달합니다."; 
+            }
+            else if(m < 0.43) { 
+                eq = "L/L☉ ≈ 0.23 × (M/M☉)^2.3"; 
+                ran = "M < 0.43 M☉ (적색왜성)"; 
+                exp = "전체 대류형 구조를 가지며 에너지를 매우 느리게 소비합니다."; 
+            }
+            else if(m <= 2.0) { 
+                eq = "L/L☉ = (M/M☉)^4.0"; 
+                ran = "0.43 M☉ ≤ M ≤ 2 M☉ (태양형)"; 
+                exp = "중심부 복사핵과 바깥쪽 대류층 구조를 지닙니다."; 
+            }
+            else if(m <= 55.0) { 
+                eq = "L/L☉ ≈ 1.4 × (M/M☉)^3.5"; 
+                ran = "2 M☉ < M ≤ 55 M☉ (고중량 거성)"; 
+                exp = "대류핵-복사외피 구조를 띠며 연료를 격렬히 소모합니다."; 
+            }
+            else { 
+                eq = "L/L☉ ≈ 32000 × (M/M☉) [에딩턴 한계]"; 
+                ran = "M > 55 M☉ (극대질량성)"; 
+                exp = "강한 복사압으로 인해 광도가 질량에 선형 비례합니다."; 
+            }
+            formulaEquation.innerText = eq; 
+            formulaRange.innerText = ran; 
+            formulaExplanation.innerText = exp;
+        }
+
+        function updateTimelineTrack() {
+            timelineTrackStages.innerHTML = '';
+            let prevD = 0;
+            activeStar.path.forEach((step, i) => {
+                const w = (step.duration - prevD) * 100; prevD = step.duration;
+                const div = document.createElement('div');
+                div.style.width = `${w}%`; div.style.height = '100%';
+                div.style.backgroundColor = (step.color === 'nebula') ? '#a855f7' : (step.color === 'supernova' ? '#ef4444' : (step.color === '#000000' ? '#222222' : step.color));
+                div.style.opacity = '0.6';
+                if(i < activeStar.path.length-1) div.style.borderRight = '1px solid rgba(0,0,0,0.5)';
+                timelineTrackStages.appendChild(div);
+            });
+        }
+
+        function resetToNewProtostar() {
+            if(activeStar) scene.remove(activeStar.group);
+            activeStar = new Star(parseFloat(massSlider.value), parseFloat(metalSlider.value));
+            timelineSlider.value = 0;
+            flashOpacity = 0; shakeIntensity = 0;
+            safeClearThreeGroup(particleGroup);
+            safeClearThreeGroup(shockwaveGroup);
+            safeClearThreeGroup(permanentNebulaGroup);
+            
+            // 대폭발 텍스트 상태 초기화
+            if (supernovaTextOverlay) {
+                supernovaTextOverlay.style.opacity = '0';
+                supernovaTextOverlay.style.transform = 'scale(0.5)';
+            }
+
+            isPlaying = false;
+            updatePlayBtnUI();
+
+            syncTimelineStates(0);
+            updateTimelineTrack();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = 0.016; // Heuristic dt for 60fps
+            if(activeStar) activeStar.update();
+
+            // 자동 재생 기능 통합 (Requirement)
+            if (isPlaying && activeStar && timelineSlider) {
+                const currentSliderVal = parseFloat(timelineSlider.value);
+                if (currentSliderVal < 1000) {
+                    // 시간 조절 슬라이더 자동 진행
+                    const nextVal = Math.min(1000, currentSliderVal + dt * 15 * timeSpeed);
+                    timelineSlider.value = nextVal;
+                    syncTimelineStates(nextVal);
+                } else {
+                    // 수명 한계 도달 시 자동 재생 정지
+                    isPlaying = false;
+                    updatePlayBtnUI();
+                }
+            }
+
+            // 안정적이고 루프 중단이 없는 파티클 소멸 필터 루프
+            for (let i = particleGroup.children.length - 1; i >= 0; i--) {
+                const pts = particleGroup.children[i];
+                const pos = pts.geometry.attributes.position.array;
+                const vels = pts.userData.velocities;
+                const lifes = pts.userData.lifetimes;
+                let allDead = true;
+
+                for (let j = 0; j < pos.length / 3; j++) {
+                    if (lifes[j].age < lifes[j].maxAge) {
+                        lifes[j].age += 1.3;
+                        allDead = false;
+
+                        pos[j * 3] += vels[j].x * dt * 0.85;
+                        pos[j * 3 + 1] += vels[j].y * dt * 0.85;
+                        pos[j * 3 + 2] += vels[j].z * dt * 0.85;
+
+                        vels[j].multiplyScalar(0.96); // drag friction
+                    }
+                }
+                pts.geometry.attributes.position.needsUpdate = true;
+                pts.material.opacity = Math.max(0, 1 - (lifes[0].age / lifes[0].maxAge));
+                
+                if (allDead) {
+                    particleGroup.remove(pts);
+                    pts.geometry.dispose();
+                    pts.material.dispose();
+                }
+            }
+
+            // Expanding 3D Shockwaves Rings
+            for (let i = shockwaveGroup.children.length - 1; i >= 0; i--) {
+                const sw = shockwaveGroup.children[i];
+                sw.userData.radius += sw.userData.speed;
+                const scaleFactor = sw.userData.radius;
+                sw.scale.set(scaleFactor, scaleFactor, 1);
+
+                const lifeRatio = sw.userData.radius / sw.userData.maxRadius;
+                sw.material.opacity = Math.max(0, sw.userData.initialOpacity * (1 - lifeRatio));
+
+                if (sw.userData.radius >= sw.userData.maxRadius) {
+                    shockwaveGroup.remove(sw);
+                    sw.geometry.dispose();
+                    sw.material.dispose();
+                }
+            }
+
+            // 성운 가스 자전 및 감쇠 계산
+            for (let i = permanentNebulaGroup.children.length - 1; i >= 0; i--) {
+                const neb = permanentNebulaGroup.children[i];
+                neb.rotation.y += neb.userData.rotSpeed;
+                neb.userData.age += 1;
+                const ratio = neb.userData.age / neb.userData.maxAge;
+                if (ratio >= 1.0) {
+                    permanentNebulaGroup.remove(neb);
+                    neb.geometry.dispose();
+                    neb.material.dispose();
+                } else {
+                    neb.material.opacity = neb.userData.initialOpacity * (1.0 - ratio);
+                }
+            }
+
+            // 카메라와 3D 모델의 상대적 크기에 따른 다이내믹 자동 줌 아웃 (lerp 기반 수소 가스 팽창 반영)
+            if (activeStar) {
+                const s = activeStar.getCurrent();
+                const targetSize = s.size * 0.5;
+                const optimalDistance = Math.max(25.0, targetSize * 6.5);
+                
+                controls.target.set(0, 0, 0); // 타겟 좌표 중심 고정
+                
+                const currentDistance = camera.position.length();
+                const newDistance = THREE.MathUtils.lerp(currentDistance, optimalDistance, 0.05);
+                camera.position.normalize().multiplyScalar(newDistance);
+            }
+            
+            controls.update();
+
+            // 카메라 위치가 어긋나지 않는 물리 셰이크 공간 진동 효과 적용
+            if(shakeIntensity > 0) {
+                scene.position.set(
+                    (Math.random() - 0.5) * shakeIntensity * 0.5,
+                    (Math.random() - 0.5) * shakeIntensity * 0.5,
+                    (Math.random() - 0.5) * shakeIntensity * 0.5
+                );
+                shakeIntensity *= 0.9;
+            } else {
+                scene.position.set(0, 0, 0);
+            }
+
+            renderer.render(scene, camera);
+
+            // Fullscreen flash fade support
+            if (flashOpacity > 0) {
+                flashOpacity -= dt * 2.2;
+                if (flashOpacity < 0) flashOpacity = 0;
+            }
+
+            const viewport = document.getElementById('viewport-section');
+            if (flashOpacity > 0) {
+                let flashDiv = document.getElementById('flash-overlay');
+                if (!flashDiv) {
+                    flashDiv = document.createElement('div');
+                    flashDiv.id = 'flash-overlay';
+                    flashDiv.className = 'absolute inset-0 bg-white pointer-events-none z-40 transition-opacity duration-75';
+                    viewport.appendChild(flashDiv);
+                }
+                flashDiv.style.opacity = flashOpacity;
+            } else {
+                const flashDiv = document.getElementById('flash-overlay');
+                if (flashDiv) flashDiv.style.opacity = 0;
+            }
+        }
+
+        window.onload = () => {
+            timelineSlider = document.getElementById('timeline-slider');
+            timelineDisplay = document.getElementById('timeline-display');
+            starAgeDisplay = document.getElementById('star-age-display');
+            timelineTrackStages = document.getElementById('timeline-track-stages');
+            massSlider = document.getElementById('mass-input-slider');
+            massDisplay = document.getElementById('mass-display');
+            metalSlider = document.getElementById('metal-input-slider');
+            metalDisplay = document.getElementById('metal-display');
+            lockNotice = document.getElementById('lock-notice');
+            diagAge = document.getElementById('diag-age');
+            diagPhys = document.getElementById('diag-phys');
+            diagFate = document.getElementById('diag-fate');
+            formulaEquation = document.getElementById('formula-equation');
+            formulaRange = document.getElementById('formula-range');
+            formulaExplanation = document.getElementById('formula-explanation');
+            hrMarker = document.getElementById('hr-marker');
+            hrMarkerGlow = document.getElementById('hr-marker-glow');
+            hrSingularity = document.getElementById('hr-singularity-overlay');
+            resetStarBtn = document.getElementById('reset-protostar-card');
+
+            // 전광판 DOM 변수 바인딩
+            stageText = document.getElementById('stage-text');
+            stageDot = document.getElementById('stage-dot');
+            stageDotPulse = document.getElementById('stage-dot-pulse');
+            stageBanner = document.getElementById('stage-banner');
+            
+            // 초신성 대사 전광판 오버레이 바인딩
+            supernovaTextOverlay = document.getElementById('supernova-text-overlay');
+
+            // 재생 버튼용 DOM 바인딩
+            playBtn = document.getElementById('play-btn');
+            playIcon = document.getElementById('play-icon');
+
+            // 슬라이더 조작 시 재생 정지 처리 포함
+            timelineSlider.addEventListener('input', (e) => {
+                isPlaying = false;
+                updatePlayBtnUI();
+                syncTimelineStates(parseFloat(e.target.value));
+            });
+
+            // 마우스 클릭 시점 조절 시에도 재생 일시정지
+            timelineSlider.addEventListener('mousedown', () => {
+                isPlaying = false;
+                updatePlayBtnUI();
+            });
+
+            if (massSlider) {
+                massSlider.addEventListener('input', () => {
+                    massDisplay.innerText = `${parseFloat(massSlider.value).toFixed(2)} M☉`;
+                    resetToNewProtostar();
+                });
+            }
+
+            if (metalSlider) {
+                metalSlider.addEventListener('input', () => {
+                    const z = parseFloat(metalSlider.value);
+                    metalDisplay.innerText = z.toFixed(3);
+                    document.getElementById('metal-label').innerText = z > 0.02 ? "Metal-Rich Star" : (z < 0.01 ? "Metal-Poor Star" : "Solar Metallicity");
+                    resetToNewProtostar();
+                });
+            }
+
+            if (resetStarBtn) {
+                resetStarBtn.addEventListener('click', () => {
+                    resetToNewProtostar();
+                });
+            }
+
+            // 재생 버튼 이벤트 연동
+            if (playBtn) {
+                playBtn.addEventListener('click', () => {
+                    if (parseFloat(timelineSlider.value) >= 1000) {
+                        timelineSlider.value = 0;
+                    }
+                    isPlaying = !isPlaying;
+                    updatePlayBtnUI();
+                });
+            }
+
+            init3D();
+            animate();
+            lucide.createIcons();
+        };
+
+        let flashOpacity = 0, shakeIntensity = 0;
+    </script>
+</body>
+</html>

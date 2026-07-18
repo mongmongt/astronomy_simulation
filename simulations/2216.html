@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<!-- saved from url=(0051)file:///C:/Users/82105/Downloads/code_artifact.html -->
+<html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>식쌍성 광도 곡선 프로 시뮬레이터</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="./2216_장한규_숨바꼭별_files/saved_resource"></script>
+  <!-- Google Fonts (Noto Sans KR) -->
+  <link href="./2216_장한규_숨바꼭별_files/css2" rel="stylesheet">
+  <!-- MathJax for rendering gorgeous astronomical formulas -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="./2216_장한규_숨바꼭별_files/tex-mml-chtml.js.다운로드"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #060913;
+    }
+    /* Custom premium sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #1e293b;
+      height: 6px;
+      border-radius: 9999px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #4f46e5;
+      cursor: pointer;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(79, 70, 229, 0.6);
+      transition: all 0.15s ease-in-out;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #6366f1;
+      transform: scale(1.15);
+      box-shadow: 0 0 14px rgba(99, 102, 241, 0.8);
+    }
+  </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.bottom-4{bottom:1rem}.left-1\/2{left:50%}.left-4{left:1rem}.top-0{top:0px}.top-4{top:1rem}.z-10{z-index:10}.z-20{z-index:20}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:0.25rem}.mb-4{margin-bottom:1rem}.mt-0\.5{margin-top:0.125rem}.mt-1{margin-top:0.25rem}.block{display:block}.inline-block{display:inline-block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-1\.5{height:0.375rem}.h-2{height:0.5rem}.h-2\.5{height:0.625rem}.h-3\.5{height:0.875rem}.h-4{height:1rem}.h-6{height:1.5rem}.h-auto{height:auto}.min-h-\[300px\]{min-height:300px}.min-h-screen{min-height:100vh}.w-1\.5{width:0.375rem}.w-2{width:0.5rem}.w-2\.5{width:0.625rem}.w-3\.5{width:0.875rem}.w-4{width:1rem}.w-6{width:1.5rem}.w-full{width:100%}.w-max{width:max-content}.max-w-7xl{max-width:80rem}.max-w-\[260px\]{max-width:260px}.max-w-\[95\%\]{max-width:95%}.max-w-full{max-width:100%}.flex-1{flex:1 1 0%}.shrink-0{flex-shrink:0}.flex-grow{flex-grow:1}.-translate-x-1\/2{--tw-translate-x:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes ping{75%, 100%{transform:scale(2);opacity:0}}.animate-ping{animation:ping 1s cubic-bezier(0, 0, 0.2, 1) infinite}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite}.cursor-pointer{cursor:pointer}.select-none{-webkit-user-select:none;user-select:none}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:0.25rem}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-6{gap:1.5rem}.space-y-0\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.125rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.125rem * var(--tw-space-y-reverse))}.space-y-1\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.375rem * var(--tw-space-y-reverse))}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-3\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.875rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.875rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-amber-500\/20{border-color:rgb(245 158 11 / 0.2)}.border-emerald-500\/20{border-color:rgb(16 185 129 / 0.2)}.border-indigo-500\/20{border-color:rgb(99 102 241 / 0.2)}.border-indigo-500\/30{border-color:rgb(99 102 241 / 0.3)}.border-indigo-500\/35{border-color:rgb(99 102 241 / 0.35)}.border-rose-500\/40{border-color:rgb(244 63 94 / 0.4)}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.border-slate-800{--tw-border-opacity:1;border-color:rgb(30 41 59 / var(--tw-border-opacity, 1))}.border-slate-800\/40{border-color:rgb(30 41 59 / 0.4)}.border-slate-800\/50{border-color:rgb(30 41 59 / 0.5)}.border-slate-800\/80{border-color:rgb(30 41 59 / 0.8)}.border-slate-900{--tw-border-opacity:1;border-color:rgb(15 23 42 / var(--tw-border-opacity, 1))}.bg-amber-400{--tw-bg-opacity:1;background-color:rgb(251 191 36 / var(--tw-bg-opacity, 1))}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11 / var(--tw-bg-opacity, 1))}.bg-amber-500\/10{background-color:rgb(245 158 11 / 0.1)}.bg-black\/20{background-color:rgb(0 0 0 / 0.2)}.bg-black\/60{background-color:rgb(0 0 0 / 0.6)}.bg-cyan-400{--tw-bg-opacity:1;background-color:rgb(34 211 238 / var(--tw-bg-opacity, 1))}.bg-cyan-500{--tw-bg-opacity:1;background-color:rgb(6 182 212 / var(--tw-bg-opacity, 1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.bg-emerald-500\/10{background-color:rgb(16 185 129 / 0.1)}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105 / var(--tw-bg-opacity, 1))}.bg-indigo-500{--tw-bg-opacity:1;background-color:rgb(99 102 241 / var(--tw-bg-opacity, 1))}.bg-indigo-500\/10{background-color:rgb(99 102 241 / 0.1)}.bg-indigo-500\/20{background-color:rgb(99 102 241 / 0.2)}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229 / var(--tw-bg-opacity, 1))}.bg-indigo-600\/20{background-color:rgb(79 70 229 / 0.2)}.bg-rose-500{--tw-bg-opacity:1;background-color:rgb(244 63 94 / var(--tw-bg-opacity, 1))}.bg-rose-500\/20{background-color:rgb(244 63 94 / 0.2)}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-slate-900\/30{background-color:rgb(15 23 42 / 0.3)}.bg-slate-900\/40{background-color:rgb(15 23 42 / 0.4)}.bg-slate-950{--tw-bg-opacity:1;background-color:rgb(2 6 23 / var(--tw-bg-opacity, 1))}.bg-slate-950\/40{background-color:rgb(2 6 23 / 0.4)}.bg-slate-950\/45{background-color:rgb(2 6 23 / 0.45)}.bg-slate-950\/60{background-color:rgb(2 6 23 / 0.6)}.bg-slate-950\/80{background-color:rgb(2 6 23 / 0.8)}.bg-slate-950\/85{background-color:rgb(2 6 23 / 0.85)}.bg-slate-950\/95{background-color:rgb(2 6 23 / 0.95)}.bg-gradient-to-r{background-image:linear-gradient(to right, var(--tw-gradient-stops))}.from-amber-500{--tw-gradient-from:#f59e0b var(--tw-gradient-from-position);--tw-gradient-to:rgb(245 158 11 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-rose-500{--tw-gradient-from:#f43f5e var(--tw-gradient-from-position);--tw-gradient-to:rgb(244 63 94 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.to-pink-500{--tw-gradient-to:#ec4899 var(--tw-gradient-to-position)}.to-yellow-500{--tw-gradient-to:#eab308 var(--tw-gradient-to-position)}.p-1\.5{padding:0.375rem}.p-2{padding:0.5rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-3\.5{padding:0.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.pb-1{padding-bottom:0.25rem}.pb-2{padding-bottom:0.5rem}.pb-3{padding-bottom:0.75rem}.pt-1{padding-top:0.25rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-\[9\.5px\]{font-size:9.5px}.text-\[9px\]{font-size:9px}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.font-extrabold{font-weight:800}.italic{font-style:italic}.leading-relaxed{line-height:1.625}.leading-tight{line-height:1.25}.tracking-tight{letter-spacing:-0.025em}.text-amber-300{--tw-text-opacity:1;color:rgb(252 211 77 / var(--tw-text-opacity, 1))}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36 / var(--tw-text-opacity, 1))}.text-amber-500{--tw-text-opacity:1;color:rgb(245 158 11 / var(--tw-text-opacity, 1))}.text-blue-300{--tw-text-opacity:1;color:rgb(147 197 253 / var(--tw-text-opacity, 1))}.text-cyan-300{--tw-text-opacity:1;color:rgb(103 232 249 / var(--tw-text-opacity, 1))}.text-cyan-500{--tw-text-opacity:1;color:rgb(6 182 212 / var(--tw-text-opacity, 1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153 / var(--tw-text-opacity, 1))}.text-indigo-300{--tw-text-opacity:1;color:rgb(165 180 252 / var(--tw-text-opacity, 1))}.text-indigo-400{--tw-text-opacity:1;color:rgb(129 140 248 / var(--tw-text-opacity, 1))}.text-indigo-500{--tw-text-opacity:1;color:rgb(99 102 241 / var(--tw-text-opacity, 1))}.text-rose-300{--tw-text-opacity:1;color:rgb(253 164 175 / var(--tw-text-opacity, 1))}.text-rose-300\/80{color:rgb(253 164 175 / 0.8)}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133 / var(--tw-text-opacity, 1))}.text-slate-100{--tw-text-opacity:1;color:rgb(241 245 249 / var(--tw-text-opacity, 1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.accent-amber-500{accent-color:#f59e0b}.accent-indigo-500{accent-color:#6366f1}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-emerald-600\/10{--tw-shadow-color:rgb(5 150 105 / 0.1);--tw-shadow:var(--tw-shadow-colored)}.shadow-indigo-500\/10{--tw-shadow-color:rgb(99 102 241 / 0.1);--tw-shadow:var(--tw-shadow-colored)}.backdrop-blur{--tw-backdrop-blur:blur(8px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-300{transition-duration:300ms}.selection\:bg-indigo-500\/30 *::selection{background-color:rgb(99 102 241 / 0.3)}.selection\:bg-indigo-500\/30::selection{background-color:rgb(99 102 241 / 0.3)}.hover\:bg-emerald-500:hover{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.hover\:bg-indigo-500:hover{--tw-bg-opacity:1;background-color:rgb(99 102 241 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.focus\:ring-indigo-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(99 102 241 / var(--tw-ring-opacity, 1))}@media (min-width: 640px){.sm\:flex-row{flex-direction:row}}@media (min-width: 768px){.md\:max-w-md{max-width:28rem}.md\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.md\:flex-row{flex-direction:row}.md\:p-6{padding:1.5rem}.md\:text-right{text-align:right}}@media (min-width: 1024px){.lg\:col-span-4{grid-column:span 4 / span 4}.lg\:col-span-8{grid-column:span 8 / span 8}.lg\:grid-cols-12{grid-template-columns:repeat(12, minmax(0, 1fr))}}</style></head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500/30">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-6 py-4 sticky top-0 z-50 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30 shadow-inner">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
+            식쌍성 정밀 광도 곡선 시뮬레이터 <span class="text-[10px] font-bold px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/35">지구과학 II 심화</span>
+          </h1>
+          <p class="text-xs text-slate-400">Eclipsing Binary Star Contact-Point &amp; Light Curve Pro Simulator</p>
+        </div>
+      </div>
+      <div class="text-xs text-slate-400 bg-slate-900 px-4 py-2 rounded-xl border border-slate-850 text-center md:text-right shadow-inner">
+        제1~4접촉 정밀 기하 연산 및 식 깊이 감광 자동 도출
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto p-4 md:p-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Controls (Span 4) -->
+    <section class="lg:col-span-4 bg-slate-900/30 border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between gap-6 backdrop-blur-md shadow-2xl">
+      <div>
+        <div class="flex items-center gap-2 pb-3 mb-4 border-b border-slate-850">
+          <span class="w-2.5 h-2.5 bg-indigo-500 rounded-full animate-ping"></span>
+          <h2 class="font-bold text-sm text-slate-200">정밀 조작 변인 통제</h2>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Inclination Angle Slider -->
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-850">
+            <div class="flex justify-between items-center mb-1">
+              <label for="inclination" class="text-xs font-semibold text-slate-300">
+                궤도 경사각 (<span class="italic">i</span>)
+              </label>
+              <span id="inclinationVal" class="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">85°</span>
+            </div>
+            <input type="range" id="inclination" min="0" max="90" step="1" value="85" class="w-full h-1.5 cursor-pointer accent-indigo-500">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>0° (정면 관측)</span>
+              <span>45°</span>
+              <span>90° (완벽한 식 발생)</span>
+            </div>
+          </div>
+
+          <!-- Primary Star Radius (R1) Slider -->
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-850">
+            <div class="flex justify-between items-center mb-1">
+              <label for="radius1" class="text-xs font-semibold text-slate-300">
+                주성(별1) 반지름 (<span class="italic">R₁</span>)
+              </label>
+              <span id="radius1Val" class="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">30 px</span>
+            </div>
+            <input type="range" id="radius1" min="15" max="45" step="1" value="30" class="w-full h-1.5 cursor-pointer accent-indigo-500">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>15 px (작음)</span>
+              <span>30 px (기본)</span>
+              <span>45 px (거대 주성)</span>
+            </div>
+          </div>
+
+          <!-- Radius Ratio Slider -->
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-850">
+            <div class="flex justify-between items-center mb-1">
+              <label for="radiusRatio" class="text-xs font-semibold text-slate-300">
+                동반성 반지름 비율 (<span class="italic">R₂/R₁</span>)
+              </label>
+              <span id="radiusRatioVal" class="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">0.70배</span>
+            </div>
+            <input type="range" id="radiusRatio" min="0.20" max="1.80" step="0.05" value="0.70" class="w-full h-1.5 cursor-pointer accent-indigo-500">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>0.2 (극소 동반성)</span>
+              <span id="calcR2Val" class="text-indigo-400 font-semibold text-[9px]">(계산된 R₂: 21 px)</span>
+              <span>1.8 (거대 동반성)</span>
+            </div>
+          </div>
+
+          <!-- Star 2 Temperature Slider -->
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-850">
+            <div class="flex justify-between items-center mb-1">
+              <label for="tempRatio" class="text-xs font-semibold text-slate-300">
+                동반성(별2) 표면 온도 (<span class="italic">T₂</span>)
+              </label>
+              <span id="tempRatioVal" class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">4,500 K</span>
+            </div>
+            <input type="range" id="tempRatio" min="3000" max="12000" step="250" value="4500" class="w-full h-1.5 cursor-pointer accent-amber-500">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>3,000 K (저온/적색)</span>
+              <span class="text-[9px] text-blue-300">주성 고정: 10,000 K (백색)</span>
+              <span>12,000 K (고온/청색)</span>
+            </div>
+          </div>
+
+          <!-- Orbital Distance Slider -->
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-850">
+            <div class="flex justify-between items-center mb-1">
+              <label for="orbitalRadius" class="text-xs font-semibold text-slate-300">
+                공전 궤도 반경 (<span class="italic">a</span>)
+              </label>
+              <span id="orbitalRadiusVal" class="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">130 px</span>
+            </div>
+            <input type="range" id="orbitalRadius" min="90" max="180" step="5" value="130" class="w-full h-1.5 cursor-pointer accent-indigo-500">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>90 px (근접 식쌍성)</span>
+              <span>130 px</span>
+              <span>180 px (넓은 공전 궤도)</span>
+            </div>
+          </div>
+
+          <!-- Display Toggles -->
+          <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-850 grid grid-cols-1 gap-2">
+            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 select-none">
+              <input type="checkbox" id="showGuides" checked="" class="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500">
+              공전 궤도 및 가이드라인 표시
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 select-none">
+              <input type="checkbox" id="showContacts" checked="" class="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500">
+              그래프 내 1~4접촉 점선 표시
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 select-none">
+              <input type="checkbox" id="autoScale" checked="" class="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500">
+              Y축 배율 자동 조절 (미세 식 비교용)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playback & Export Controls -->
+      <div class="pt-4 border-t border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-slate-400">공전 시뮬레이션 제어</span>
+          <span id="phaseBadge" class="px-2 py-0.5 bg-indigo-500/10 text-indigo-300 text-[10px] border border-indigo-500/20 rounded font-mono font-bold">위상: 29.4°</span>
+        </div>
+
+        <div class="flex gap-2">
+          <!-- Play / Pause Button -->
+          <button id="btnPlayPause" class="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/10 transition-all">
+            <svg id="svgPlay" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+            <svg id="svgPause" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+            <span id="txtPlayPause">일시 정지</span>
+          </button>
+          
+          <!-- Speed Toggle Button -->
+          <button id="btnSpeed" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-mono text-xs font-semibold border border-slate-750 transition-all">
+            1.0x
+          </button>
+
+          <!-- Reset Button -->
+          <button id="btnReset" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-750 transition-all" title="초기화">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16"></path></svg>
+          </button>
+        </div>
+
+        <!-- Export CSV Button (New Practical Feature for Students) -->
+        <button id="btnExport" class="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/10 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          광도 데이터 CSV 추출하기
+        </button>
+      </div>
+    </section>
+
+    <!-- Right Column: Visualizers (Span 8) -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+
+      <!-- Orbit Animation Canvas Container -->
+      <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl overflow-hidden backdrop-blur-md flex flex-col shadow-lg">
+        <!-- Tab Header -->
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-850 bg-slate-950/40">
+          <span class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+            천체 실시간 공전 모델링
+          </span>
+          <span class="text-[10px] text-slate-400 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+            마우스 드래그로 탐색 가능
+          </span>
+        </div>
+
+        <!-- Canvas Body with Absolute Alerts -->
+        <div class="relative bg-black/60 flex justify-center items-center min-h-[300px]">
+          <canvas id="orbitCanvas" class="w-full max-w-full h-auto cursor-pointer block z-10" width="915" height="400" style="width: 732px; height: 320px;"></canvas>
+          
+          <!-- No Eclipse Small Floating Warning Banner -->
+          <div id="noEclipseAlert" class="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-950/95 backdrop-blur-md border border-rose-500/40 p-3 rounded-xl z-20 items-center gap-3 hidden transition-opacity duration-300 shadow-2xl max-w-[95%] w-max md:max-w-md select-none pointer-events-none" style="opacity: 0;">
+            <div class="p-1.5 bg-rose-500/20 rounded-full text-rose-400 shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <div class="text-left space-y-0.5">
+              <h4 class="font-bold text-rose-400 text-xs">식 미발생 상태 (No-Eclipse)</h4>
+              <p class="text-[10px] text-slate-300 leading-tight">
+                별이 서로 가려지지 않습니다. 경사각을 높이거나 공전 반경을 줄여보세요.
+              </p>
+              <div class="text-[9px] text-rose-300/80 font-mono">
+                조건: $a \cos i$ (<span id="calcMinD" class="font-bold text-rose-400">11.3</span>px) $\ge R_1 + R_2$ (<span id="calcSumR" class="font-bold text-rose-400">51</span>px)
+              </div>
+            </div>
+          </div>
+
+          <!-- Real-Time Eclipse Contact Indicator Card -->
+          <div class="absolute bottom-4 left-4 bg-slate-950/85 backdrop-blur border border-slate-800 p-3 rounded-xl text-xs space-y-1.5 select-none pointer-events-none z-20 max-w-[260px] shadow-2xl">
+            <div class="font-bold text-slate-200 border-b border-slate-800 pb-1 mb-1 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span> 식(Eclipse) 분석 데이터
+            </div>
+            <div class="flex justify-between gap-4">
+              <span class="text-slate-400">관측 상태:</span>
+              <span id="eclipseStatus" class="font-bold text-slate-400">식 미진행 (최대 광도)</span>
+            </div>
+            <div class="flex justify-between gap-4">
+              <span class="text-slate-400">가려진 면적 비율:</span>
+              <span id="overlapPercent" class="font-bold text-slate-300 font-mono">0.0%</span>
+            </div>
+            <div class="flex justify-between gap-4">
+              <span class="text-slate-400">시선 거리 ($d$):</span>
+              <span id="liveDistance" class="font-bold text-indigo-400 font-mono">113.4 px</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Light Curve Canvas Container -->
+      <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl overflow-hidden backdrop-blur-md flex flex-col shadow-lg">
+        <div class="px-5 py-3 border-b border-slate-850 bg-slate-950/40 flex items-center justify-between">
+          <h3 class="text-xs font-bold text-slate-200 flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            상대 광도 곡선 (Y축 정규화: 1.0)
+          </h3>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+            <span class="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              실시간 갱신 중
+            </span>
+          </div>
+        </div>
+
+        <div class="p-4 bg-black/20 relative">
+          <canvas id="chartCanvas" class="w-full max-w-full h-auto block" width="915" height="287" style="width: 732px; height: 230px;"></canvas>
+        </div>
+      </div>
+
+      <!-- 3-Column Educational & Analytics Dashboard Panel (Fully Uniformed UI) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Column 1: Contact points Phase table -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3 backdrop-blur-md shadow-lg">
+          <h4 class="text-xs font-bold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            주극소 1~4접촉 위상 분석표
+          </h4>
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/40 border border-slate-800/40">
+              <span class="text-slate-400 flex items-center gap-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block animate-pulse"></span> 제1접촉 ($C_1$)
+              </span>
+              <span id="c1Val" class="font-mono font-bold text-cyan-300">67.4°</span>
+            </div>
+            <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/40 border border-slate-800/40">
+              <span class="text-slate-400 flex items-center gap-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block animate-pulse"></span> 제2접촉 ($C_2$)
+              </span>
+              <span id="c2Val" class="font-mono font-bold text-amber-300">미발생 (부분식)</span>
+            </div>
+            <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/40 border border-slate-800/40">
+              <span class="text-slate-400 flex items-center gap-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block animate-pulse"></span> 제3접촉 ($C_3$)
+              </span>
+              <span id="c3Val" class="font-mono font-bold text-amber-500">미발생 (부분식)</span>
+            </div>
+            <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/40 border border-slate-800/40">
+              <span class="text-slate-400 flex items-center gap-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-500 inline-block animate-pulse"></span> 제4접촉 ($C_4$)
+              </span>
+              <span id="c4Val" class="font-mono font-bold text-cyan-500">112.6°</span>
+            </div>
+            <p class="text-[9.5px] text-slate-500 leading-tight text-center pt-1">
+              * 동반성의 반지름이 매우 작은 부분식 상태의 경우 $C_2$, $C_3$은 미정의됩니다.
+            </p>
+          </div>
+        </div>
+
+        <!-- Column 2: Eclipse Depth Analysis (Fully Dynamic Gauges!) -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3 backdrop-blur-md shadow-lg">
+          <h4 class="text-xs font-bold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+            식 깊이 감광 분석
+          </h4>
+          
+          <div class="space-y-3.5 text-xs">
+            <!-- Primary Eclipse Depth Card -->
+            <div class="p-3 rounded-lg bg-slate-950/40 border border-slate-800/50 flex flex-col gap-1">
+              <div class="flex justify-between items-center">
+                <span class="text-rose-400 font-bold flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> 주극소 감광
+                </span>
+                <span id="primaryDepthVal" class="font-mono font-black text-rose-300 text-sm">46.3%</span>
+              </div>
+              <div class="w-full bg-slate-900 rounded-full h-1.5 mt-1 overflow-hidden border border-slate-850">
+                <div id="primaryDepthBar" class="bg-gradient-to-r from-rose-500 to-pink-500 h-1.5 rounded-full transition-all duration-300" style="width: 46.2917%;"></div>
+              </div>
+              <span id="primaryDepthDesc" class="text-[9.5px] text-slate-500 mt-1 leading-tight">최소 상대 광도: 0.537</span>
+            </div>
+
+            <!-- Secondary Eclipse Depth Card -->
+            <div class="p-3 rounded-lg bg-slate-950/40 border border-slate-800/50 flex flex-col gap-1">
+              <div class="flex justify-between items-center">
+                <span class="text-amber-400 font-bold flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> 부극소 감광
+                </span>
+                <span id="secondaryDepthVal" class="font-mono font-black text-amber-300 text-sm">1.9%</span>
+              </div>
+              <div class="w-full bg-slate-900 rounded-full h-1.5 mt-1 overflow-hidden border border-slate-850">
+                <div id="secondaryDepthBar" class="bg-gradient-to-r from-amber-500 to-yellow-500 h-1.5 rounded-full transition-all duration-300" style="width: 1.89825%;"></div>
+              </div>
+              <span id="secondaryDepthDesc" class="text-[9.5px] text-slate-500 mt-1 leading-tight">최소 상대 광도: 0.981</span>
+            </div>
+            
+            <p class="text-[9.5px] text-slate-500 leading-relaxed text-center">
+              * 식 깊이는 항성의 표면 온도비($T_2/T_1$)의 4제곱에 정량적으로 비례합니다.
+            </p>
+          </div>
+        </div>
+
+        <!-- Column 3: Academic Explanation with MathJax -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3 backdrop-blur-md shadow-lg text-xs">
+          <h4 class="font-bold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            지구과학 II 정량 분석 가이드
+          </h4>
+          <div class="space-y-3 text-slate-400 text-[11px] leading-relaxed">
+            <div>
+              <strong class="text-slate-200">1. 온도차에 따른 비대칭성:</strong>
+              <p class="mt-0.5 text-slate-400 leading-tight">
+                주성($T_1$)과 동반성($T_2$)의 온도 비대칭성이 클수록 주극소와 부극소의 식 깊이 차이가 벌어집니다. 슈테판-볼츠만 법칙($E \propto T^4$)에 기인합니다.
+              </p>
+            </div>
+            <div class="bg-slate-950/45 p-2.5 rounded-lg border border-slate-850">
+              <strong class="text-indigo-300">핵심 물리 공식:</strong> 
+              개기식 평탄면의 식 감량폭 정보와 외부 전체 복사 광도 식을 연립하면 간접적으로 두 항성의 표면 온도비를 계산할 수 있습니다.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950/80 py-4 px-6 text-center text-[11px] text-slate-600">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>© 2026 지구과학 코딩 교육 시뮬레이션 프로젝트</p>
+      <p>본 대화형 웹앱은 정밀한 기하 기하 벡터 분석 알고리즘으로 설계되었습니다.</p>
+    </div>
+  </footer>
+
+  <!-- Simulation Engine Logic -->
+  <script>
+    // --- 글로벌 상수 및 설정 ---
+    const T1 = 10000; // Primary Star (Star 1) surface temperature fixed at 10,000 K (A-type star)
+
+    // --- 상태 관리 객체 (State) ---
+    const state = {
+      inclination: 85,    // i: 0 to 90 degrees
+      radius1: 30,        // R1: 15 to 45 px
+      radiusRatio: 0.70,  // R2 / R1
+      T2: 4500,           // Secondary Star surface temperature (K)
+      orbitalRadius: 130, // a: semi-major axis (pixels)
+      isPlaying: true,
+      speedMultiplier: 1.0,
+      phase: 0.0,         // orbital phase angle in radians (0 to 2*PI)
+      showGuides: true,
+      showContacts: true,
+      autoScale: true,
+      lightCurveData: []  // pre-calculated lightcurve points [0..360] degrees
+    };
+
+    // --- DOM 요소 바인딩 ---
+    const elInclination = document.getElementById('inclination');
+    const elInclinationVal = document.getElementById('inclinationVal');
+    const elRadius1 = document.getElementById('radius1');
+    const elRadius1Val = document.getElementById('radius1Val');
+    const elRadiusRatio = document.getElementById('radiusRatio');
+    const elRadiusRatioVal = document.getElementById('radiusRatioVal');
+    const elCalcR2Val = document.getElementById('calcR2Val');
+    const elTempRatio = document.getElementById('tempRatio');
+    const elTempRatioVal = document.getElementById('tempRatioVal');
+    const elOrbitalRadius = document.getElementById('orbitalRadius');
+    const elOrbitalRadiusVal = document.getElementById('orbitalRadiusVal');
+    
+    const elShowGuides = document.getElementById('showGuides');
+    const elShowContacts = document.getElementById('showContacts');
+    const elAutoScale = document.getElementById('autoScale');
+
+    const elBtnPlayPause = document.getElementById('btnPlayPause');
+    const elTxtPlayPause = document.getElementById('txtPlayPause');
+    const elSvgPlay = document.getElementById('svgPlay');
+    const elSvgPause = document.getElementById('svgPause');
+    const elBtnSpeed = document.getElementById('btnSpeed');
+    const elBtnReset = document.getElementById('btnReset');
+    const elBtnExport = document.getElementById('btnExport');
+
+    const elPhaseBadge = document.getElementById('phaseBadge');
+    const elEclipseStatus = document.getElementById('eclipseStatus');
+    const elOverlapPercent = document.getElementById('overlapPercent');
+    const elLiveDistance = document.getElementById('liveDistance');
+    
+    const elNoEclipseAlert = document.getElementById('noEclipseAlert');
+    const elCalcMinD = document.getElementById('calcMinD');
+    const elCalcSumR = document.getElementById('calcSumR');
+
+    // Contact Points & Depths UI Elements
+    const elC1Val = document.getElementById('c1Val');
+    const elC2Val = document.getElementById('c2Val');
+    const elC3Val = document.getElementById('c3Val');
+    const elC4Val = document.getElementById('c4Val');
+
+    const elPrimaryDepthVal = document.getElementById('primaryDepthVal');
+    const elPrimaryDepthBar = document.getElementById('primaryDepthBar');
+    const elPrimaryDepthDesc = document.getElementById('primaryDepthDesc');
+
+    const elSecondaryDepthVal = document.getElementById('secondaryDepthVal');
+    const elSecondaryDepthBar = document.getElementById('secondaryDepthBar');
+    const elSecondaryDepthDesc = document.getElementById('secondaryDepthDesc');
+
+    // Canvas Contexts
+    const orbitCanvas = document.getElementById('orbitCanvas');
+    const orbitCtx = orbitCanvas.getContext('2d');
+    const chartCanvas = document.getElementById('chartCanvas');
+    const chartCtx = chartCanvas.getContext('2d');
+
+    // --- 반지름 변동 및 반경 계산 추출 ---
+    function getRadii() {
+      const R1 = state.radius1;
+      const R2 = state.radius1 * state.radiusRatio;
+      return { R1, R2 };
+    }
+
+    // 슈테판 볼츠만 법칙 기반 복사 광도 강도 계산 (I = T^4)
+    function getSurfaceBrightnesses() {
+      const I1 = Math.pow(T1 / 10000, 4); // 1.0 (고정)
+      const I2 = Math.pow(state.T2 / 10000, 4);
+      return { I1, I2 };
+    }
+
+    // --- 제1~4접촉 정밀 기하 연산 함수 ---
+    function getContactAngles() {
+      const { R1, R2 } = getRadii();
+      const a = state.orbitalRadius;
+      const iRad = (state.inclination * Math.PI) / 180;
+      const cosI = Math.cos(iRad);
+      const sinI = Math.sin(iRad);
+
+      const sumR = R1 + R2;
+      const diffR = Math.abs(R1 - R2);
+
+      let hasOuter = false;
+      let hasInner = false;
+      let phiOutDeg = 0;
+      let phiInDeg = 0;
+
+      // 외접 조건 검증: (R1 + R2)^2 >= a^2 * cos^2(i)
+      const outerVal = (sumR * sumR - a * a * cosI * cosI) / (a * a * sinI * sinI);
+      if (outerVal >= 0 && sinI > 0) {
+        const sinPhiOut = Math.sqrt(Math.min(1, outerVal));
+        phiOutDeg = (Math.asin(sinPhiOut) * 180) / Math.PI;
+        hasOuter = true;
+      }
+
+      // 내접 조건 검증 (개기식 또는 금환식 평탄 구간 형성): (R1 - R2)^2 >= a^2 * cos^2(i)
+      const innerVal = (diffR * diffR - a * a * cosI * cosI) / (a * a * sinI * sinI);
+      if (innerVal >= 0 && sinI > 0) {
+        const sinPhiIn = Math.sqrt(Math.min(1, innerVal));
+        phiInDeg = (Math.asin(sinPhiIn) * 180) / Math.PI;
+        hasInner = true;
+      }
+
+      return {
+        hasOuter,
+        hasInner,
+        phiOut: phiOutDeg,
+        phiIn: phiInDeg
+      };
+    }
+
+    // --- 겹친 면적 정밀 계산 알고리즘 ---
+    function calculateOverlapArea(r1, r2, d) {
+      if (d >= r1 + r2) return 0; // 식 발생 안 함
+      if (d <= Math.abs(r1 - r2)) {
+        // 내부 완전 잠김 (식 완전 진행)
+        return Math.PI * Math.pow(Math.min(r1, r2), 2);
+      }
+      
+      const r1_2 = r1 * r1;
+      const r2_2 = r2 * r2;
+      const d2 = d * d;
+
+      const cos_alpha = (d2 + r1_2 - r2_2) / (2 * d * r1);
+      const cos_beta = (d2 + r2_2 - r1_2) / (2 * d * r2);
+
+      const alpha = 2 * Math.acos(Math.max(-1, Math.min(1, cos_alpha)));
+      const beta = 2 * Math.acos(Math.max(-1, Math.min(1, cos_beta)));
+
+      const area1 = 0.5 * r1_2 * (alpha - Math.sin(alpha));
+      const area2 = 0.5 * r2_2 * (beta - Math.sin(beta));
+
+      return area1 + area2;
+    }
+
+    // --- 임의의 공전 위상(rad)에서의 정밀 복사량 감소 추출 ---
+    function calculateNormalizedBrightness(angle) {
+      const { R1, R2 } = getRadii();
+      const { I1, I2 } = getSurfaceBrightnesses();
+      const a = state.orbitalRadius;
+      const iRad = (state.inclination * Math.PI) / 180;
+
+      // 3차원 구면 좌표 축사영 계산 (지구가 화면 바깥쪽 양의 Z축에 위치)
+      const x = a * Math.cos(angle);
+      const y = a * Math.sin(angle) * Math.cos(iRad);
+      const z = a * Math.sin(angle) * Math.sin(iRad);
+
+      const d = Math.sqrt(x * x + y * y); // 2D 겉보기 거리
+
+      const Area1 = Math.PI * R1 * R1;
+      const Area2 = Math.PI * R2 * R2;
+      const L_unoccluded = Area1 * I1 + Area2 * I2;
+
+      let L = L_unoccluded;
+      let overlapArea = 0;
+
+      if (d < R1 + R2) {
+        overlapArea = calculateOverlapArea(R1, R2, d);
+        if (z > 0) {
+          // 동반성(별2)이 앞을 지남 -> 온도가 높은 주성(별1)을 가림 (주극소)
+          L = L_unoccluded - (overlapArea * I1);
+        } else {
+          // 주성(별1)이 앞을 지남 -> 온도가 낮은 동반성(별2)이 숨겨짐 (부극소)
+          L = L_unoccluded - (overlapArea * I2);
+        }
+      }
+
+      L = Math.max(0, L);
+
+      return {
+        normalizedLight: L / L_unoccluded,
+        overlapArea,
+        maxOverlap: Math.PI * Math.pow(Math.min(R1, R2), 2),
+        isEclipse: d < R1 + R2,
+        isPrimary: z > 0,
+        d
+      };
+    }
+
+    // --- 전체 궤도 광도 곡선 데이터 사전 연산 루프 ---
+    function updateLightCurveData() {
+      state.lightCurveData = [];
+      for (let deg = 0; deg <= 360; deg++) {
+        const rad = (deg * Math.PI) / 180;
+        const info = calculateNormalizedBrightness(rad);
+        state.lightCurveData.push(info.normalizedLight);
+      }
+
+      // 식 깊이 실시간 연산 및 주입 데이터 갱신
+      updateEclipseDepthsUI();
+    }
+
+    // --- 식 깊이 분석 데이터 표기 업데이트 ---
+    function updateEclipseDepthsUI() {
+      const primaryMinBrightness = state.lightCurveData[90];
+      const secondaryMinBrightness = state.lightCurveData[270];
+
+      const primaryDropPercent = (1.0 - primaryMinBrightness) * 100;
+      const secondaryDropPercent = (1.0 - secondaryMinBrightness) * 100;
+
+      // 주극소 데이터 갱신
+      elPrimaryDepthVal.innerText = `${primaryDropPercent.toFixed(1)}%`;
+      elPrimaryDepthBar.style.width = `${primaryDropPercent}%`;
+      elPrimaryDepthDesc.innerText = `최소 상대 광도: ${primaryMinBrightness.toFixed(3)}`;
+
+      // 부극소 데이터 갱신
+      elSecondaryDepthVal.innerText = `${secondaryDropPercent.toFixed(1)}%`;
+      elSecondaryDepthBar.style.width = `${secondaryDropPercent}%`;
+      elSecondaryDepthDesc.innerText = `최소 상대 광도: ${secondaryMinBrightness.toFixed(3)}`;
+    }
+
+    // --- 표면 온도 비례별 별빛 색조 추출 (Limb Darkening 및 광원 묘사용) ---
+    function getStarColor(temp) {
+      if (temp < 4000) {
+        return { core: '#ffedd5', mid: '#f87171', outer: '#b91c1c', glow: 'rgba(239, 68, 68, 0.45)' };
+      } else if (temp < 6000) {
+        return { core: '#fffbeb', mid: '#fbbf24', outer: '#d97706', glow: 'rgba(245, 158, 11, 0.45)' };
+      } else if (temp < 8000) {
+        return { core: '#fefefe', mid: '#fef08a', outer: '#ca8a04', glow: 'rgba(234, 179, 8, 0.35)' };
+      } else if (temp < 11000) {
+        return { core: '#ffffff', mid: '#bae6fd', outer: '#0284c7', glow: 'rgba(14, 165, 233, 0.6)' };
+      } else {
+        return { core: '#faf5ff', mid: '#d8b4fe', outer: '#7c3aed', glow: 'rgba(124, 58, 237, 0.6)' };
+      }
+    }
+
+    // --- 캔버스 고해상도 화질 설정 (Retina) ---
+    function setupCanvasDPI(canvas, ctx, width, height) {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.scale(dpr, dpr);
+    }
+
+    function initCanvases() {
+      const orbitWidth = Math.min(window.innerWidth - 32, 760);
+      setupCanvasDPI(orbitCanvas, orbitCtx, orbitWidth, 320);
+      setupCanvasDPI(chartCanvas, chartCtx, orbitWidth, 230); // Height raised slightly for upper guide
+    }
+
+    // --- UI 조작 제어 연동 및 표시 상태 동기화 ---
+    function syncSlidersUI() {
+      const { R1, R2 } = getRadii();
+      
+      elInclinationVal.innerText = `${state.inclination}°`;
+      elRadius1Val.innerText = `${state.radius1} px`;
+      elRadiusRatioVal.innerText = `${state.radiusRatio.toFixed(2)}배`;
+      elCalcR2Val.innerText = `(계산된 R₂: ${R2.toFixed(0)} px)`;
+      elTempRatioVal.innerText = `${state.T2.toLocaleString()} K`;
+      elOrbitalRadiusVal.innerText = `${state.orbitalRadius} px`;
+
+      // 한계각 검출 수치 바인딩
+      const a = state.orbitalRadius;
+      const iRad = (state.inclination * Math.PI) / 180;
+      const minDistance = a * Math.cos(iRad);
+      
+      elCalcMinD.innerText = minDistance.toFixed(1);
+      elCalcSumR.innerText = (R1 + R2).toFixed(0);
+
+      // 식 미발생 판별 경고 표시 유무
+      const isPossible = minDistance < (R1 + R2);
+      if (!isPossible) {
+        elNoEclipseAlert.classList.remove('hidden');
+        elNoEclipseAlert.classList.add('flex');
+        elNoEclipseAlert.style.opacity = '1';
+      } else {
+        elNoEclipseAlert.classList.add('hidden');
+        elNoEclipseAlert.classList.remove('flex');
+        elNoEclipseAlert.style.opacity = '0';
+      }
+
+      // 접촉 정보 계산 및 텍스트 렌더링
+      const contacts = getContactAngles();
+      if (isPossible && contacts.hasOuter) {
+        elC1Val.innerText = `${(90 - contacts.phiOut).toFixed(1)}°`;
+        elC4Val.innerText = `${(90 + contacts.phiOut).toFixed(1)}°`;
+        
+        if (contacts.hasInner) {
+          elC2Val.innerText = `${(90 - contacts.phiIn).toFixed(1)}°`;
+          elC3Val.innerText = `${(90 + contacts.phiIn).toFixed(1)}°`;
+        } else {
+          elC2Val.innerText = '미발생 (부분식)';
+          elC3Val.innerText = '미발생 (부분식)';
+        }
+      } else {
+        elC1Val.innerText = '미발생 (식 없음)';
+        elC2Val.innerText = '미발생 (식 없음)';
+        elC3Val.innerText = '미발생 (식 없음)';
+        elC4Val.innerText = '미발생 (식 없음)';
+      }
+    }
+
+    // --- CSV 데이터 다운로드 기능 (학생 연구용 확장 기능) ---
+    function exportToCSV() {
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Phase_Angle(deg),Relative_Brightness\n";
+      state.lightCurveData.forEach((val, deg) => {
+        csvContent += `${deg},${val.toFixed(5)}\n`;
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `eclipsing_binary_i${state.inclination}_r${state.radius1}_ratio${state.radiusRatio}_T2${state.T2}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // --- 이벤트 리스너 세팅 ---
+    elInclination.addEventListener('input', (e) => {
+      state.inclination = parseInt(e.target.value);
+      syncSlidersUI();
+      updateLightCurveData();
+    });
+
+    elRadius1.addEventListener('input', (e) => {
+      state.radius1 = parseInt(e.target.value);
+      syncSlidersUI();
+      updateLightCurveData();
+    });
+
+    elRadiusRatio.addEventListener('input', (e) => {
+      state.radiusRatio = parseFloat(e.target.value);
+      syncSlidersUI();
+      updateLightCurveData();
+    });
+
+    elTempRatio.addEventListener('input', (e) => {
+      state.T2 = parseInt(e.target.value);
+      syncSlidersUI();
+      updateLightCurveData();
+    });
+
+    elOrbitalRadius.addEventListener('input', (e) => {
+      state.orbitalRadius = parseInt(e.target.value);
+      syncSlidersUI();
+      updateLightCurveData();
+    });
+
+    elShowGuides.addEventListener('change', (e) => { state.showGuides = e.target.checked; });
+    elShowContacts.addEventListener('change', (e) => { state.showContacts = e.target.checked; });
+    elAutoScale.addEventListener('change', (e) => { state.autoScale = e.target.checked; });
+    elBtnExport.addEventListener('click', exportToCSV);
+
+    // 재생 정지 로직
+    function updatePlayPauseButton() {
+      if (state.isPlaying) {
+        elSvgPlay.classList.add('hidden');
+        elSvgPause.classList.remove('hidden');
+        elTxtPlayPause.innerText = '일시 정지';
+      } else {
+        elSvgPlay.classList.remove('hidden');
+        elSvgPause.classList.add('hidden');
+        elTxtPlayPause.innerText = '재개';
+      }
+    }
+
+    elBtnPlayPause.addEventListener('click', () => {
+      state.isPlaying = !state.isPlaying;
+      updatePlayPauseButton();
+    });
+
+    elBtnSpeed.addEventListener('click', () => {
+      if (state.speedMultiplier === 1.0) {
+        state.speedMultiplier = 2.0;
+        elBtnSpeed.innerText = '2.0x';
+      } else if (state.speedMultiplier === 2.0) {
+        state.speedMultiplier = 4.0;
+        elBtnSpeed.innerText = '4.0x';
+      } else {
+        state.speedMultiplier = 1.0;
+        elBtnSpeed.innerText = '1.0x';
+      }
+    });
+
+    elBtnReset.addEventListener('click', () => {
+      state.inclination = 85;
+      state.radius1 = 30;
+      state.radiusRatio = 0.70;
+      state.T2 = 4500;
+      state.orbitalRadius = 130;
+      state.phase = 0.0;
+      state.isPlaying = true;
+      state.speedMultiplier = 1.0;
+      state.showGuides = true;
+      state.showContacts = true;
+      state.autoScale = true;
+
+      elInclination.value = 85;
+      elRadius1.value = 30;
+      elRadiusRatio.value = 0.70;
+      elTempRatio.value = 4500;
+      elOrbitalRadius.value = 130;
+      elShowGuides.checked = true;
+      elShowContacts.checked = true;
+      elAutoScale.checked = true;
+
+      syncSlidersUI();
+      updatePlayPauseButton();
+      elBtnSpeed.innerText = '1.0x';
+      updateLightCurveData();
+    });
+
+    // 드래그 위상 선택
+    let isDraggingOrbit = false;
+    function handleOrbitInteraction(e) {
+      const rect = orbitCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const clickX = (e.clientX - rect.left) * (orbitCanvas.width / (rect.width * dpr)) / dpr;
+      
+      const cx = (orbitCanvas.width / dpr) / 2;
+      const dx = clickX - cx;
+      const a = state.orbitalRadius;
+
+      let ratio = Math.max(-1, Math.min(1, dx / a));
+      let targetAngle = Math.acos(ratio);
+      
+      const clickY = (e.clientY - rect.top) * (orbitCanvas.height / (rect.height * dpr)) / dpr;
+      const cy = (orbitCanvas.height / dpr) / 2;
+      if (clickY > cy) {
+        targetAngle = 2 * Math.PI - targetAngle;
+      }
+      
+      state.phase = targetAngle;
+    }
+
+    orbitCanvas.addEventListener('mousedown', (e) => { isDraggingOrbit = true; handleOrbitInteraction(e); });
+    window.addEventListener('mousemove', (e) => { if (isDraggingOrbit) handleOrbitInteraction(e); });
+    window.addEventListener('mouseup', () => { isDraggingOrbit = false; });
+    orbitCanvas.addEventListener('touchstart', (e) => { isDraggingOrbit = true; handleOrbitInteraction(e.touches[0]); });
+    window.addEventListener('touchmove', (e) => { if (isDraggingOrbit) handleOrbitInteraction(e.touches[0]); });
+    window.addEventListener('touchend', () => { isDraggingOrbit = false; });
+
+
+    // --- 공간 시뮬레이션 프레임 렌더링 ---
+    function animateOrbit() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = orbitCanvas.width / dpr;
+      const h = orbitCanvas.height / dpr;
+      
+      // 백그라운드 별밭 렌더링
+      orbitCtx.fillStyle = '#060a13';
+      orbitCtx.fillRect(0, 0, w, h);
+      
+      orbitCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      const starSeeds = [[45,30], [120,60], [280,45], [450,110], [620,50], [710,80], [90,220], [210,260], [430,240], [580,210], [670,270], [150,160]];
+      starSeeds.forEach(pos => {
+        orbitCtx.beginPath();
+        orbitCtx.arc((pos[0]/800)*w, (pos[1]/300)*h, 1, 0, 2 * Math.PI);
+        orbitCtx.fill();
+      });
+
+      const cx = w / 2;
+      const cy = h / 2;
+      const a = state.orbitalRadius;
+      const iRad = (state.inclination * Math.PI) / 180;
+      const b = a * Math.cos(iRad);
+
+      const { R1, R2 } = getRadii();
+      const currentSim = calculateNormalizedBrightness(state.phase);
+
+      const s2x = cx + a * Math.cos(state.phase);
+      const s2y = cy - a * Math.sin(state.phase) * Math.cos(iRad);
+      const s2z = a * Math.sin(state.phase) * Math.sin(iRad); // 깊이
+
+      const star2Colors = getStarColor(state.T2);
+      const star1Colors = getStarColor(10000);
+
+      // 가이드라인 및 공전 타원 그리기
+      if (state.showGuides) {
+        // 공전 기준선
+        orbitCtx.strokeStyle = 'rgba(51, 65, 85, 0.45)';
+        orbitCtx.lineWidth = 1;
+        orbitCtx.beginPath();
+        orbitCtx.moveTo(cx - a - 25, cy);
+        orbitCtx.lineTo(cx + a + 25, cy);
+        orbitCtx.stroke();
+
+        // 궤도 타원형 점선
+        orbitCtx.strokeStyle = 'rgba(99, 102, 241, 0.3)';
+        orbitCtx.lineWidth = 1.5;
+        orbitCtx.setLineDash([4, 4]);
+        orbitCtx.beginPath();
+        orbitCtx.ellipse(cx, cy, a, b, 0, 0, 2 * Math.PI);
+        orbitCtx.stroke();
+        orbitCtx.setLineDash([]);
+      }
+
+      // 두 별 렌더링 함수 (Limb Darkening이 적용된 고급 렌더링)
+      function drawStar1() {
+        const grad = orbitCtx.createRadialGradient(cx, cy, R1 * 0.15, cx, cy, R1);
+        grad.addColorStop(0, star1Colors.core);
+        grad.addColorStop(0.35, star1Colors.mid);
+        // 가장자리(Limb) 주연감광을 표현하기 위해 어두운 테두리 배율 추가
+        grad.addColorStop(0.85, star1Colors.outer);
+        grad.addColorStop(1, '#060a13');
+
+        orbitCtx.shadowBlur = 25;
+        orbitCtx.shadowColor = star1Colors.outer;
+        orbitCtx.fillStyle = grad;
+        orbitCtx.beginPath();
+        orbitCtx.arc(cx, cy, R1, 0, 2 * Math.PI);
+        orbitCtx.fill();
+        orbitCtx.shadowBlur = 0;
+
+        orbitCtx.fillStyle = '#bae6fd';
+        orbitCtx.font = 'bold 9px sans-serif';
+        orbitCtx.fillText("주성 (Star 1)", cx - 28, cy - R1 - 6);
+      }
+
+      function drawStar2() {
+        const grad = orbitCtx.createRadialGradient(s2x, s2y, R2 * 0.15, s2x, s2y, R2);
+        grad.addColorStop(0, star2Colors.core);
+        grad.addColorStop(0.35, star2Colors.mid);
+        grad.addColorStop(0.85, star2Colors.outer);
+        grad.addColorStop(1, '#060a13');
+
+        orbitCtx.shadowBlur = 20;
+        orbitCtx.shadowColor = star2Colors.outer;
+        orbitCtx.fillStyle = grad;
+        orbitCtx.beginPath();
+        orbitCtx.arc(s2x, s2y, R2, 0, 2 * Math.PI);
+        orbitCtx.fill();
+        orbitCtx.shadowBlur = 0;
+
+        if (state.showGuides && !isDraggingOrbit) {
+          const arrowAngle = state.phase + 0.12;
+          const ax = cx + a * Math.cos(arrowAngle);
+          const ay = cy - a * Math.sin(arrowAngle) * Math.cos(iRad);
+          orbitCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          orbitCtx.beginPath();
+          orbitCtx.arc(ax, ay, 2, 0, 2 * Math.PI);
+          orbitCtx.fill();
+        }
+
+        orbitCtx.fillStyle = '#fed7aa';
+        orbitCtx.font = 'bold 9px sans-serif';
+        orbitCtx.fillText("동반성 (Star 2)", s2x - 30, s2y - R2 - 6);
+      }
+
+      // 지용화 깊이 정밀 정렬 (Z-order)
+      if (s2z < 0) {
+        drawStar2();
+        drawStar1();
+      } else {
+        drawStar1();
+        drawStar2();
+      }
+
+      // 우측 하단 시선 도해 인셋 드로잉
+      drawInclinationHelper(orbitCtx, w - 60, h - 55);
+
+      // 리포트 텍스트 바인딩
+      const overlapPercent = (currentSim.overlapArea / currentSim.maxOverlap) * 100;
+      elOverlapPercent.innerText = overlapPercent > 0 ? `${overlapPercent.toFixed(1)}%` : '0.0%';
+      elLiveDistance.innerText = `${currentSim.d.toFixed(1)} px`;
+
+      let statText = "식 미진행 (최대 광도)";
+      let statClass = "text-slate-400";
+
+      if (currentSim.isEclipse) {
+        if (currentSim.isPrimary) {
+          statText = "★ 주극소 식 진행 중";
+          statClass = "text-rose-400 font-extrabold animate-pulse";
+        } else {
+          statText = "☆ 부극소 식 진행 중";
+          statClass = "text-amber-400 font-extrabold animate-pulse";
+        }
+      }
+      elEclipseStatus.innerText = statText;
+      elEclipseStatus.className = `font-bold ${statClass}`;
+
+      elPhaseBadge.innerText = `위상: ${( (state.phase * 180) / Math.PI ).toFixed(1)}°`;
+    }
+
+    // --- 시선 정사영 벡터 도해 ---
+    function drawInclinationHelper(ctx, x, y) {
+      const size = 30;
+      ctx.fillStyle = 'rgba(10, 15, 30, 0.85)';
+      ctx.strokeStyle = 'rgba(79, 70, 229, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(x - size - 10, y - size - 10, size * 2 + 20, size * 2 + 20);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x - size, y);
+      ctx.lineTo(x + size, y);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y);
+      ctx.lineTo(x + size - 5, y);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.moveTo(x + size - 5, y);
+      ctx.lineTo(x + size - 11, y - 4);
+      ctx.lineTo(x + size - 11, y + 4);
+      ctx.fill();
+
+      const iRad = (state.inclination * Math.PI) / 180;
+      const ox1 = x - size * Math.cos(iRad) * 0.8;
+      const oy1 = y - size * Math.sin(iRad) * 0.8;
+      const ox2 = x + size * Math.cos(iRad) * 0.8;
+      const oy2 = y + size * Math.sin(iRad) * 0.8;
+
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(ox1, oy1);
+      ctx.lineTo(ox2, oy2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`경사각: ${state.inclination}°`, x, y - size + 2);
+    }
+
+
+    // --- 광도 곡선 차트 정밀 드로잉 (With New Orbital Period & Eclipse Zone Annotations) ---
+    function drawLightCurveChart() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = chartCanvas.width / dpr;
+      const h = chartCanvas.height / dpr;
+
+      chartCtx.fillStyle = 'rgba(10, 15, 30, 0.45)';
+      chartCtx.fillRect(0, 0, w, h);
+
+      const paddingLeft = 45;
+      const paddingRight = 35;
+      const paddingTop = 45; // Increased padding at top for the cycle indicator
+      const paddingBottom = 30;
+
+      const chartW = w - paddingLeft - paddingRight;
+      const chartH = h - paddingTop - paddingBottom;
+
+      const x0 = paddingLeft;
+      const y0 = h - paddingBottom;
+
+      // 1. Draw 1 Orbital Period (1 공전주기) horizontal bar at the top
+      chartCtx.strokeStyle = 'rgba(129, 140, 248, 0.5)'; // Soft indigo
+      chartCtx.lineWidth = 1.2;
+      chartCtx.beginPath();
+      chartCtx.moveTo(x0, 25);
+      chartCtx.lineTo(x0 + chartW, 25);
+      chartCtx.stroke();
+
+      // End-point brackets for orbital period
+      chartCtx.beginPath();
+      chartCtx.moveTo(x0, 21);
+      chartCtx.lineTo(x0, 29);
+      chartCtx.moveTo(x0 + chartW, 21);
+      chartCtx.lineTo(x0 + chartW, 29);
+      chartCtx.stroke();
+
+      // Orbital Period Label text in the center
+      chartCtx.fillStyle = '#93c5fd';
+      chartCtx.font = 'bold 9px sans-serif';
+      chartCtx.textAlign = 'center';
+      chartCtx.fillText("← 1 공전 주기 (1 Orbital Period: 0° ~ 360°) →", x0 + chartW / 2, 17);
+
+      // 광도 축척 계산 (Auto Scale 여부 판정)
+      let minVal = 0.5;
+      let maxVal = 1.05;
+
+      if (state.autoScale && state.lightCurveData.length > 0) {
+        const actualMin = Math.min(...state.lightCurveData);
+        if (actualMin < 0.99) {
+          minVal = actualMin - 0.05;
+        } else {
+          minVal = 0.92;
+        }
+      }
+      minVal = Math.max(0, minVal);
+
+      // 격자 라인 및 수치 틱축 그리기
+      chartCtx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+      chartCtx.lineWidth = 0.8;
+      chartCtx.fillStyle = '#94a3b8';
+      chartCtx.font = '9px font-mono';
+      chartCtx.textAlign = 'right';
+
+      const yTicks = 4;
+      for (let j = 0; j <= yTicks; j++) {
+        const val = minVal + ( (1.0 - minVal) / yTicks ) * j;
+        const yPos = y0 - ( (val - minVal) / (maxVal - minVal) ) * chartH;
+        
+        chartCtx.beginPath();
+        chartCtx.moveTo(x0, yPos);
+        chartCtx.lineTo(x0 + chartW, yPos);
+        chartCtx.stroke();
+
+        chartCtx.fillText(val.toFixed(2), x0 - 8, yPos + 3);
+      }
+
+      // 가로 위상 격자 라벨링
+      chartCtx.textAlign = 'center';
+      const xTicks = [0, 90, 180, 270, 360];
+      xTicks.forEach(deg => {
+        const xPos = x0 + (deg / 360) * chartW;
+        
+        chartCtx.beginPath();
+        chartCtx.moveTo(xPos, y0);
+        chartCtx.lineTo(xPos, paddingTop);
+        chartCtx.stroke();
+
+        let label = `${deg}°`;
+        if (deg === 90) label = "90° (주극소)";
+        if (deg === 270) label = "270° (부극소)";
+        chartCtx.fillText(label, xPos, y0 + 15);
+      });
+
+      // 2. Draw Eclipse & Non-Eclipse Zone Visual Overlays
+      const contacts = getContactAngles();
+      const a = state.orbitalRadius;
+      const { R1, R2 } = getRadii();
+      const iRad = (state.inclination * Math.PI) / 180;
+      const minDistance = a * Math.cos(iRad);
+      const isPossible = minDistance < (R1 + R2);
+
+      if (isPossible && contacts.hasOuter) {
+        const phiOut = contacts.phiOut;
+
+        // Primary Eclipse Zone boundaries (around 90 degrees)
+        const pLeft = x0 + ((90 - phiOut) / 360) * chartW;
+        const pRight = x0 + ((90 + phiOut) / 360) * chartW;
+
+        // Shade Primary Eclipse Zone
+        chartCtx.fillStyle = 'rgba(244, 63, 94, 0.08)'; // Soft rose overlay
+        chartCtx.fillRect(pLeft, paddingTop, pRight - pLeft, chartH);
+
+        // Label Primary Eclipse Zone
+        chartCtx.fillStyle = 'rgba(251, 113, 133, 0.9)';
+        chartCtx.font = 'bold 8.5px sans-serif';
+        chartCtx.fillText("주극소 식구간", (pLeft + pRight) / 2, paddingTop + 15);
+
+        // Secondary Eclipse Zone boundaries (around 270 degrees)
+        const sLeft = x0 + ((270 - phiOut) / 360) * chartW;
+        const sRight = x0 + ((270 + phiOut) / 360) * chartW;
+
+        // Shade Secondary Eclipse Zone
+        chartCtx.fillStyle = 'rgba(245, 158, 11, 0.06)'; // Soft amber overlay
+        chartCtx.fillRect(sLeft, paddingTop, sRight - sLeft, chartH);
+
+        // Label Secondary Eclipse Zone
+        chartCtx.fillStyle = 'rgba(251, 191, 36, 0.9)';
+        chartCtx.fillText("부극소 식구간", (sLeft + sRight) / 2, paddingTop + 15);
+
+        // Draw static non-eclipse labels in intermediate flat regions if there's enough space
+        chartCtx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+        chartCtx.font = '8px sans-serif';
+        if (180 - phiOut > 90 + phiOut + 20) {
+          chartCtx.fillText("식 외 구간 (정상 광도)", x0 + (180/360) * chartW, y0 - 10);
+        }
+        if (90 - phiOut > 30) {
+          chartCtx.fillText("식 외", x0 + ((90 - phiOut)/2/360) * chartW, y0 - 10);
+        }
+        if (360 - (270 + phiOut) > 30) {
+          chartCtx.fillText("식 외", x0 + ((360 + (270 + phiOut))/2/360) * chartW, y0 - 10);
+        }
+      } else {
+        // If no eclipse is occurring due to orbital parameter limits
+        chartCtx.fillStyle = 'rgba(16, 185, 129, 0.05)';
+        chartCtx.fillRect(x0, paddingTop, chartW, chartH);
+        chartCtx.fillStyle = 'rgba(16, 185, 129, 0.7)';
+        chartCtx.font = 'bold 10px sans-serif';
+        chartCtx.fillText("식 미발생 전체 구간 (광도 변화 없음)", x0 + chartW / 2, paddingTop + chartH / 2);
+      }
+
+      // 3. 1~4접촉 가이드 점선 그리기 (활성화 상태 시 적용)
+      if (state.showContacts && isPossible && contacts.hasOuter) {
+        const phiOut = contacts.phiOut;
+        const phiIn = contacts.phiIn;
+
+        const c1_deg = 90 - phiOut;
+        const c4_deg = 90 + phiOut;
+        const c1_sec = 270 - phiOut;
+        const c4_sec = 270 + phiOut;
+
+        const drawVerticalContact = (deg, label, color) => {
+          const cx = x0 + (deg / 360) * chartW;
+          chartCtx.strokeStyle = color;
+          chartCtx.lineWidth = 1.2;
+          chartCtx.setLineDash([3, 3]);
+          chartCtx.beginPath();
+          chartCtx.moveTo(cx, y0);
+          chartCtx.lineTo(cx, paddingTop - 8);
+          chartCtx.stroke();
+          chartCtx.setLineDash([]);
+
+          chartCtx.fillStyle = color;
+          chartCtx.font = 'bold 8px sans-serif';
+          chartCtx.fillText(label, cx, paddingTop - 4);
+        };
+
+        // 제1접촉 & 제4접촉 (외접 지점 그리기 - 청색 계열)
+        drawVerticalContact(c1_deg, "C1", "#22d3ee");
+        drawVerticalContact(c4_deg, "C4", "#06b6d4");
+        
+        drawVerticalContact(c1_sec, "C1'", "#06b6d4");
+        drawVerticalContact(c4_sec, "C4'", "#22d3ee");
+
+        // 제2접촉 & 제3접촉 (내접 지점 그리기 - 황색/오렌지 계열)
+        if (contacts.hasInner) {
+          const c2_deg = 90 - phiIn;
+          const c3_deg = 90 + phiIn;
+          const c2_sec = 270 - phiIn;
+          const c3_sec = 270 + phiIn;
+
+          drawVerticalContact(c2_deg, "C2", "#f59e0b");
+          drawVerticalContact(c3_deg, "C3", "#ea580c");
+
+          drawVerticalContact(c2_sec, "C2'", "#f59e0b");
+          drawVerticalContact(c3_sec, "C3'", "#ea580c");
+        }
+      }
+
+      // 광도 곡선 패스 드로잉
+      if (state.lightCurveData.length > 0) {
+        chartCtx.strokeStyle = '#10b981'; // 에메랄드 그린 실선
+        chartCtx.lineWidth = 2.5;
+        chartCtx.beginPath();
+
+        for (let deg = 0; deg <= 360; deg++) {
+          const val = state.lightCurveData[deg];
+          const cx = x0 + (deg / 360) * chartW;
+          const cy = y0 - ( (val - minVal) / (maxVal - minVal) ) * chartH;
+
+          if (deg === 0) {
+            chartCtx.moveTo(cx, cy);
+          } else {
+            chartCtx.lineTo(cx, cy);
+          }
+        }
+        chartCtx.stroke();
+      }
+
+      // 현재 시뮬레이션 타임프레임 마커
+      const curDeg = Math.round( (state.phase * 180) / Math.PI ) % 360;
+      const curVal = state.lightCurveData[curDeg] || 1.0;
+      
+      const px = x0 + (curDeg / 360) * chartW;
+      const py = y0 - ( (curVal - minVal) / (maxVal - minVal) ) * chartH;
+
+      chartCtx.shadowBlur = 12;
+      chartCtx.shadowColor = '#f43f5e';
+      chartCtx.fillStyle = '#f43f5e';
+      chartCtx.beginPath();
+      chartCtx.arc(px, py, 6, 0, 2 * Math.PI);
+      chartCtx.fill();
+      
+      chartCtx.shadowBlur = 0;
+      chartCtx.strokeStyle = '#ffffff';
+      chartCtx.lineWidth = 1.5;
+      chartCtx.beginPath();
+      chartCtx.arc(px, py, 6, 0, 2 * Math.PI);
+      chartCtx.stroke();
+    }
+
+
+    // --- 프레임 틱 작동 통합 루프 ---
+    function tick() {
+      if (state.isPlaying) {
+        const baseSpeed = 0.007; 
+        state.phase += baseSpeed * state.speedMultiplier;
+        if (state.phase >= 2 * Math.PI) {
+          state.phase -= 2 * Math.PI;
+        }
+      }
+
+      animateOrbit();
+      drawLightCurveChart();
+
+      requestAnimationFrame(tick);
+    }
+
+    // 창 해상도 조정 처리 리스너
+    window.addEventListener('resize', () => {
+      initCanvases();
+      drawLightCurveChart();
+    });
+
+
+    // --- 시스템 로딩 시 기동 실행 ---
+    window.onload = function() {
+      initCanvases();
+      syncSlidersUI();
+      updateLightCurveData();
+      updatePlayPauseButton();
+      tick();
+    };
+
+  </script>
+
+</body></html>

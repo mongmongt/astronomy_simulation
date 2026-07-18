@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>은하 역학 시뮬레이터 (천체물리학 경계 모델)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #030712;
+            color: #f3f4f6;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        /* Custom Dual Range Slider Styling */
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 40px;
+        }
+        .slider-track {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: #1f2937;
+            transform: translateY(-50%);
+            border-radius: 3px;
+            z-index: 1;
+        }
+        .slider-range-active {
+            position: absolute;
+            top: 50%;
+            height: 6px;
+            background: #c084fc;
+            transform: translateY(-50%);
+            border-radius: 3px;
+            z-index: 2;
+        }
+        .dual-range-input {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            background: none;
+            pointer-events: none;
+            -webkit-appearance: none;
+            appearance: none;
+            transform: translateY(-50%);
+            margin: 0;
+            z-index: 3;
+        }
+        .dual-range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #a855f7;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.1s ease, background 0.1s;
+            box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+        }
+        .dual-range-input::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+            background: #f3e8ff;
+        }
+        .dual-range-input::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #a855f7;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.1s ease, background 0.1s;
+            box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+        }
+
+        /* Generic slider styling */
+        input[type="range"].single-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1f2937;
+            height: 6px;
+            border-radius: 9999px;
+            outline: none;
+        }
+        input[type="range"].single-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out;
+        }
+        input[type="range"].single-slider::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+        }
+
+        /* Special probe slider styling */
+        input[type="range"].probe-slider::-webkit-slider-thumb {
+            background: #22d3ee;
+            border: 2px solid #0891b2;
+            box-shadow: 0 0 8px rgba(34, 211, 238, 0.8);
+        }
+        input[type="range"].probe-slider::-webkit-slider-thumb:hover {
+            background: #67e8f9;
+        }
+
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="glass-panel border-b border-gray-800 py-4 px-6 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2.5 rounded-lg text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-galaxy text-xl animate-spin-slow"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        은하 역학 시뮬레이터 <span class="text-xs font-semibold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded border border-purple-500/30">천체물리학적 실제 경계 모델</span>
+                    </h1>
+                    <p class="text-xs text-gray-400">코어 피드백($r_1$) 및 스플래시백 외곽 감쇄($r_2$)에서 미분 가능한 연속 S자 곡선 질량 분포 적용</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="btnReset" class="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/40 text-red-400 text-sm font-medium rounded-lg border border-red-900/30 transition-colors flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-rotate-left"></i> 초기화
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Controls (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            <!-- Visible Matter Controls -->
+            <div class="glass-panel p-5 rounded-2xl shadow-xl flex flex-col gap-4">
+                <h2 class="text-base font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-2">
+                    <i class="fa-solid fa-sun text-yellow-500"></i> 가시광선 물질 (Bulge & Disk)
+                </h2>
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300 font-medium">팽대부 질량 (Bulge Mass) [10⁹ M☉]</span>
+                        <span id="valBulgeMass" class="text-yellow-500 font-bold">15.0</span>
+                    </div>
+                    <input type="range" id="bulgeMass" min="0" max="40" step="0.5" value="15.0" class="w-full single-slider accent-yellow-500">
+                </div>
+                <div class="space-y-1 pt-2">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300 font-medium">은하 원반 질량 (Disk Mass) [10⁹ M☉]</span>
+                        <span id="valDiskMass" class="text-amber-500 font-bold">50.0</span>
+                    </div>
+                    <input type="range" id="diskMass" min="0" max="80" step="1.0" value="50.0" class="w-full single-slider accent-amber-500">
+                </div>
+            </div>
+
+            <!-- Parameter Control Panel -->
+            <div class="glass-panel p-5 rounded-2xl shadow-xl flex flex-col gap-5">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-purple-400"></i> 암흑물질 헤일로 설정
+                    </h2>
+                    <div class="flex items-center gap-2 bg-gray-900/60 py-1 px-3 rounded-full border border-gray-800">
+                        <span class="text-xs text-gray-400 font-medium">헤일로 가시화</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggleDmVisibility" class="sr-only peer" checked>
+                            <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- DM Density Slider -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label for="dmDensity" class="font-medium text-gray-300 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block shadow-lg"></span>
+                            암흑물질 중심 밀도 (ρ₀)
+                        </label>
+                        <span id="valDmDensity" class="text-purple-300 font-bold">8.0</span>
+                    </div>
+                    <input type="range" id="dmDensity" min="0" max="30" step="0.2" value="8.0" class="w-full single-slider accent-purple-500">
+                </div>
+
+                <!-- Dual Pointer Slider -->
+                <div class="space-y-2 pt-2">
+                    <div class="flex justify-between text-sm">
+                        <label class="font-medium text-gray-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-left-right text-purple-400"></i>
+                            암흑물질 전이 특성 반경 (r₁ ~ r₂)
+                        </label>
+                        <span class="text-purple-300 font-bold text-sm">
+                            <span id="valDmR1">2.0</span> ~ <span id="valDmR2">25.0</span> kpc
+                        </span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <div class="slider-track"></div>
+                        <div id="sliderRangeActive" class="slider-range-active"></div>
+                        <input type="range" id="dmR1" min="0" max="30" step="0.5" value="2.0" class="dual-range-input">
+                        <input type="range" id="dmR2" min="0" max="30" step="0.5" value="25.0" class="dual-range-input">
+                    </div>
+                    <div class="flex justify-between text-[10px] text-gray-500 px-1">
+                        <span>0 kpc (중심)</span>
+                        <span>15 kpc</span>
+                        <span>30 kpc (외곽)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Visualizer & Graph (7 cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- TOP ROW: Simulation View & Chart side-by-side -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Galaxy Live Canvas Preview Card -->
+                <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3 relative overflow-hidden">
+                    <h3 class="text-sm font-bold text-gray-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-nodes text-indigo-400 animate-spin-slow"></i> 은하 시뮬레이션 뷰
+                    </h3>
+                    <div class="relative w-full aspect-square bg-black/95 rounded-xl overflow-hidden border border-gray-800 flex items-center justify-center">
+                        <canvas id="galaxyCanvas" class="absolute top-0 left-0 w-full h-full cursor-pointer"></canvas>
+                        
+                        <!-- Overlay Legends -->
+                        <div class="absolute bottom-2 left-2 bg-black/85 backdrop-blur-sm px-2.5 py-2 rounded-lg text-[10px] text-gray-300 space-y-1 border border-gray-800 pointer-events-none">
+                            <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-yellow-400"></span> 팽대부</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-400"></span> 원반 별</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 border-b-2 border-solid border-purple-500"></span> 시작선 (보라색 실선)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-purple-400"></span> 끝선 (보라색 점선)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-cyan-400"></span> 탐침 반경 (<span id="legendProbeRadius">8.0</span> kpc)</div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 text-center">보라색 실선($r_1$)과 점선($r_2$) 경계에서 밀도가 부드럽게 연속 전이됩니다.</p>
+                </div>
+
+                <!-- Rotation Curve Chart Card -->
+                <div class="glass-panel p-5 rounded-2xl flex flex-col gap-3">
+                    <h3 class="text-sm font-bold text-gray-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-line text-cyan-400"></i> 은하 회전 속도 곡선
+                    </h3>
+                    <div class="w-full flex-grow relative bg-gray-950/50 p-2 rounded-xl border border-gray-900 min-h-[250px] md:min-h-[auto]">
+                        <canvas id="curveChart"></canvas>
+                    </div>
+                    <div class="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] text-gray-300 border-t border-gray-900 pt-2">
+                        <span class="flex items-center gap-1"><span class="w-2 h-0.5 bg-yellow-400 inline-block"></span> 팽대부</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-0.5 bg-amber-500 inline-block"></span> 원반</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-0.5 bg-purple-500 inline-block"></span> 암흑물질</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-1.5 bg-cyan-400 inline-block rounded-sm"></span> 최종 곡선</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MIDDLE ROW: Radius Probe Dial Panel -->
+            <div class="glass-panel p-5 rounded-2xl shadow-xl border-2 border-cyan-500/30 bg-cyan-950/10 flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-cyan-950 pb-2.5">
+                    <h2 class="text-base font-bold text-cyan-400 flex items-center gap-2">
+                        <i class="fa-solid fa-radar text-lg animate-pulse"></i> 정밀 반경 속도 측정 (Probe)
+                    </h2>
+                    <span class="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-full font-medium">실시간 탐침</span>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label for="probeRadius" class="font-semibold text-gray-200">측정 지점 반경 (r_probe)</label>
+                        <span id="valProbeRadius" class="text-cyan-400 font-extrabold text-base bg-cyan-950/60 px-2.5 py-0.5 rounded border border-cyan-800/30">8.0 kpc</span>
+                    </div>
+                    <input type="range" id="probeRadius" min="0" max="30" step="0.2" value="8.0" class="w-full single-slider probe-slider accent-cyan-400">
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+                    <div class="bg-gray-900/60 p-2.5 rounded-xl text-center"><span class="text-[11px] text-yellow-500 block font-medium">팽대부 속도</span><span id="probeBulgeSpeed" class="text-base font-bold text-yellow-400">-- km/s</span></div>
+                    <div class="bg-gray-900/60 p-2.5 rounded-xl text-center"><span class="text-[11px] text-amber-500 block font-medium">원반 속도</span><span id="probeDiskSpeed" class="text-base font-bold text-amber-400">-- km/s</span></div>
+                    <div class="bg-gray-900/60 p-2.5 rounded-xl text-center"><span class="text-[11px] text-purple-400 block font-medium">암흑물질 속도</span><span id="probeDmSpeed" class="text-base font-bold text-purple-300">-- km/s</span></div>
+                    <div class="bg-cyan-950/30 p-2.5 rounded-xl text-center"><span class="text-[11px] text-cyan-400 block font-bold">합산 회전 속도</span><span id="probeTotalSpeed" class="text-lg font-black text-cyan-300">-- km/s</span></div>
+                </div>
+            </div>
+
+            <!-- BOTTOM ROW: Analytical Insight Panel -->
+            <div class="glass-panel p-5 rounded-2xl shadow-xl flex flex-col gap-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass-chart text-cyan-400"></i> 은하계 실시간 물리 상태 측정
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div class="bg-gray-900/40 p-3 rounded-xl border border-gray-800">
+                        <span class="text-xs text-gray-400 block mb-1 font-medium">우리 태양계 위치 (8 kpc) 속도</span>
+                        <span id="analysisSolarSpeed" class="text-lg font-extrabold text-cyan-400">220 km/s</span>
+                    </div>
+                    <div class="bg-gray-900/40 p-3 rounded-xl border border-gray-800">
+                        <span class="text-xs text-gray-400 block mb-1 font-medium">은하 최외곽 (28 kpc) 속도</span>
+                        <span id="analysisOuterSpeed" class="text-lg font-extrabold text-purple-400">-- km/s</span>
+                        <p id="analysisOuterDesc" class="text-[11px] text-gray-500 mt-1"></p>
+                    </div>
+                    <div class="bg-gray-900/40 p-3 rounded-xl border border-gray-800">
+                        <span class="text-xs text-purple-300 block mb-1 font-bold">🌌 총 질량 대비 암흑물질 비중</span>
+                        <span id="analysisDmRatio" class="text-lg font-extrabold text-teal-400">-- %</span>
+                        <p class="text-[11px] text-gray-500 mt-1">28 kpc 영역 이내의 누적 중력 총량비</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-gray-900 py-4 text-center text-xs text-gray-500">
+        <p>© 2026 은하 원반 암흑물질 시뮬레이터. 연속 전이 및 현실적 질량 밸런스 패치 버전.</p>
+    </footer>
+
+    <script>
+        // --- DOM 및 파라미터 정의 ---
+        const dmDensityInput = document.getElementById('dmDensity');
+        const dmR1Input = document.getElementById('dmR1');
+        const dmR2Input = document.getElementById('dmR2');
+        const sliderRangeActive = document.getElementById('sliderRangeActive');
+        const bulgeMassInput = document.getElementById('bulgeMass');
+        const diskMassInput = document.getElementById('diskMass');
+        const toggleDmVisibility = document.getElementById('toggleDmVisibility');
+
+        const probeRadiusInput = document.getElementById('probeRadius');
+        const valProbeRadius = document.getElementById('valProbeRadius');
+        const probeBulgeSpeed = document.getElementById('probeBulgeSpeed');
+        const probeDiskSpeed = document.getElementById('probeDiskSpeed');
+        const probeDmSpeed = document.getElementById('probeDmSpeed');
+        const probeTotalSpeed = document.getElementById('probeTotalSpeed');
+
+        const valDmDensity = document.getElementById('valDmDensity');
+        const valDmR1 = document.getElementById('valDmR1');
+        const valDmR2 = document.getElementById('valDmR2');
+        const valBulgeMass = document.getElementById('valBulgeMass');
+        const valDiskMass = document.getElementById('valDiskMass');
+
+        const analysisSolarSpeed = document.getElementById('analysisSolarSpeed');
+        const analysisOuterSpeed = document.getElementById('analysisOuterSpeed');
+        const analysisOuterDesc = document.getElementById('analysisOuterDesc');
+        const analysisDmRatio = document.getElementById('analysisDmRatio');
+
+        const canvas = document.getElementById('galaxyCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let params = { dmDensity: 8.0, dmR1: 2.0, dmR2: 25.0, bulgeMass: 15.0, diskMass: 50.0, dmVisible: true, probeRadius: 8.0 };
+        const totalRangeMax = 30.0;
+        const coreRadiusDM = 6.0;
+        const presets = [
+            { dmDensity: 8.0, dmR1: 2.0, dmR2: 25.0, bulgeMass: 15.0, diskMass: 50.0 },
+            { dmDensity: 0.0, dmR1: 4.0, dmR2: 15.0, bulgeMass: 15.0, diskMass: 50.0 }
+        ];
+
+        let stars = [];
+        let chartInstance = null;
+        const G = 1.0;
+
+        // --- 천체물리학 가시물질 공식 ---
+        function getBulgeSpeed(r, Mb) {
+            if (r === 0) return 0;
+            const cb = 1.5;
+            const v = Math.sqrt((G * Mb * 3800 * r) / Math.pow(r + cb, 2));
+            return r < 1.0 ? (r / 1.0) * Math.sqrt((G * Mb * 3800 * 1.0) / Math.pow(1.0 + cb, 2)) : v;
+        }
+
+        // --- 천체물리학 가시물질 공식 ---
+        function getDiskSpeed(r, Md) {
+            if (r === 0) return 0;
+            const rd = 4.0;
+            const enclosedMass = Md * 5500 * (1 - (1 + r/rd) * Math.exp(-r/rd));
+            const v = Math.sqrt((G * enclosedMass) / r);
+            return r < 1.0 ? (r / 1.0) * getDiskSpeed(1.0, Md) : v;
+        }
+
+        // --- ★ [핵심개념] 수학적 연속성을 가진 급격한 S자 전이 암흑물질 메커니즘 ---
+        function getDMSpeed(r, rho0, r1, r2) {
+            if (r === 0 || rho0 === 0) return 0;
+
+            let currentMass = 0;
+            const steps = 60;
+            const dr = r / steps;
+            
+            // 물리학적 스케일 보정: 실제 우리은하 규모 복원
+            const massMultiplier = 11500; 
+
+            // 천체역학적 전이 폭 설정 (코어 피드백 및 스플래시백 스케일)
+            const innerWidth = Math.max(1.5, r1 * 0.5); 
+            const outerWidth = 4.0;
+
+            for (let i = 0; i < steps; i++) {
+                const currentR = (i + 0.5) * dr;
+                
+                // 1) 기본 의사 등온 분포 밀도
+                const baseDensity = rho0 * (Math.pow(coreRadiusDM, 2) / (Math.pow(currentR, 2) + Math.pow(coreRadiusDM, 2)));
+                
+                // 2) 중심부 코어 피드백 효과 전이 ($r_1$ 근처 로지스틱 시그모이드)
+                const startWeight = 1.0 / (1.0 + Math.exp(-(currentR - r1) / (innerWidth * 0.4)));
+
+                // 3) 외곽부 스플래시백 경계 감쇄 전이 ($r_2$ 근처 지수적 감소)
+                let endWeight = 1.0;
+                if (currentR > r2) {
+                    // 미분 가능한 Exponential decaying 전이
+                    endWeight = Math.exp(-Math.pow((currentR - r2) / outerWidth, i > steps * 0.8 ? 1.5 : 2.0));
+                }
+
+                // 가중치가 융합된 실제 유효 밀도
+                const effectiveDensity = baseDensity * startWeight * endWeight;
+                
+                // 구각 질량 적분 요소 dM = 4 * pi * r^2 * rho * dr 합산
+                currentMass += massMultiplier * effectiveDensity * (Math.pow(currentR, 2) / Math.pow(coreRadiusDM, 2)) * dr;
+            }
+
+            return Math.sqrt((G * currentMass) / r);
+        }
+
+        function getTotalSpeed(r) {
+            const vBulge = getBulgeSpeed(r, params.bulgeMass);
+            const vDisk = getDiskSpeed(r, params.diskMass);
+            const vDM = getDMSpeed(r, params.dmDensity, params.dmR1, params.dmR2);
+            return Math.sqrt(vBulge*vBulge + vDisk*vDisk + vDM*vDM);
+        }
+
+        // --- UI 및 슬라이더 동기화 ---
+        function updateDualSliderUI() {
+            if (params.dmR1 > params.dmR2) {
+                const temp = params.dmR1; params.dmR1 = params.dmR2; params.dmR2 = temp;
+                dmR1Input.value = params.dmR1; dmR2Input.value = params.dmR2;
+            }
+            const p1 = (params.dmR1 / totalRangeMax) * 100;
+            const p2 = (params.dmR2 / totalRangeMax) * 100;
+            sliderRangeActive.style.left = `${p1}%`;
+            sliderRangeActive.style.width = `${p2 - p1}%`;
+            valDmR1.textContent = params.dmR1.toFixed(1);
+            valDmR2.textContent = params.dmR2.toFixed(1);
+        }
+
+        dmR1Input.addEventListener('input', (e) => { params.dmR1 = parseFloat(e.target.value); updateDualSliderUI(); updateAllPhysics(); });
+        dmR2Input.addEventListener('input', (e) => { params.dmR2 = parseFloat(e.target.value); updateDualSliderUI(); updateAllPhysics(); });
+
+        // --- Chart.js 생성 및 업데이트 ---
+        const probeLinePlugin = {
+            id: 'probeLinePlugin',
+            afterDraw: (chart) => {
+                const xAxis = chart.scales.x; const yAxis = chart.scales.y;
+                const xPos = xAxis.getPixelForValue(params.probeRadius);
+                if (xPos >= xAxis.left && xPos <= xAxis.right) {
+                    chart.ctx.save();
+                    chart.ctx.beginPath();
+                    chart.ctx.strokeStyle = 'rgba(34, 211, 238, 0.8)';
+                    chart.ctx.lineWidth = 1.5; chart.ctx.setLineDash([4, 3]);
+                    chart.ctx.moveTo(xPos, yAxis.top); chart.ctx.lineTo(xPos, yAxis.bottom);
+                    chart.ctx.stroke(); chart.ctx.restore();
+                }
+            }
+        };
+
+        function initChart() {
+            const ctxChart = document.getElementById('curveChart').getContext('2d');
+            chartInstance = new Chart(ctxChart, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        { label: 'Bulge', data: [], borderColor: '#eab308', borderWidth: 1.5, borderDash: [3,3], pointRadius:0, fill:false, tension:0.2 },
+                        { label: 'Disk', data: [], borderColor: '#f59e0b', borderWidth: 1.5, borderDash: [3,3], pointRadius:0, fill:false, tension:0.2 },
+                        { label: 'Dark Matter', data: [], borderColor: '#c084fc', borderWidth: 2, pointRadius:0, fill:false, tension:0.2 },
+                        { label: 'Total', data: [], borderColor: '#22d3ee', borderWidth: 3.5, pointRadius:0, fill:false, tension:0.2 }
+                    ]
+                },
+                plugins: [probeLinePlugin],
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { type: 'linear', min: 0, max: totalRangeMax, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: {size:9} } },
+                        y: { suggestedMin: 0, suggestedMax: 300, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: {size:9} } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!chartInstance) return;
+            const bD = [], dD = [], dmD = [], tD = [];
+            const pts = 60;
+            for (let i = 0; i <= pts; i++) {
+                const r = (i / pts) * totalRangeMax;
+                bD.push({ x: r, y: getBulgeSpeed(r, params.bulgeMass) });
+                dD.push({ x: r, y: getDiskSpeed(r, params.diskMass) });
+                dmD.push({ x: r, y: getDMSpeed(r, params.dmDensity, params.dmR1, params.dmR2) });
+                tD.push({ x: r, y: getTotalSpeed(r) });
+            }
+            chartInstance.data.datasets[0].data = bD;
+            chartInstance.data.datasets[1].data = dD;
+            chartInstance.data.datasets[2].data = dmD;
+            chartInstance.data.datasets[3].data = tD;
+
+            const rawTotals = tD.map(d => d.y);
+            const maxVal = Math.max(...rawTotals, 250); 
+            chartInstance.options.scales.y.max = Math.ceil(maxVal * 1.1 / 50) * 50; 
+
+            chartInstance.update('none');
+        }
+
+        // --- Canvas 크기 조정 및 렌더링 정의 ---
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const width = rect.width || canvas.parentElement.clientWidth || 300;
+            canvas.width = width;
+            canvas.height = width;
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 250; i++) {
+                let r = Math.pow(Math.random(), 1.5) * totalRangeMax;
+                stars.push({ r: Math.max(0.2, r), angle: Math.random() * Math.PI * 2, size: Math.random() * 1.2 + 0.4 });
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2; const cy = canvas.height / 2;
+            const scale = (canvas.width * 0.45) / totalRangeMax;
+
+            if (params.dmVisible && params.dmDensity > 0.1) {
+                // 시작선 r1 표시 (보라색 실선)
+                ctx.beginPath(); ctx.arc(cx, cy, params.dmR1 * scale, 0, Math.PI * 2);
+                ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 2.0; ctx.setLineDash([]); ctx.stroke();
+
+                // 끝선 r2 표시 (보라색 점선)
+                ctx.beginPath(); ctx.arc(cx, cy, params.dmR2 * scale, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.stroke();
+
+                // 암흑물질 공간적 가중치 가시화 (Gradient)
+                const dmGlow = ctx.createRadialGradient(cx, cy, Math.max(0, params.dmR1 - 1.5) * scale, cx, cy, (params.dmR2 + 3.0) * scale);
+                const alpha = Math.min(0.2, params.dmDensity * 0.03);
+                dmGlow.addColorStop(0, 'rgba(147, 51, 234, 0)');
+                dmGlow.addColorStop(0.2, `rgba(147, 51, 234, ${alpha})`);
+                dmGlow.addColorStop(0.8, `rgba(168, 85, 247, ${alpha * 0.6})`);
+                dmGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = dmGlow; ctx.beginPath(); ctx.arc(cx, cy, (params.dmR2 + 4.0) * scale, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // 항성 움직임 렌더링
+            ctx.fillStyle = 'rgba(147, 197, 253, 0.9)';
+            for (let s of stars) {
+                const v = getTotalSpeed(s.r);
+                s.angle += (v / s.r) * 0.00025;
+                const x = cx + Math.cos(s.angle) * s.r * scale;
+                const y = cy + Math.sin(s.angle) * s.r * scale;
+                ctx.beginPath(); ctx.arc(x, y, s.size, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // 탐침 선 가시화
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)'; ctx.setLineDash([2, 4]);
+            ctx.arc(cx, cy, params.probeRadius * scale, 0, Math.PI * 2); ctx.stroke();
+
+            requestAnimationFrame(animate);
+        }
+
+        // --- 실시간 물리 상태 분석 함수 ---
+        function updateInsights() {
+            const solarSpeed = getTotalSpeed(8.0);
+            analysisSolarSpeed.textContent = `${Math.round(solarSpeed)} km/s`;
+
+            const outerSpeed = getTotalSpeed(28.0);
+            analysisOuterSpeed.textContent = `${Math.round(outerSpeed)} km/s`;
+
+            const visibleOnlyOuterSpeed = Math.sqrt(
+                Math.pow(getBulgeSpeed(28.0, params.bulgeMass), 2) + 
+                Math.pow(getDiskSpeed(28.0, params.diskMass), 2)
+            );
+            
+            const speedIncrease = outerSpeed - visibleOnlyOuterSpeed;
+            if (speedIncrease > 5) {
+                analysisOuterDesc.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-arrow-up"></i> ${Math.round(speedIncrease)} km/s</span> 암흑물질 역학 가속`;
+            } else {
+                analysisOuterDesc.innerHTML = `<span class="text-rose-400 font-bold">감소 곡선</span> 중력 부족에 의한 속도 강하`;
+            }
+
+            // 28kpc 반경 기준 중력적 암흑물질 질량 누적 비중 연산
+            const totalMassPower = Math.pow(outerSpeed, 2) * 28;
+            const visibleMassPower = Math.pow(visibleOnlyOuterSpeed, 2) * 28;
+            let dmRatio = totalMassPower > 0 ? ((totalMassPower - visibleMassPower) / totalMassPower) * 100 : 0;
+            dmRatio = Math.max(0, Math.min(99, dmRatio));
+
+            analysisDmRatio.textContent = `${Math.round(dmRatio)}%`;
+        }
+
+        // --- 계측기 동기화 함수 ---
+        function updateAllPhysics() {
+            valDmDensity.textContent = params.dmDensity.toFixed(1);
+            valBulgeMass.textContent = params.bulgeMass.toFixed(1);
+            valDiskMass.textContent = params.diskMass.toFixed(1);
+
+            const r = params.probeRadius;
+            probeBulgeSpeed.textContent = `${Math.round(getBulgeSpeed(r, params.bulgeMass))} km/s`;
+            probeDiskSpeed.textContent = `${Math.round(getDiskSpeed(r, params.diskMass))} km/s`;
+            probeDmSpeed.textContent = `${Math.round(getDMSpeed(r, params.dmDensity, params.dmR1, params.dmR2))} km/s`;
+            probeTotalSpeed.textContent = `${Math.round(getTotalSpeed(r))} km/s`;
+            valProbeRadius.textContent = `${r.toFixed(1)} kpc`;
+
+            const legendProbe = document.getElementById('legendProbeRadius');
+            if (legendProbe) legendProbe.textContent = r.toFixed(1);
+
+            updateChart();
+            updateInsights();
+        }
+
+        function handleSlider(e) {
+            const v = parseFloat(e.target.value);
+            if (e.target.id === 'dmDensity') params.dmDensity = v;
+            if (e.target.id === 'bulgeMass') params.bulgeMass = v;
+            if (e.target.id === 'diskMass') params.diskMass = v;
+            if (e.target.id === 'probeRadius') params.probeRadius = v;
+            updateAllPhysics();
+        }
+
+        window.applyPreset = function(idx) {
+            Object.assign(params, presets[idx]);
+            dmR1Input.value = params.dmR1; dmR2Input.value = params.dmR2;
+            dmDensityInput.value = params.dmDensity; bulgeMassInput.value = params.bulgeMass; diskMassInput.value = params.diskMass;
+            updateDualSliderUI(); updateAllPhysics();
+        };
+
+        const inputs = [dmDensityInput, bulgeMassInput, diskMassInput, probeRadiusInput];
+        inputs.forEach(i => i.addEventListener('input', handleSlider));
+        toggleDmVisibility.addEventListener('change', (e) => params.dmVisible = e.target.checked);
+        document.getElementById('btnReset').addEventListener('click', () => applyPreset(0));
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            updateChart();
+        });
+
+        window.onload = function() {
+            resizeCanvas();
+            initStars(); 
+            initChart(); 
+            updateDualSliderUI(); 
+            updateAllPhysics(); 
+            animate();
+        };
+    </script>
+</body>
+</html>

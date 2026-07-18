@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>강강수월래 식현상 시뮬레이터 (Eclipsing Binary System)</title>
+    <!-- Tailwind CSS for Modern UI Layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for High-performance Light Curve Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #0b0c10;
+            color: #c5a3ff;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+        /* Custom styled range input */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #1f2833;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #66fcf1;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 min-h-screen flex flex-col justify-between">
+
+    <div class="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
+        
+        <!-- 왼쪽 콘텐츠 영역 (시각화 애니메이션 & 그래프) -->
+        <div class="lg:col-span-3 flex flex-col gap-6">
+            
+            <!-- 좌상단: 궤도 애니메이션 영역 -->
+            <div class="bg-[#1f2833]/30 border border-[#1f2833] rounded-xl p-4 flex flex-col items-center relative">
+                <h2 class="text-white text-base md:text-lg font-bold mb-2 flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></span>
+                    강강수월래 식현상 시뮬레이터 (관측자 시선 90° 고정)
+                </h2>
+                <!-- 물리 안전 가이드 알림 레이블 -->
+                <div id="safetyNotice" class="hidden absolute top-14 bg-emerald-600/95 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg animate-bounce z-10">
+                    🛡️ 물리 안전 필터 작동: 두 별이 충돌하지 않도록 항성 크기가 조정되었습니다.
+                </div>
+                
+                <div class="relative w-full max-w-[650px] aspect-[16/7] bg-[#0b0c10] border border-[#2c3539] rounded-lg overflow-hidden">
+                    <canvas id="orbitCanvas" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <!-- 좌하단: 실시간 광도 변화 곡선 그래프 영역 (시간축 유동 고정형) -->
+            <div class="bg-[#1f2833]/30 border border-[#1f2833] rounded-xl p-4 flex flex-col flex-grow min-h-[340px]">
+                <h2 class="text-[#66fcf1] text-base md:text-lg font-bold mb-3 flex items-center justify-between">
+                    <span id="graphTitle">실시간 광도 변화 곡선 (2주기 고정: 좌우 끝 무한 연결형)</span>
+                    <span id="currentFluxText" class="text-xs bg-[#1f2833] px-3 py-1 rounded text-white font-mono">합산 광도: 100.0%</span>
+                </h2>
+                <div class="relative w-full flex-grow h-[280px]">
+                    <canvas id="lightCurveCanvas"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 오른쪽 컨트롤 패널 영역 (슬라이더 및 정보) -->
+        <div class="bg-[#1f2833]/40 border border-[#1f2833] rounded-xl p-6 flex flex-col gap-5 justify-between h-fit overflow-y-auto max-h-[90vh]">
+            
+            <div>
+                <h2 class="text-white text-lg font-bold border-b border-[#2c3539] pb-2 mb-4">시뮬레이션 제어</h2>
+                
+                <!-- 실제 쌍성계 프리셋 대시보드 -->
+                <div class="mb-5 bg-[#0b0c10]/40 p-3 rounded-lg border border-[#2c3539]/60">
+                    <span class="text-xs font-bold text-[#66fcf1] block mb-2">⭐ 실제 쌍성계 프리셋 불러오기</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="presetAlgolBtn" class="bg-[#1f2833] hover:bg-[#2c3539] text-yellow-400 font-bold py-2 px-1 rounded text-[11px] border border-yellow-500/30 transition duration-150">
+                            알골 (Algol)
+                        </button>
+                        <button id="presetWMaBtn" class="bg-[#1f2833] hover:bg-[#2c3539] text-amber-400 font-bold py-2 px-1 rounded text-[11px] border border-amber-500/30 transition duration-150">
+                            큰곰 W (W UMa)
+                        </button>
+                        <button id="presetSpicaBtn" class="bg-[#1f2833] hover:bg-[#2c3539] text-sky-300 font-bold py-2 px-1 rounded text-[11px] border border-sky-500/30 transition duration-150">
+                            스피카 (Spica)
+                        </button>
+                        <button id="presetAlbireoBtn" class="bg-[#1f2833] hover:bg-[#2c3539] text-emerald-400 font-bold py-2 px-1 rounded text-[11px] border border-emerald-500/30 transition duration-150">
+                            알비레오 (Albireo)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1. 공전 주기 설정 -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-white">공전 주기 (Period)</span>
+                        <span id="periodValue" class="text-[#66fcf1] font-mono text-sm">3.0일</span>
+                    </div>
+                    <input type="range" id="periodSlider" min="0.3" max="10.0" step="0.1" value="3.0">
+                </div>
+
+                <!-- 2. 항성 크기 설정 -->
+                <div class="mb-4 border-t border-[#2c3539]/40 pt-3">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-yellow-400">주성 반지름 (R₁)</span>
+                        <span id="r1Value" class="text-yellow-400 font-mono text-sm">2.0 R_☉</span>
+                    </div>
+                    <input type="range" id="r1Slider" min="0.2" max="6.0" step="0.1" value="2.0">
+                </div>
+
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-sky-400">동반성 반지름 (R₂)</span>
+                        <span id="r2Value" class="text-sky-400 font-mono text-sm">1.0 R_☉</span>
+                    </div>
+                    <input type="range" id="r2Slider" min="0.1" max="4.0" step="0.1" value="1.0">
+                </div>
+
+                <!-- 3. 항성 질량 설정 -->
+                <div class="mb-4 border-t border-[#2c3539]/40 pt-3">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-yellow-500">주성 질량 (M₁)</span>
+                        <span id="m1Value" class="text-yellow-500 font-mono text-sm">3.0 M_☉</span>
+                    </div>
+                    <input type="range" id="m1Slider" min="0.5" max="15.0" step="0.1" value="3.0">
+                </div>
+
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-sky-500">동반성 질량 (M₂)</span>
+                        <span id="m2Value" class="text-sky-500 font-mono text-sm">1.0 M_☉</span>
+                    </div>
+                    <input type="range" id="m2Slider" min="0.1" max="8.0" step="0.1" value="1.0">
+                </div>
+
+                <!-- 4. 항성 표면 밝기 설정 -->
+                <div class="mb-4 border-t border-[#2c3539]/40 pt-3">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-white">주성 밝기 상숫값 (L₁)</span>
+                        <span id="l1Value" class="text-yellow-300 font-mono text-sm">1.00</span>
+                    </div>
+                    <input type="range" id="l1Slider" min="0.5" max="2.0" step="0.05" value="1.0">
+                </div>
+
+                <div class="mb-2">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-white">동반성 밝기 상숫값 (L₂)</span>
+                        <span id="l2Value" class="text-sky-300 font-mono text-sm">0.40</span>
+                    </div>
+                    <input type="range" id="l2Slider" min="0.1" max="1.0" step="0.05" value="0.4">
+                </div>
+            </div>
+
+            <!-- 동적 물리 한계 경고 안내 메시지 창 (사용자 의문 해소용) -->
+            <div id="dynamicLimitAlert" class="hidden bg-yellow-500/10 border border-yellow-500/30 p-3 rounded-lg text-xs text-yellow-300 leading-relaxed transition-all duration-300">
+                <p class="font-bold mb-1 flex items-center gap-1">⚠️ 크기 조절 제한 알림</p>
+                <p id="dynamicLimitText">현재 두 별 사이의 거리가 너무 가까워 충돌을 막기 위해 반지름 최대치가 안전하게 한계 지정되었습니다.</p>
+            </div>
+
+            <!-- 불러온 프리셋 별의 배경 지식 창 -->
+            <div id="presetDescriptionBox" class="bg-[#1f2833]/50 border border-indigo-500/30 p-3 rounded-lg text-xs text-indigo-200 leading-relaxed">
+                <p class="font-bold mb-1 text-indigo-300">프리셋 안내</p>
+                <p id="presetDescriptionText">상단의 실제 쌍성계 프리셋 단추를 클릭해 보세요! 실제 우주에 존재하는 아름답고 극단적인 항성계의 슬라이더 값과 배경 역사를 불러옵니다.</p>
+            </div>
+
+            <!-- 실시간 역학 정보 분석 패널 -->
+            <div class="bg-[#0b0c10]/70 border border-[#2c3539] p-3 rounded-lg text-xs leading-relaxed text-gray-300">
+                <h3 class="text-white font-bold mb-1.5 text-sm">실시간 물리량 분석</h3>
+                <ul class="space-y-1 font-mono">
+                    <li class="flex justify-between"><span>계산된 공전 거리 (a):</span><span id="infoDistance" class="text-white">-- R_☉</span></li>
+                    <li class="flex justify-between"><span>주성 공전 반경 (r1):</span><span id="infoR1" class="text-yellow-400">-- R_☉</span></li>
+                    <li class="flex justify-between"><span>동반성 공전 반경 (r2):</span><span id="infoR2" class="text-sky-400">-- R_☉</span></li>
+                    <li class="flex justify-between"><span>질량비 (M1/M2):</span><span id="infoMassRatio" class="text-purple-300">--</span></li>
+                </ul>
+                <div class="mt-2 border-t border-[#2c3539] pt-2 text-[10px]">
+                    <p class="text-[#66fcf1] font-semibold">물리 충돌 보호 시스템 켜짐:</p>
+                    <p>• 별들이 서로 충돌하여 파괴되지 않도록 공전 거리에 맞춰 한계 범위가 실시간 조율됩니다.</p>
+                </div>
+            </div>
+
+            <!-- 조작 버튼 -->
+            <div class="grid grid-cols-2 gap-3 mt-1">
+                <button id="pauseBtn" class="bg-[#66fcf1] hover:bg-[#45a29e] text-[#0b0c10] font-bold py-2 px-3 rounded-lg text-sm transition duration-200">
+                    일시정지
+                </button>
+                <button id="resetBtn" class="bg-transparent border border-red-500 text-red-500 hover:bg-red-500/10 font-bold py-2 px-3 rounded-lg text-sm transition duration-200">
+                    시간 리셋
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 푸터 정보 -->
+    <footer class="text-center text-xs text-gray-500 mt-6 pb-2">
+        강강수월래 식현상 시뮬레이터 © 2026 Eclipsing Binary Star Model Project
+    </footer>
+
+    <script>
+        // --- 물리 및 기하학 상태 변수 ---
+        let period = 3.0;        // 공전 주기 (기본 단위: 일, Days)
+        let periodUnit = "일";   // 주기 단위 ("일" 또는 "년")
+        let R1 = 2.0;            // 주성 반지름 (태양 반지름 단위, R_sun)
+        let R2 = 1.0;            // 동반성 반지름 (태양 반지름 단위, R_sun)
+        let L1 = 1.0;            // 주성 밝기 상수
+        let L2 = 0.4;            // 동반성 밝기 상수
+        let M1 = 3.0;            // 주성 질량 (태양 질량 단위, M_sun)
+        let M2 = 1.0;            // 동반성 질량 (태양 질량 단위, M_sun)
+
+        // --- 계산된 물리 값 ---
+        let totalDistance = 0.0; // 케플러 공식으로 도출된 두 별 사이 장반경 (a)
+        const safetyMargin = 0.15; // 물리 충돌을 막기 위한 최소 안전 틈새 (R_☉)
+
+        // --- 상태 제어 변수 ---
+        let time = 0.0;          // 현재 흘러간 시간 (periodUnit 단위)
+        let isRunning = true;
+
+        // 고정 시간 구간 데이터 구조 ({x: 시간, y: 밝기(%)})
+        const staticLightCurveData = [];
+        const steps = 300;       // 그래프 정밀 해상도
+
+        // --- DOM 요소 바인딩 ---
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const orbitCtx = orbitCanvas.getContext('2d');
+        const periodSlider = document.getElementById('periodSlider');
+        const r1Slider = document.getElementById('r1Slider');
+        const r2Slider = document.getElementById('r2Slider');
+        const m1Slider = document.getElementById('m1Slider');
+        const m2Slider = document.getElementById('m2Slider');
+        const l1Slider = document.getElementById('l1Slider');
+        const l2Slider = document.getElementById('l2Slider');
+        
+        const periodValue = document.getElementById('periodValue');
+        const r1Value = document.getElementById('r1Value');
+        const r2Value = document.getElementById('r2Value');
+        const m1Value = document.getElementById('m1Value');
+        const m2Value = document.getElementById('m2Value');
+        const l1Value = document.getElementById('l1Value');
+        const l2Value = document.getElementById('l2Value');
+        
+        const infoDistance = document.getElementById('infoDistance');
+        const infoR1 = document.getElementById('infoR1');
+        const infoR2 = document.getElementById('infoR2');
+        const infoMassRatio = document.getElementById('infoMassRatio');
+        const safetyNotice = document.getElementById('safetyNotice');
+        const dynamicLimitAlert = document.getElementById('dynamicLimitAlert');
+        const dynamicLimitText = document.getElementById('dynamicLimitText');
+        const presetDescriptionText = document.getElementById('presetDescriptionText');
+        const graphTitle = document.getElementById('graphTitle');
+        
+        const currentFluxText = document.getElementById('currentFluxText');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // 프리셋 단추들
+        const presetAlgolBtn = document.getElementById('presetAlgolBtn');
+        const presetWMaBtn = document.getElementById('presetWMaBtn');
+        const presetSpicaBtn = document.getElementById('presetSpicaBtn');
+        const presetAlbireoBtn = document.getElementById('presetAlbireoBtn');
+
+        // --- 반응형 Canvas 크기 세팅 ---
+        function resizeCanvas() {
+            const rect = orbitCanvas.parentNode.getBoundingClientRect();
+            orbitCanvas.width = rect.width * window.devicePixelRatio;
+            orbitCanvas.height = rect.height * window.devicePixelRatio;
+            orbitCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- 케플러 제3법칙 기반 공전 궤도 장반경 (a) 구하기 공식 ---
+        function updateKeplerianElements() {
+            const periodInYears = (periodUnit === "년") ? period : (period / 365.25); 
+            const totalMass = M1 + M2;
+            const aInAU = Math.pow(totalMass * Math.pow(periodInYears, 2), 1/3); 
+            totalDistance = aInAU * 215.0; 
+
+            // 분석 패널 텍스트 갱신
+            const r1_orbit = totalDistance * (M2 / (M1 + M2));
+            const r2_orbit = totalDistance * (M1 / (M1 + M2));
+
+            infoDistance.textContent = `${totalDistance.toLocaleString(undefined, {maximumFractionDigits: 2})} R_☉`;
+            infoR1.textContent = `${r1_orbit.toLocaleString(undefined, {maximumFractionDigits: 2})} R_☉`;
+            infoR2.textContent = `${r2_orbit.toLocaleString(undefined, {maximumFractionDigits: 2})} R_☉`;
+            infoMassRatio.textContent = (M1 / M2).toFixed(2);
+        }
+
+        // --- [핵심 기능] 물리적 접촉/충돌 방지 필터 알고리즘 ---
+        function enforceNoCollision(changedParam) {
+            updateKeplerianElements(); // 최신 공전 거리 계산
+
+            let wasAdjusted = false;
+
+            // 두 별의 반경 합이 허용 가능한 안전 거리를 넘어가려 할 때
+            if (R1 + R2 > totalDistance - safetyMargin) {
+                wasAdjusted = true;
+                
+                if (changedParam === 'r1') {
+                    R1 = Math.max(0.2, totalDistance - R2 - safetyMargin);
+                } else if (changedParam === 'r2') {
+                    R2 = Math.max(0.1, totalDistance - R1 - safetyMargin);
+                } else {
+                    const excess = (R1 + R2) - (totalDistance - safetyMargin);
+                    const ratio1 = R1 / (R1 + R2);
+                    const ratio2 = R2 / (R1 + R2);
+                    
+                    R1 = Math.max(0.2, R1 - excess * ratio1);
+                    R2 = Math.max(0.1, R2 - excess * ratio2);
+                }
+
+                r1Slider.value = R1;
+                r2Slider.value = R2;
+            }
+
+            // 실시간 슬라이더의 최대 조절 한계를 기하학 범위에 맞게 동적으로 가변 제한
+            const maxR1Allowed = Math.max(0.2, totalDistance - R2 - safetyMargin);
+            const maxR2Allowed = Math.max(0.1, totalDistance - R1 - safetyMargin);
+            
+            r1Slider.max = Math.min(6.0, maxR1Allowed).toFixed(1);
+            r2Slider.max = Math.min(4.0, maxR2Allowed).toFixed(1);
+
+            // 한계치 근접 검출 및 경고 텍스트 UI 처리
+            const isR1AtLimit = R1 >= (maxR1Allowed - 0.05);
+            const isR2AtLimit = R2 >= (maxR2Allowed - 0.05);
+
+            // 주성 한계치 텍스트 피드백
+            if (isR1AtLimit) {
+                r1Value.innerHTML = `${R1.toFixed(1)} R_☉ <span class="text-red-400 font-bold text-[11px] animate-pulse">(최대 한계)</span>`;
+            } else {
+                r1Value.textContent = `${R1.toFixed(1)} R_☉`;
+            }
+
+            // 동반성 한계치 텍스트 피드백
+            if (isR2AtLimit) {
+                r2Value.innerHTML = `${R2.toFixed(1)} R_☉ <span class="text-red-400 font-bold text-[11px] animate-pulse">(최대 한계)</span>`;
+            } else {
+                r2Value.textContent = `${R2.toFixed(1)} R_☉`;
+            }
+
+            // 하단 경고 상자 상태 제어
+            if (isR1AtLimit || isR2AtLimit || wasAdjusted) {
+                dynamicLimitAlert.classList.remove('hidden');
+                dynamicLimitText.innerHTML = `현재 설정된 공전 주기와 질량 조건에서 <strong>두 별 사이의 총 거리(a)는 약 ${totalDistance.toLocaleString(undefined, {maximumFractionDigits: 2})} R_☉</strong>입니다.<br>두 별이 부딪쳐 병합(합병)되는 것을 막기 위해 반지름 크기 조절 범위가 자동으로 제한되었습니다.`;
+            } else {
+                dynamicLimitAlert.classList.add('hidden');
+            }
+
+            // 보정 발생 시 일시적으로 좌측 화면 알림 깜빡임
+            if (wasAdjusted) {
+                safetyNotice.classList.remove('hidden');
+                setTimeout(() => { safetyNotice.classList.add('hidden'); }, 1500);
+            }
+        }
+
+        // --- 기하학적 겹침 면적(식량) 계산 함수 ---
+        function calculateTotalFlux(x1, y1, x2, y2) {
+            const area1 = Math.PI * (R1 ** 2);
+            const area2 = Math.PI * (R2 ** 2);
+            const maxFlux = (L1 * area1) + (L2 * area2);
+            
+            const d = Math.abs(x1 - x2);
+            
+            if (d >= (R1 + R2)) {
+                return 100.0; 
+            }
+            
+            let intersectionArea = 0;
+            
+            if (d <= Math.abs(R1 - R2)) {
+                intersectionArea = Math.PI * (Math.min(R1, R2) ** 2); 
+            } else {
+                const r = Math.min(R1, R2);
+                const R = Math.max(R1, R2);
+                const part1 = r*r * Math.acos((d*d + r*r - R*R) / (2 * d * r));
+                const part2 = R*R * Math.acos((d*d + R*R - r*r) / (2 * d * R));
+                const part3 = 0.5 * Math.sqrt((-d + r + R) * (d + r - R) * (d - r + R) * (d + r + R));
+                intersectionArea = part1 + part2 - part3;
+            }
+            
+            let currentFlux = maxFlux;
+            
+            // 지구 관측자(아래쪽) 시선 매핑
+            if (y1 < y2) {
+                currentFlux = maxFlux - (L1 * intersectionArea);
+            } else {
+                currentFlux = maxFlux - (L2 * intersectionArea);
+            }
+            
+            return (currentFlux / maxFlux) * 100.0;
+        }
+
+        // --- 특정 공전시점(t)에 따른 두 별의 실제 위치 좌표 구하기 ---
+        function getStarPositionsAtTime(t, currentPeriod, currentM1, currentM2) {
+            const omega = (2 * Math.PI) / currentPeriod;
+            const theta = (omega * t) - Math.PI / 2;
+
+            const r1 = totalDistance * (currentM2 / (currentM1 + currentM2));
+            const r2 = totalDistance * (currentM1 / (currentM1 + currentM2));
+
+            const x1 = r1 * Math.cos(theta);
+            const y1 = r1 * Math.sin(theta);
+            const x2 = -r2 * Math.cos(theta);
+            const y2 = -r2 * Math.sin(theta);
+
+            return { x1, y1, x2, y2, r1, r2, theta };
+        }
+
+        // --- 전체 시간 범위(0 ~ 2*Period)에 대한 고정 정적 곡선 데이터 생성 ---
+        function generateStaticLightCurve() {
+            staticLightCurveData.length = 0;
+            const maxTimeline = period * 2; 
+            
+            for (let i = 0; i <= steps; i++) {
+                const t = (i / steps) * maxTimeline; 
+                const pos = getStarPositionsAtTime(t, period, M1, M2);
+                const flux = calculateTotalFlux(pos.x1, pos.y1, pos.x2, pos.y2);
+                
+                staticLightCurveData.push({ x: t, y: flux });
+            }
+        }
+
+        // 초기 시작 검사
+        enforceNoCollision('init');
+        generateStaticLightCurve();
+
+        // --- Chart.js 설정 ---
+        const chartCtx = document.getElementById('lightCurveCanvas').getContext('2d');
+        const lightChart = new Chart(chartCtx, {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    {
+                        label: '밝기 변화 곡선 (%)',
+                        data: staticLightCurveData,
+                        borderColor: '#66fcf1',
+                        borderWidth: 3,
+                        backgroundColor: 'rgba(102, 252, 241, 0.06)',
+                        fill: true,
+                        showLine: true,
+                        tension: 0.15,
+                        pointRadius: 0
+                    },
+                    {
+                        label: '현재 공전 위치',
+                        data: [], 
+                        borderColor: '#ff5353',
+                        backgroundColor: '#ff5353',
+                        pointRadius: 9,
+                        pointHoverRadius: 11,
+                        showLine: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: 'white', font: { size: 10 } }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        min: 0,
+                        max: period * 2, 
+                        grid: { color: '#1f2833' },
+                        ticks: { 
+                            color: 'white',
+                            callback: function(value) { 
+                                return value.toLocaleString(undefined, {maximumFractionDigits: 1}) + periodUnit; 
+                            }
+                        },
+                        title: { display: true, text: '시간 (' + periodUnit + ')', color: 'white' }
+                    },
+                    y: {
+                        grid: { color: '#1f2833' },
+                        ticks: { color: 'white' },
+                        title: { display: true, text: '상대적 밝기 (%)', color: 'white' },
+                        suggestedMin: 30,
+                        suggestedMax: 105
+                    }
+                }
+            }
+        });
+
+        function updateAllData(changedParam) {
+            enforceNoCollision(changedParam); // 먼저 필터 거르기
+            generateStaticLightCurve(); // 데이터 리빌딩
+            
+            // 유닛 및 스케일 업데이트
+            lightChart.options.scales.x.max = period * 2;
+            lightChart.options.scales.x.title.text = '시간 (' + periodUnit + ')';
+            graphTitle.textContent = `실시간 광도 변화 곡선 (2주기 고정: 단위 ${periodUnit})`;
+            lightChart.data.datasets[0].data = [...staticLightCurveData];
+            lightChart.update('none');
+        }
+
+        // --- 프리셋 로딩 이벤트 리스너 ---
+        presetAlgolBtn.addEventListener('click', () => {
+            period = 2.9;
+            periodUnit = "일";
+            R1 = 2.7;
+            R2 = 3.5;
+            M1 = 3.7;
+            M2 = 0.8;
+            L1 = 1.6;
+            L2 = 0.25;
+
+            syncSlidersAndValues();
+            updateAllData('preset');
+            
+            presetDescriptionText.innerHTML = `<strong>알골 프리셋 로드 완료</strong><br>• <b>특징</b>: 역사상 가장 먼저 밝기 주기가 밝혀진 최초의 식쌍성입니다.<br>• <b>역학</b>: 주성보다 가벼운 동반성($0.8 M_☉$)이 오히려 주성($3.7 M_☉$)보다 더 크게 부풀어 있는 기이한 '알골의 역설' 상태입니다.`;
+        });
+
+        presetWMaBtn.addEventListener('click', () => {
+            period = 0.33; 
+            periodUnit = "일";
+            R1 = 1.1;
+            R2 = 0.7;
+            M1 = 1.2;
+            M2 = 0.5;
+            L1 = 1.1;
+            L2 = 0.95; 
+
+            syncSlidersAndValues();
+            updateAllData('preset');
+
+            presetDescriptionText.innerHTML = `<strong>큰곰자리 W 프리셋 로드 완료</strong><br>• <b>특징</b>: 두 별이 8시간 만에 한 바퀴를 도는 초단주기 식쌍성입니다.<br>• <b>역학</b>: 너무 가깝고 물질을 공유하는 과접촉쌍성이라 두 별의 밝기가 비슷해졌습니다. 이에 따라 그래프가 거의 대칭형의 둥근 곡선을 그립니다.`;
+        });
+
+        presetSpicaBtn.addEventListener('click', () => {
+            period = 4.0;
+            periodUnit = "일";
+            R1 = 4.3;
+            R2 = 2.9;
+            M1 = 10.3;
+            M2 = 6.0;
+            L1 = 1.8;
+            L2 = 1.1;
+
+            syncSlidersAndValues();
+            updateAllData('preset');
+
+            presetDescriptionText.innerHTML = `<strong>스피카 프리셋 로드 완료</strong><br>• <b>특징</b>: 처녀자리에서 가장 빛나는 청색 거성 쌍성계입니다.<br>• <b>역학</b>: 주성과 동반성 모두 엄청난 질량($10.3 M_☉, 6.0 M_☉$)을 품고 있어, 케플러 법칙에 따라 비교적 넓고 빠르며 안정한 거리를 두고 궤도를 순환합니다.`;
+        });
+
+        presetAlbireoBtn.addEventListener('click', () => {
+            period = 75000.0; // 실제 주기 75,000년
+            periodUnit = "년";
+            R1 = 5.0;  
+            R2 = 2.5;  
+            M1 = 5.0;
+            M2 = 3.2;
+            L1 = 1.9;
+            L2 = 0.7;
+
+            syncSlidersAndValues();
+            updateAllData('preset');
+
+            presetDescriptionText.innerHTML = `<strong>알비레오 프리셋 로드 완료</strong><br>• <b>특징</b>: 백조자리에 위치한 우주에서 가장 아름다운 '금빛과 푸른빛'의 청색-골드 보석 커플입니다.<br>• <b>시간 왜곡 기술 적용</b>: 실제 주기는 무려 75,000년에 달하지만, 시뮬레이션의 시간 스케일을 '년(Years)' 단위로 동적 보정하여 다른 별들과 동일하게 역동적인 공전을 눈으로 감상할 수 있습니다!`;
+        });
+
+        // 슬라이더 조작 후 화면 갱신 동기화 함수
+        function syncSlidersAndValues() {
+            if (periodUnit === "년") {
+                periodSlider.value = 10.0; 
+                periodValue.textContent = `${period.toLocaleString()}년`;
+            } else {
+                periodSlider.value = period;
+                periodValue.textContent = `${period.toFixed(1)}일`;
+            }
+            
+            r1Slider.value = R1;
+            r2Slider.value = R2;
+            
+            m1Slider.value = M1;
+            m1Value.textContent = `${M1.toFixed(1)} M_☉`;
+            
+            m2Slider.value = M2;
+            m2Value.textContent = `${M2.toFixed(1)} M_☉`;
+            
+            l1Slider.value = L1;
+            l1Value.textContent = L1.toFixed(2);
+            
+            l2Slider.value = L2;
+            l2Value.textContent = L2.toFixed(2);
+        }
+
+        // --- 슬라이더 조작 이벤트 리스너 ---
+        periodSlider.addEventListener('input', (e) => {
+            period = parseFloat(e.target.value);
+            periodUnit = "일"; // 사용자가 슬라이더를 직접 건드리면 다시 "일" 스케일로 스냅백
+            periodValue.textContent = `${period.toFixed(1)}일`;
+            updateAllData('period');
+        });
+        
+        r1Slider.addEventListener('input', (e) => {
+            R1 = parseFloat(e.target.value);
+            updateAllData('r1');
+        });
+
+        r2Slider.addEventListener('input', (e) => {
+            R2 = parseFloat(e.target.value);
+            updateAllData('r2');
+        });
+
+        m1Slider.addEventListener('input', (e) => {
+            M1 = parseFloat(e.target.value);
+            m1Value.textContent = `${M1.toFixed(1)} M_☉`;
+            updateAllData('m1');
+        });
+
+        m2Slider.addEventListener('input', (e) => {
+            M2 = parseFloat(e.target.value);
+            m2Value.textContent = `${M2.toFixed(1)} M_☉`;
+            updateAllData('m2');
+        });
+        
+        l1Slider.addEventListener('input', (e) => {
+            L1 = parseFloat(e.target.value);
+            l1Value.textContent = L1.toFixed(2);
+            updateAllData('l1');
+        });
+        
+        l2Slider.addEventListener('input', (e) => {
+            L2 = parseFloat(e.target.value);
+            l2Value.textContent = L2.toFixed(2);
+            updateAllData('l2');
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            pauseBtn.textContent = isRunning ? "일시정지" : "다시 시작";
+            if (isRunning) animate();
+        });
+        resetBtn.addEventListener('click', () => {
+            time = 0.0;
+        });
+
+        // --- 메인 애니메이션 루프 ---
+        function animate() {
+            if (!isRunning) return;
+
+            const doublePeriod = period * 2;
+            const currentGraphTime = time % doublePeriod;
+
+            // 1. 실제 공전 좌표 연산
+            const pos = getStarPositionsAtTime(time, period, M1, M2);
+
+            // 2. 현재 광량 산출
+            const currentFlux = calculateTotalFlux(pos.x1, pos.y1, pos.x2, pos.y2);
+            currentFluxText.textContent = `합산 광도: ${currentFlux.toFixed(1)}%`;
+
+            // 3. 쌍성계 애니메이션 Canvas 렌더링
+            const w = orbitCanvas.width / window.devicePixelRatio;
+            const h = orbitCanvas.height / window.devicePixelRatio;
+            orbitCtx.clearRect(0, 0, w, h);
+
+            const centerX = w / 2;
+            const centerY = h / 2;
+            
+            // 공전 거리와 두 별의 반지름 중 최대 범위를 계산하여 화면에 꼭 맞게 자동 비율 조정
+            const maxRequiredWidth = totalDistance + R1 + R2;
+            const maxRequiredHeight = Math.max(R1, R2) * 1.5; 
+            
+            const scaleX = (w / 2 * 0.85) / maxRequiredWidth;
+            const scaleY = (h / 2 * 0.85) / maxRequiredHeight;
+            const scale = Math.min(scaleX, scaleY); 
+
+            // 주성(M1) 궤도 드로잉
+            orbitCtx.beginPath();
+            orbitCtx.ellipse(centerX, centerY, pos.r1 * scale, 0.05 * scale, 0, 0, 2 * Math.PI);
+            orbitCtx.strokeStyle = 'rgba(255, 215, 0, 0.35)';
+            orbitCtx.lineWidth = 1.2;
+            orbitCtx.setLineDash([4, 4]);
+            orbitCtx.stroke();
+
+            // 동반성(M2) 궤도 드로잉
+            orbitCtx.beginPath();
+            orbitCtx.ellipse(centerX, centerY, pos.r2 * scale, 0.05 * scale, 0, 0, 2 * Math.PI);
+            orbitCtx.strokeStyle = 'rgba(135, 206, 235, 0.45)';
+            orbitCtx.lineWidth = 1.2;
+            orbitCtx.setLineDash([4, 4]);
+            orbitCtx.stroke();
+            orbitCtx.setLineDash([]); 
+
+            // 공통질량중심 표식(+)
+            orbitCtx.strokeStyle = '#66fcf1';
+            orbitCtx.lineWidth = 2;
+            orbitCtx.beginPath();
+            orbitCtx.moveTo(centerX - 8, centerY); orbitCtx.lineTo(centerX + 8, centerY);
+            orbitCtx.moveTo(centerX, centerY - 8); orbitCtx.lineTo(centerX, centerY + 8);
+            orbitCtx.stroke();
+            
+            orbitCtx.fillStyle = 'rgba(102, 252, 241, 0.8)';
+            orbitCtx.font = '9px sans-serif';
+            orbitCtx.fillText('공통질량 중심 (+)', centerX + 12, centerY + 3);
+
+            // 지구 관측자 시선
+            orbitCtx.fillStyle = '#66fcf1';
+            orbitCtx.font = '10px sans-serif';
+            orbitCtx.fillText('지구 관측자 시선 ⬇', centerX - 42, h - 15);
+
+            // 별 본체 입체적 드로잉 (Z-order 소팅)
+            const stars = [
+                { id: 1, x: pos.x1, y: pos.y1, r: R1, color: '#FFD700', glow: 'rgba(255, 140, 0, 0.4)' },
+                { id: 2, x: pos.x2, y: pos.y2, r: R2, color: '#87CEEB', glow: 'rgba(65, 105, 225, 0.5)' }
+            ];
+            stars.sort((a, b) => a.y - b.y);
+
+            stars.forEach(star => {
+                const screenX = centerX + star.x * scale;
+                const screenY = centerY + (star.y * 0.05) * scale;
+                
+                // 시각 보완 필터
+                const radiusPx = Math.max(star.r * scale, 6);
+
+                // 광채 효과
+                const gradient = orbitCtx.createRadialGradient(screenX, screenY, radiusPx * 0.1, screenX, screenY, radiusPx * 1.5);
+                gradient.addColorStop(0, star.color);
+                gradient.addColorStop(0.3, star.glow);
+                gradient.addColorStop(1, 'transparent');
+                orbitCtx.fillStyle = gradient;
+                orbitCtx.beginPath();
+                orbitCtx.arc(screenX, screenY, radiusPx * 1.5, 0, 2 * Math.PI);
+                orbitCtx.fill();
+
+                // 별 구체
+                orbitCtx.beginPath();
+                orbitCtx.arc(screenX, screenY, radiusPx, 0, 2 * Math.PI);
+                orbitCtx.fillStyle = star.color;
+                orbitCtx.fill();
+            });
+
+            // 4. 고정 타임라인 속에서 마커 이동 및 정확한 물리 트래킹 연산
+            const markerPos = getStarPositionsAtTime(currentGraphTime, period, M1, M2);
+            const markerFlux = calculateTotalFlux(markerPos.x1, markerPos.y1, markerPos.x2, markerPos.y2);
+
+            lightChart.data.datasets[1].data = [{
+                x: currentGraphTime,
+                y: markerFlux
+            }];
+            
+            lightChart.update('none');
+
+            // --- [개선된 공전 물리 속도 연산 필터] ---
+            let dynamicDt;
+            const frameRate = 60;
+
+            if (periodUnit === "년") {
+                // 알비레오 같은 년 단위(초장주기)에만 관찰 편의를 위해 6초당 한 바퀴 예외 적용
+                const targetCycleSec = 6.0;
+                dynamicDt = period / (frameRate * targetCycleSec);
+            } else {
+                // 일반 일(Day) 단위 쌍성계들은 주기가 짧을수록 빠르게 돌고, 길수록 물리 비례에 맞춰 느려지게 설정!
+                // 주기가 0.3일 부근으로 너무 극단적으로 빨라져 어지러운 현상을 피하기 위해,
+                // 한 바퀴를 도는 데 최소 2.0초(120 프레임)가 걸리도록 최대 속도 한계 제어를 적용했습니다.
+                const calculatedDt = 0.04 / Math.sqrt(period);
+                const minCycleSec = 2.0; 
+                const maxDt = period / (frameRate * minCycleSec);
+                
+                dynamicDt = Math.min(calculatedDt, maxDt);
+            }
+
+            time += dynamicDt;
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

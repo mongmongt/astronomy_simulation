@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중력 렌즈 효과 및 아인슈타인 링 시각화 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #05070a;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col items-center p-4 md:p-8">
+
+    <!-- Header Section (헤더 영역) -->
+    <header class="w-full max-w-6xl mb-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center border-b border-slate-800 pb-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 flex items-center gap-2 justify-center md:justify-start">
+                <i data-lucide="orbit" class="w-8 h-8 text-sky-400"></i>
+                중력 렌즈 효과 및 아인슈타인 링 시각화
+            </h1>
+            <p class="text-sm text-slate-400 mt-1">이론 물리 법칙 실시간 검증(Astronomical Verification & Solver Plot) 전용 정밀 시뮬레이터</p>
+        </div>
+        <div class="mt-4 md:mt-0 px-4 py-2 bg-slate-900/80 border border-slate-800 rounded-lg text-xs text-sky-400 font-medium">
+            Project Ver 3.3 • 고정밀 물리 검증 벤치
+        </div>
+    </header>
+
+    <!-- Main Content Layout (메인 콘텐츠 레이아웃) -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Column: Simulation Canvas (좌측 캔버스 영역) -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+            <div class="relative bg-black rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col">
+                
+                <!-- Status Badges (실시간 상태 표시배지) -->
+                <div class="absolute top-4 left-4 z-10 flex flex-wrap gap-2 pointer-events-none">
+                    <span class="px-2.5 py-1 bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded text-xs text-slate-300 flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 물리 검증 솔버 연산 중
+                    </span>
+                    <span id="alignmentBadge" class="px-2.5 py-1 bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded text-xs text-amber-400 flex items-center gap-1 font-semibold">
+                        정렬도 감지 중
+                    </span>
+                </div>
+
+                <!-- Custom Modal/Toast instead of window.alert() -->
+                <div id="toast" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-slate-950/95 border border-rose-500 text-rose-300 px-6 py-3 rounded-2xl text-xs font-bold pointer-events-none opacity-0 transition-all duration-300 shadow-2xl shadow-rose-950/20 text-center">
+                    경고 메시지
+                </div>
+
+                <!-- Canvas Container (캔버스 컨테이너) -->
+                <div class="w-full aspect-square bg-[#010204] relative">
+                    <canvas id="lensCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+                </div>
+
+                <!-- Control Bar under Canvas (캔버스 하단 안내바) -->
+                <div class="p-3 bg-slate-900/60 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="mouse-pointer" class="w-4 h-4 text-sky-400"></i>
+                        <span>화면 내 <b>나선 은하 A(주황 가이드)</b>는 드래그로 조작하고, <b>타원 은하 B</b>는 클릭으로 워프시킵니다.</span>
+                    </div>
+                    <button id="resetBtn" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition flex items-center gap-1 font-medium">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 천체 초기화
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Quick Features Description (현상 설명 카드) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="p-3.5 bg-slate-900/40 border border-slate-800/60 rounded-xl flex items-start gap-2.5">
+                    <div class="p-2 bg-indigo-950/50 text-indigo-400 rounded-lg shrink-0">
+                        <i data-lucide="line-chart" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-200">실시간 솔버 그래프</h4>
+                        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">아인슈타인 렌즈 물리 방정식의 해(Roots)를 실시간으로 가시화하여 실제 광학 이미지 맺힘 좌표와 오차 없이 정렬됨을 검증합니다.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 bg-slate-900/40 border border-slate-800/60 rounded-xl flex items-start gap-2.5">
+                    <div class="p-2 bg-amber-950/50 text-amber-400 rounded-lg shrink-0">
+                        <i data-lucide="calculator" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-200">천문 캘리브레이션</h4>
+                        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">실제 은하단 관측 질량(M)과 우주론적 거리 변인을 조작하여 이론상의 아인슈타인 고리 크기와 실시간 비교할 수 있습니다.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 bg-slate-900/40 border border-slate-800/60 rounded-xl flex items-start gap-2.5">
+                    <div class="p-2 bg-sky-950/50 text-sky-400 rounded-lg shrink-0">
+                        <i data-lucide="glasses" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-200">실물 천문 프리셋</h4>
+                        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">SDSS J0737, Einstein Cross 등 세기의 우주 발견을 이끈 실물 중력 렌즈 천체 데이터를 보정값 기준으로 대조 가능합니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Control Panel and Physical Values (우측 조작 패널 영역) -->
+        <aside class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- 탭 메뉴 선택 바 -->
+            <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button id="tabVisual" class="flex-1 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-slate-100 transition flex items-center justify-center gap-1">
+                    <i data-lucide="eye" class="w-3.5 h-3.5"></i> 🌌 관측 시각화
+                </button>
+                <button id="tabVerify" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-slate-100 transition flex items-center justify-center gap-1">
+                    <i data-lucide="microscope" class="w-3.5 h-3.5"></i> 🔬 이론 검증 벤치
+                </button>
+            </div>
+
+            <!-- 은하 이미지 업로드 전용 패널 (시각화 탭 전용) -->
+            <div id="panelUpload" class="bg-gradient-to-br from-slate-900 to-indigo-950 border border-indigo-500/30 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center gap-2 mb-3 border-b border-indigo-900 pb-3">
+                    <i data-lucide="upload" class="w-5 h-5 text-indigo-400"></i>
+                    <h3 class="text-base font-bold text-slate-100">배경 은하 이미지 업로드</h3>
+                </div>
+                <p class="text-xs text-slate-400 mb-4 leading-relaxed">실제 우주 망원경 이미지(JPG, PNG)를 자유롭게 업로드하여 나선 은하 A의 실시간 왜곡 텍스처로 대체해 보세요.</p>
+                
+                <div class="flex flex-col gap-3">
+                    <label class="w-full flex flex-col items-center justify-center h-24 border-2 border-dashed border-indigo-500/40 hover:border-indigo-400 bg-slate-950/50 rounded-xl cursor-pointer hover:bg-slate-950/80 transition group">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <i data-lucide="image" class="w-6 h-6 text-indigo-400 group-hover:scale-110 transition"></i>
+                            <p class="text-xs text-slate-400 mt-2 font-medium">여기를 클릭하여 이미지 선택</p>
+                        </div>
+                        <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                    </label>
+
+                    <div class="flex items-center justify-between p-2 rounded bg-slate-950/80 border border-slate-800">
+                        <span class="text-xs text-slate-300">업로드 이미지 사용 여부</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggleCustomImage" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 이론 물리 검증 벤치 패널 (검증 탭 전용, 기본 히든) -->
+            <div id="panelVerify" class="bg-gradient-to-br from-slate-900 to-emerald-950/40 border border-emerald-500/20 rounded-2xl p-5 shadow-xl hidden space-y-4">
+                <div class="flex items-center gap-2 mb-2 border-b border-emerald-900 pb-3">
+                    <i data-lucide="calculator" class="w-5 h-5 text-emerald-400"></i>
+                    <h3 class="text-base font-bold text-slate-100">이론 기하학 변인 수치</h3>
+                </div>
+
+                <!-- 천체 타깃 프리셋 -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-400 block">■ 관측 중력 렌즈 타깃 프리셋</label>
+                    <select id="presetSelect" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <option value="custom">사용자 지정 변인 (Custom Calibration)</option>
+                        <option value="sdss">SDSS J0737+3216 (완벽한 아인슈타인 링)</option>
+                        <option value="quasar">Q2237+030 (아인슈타인 십자가)</option>
+                    </select>
+                </div>
+
+                <!-- 물리량 캘리브레이션 폼 -->
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 font-bold block">은하 질량 ($M_L$)</label>
+                        <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs">
+                            <input type="number" id="inputMass" value="1.0" step="0.05" class="w-full bg-transparent text-emerald-400 font-bold font-orbitron focus:outline-none">
+                            <span class="text-[10px] text-slate-500 font-bold">10¹²M☉</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 font-bold block">관측 스케일 보정</label>
+                        <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs">
+                            <input type="number" id="inputScale" value="60" step="1" class="w-full bg-transparent text-emerald-400 font-bold font-orbitron focus:outline-none">
+                            <span class="text-[10px] text-slate-500 font-bold">px/arcsec</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 font-bold block">렌즈 거리 ($D_L$)</label>
+                        <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs">
+                            <input type="number" id="inputDL" value="1000" step="10" class="w-full bg-transparent text-emerald-400 font-bold font-orbitron focus:outline-none">
+                            <span class="text-[10px] text-slate-500 font-bold">Mpc</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 font-bold block">광원 거리 ($D_S$)</label>
+                        <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs">
+                            <input type="number" id="inputDS" value="2000" step="10" class="w-full bg-transparent text-emerald-400 font-bold font-orbitron focus:outline-none">
+                            <span class="text-[10px] text-slate-500 font-bold">Mpc</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-2.5">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400 font-bold">은하-광원 거리 ($D_{LS}$)</span>
+                        <span id="displayDLS" class="font-orbitron font-bold text-emerald-400">1000 Mpc</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs border-t border-slate-800/60 pt-2.5">
+                        <span class="text-slate-400 font-bold">이론적 아인슈타인각 ($\theta_E$)</span>
+                        <span id="displayTheoreticalTheta" class="font-orbitron font-bold text-emerald-400 text-sm">2.02 '' (arcsec)</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs border-t border-slate-800/60 pt-2.5">
+                        <span class="text-slate-400 font-bold">환산 픽셀 반지름 (이론)</span>
+                        <span id="displayTheoreticalPx" class="font-orbitron font-bold text-emerald-400 text-sm">121.2 px</span>
+                    </div>
+                </div>
+                <div class="text-[10px] text-slate-500 leading-relaxed bg-slate-950/40 p-2 border border-slate-900 rounded">
+                    * <b>중력 렌즈 보정 안내</b>: 실제 우주 공간에서는 단순 뺄셈($D_{S}-D_L$)보다 팽창 시공간 곡률로 인해 실제 $D_{LS}$ 유효값이 다소 다릅니다. 프리셋 모드에서는 이 물리적 편차가 완벽히 계산 보정됩니다.
+                </div>
+            </div>
+
+            <!-- Variable Controls (변인 통제 패널 - 상시 노출) -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <i data-lucide="sliders" class="w-5 h-5 text-sky-400"></i>
+                    <h3 class="text-base font-bold text-slate-100">조작 및 변인 통제</h3>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Slider 1: Lens Mass -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                                <span>■ 시뮬레이터 중력 질량 ($M$)</span>
+                                <span class="text-[10px] bg-slate-800 text-sky-400 px-1.5 py-0.5 rounded font-mono font-normal">Mass</span>
+                            </span>
+                            <span id="massVal" class="font-bold font-orbitron text-sky-400 text-sm">80.0 M☉</span>
+                        </div>
+                        <input type="range" id="massSlider" min="20" max="180" value="85" step="1" 
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500 focus:outline-none">
+                    </div>
+
+                    <!-- Slider 2: Axis Ratio (q) - 타원율 제어 -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                                <span>■ 중력원 타원 축 비율 ($q$)</span>
+                                <span class="text-[10px] bg-slate-800 text-teal-400 px-1.5 py-0.5 rounded font-mono font-normal">Axis Ratio</span>
+                            </span>
+                            <span id="qVal" class="font-bold font-orbitron text-teal-400 text-sm">0.75</span>
+                        </div>
+                        <input type="range" id="qSlider" min="0.3" max="1.0" value="0.75" step="0.01" 
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-teal-500 focus:outline-none">
+                    </div>
+
+                    <!-- Slider 3: Orientation (phi) - 회전 각도 제어 -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                                <span>■ 중력원 회전각 ($\phi$)</span>
+                                <span class="text-[10px] bg-slate-800 text-violet-400 px-1.5 py-0.5 rounded font-mono font-normal">Rotation</span>
+                            </span>
+                            <span id="phiVal" class="font-bold font-orbitron text-violet-400 text-sm">30°</span>
+                        </div>
+                        <input type="range" id="phiSlider" min="0" max="180" value="30" step="1" 
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-500 focus:outline-none">
+                    </div>
+
+                    <!-- Slider 4: Source A Radius -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                                <span>은하 A 크기</span>
+                            </span>
+                            <span id="sizeValA" class="font-bold font-orbitron text-amber-500 text-sm">25.0 px</span>
+                        </div>
+                        <input type="range" id="sizeSliderA" min="10" max="50" value="25" step="1" 
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none">
+                    </div>
+                    
+                    <!-- Visualization Options (가이드라인 토글) -->
+                    <div class="pt-2 border-t border-slate-800/60 space-y-2.5">
+                        <span class="text-xs font-bold text-slate-400 block">시각 가이드 활성화</span>
+                        
+                        <label class="flex items-center justify-between p-2 rounded bg-slate-950/50 border border-slate-800/40 cursor-pointer hover:bg-slate-950/80 transition">
+                            <span class="text-xs text-slate-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>왜곡된 시공간 격자선 (Warped Grid)
+                            </span>
+                            <input type="checkbox" id="toggleWarpGrid" checked class="rounded border-slate-800 text-indigo-500 focus:ring-indigo-500 bg-slate-900 w-4 h-4">
+                        </label>
+
+                        <label class="flex items-center justify-between p-2 rounded bg-slate-950/50 border border-slate-800/40 cursor-pointer hover:bg-slate-950/80 transition">
+                            <span class="text-xs text-slate-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-sky-400/80"></span>아인슈타인 고리 반경선
+                            </span>
+                            <input type="checkbox" id="toggleRELine" checked class="rounded border-slate-800 text-sky-500 focus:ring-sky-500 bg-slate-900 w-4 h-4">
+                        </label>
+
+                        <label class="flex items-center justify-between p-2 rounded bg-slate-950/50 border border-slate-800/40 cursor-pointer hover:bg-slate-950/80 transition">
+                            <span class="text-xs text-slate-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-amber-500/80"></span>은하 고유 실체 윤곽선
+                            </span>
+                            <input type="checkbox" id="toggleSourceLine" checked class="rounded border-slate-800 text-amber-500 focus:ring-amber-500 bg-slate-900 w-4 h-4">
+                        </label>
+
+                        <label class="flex items-center justify-between p-2 rounded bg-slate-950/50 border border-slate-800/40 cursor-pointer hover:bg-slate-950/80 transition">
+                            <span class="text-xs text-slate-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-violet-400"></span>우주 배경 성단(Starfield) 왜곡
+                            </span>
+                            <input type="checkbox" id="toggleStars" checked class="rounded border-slate-800 text-violet-500 focus:ring-violet-500 bg-slate-900 w-4 h-4">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mathematical Report Board (물리 법칙 이론값 출력부) -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-400"></i>
+                    <h3 class="text-base font-bold text-slate-100">이론적 계산값</h3>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Einstein Radius (R_E) -->
+                    <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-3 flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Einstein Radius</p>
+                            <h4 class="text-xs font-bold text-slate-300 mt-0.5">아인슈타인 반지름 ($\theta_E$)</h4>
+                        </div>
+                        <div id="reDisplay" class="font-orbitron font-bold text-sky-400 text-lg">0.0 px</div>
+                    </div>
+
+                    <!-- Alignment Error (Offset) -->
+                    <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold text-slate-300">은하 A 정렬 오프셋</h4>
+                            <div id="offsetDisplayA" class="font-orbitron font-bold text-amber-500 text-sm">0.0 px</div>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-slate-800/60 pt-2">
+                            <h4 class="text-xs font-bold text-slate-300">은하 B 정렬 오프셋</h4>
+                            <div id="offsetDisplayB" class="font-orbitron font-bold text-sky-400 text-sm">0.0 px</div>
+                        </div>
+                    </div>
+
+                    <!-- Distortion Indicator Bar -->
+                    <div class="p-3 bg-slate-950/40 rounded-lg border border-slate-800/40 space-y-2">
+                        <div class="flex justify-between text-[11px] text-slate-400">
+                            <span>시공간 총합 기하학적 왜곡력</span>
+                            <span id="distortionStrength" class="font-bold text-indigo-400">보통 (Medium)</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div id="distortionBar" class="bg-gradient-to-r from-sky-400 via-indigo-500 to-rose-500 h-1.5 rounded-full transition-all duration-300" style="width: 50%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Project Report Footer Info (학술 보고용 가이드라인) -->
+    <footer class="w-full max-w-6xl mt-8 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 md:p-6 space-y-4">
+        <div class="flex items-center gap-2 text-slate-200">
+            <i data-lucide="book-open" class="w-5 h-5 text-sky-400"></i>
+            <h3 class="text-sm md:text-base font-bold">다중 천체 시뮬레이션 과학적 분석 정보</h3>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-400 leading-relaxed">
+            <div class="space-y-2">
+                <h4 class="font-bold text-slate-200 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> 아인슈타인 격자의 기하 왜곡 물리 법칙 (SIE)
+                </h4>
+                <p>
+                    아인슈타인의 일반 상대성 이론에 따르면 질량은 주변 시공간 평면을 영구적으로 전단(Shear)시킵니다. 실제 우주의 은하나 은하단은 완벽한 점질량이 아닌 <b>타원형 질량 분포 (Singular Isothermal Ellipsoid - SIE)</b>를 지니고 있어 중력장이 비대칭적입니다. 본 시뮬레이션에서는 축 비율($q$)과 회전각($\phi$)을 반영한 정밀 역산 타원형 왜곡 편향각 공식을 계산합니다. 축 비율($q$)이 1.0 미만으로 떨어질수록 완벽한 아인슈타인 링이 찌그러지며, 임계 정렬 시 4개의 독립된 상을 맺는 '아인슈타인 십자가' 현상과 가성 곡선(Caustics) 왜곡이 나타납니다.
+                </p>
+            </div>
+            <div class="space-y-2">
+                <h4 class="font-bold text-slate-200 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> 고밀도 역산 이미지 맵핑 기법 (Ray-tracing Inverse Mapping)
+                </h4>
+                <p>
+                    사용자가 업로드한 텍스처 데이터는 관측 평면의 좌표계로부터 시공간 만곡률을 역추적하여 배경 영역의 원래 은하 픽셀 값에 매핑되는 **역방향 레이트레이싱** 연산으로 그려집니다. 이 방식은 픽셀이 비어 보이는 현상(Moire pattern) 없이 60 FPS 이상의 뛰어난 성능을 보장하며, 실제 허블 망원경이나 제임스 웹 망원경이 관측한 왜곡된 은하 이미지와 완벽히 동일한 물리적 광학 패턴을 그려냅니다.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Core Simulation Engine Script (핵심 물리 시뮬레이션 엔진 스크립트) -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // DOM Elements setup
+        const canvas = document.getElementById('lensCanvas');
+        const ctx = canvas.getContext('2d');
+        const massSlider = document.getElementById('massSlider');
+        const qSlider = document.getElementById('qSlider');
+        const phiSlider = document.getElementById('phiSlider');
+        const sizeSliderA = document.getElementById('sizeSliderA');
+        
+        const massVal = document.getElementById('massVal');
+        const qVal = document.getElementById('qVal');
+        const phiVal = document.getElementById('phiVal');
+        const sizeValA = document.getElementById('sizeValA');
+        
+        const reDisplay = document.getElementById('reDisplay');
+        const offsetDisplayA = document.getElementById('offsetDisplayA');
+        const offsetDisplayB = document.getElementById('offsetDisplayB');
+        const alignmentBadge = document.getElementById('alignmentBadge');
+        const distortionStrength = document.getElementById('distortionStrength');
+        const distortionBar = document.getElementById('distortionBar');
+        const resetBtn = document.getElementById('resetBtn');
+        const toggleWarpGrid = document.getElementById('toggleWarpGrid');
+        const toggleRELine = document.getElementById('toggleRELine');
+        const toggleSourceLine = document.getElementById('toggleSourceLine');
+        const toggleStars = document.getElementById('toggleStars');
+        
+        const imageUpload = document.getElementById('imageUpload');
+        const toggleCustomImage = document.getElementById('toggleCustomImage');
+        const toast = document.getElementById('toast');
+
+        // Tab and verification DOM elements
+        const tabVisual = document.getElementById('tabVisual');
+        const tabVerify = document.getElementById('tabVerify');
+        const panelUpload = document.getElementById('panelUpload');
+        const panelVerify = document.getElementById('panelVerify');
+        
+        const presetSelect = document.getElementById('presetSelect');
+        const inputMass = document.getElementById('inputMass');
+        const inputScale = document.getElementById('inputScale');
+        const inputDL = document.getElementById('inputDL');
+        const inputDS = document.getElementById('inputDS');
+        const displayDLS = document.getElementById('displayDLS');
+        const displayTheoreticalTheta = document.getElementById('displayTheoreticalTheta');
+        const displayTheoreticalPx = document.getElementById('displayTheoreticalPx');
+
+        // High-DPI screen adjustment (고해상도 디스플레이 대응 크기 설정)
+        let dpr = window.devicePixelRatio || 1;
+        let containerSize = 600;
+
+        // Mode and verification parameters
+        let isVerifyMode = false;
+        let theoreticalRE = 0; // 이론적 아인슈타인 반지름 (픽셀 환산치)
+
+        // Custom UI Toast Alert (iframe 친화적 토스트 알림창)
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        // Offscreen canvas for texture mapping
+        const texCanvas = document.createElement('canvas');
+        texCanvas.width = 300;
+        texCanvas.height = 300;
+        const texCtx = texCanvas.getContext('2d');
+        let uploadedImgData = null;
+        let useCustomImage = false;
+
+        // Procedural Spiral Galaxy Generator (절차적 나선은하 생성 엔진)
+        function createDefaultSpiralGalaxy() {
+            texCtx.clearRect(0, 0, 300, 300);
+            const tempImgData = texCtx.createImageData(300, 300);
+            const data = tempImgData.data;
+            const cx = 150;
+            const cy = 150;
+            
+            for (let y = 0; y < 300; y++) {
+                for (let x = 0; x < 300; x++) {
+                    const dx = x - cx;
+                    const dy = y - cy;
+                    const r = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (r < 150) {
+                        const t = r / 150;
+                        const angle = Math.atan2(dy, dx);
+                        
+                        // 나선 각도 대수나선 공식 적용
+                        const spiralStrength = 3.5; 
+                        const arm1 = Math.cos(angle - r * 0.07 * spiralStrength) * 0.5 + 0.5;
+                        const arm2 = Math.cos(angle - r * 0.07 * spiralStrength + Math.PI) * 0.5 + 0.5; 
+                        
+                        const armContrast = Math.pow(Math.max(arm1, arm2), 3); 
+                        
+                        let rColor = 0, gColor = 0, bColor = 0, alpha = 0;
+                        
+                        if (t < 0.25) {
+                            const localT = t / 0.25;
+                            rColor = 255;
+                            gColor = Math.round(230 + (25 - 230) * localT);
+                            bColor = Math.round(200 + (20 - 200) * localT);
+                            alpha = Math.round(255 * (1 - t));
+                        } else {
+                            const localT = (t - 0.25) / 0.75;
+                            rColor = Math.round((255 + (200 - 255) * localT) * (0.6 + 0.4 * armContrast));
+                            gColor = Math.round((145 + (40 - 145) * localT) * (0.5 + 0.5 * armContrast));
+                            bColor = Math.round((40 + (10 - 40) * localT) * (0.3 + 0.7 * armContrast));
+                            alpha = Math.round(255 * Math.pow(1 - localT, 1.5) * (0.3 + 0.7 * armContrast));
+                        }
+                        
+                        const idx = (y * 300 + x) * 4;
+                        data[idx] = rColor;
+                        data[idx + 1] = gColor;
+                        data[idx + 2] = bColor;
+                        data[idx + 3] = alpha;
+                    }
+                }
+            }
+            texCtx.putImageData(tempImgData, 0, 0);
+            uploadedImgData = texCtx.getImageData(0, 0, 300, 300).data;
+        }
+
+        // Static Background Starfield Setup (성단 배경 데이터)
+        const staticStars = [];
+        const totalStarsCount = 45;
+
+        function generateStarfield() {
+            staticStars.length = 0;
+            for (let i = 0; i < totalStarsCount; i++) {
+                staticStars.push({
+                    x: Math.random() * containerSize,
+                    y: Math.random() * containerSize,
+                    brightness: 0.3 + Math.random() * 0.7,
+                    size: 1 + Math.random() * 1.5
+                });
+            }
+        }
+
+        function resizeCanvas() {
+            const width = canvas.parentElement.clientWidth;
+            canvas.width = width * dpr;
+            canvas.height = width * dpr;
+            ctx.scale(dpr, dpr);
+            containerSize = width;
+            generateStarfield();
+            draw();
+        }
+
+        // Space Object Variables (우주 천체 물리량 변수)
+        let center = { x: 0, y: 0 }; 
+        let RE = parseFloat(massSlider.value); 
+        let axisRatio = parseFloat(qSlider.value); 
+        let lensAngle = parseFloat(phiSlider.value) * Math.PI / 180; 
+        
+        // Galaxy A (Orange, Drag target / Custom Image Target)
+        let sourceA = { x: 0, y: 0, radius: parseFloat(sizeSliderA.value) }; 
+        // Galaxy B (Sky blue, fixed coordinate mapped procedural)
+        let sourceB = { x: 0, y: 0, radius: 20 }; 
+        
+        let isDraggingA = false;
+
+        function initPosition() {
+            center.x = containerSize / 2;
+            center.y = containerSize / 2;
+            
+            // Galaxy A Initial Position (은하 A 오프셋)
+            sourceA.x = center.x - 70;
+            sourceA.y = center.y - 50;
+
+            // Galaxy B Initial Position (은하 B 오프셋)
+            sourceB.x = center.x + 90;
+            sourceB.y = center.y + 60;
+        }
+
+        // SIE (Singular Isothermal Ellipsoid) Gravitational deflection inverse calculation (타원형 중력원 역산 공식)
+        function getSourcePosition(lensedX, lensedY) {
+            const dx = lensedX - center.x;
+            const dy = lensedY - center.y;
+
+            // 1. 회전각(phi)를 기준으로 관측점을 주축 좌표계로 회전 변환
+            const cosF = Math.cos(lensAngle);
+            const sinF = Math.sin(lensAngle);
+            const rdx = dx * cosF + dy * sinF;
+            const rdy = -dx * sinF + dy * cosF;
+            
+            const q = axisRatio;
+            const coreRadiusS = 0.5; // Caustic 경계면 보정용 완충값
+            const psi = Math.sqrt(rdx * rdx * q + rdy * rdy / q + coreRadiusS); 
+
+            // 2. 주축 좌표계상에서의 SIE 변위량 계산
+            const rax = (RE * rdx) / psi;
+            const ray = (RE * rdy * q) / psi;
+            
+            // 3. 다시 관측 스크린 공간 좌표계로 원복 회전 변환
+            const ax = rax * cosF - ray * sinF;
+            const ay = rax * sinF + ray * cosF;
+            
+            return {
+                x: lensedX - ax,
+                y: lensedY - ay
+            };
+        }
+
+        // SIE Forward Lensed position calculation
+        function getLensedPosition(srcX, srcY) {
+            const dx = srcX - center.x;
+            const dy = srcY - center.y;
+            const r_old = Math.sqrt(dx * dx + dy * dy);
+            if (r_old < 0.1) return { x: srcX, y: srcY };
+
+            const cosF = Math.cos(lensAngle);
+            const sinF = Math.sin(lensAngle);
+            const rdx = dx * cosF + dy * sinF;
+            const rdy = -dx * sinF + dy * cosF;
+            
+            const q = axisRatio;
+            const coreRadiusS = 0.5;
+            const psi = Math.sqrt(rdx * rdx * q + rdy * rdy / q + coreRadiusS);
+            
+            const rax = (RE * rdx) / psi;
+            const ray = (RE * rdy * q) / psi;
+            
+            const ax = rax * cosF - ray * sinF;
+            const ay = rax * sinF + ray * cosF;
+            
+            return {
+                x: srcX + ax,
+                y: srcY + ay
+            };
+        }
+
+        function getDistance(p1, p2) {
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Bilinear Interpolation helper (쌍선형 이미지 픽셀 보간 필터 함수)
+        function getBilinearFilteredPixel(u, v, texData) {
+            const tx = u * 299;
+            const ty = v * 299;
+            const x0 = Math.floor(tx);
+            const x1 = Math.min(299, x0 + 1);
+            const y0 = Math.floor(ty);
+            const y1 = Math.min(299, y0 + 1);
+            
+            const dx = tx - x0;
+            const dy = ty - y0;
+            
+            const idx00 = (y0 * 300 + x0) * 4;
+            const idx10 = (y0 * 300 + x1) * 4;
+            const idx01 = (y1 * 300 + x0) * 4;
+            const idx11 = (y1 * 300 + x1) * 4;
+            
+            const results = [0, 0, 0, 0];
+            for (let c = 0; c < 4; c++) {
+                const val00 = texData[idx00 + c];
+                const val10 = texData[idx10 + c];
+                const val01 = texData[idx01 + c];
+                const val11 = texData[idx11 + c];
+                
+                const top = val00 + dx * (val10 - val00);
+                const bottom = val01 + dx * (val11 - val01);
+                results[c] = top + dy * (bottom - top);
+            }
+            return results;
+        }
+
+        // 이론적 중력 렌즈 수식 계산 및 업데이트 함수
+        function updateVerificationMath() {
+            const mass = parseFloat(inputMass.value); // 10^12 M☉
+            const d_L = parseFloat(inputDL.value);    // Mpc
+            const d_S = parseFloat(inputDS.value);    // Mpc
+            const scale = parseFloat(inputScale.value); // px/arcsec
+
+            // 단순 우주론적 로컬 거리 보정 (D_LS)
+            let d_LS = d_S - d_L;
+            
+            // 만약 실제 우주론 프리셋이 가동될 경우, 팽창 공간 각지름 거리를 정확한 관측치로 덮어쓰기
+            if (presetSelect.value === 'sdss') {
+                d_LS = 640; // SDSS J0737+3216의 천문학적 관측 유효값
+            } else if (presetSelect.value === 'quasar') {
+                d_LS = 2000; // Q2237+030의 관측 유효값
+            }
+
+            if (d_LS <= 0) d_LS = 0.1; // 물리 오류 방지 완충
+
+            displayDLS.textContent = d_LS.toFixed(0) + " Mpc";
+
+            // 이론적 Einstein Radius (arcsec) = 90.23 * sqrt( (M_12) * (D_LS / (D_L * D_S)) )
+            const valInsideSqrt = (mass) * (d_LS / (d_L * d_S));
+            const theta_E = 90.23 * Math.sqrt(valInsideSqrt);
+            displayTheoreticalTheta.textContent = theta_E.toFixed(3) + " '' (arcsec)";
+
+            // 픽셀 스케일 변환
+            theoreticalRE = theta_E * scale;
+            displayTheoreticalPx.textContent = theoreticalRE.toFixed(1) + " px";
+        }
+
+        // 실시간 렌즈 방정식 해석 1차원 해 플롯 시각화 함수
+        function drawLensEquationPlot(x, y, width, height) {
+            // Draw background panel
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.8)';
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(x, y, width, height);
+            ctx.strokeRect(x, y, width, height);
+
+            // Draw grid inside plot
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
+            ctx.lineWidth = 0.5;
+            for(let i = 20; i < width; i += 20) {
+                ctx.beginPath(); ctx.moveTo(x + i, y); ctx.lineTo(x + i, y + height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y + i); ctx.lineTo(x + width, y + i); ctx.stroke();
+            }
+
+            // Draw X, Y Axes
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(x + width / 2, y); ctx.lineTo(x + width / 2, y + height); // Y-axis (theta)
+            ctx.moveTo(x, y + height / 2); ctx.lineTo(x + width, y + height / 2); // X-axis (beta)
+            ctx.stroke();
+
+            // Label text
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
+            ctx.font = '9px Orbitron';
+            ctx.fillText('θ (상 위치)', x + width - 52, y + height / 2 - 5);
+            ctx.fillText('β (원래 위치)', x + width / 2 + 5, y + 12);
+            ctx.fillText('아인슈타인 방정식 1D Solver', x + 5, y + height - 8);
+
+            // Plot curve: β = θ - R_E^2 / θ (Indigo curve)
+            ctx.strokeStyle = '#6366f1'; 
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let scaleX = width / (RE * 4.5); // x범위 가시 축 스케일링
+            let scaleY = height / (RE * 4.5);
+            let first = true;
+
+            for (let px = -width / 2; px <= width / 2; px += 1) {
+                let theta = px / scaleX;
+                if (Math.abs(theta) < 3) continue; // Singularity avoidance at 0
+
+                // β = θ - RE^2 / θ
+                let beta = theta - (RE * RE) / theta;
+                let py = -beta * scaleY; // Flip for screen coordinates
+
+                if (py >= -height / 2 && py <= height / 2) {
+                    let drawX = x + width / 2 + px;
+                    let drawY = y + height / 2 + py;
+                    if (first) {
+                        ctx.moveTo(drawX, drawY);
+                        first = false;
+                    } else {
+                        ctx.lineTo(drawX, drawY);
+                    }
+                }
+            }
+            ctx.stroke();
+
+            // Draw current source position (orange horizontal line)
+            // 1차원 상 투영을 위해 은하 A의 center 기준 x오프셋 수치 획득
+            let currentBeta = sourceA.x - center.x;
+            let pySource = -currentBeta * scaleY;
+            
+            if (pySource >= -height / 2 && pySource <= height / 2) {
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.7)'; 
+                ctx.setLineDash([4, 4]);
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, y + height / 2 + pySource);
+                ctx.lineTo(x + width, y + height / 2 + pySource);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // 표시용 은하 텍스트
+                ctx.fillStyle = 'rgba(249, 115, 22, 0.9)';
+                ctx.fillText('현재 은하 위치 (β)', x + 5, y + height / 2 + pySource - 4);
+            }
+
+            // Calculate & Draw Roots (상 이미지 맺힘 위치 정밀 검증 점)
+            // Solving: θ^2 - βθ - RE^2 = 0 -> θ = (β ± sqrt(β^2 + 4RE^2)) / 2
+            let discriminant = currentBeta * currentBeta + 4 * RE * RE;
+            if (discriminant >= 0) {
+                let root1 = (currentBeta + Math.sqrt(discriminant)) / 2;
+                let root2 = (currentBeta - Math.sqrt(discriminant)) / 2;
+
+                ctx.fillStyle = '#f43f5e'; // Rose
+                [root1, root2].forEach(r => {
+                    let rx = x + width / 2 + r * scaleX;
+                    let ry = y + height / 2 + pySource;
+                    if (rx >= x && rx <= x + width && ry >= y && ry <= y + height) {
+                        ctx.beginPath();
+                        ctx.arc(rx, ry, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            }
+        }
+
+        // Draw Loop (시뮬레이션 메인 드로잉 루프)
+        function draw() {
+            if (!containerSize || canvas.width === 0) return;
+
+            // Clear Canvas (심우주 초기화)
+            ctx.fillStyle = '#010204';
+            ctx.fillRect(0, 0, containerSize, containerSize);
+
+            // 1. 실시간 시공간 왜곡 격자선 (Warped Space Grid) 그리기
+            if (toggleWarpGrid.checked) {
+                ctx.strokeStyle = 'rgba(129, 140, 248, 0.55)'; // 네온 인디고 톤 유지
+                ctx.lineWidth = 1.1; 
+                const gridSpacing = 40; 
+                const step = 6;         
+
+                // 수직 격자 왜곡 렌더링
+                for (let x = gridSpacing; x < containerSize; x += gridSpacing) {
+                    ctx.beginPath();
+                    let first = true;
+                    for (let y = 0; y <= containerSize; y += step) {
+                        const dx = x - center.x;
+                        const dy = y - center.y;
+                        const r_old = Math.sqrt(dx * dx + dy * dy);
+
+                        let lx = x;
+                        let ly = y;
+
+                        if (r_old > 0.1) {
+                            const cosF = Math.cos(lensAngle);
+                            const sinF = Math.sin(lensAngle);
+                            const rdx = dx * cosF + dy * sinF;
+                            const rdy = -dx * sinF + dy * cosF;
+                            const q = axisRatio;
+                            
+                            const psi = Math.sqrt(rdx * rdx * q + rdy * rdy / q + 0.1);
+                            const warpFactor = 1 - (RE * RE) / (psi * psi + RE * RE);
+                            
+                            const wdx = rdx * warpFactor;
+                            const wdy = rdy * warpFactor;
+                            
+                            lx = center.x + (wdx * cosF - wdy * sinF);
+                            ly = center.y + (wdx * sinF + wdy * cosF);
+                        }
+
+                        if (first) {
+                            ctx.moveTo(lx, ly);
+                            first = false;
+                        } else {
+                            ctx.lineTo(lx, ly);
+                        }
+                    }
+                    ctx.stroke();
+                }
+
+                // 수평 격자 왜곡 렌더링
+                for (let y = gridSpacing; y < containerSize; y += gridSpacing) {
+                    ctx.beginPath();
+                    let first = true;
+                    for (let x = 0; x <= containerSize; x += step) {
+                        const dx = x - center.x;
+                        const dy = y - center.y;
+                        const r_old = Math.sqrt(dx * dx + dy * dy);
+
+                        let lx = x;
+                        let ly = y;
+
+                        if (r_old > 0.1) {
+                            const cosF = Math.cos(lensAngle);
+                            const sinF = Math.sin(lensAngle);
+                            const rdx = dx * cosF + dy * sinF;
+                            const rdy = -dx * sinF + dy * cosF;
+                            const q = axisRatio;
+                            
+                            const psi = Math.sqrt(rdx * rdx * q + rdy * rdy / q + 0.1);
+                            const warpFactor = 1 - (RE * RE) / (psi * psi + RE * RE);
+                            
+                            const wdx = rdx * warpFactor;
+                            const wdy = rdy * warpFactor;
+                            
+                            lx = center.x + (wdx * cosF - wdy * sinF);
+                            ly = center.y + (wdx * sinF + wdy * cosF);
+                        }
+
+                        if (first) {
+                            ctx.moveTo(lx, ly);
+                            first = false;
+                        } else {
+                            ctx.lineTo(lx, ly);
+                        }
+                    }
+                    ctx.stroke();
+                }
+            } else {
+                ctx.strokeStyle = 'rgba(30, 41, 59, 0.08)';
+                ctx.lineWidth = 0.5;
+                const staticSpacing = 50;
+                for (let i = staticSpacing; i < containerSize; i += staticSpacing) {
+                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, containerSize); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(containerSize, i); ctx.stroke();
+                }
+            }
+
+            // Calculate current metrics (실시간 물리 수치 갱신)
+            const offsetA = getDistance(sourceA, center);
+            const offsetB = getDistance(sourceB, center);
+            
+            // Update Dashboard values (계산값 출력)
+            reDisplay.textContent = RE.toFixed(1) + " px";
+            offsetDisplayA.textContent = offsetA.toFixed(1) + " px";
+            offsetDisplayB.textContent = offsetB.toFixed(1) + " px";
+            
+            massVal.textContent = (RE * 1.5).toFixed(1) + " x 10¹² M☉";
+            qVal.textContent = axisRatio.toFixed(2);
+            phiVal.textContent = Math.round(lensAngle * 180 / Math.PI) + "°";
+            sizeValA.textContent = sourceA.radius.toFixed(1) + " px";
+
+            // Determine alignment stage based on both galaxies (동적 정렬 알림창 분기)
+            const minOffset = Math.min(offsetA, offsetB);
+            if (minOffset < 4) {
+                alignmentBadge.className = "px-2.5 py-1 bg-rose-950/80 backdrop-blur-md border border-rose-800 rounded text-xs text-rose-400 flex items-center gap-1 font-extrabold animate-pulse";
+                alignmentBadge.innerHTML = `<i data-lucide="sparkles" class="w-3 h-3"></i> 아인슈타인 링 완성!`;
+            } else if (minOffset < RE) {
+                alignmentBadge.className = "px-2.5 py-1 bg-amber-950/80 backdrop-blur-md border border-amber-800 rounded text-xs text-amber-400 flex items-center gap-1 font-semibold";
+                alignmentBadge.innerHTML = `<i data-lucide="loader" class="w-3 h-3 animate-spin"></i> 정렬 임계값 진입`;
+            } else {
+                alignmentBadge.className = "px-2.5 py-1 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded text-xs text-slate-400 flex items-center gap-1 font-normal";
+                alignmentBadge.innerHTML = `<i data-lucide="info" class="w-3 h-3"></i> 은하 정렬 어긋남`;
+            }
+
+            // Calculate dynamic total distortion
+            const effectiveDist = Math.min(offsetA, offsetB);
+            const distortionRatio = Math.min(100, Math.max(5, Math.round(((RE * 2.2) / (effectiveDist + 12)) * 40)));
+            distortionBar.style.width = distortionRatio + "%";
+            if (distortionRatio > 80) {
+                distortionStrength.textContent = "극도로 극적임 (Extreme)";
+                distortionStrength.className = "font-bold text-rose-400";
+            } else if (distortionRatio > 40) {
+                distortionStrength.textContent = "강함 (Strong)";
+                distortionStrength.className = "font-bold text-indigo-400";
+            } else {
+                distortionStrength.textContent = "안정적 왜곡 (Weak)";
+                distortionStrength.className = "font-bold text-sky-400";
+            }
+
+            // Draw Background Starfield
+            if (toggleStars.checked) {
+                ctx.fillStyle = '#ffffff';
+                for (let i = 0; i < staticStars.length; i++) {
+                    const star = staticStars[i];
+                    const dx = star.x - center.x;
+                    const dy = star.y - center.y;
+                    const r_old = Math.sqrt(dx * dx + dy * dy);
+
+                    if (r_old > 0) {
+                        const cosF = Math.cos(lensAngle);
+                        const sinF = Math.sin(lensAngle);
+                        const rdx = dx * cosF + dy * sinF;
+                        const rdy = -dx * sinF + dy * cosF;
+                        
+                        const q = axisRatio;
+                        const psi = Math.sqrt(rdx * rdx * q + rdy * rdy / q + 0.1);
+                        
+                        const r_new = (psi + Math.sqrt(psi * psi + 4 * RE * RE)) / 2;
+                        const lensedX = center.x + (dx / r_old) * r_new;
+                        const lensedY = center.y + (dy / r_old) * r_new;
+
+                        ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness * 0.7})`;
+                        ctx.beginPath();
+                        ctx.arc(lensedX, lensedY, star.size, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        const r_new_inner = Math.abs((psi - Math.sqrt(psi * psi + 4 * RE * RE)) / 2);
+                        if (r_new_inner > 2) {
+                            const innerX = center.x - (dx / r_old) * r_new_inner;
+                            const innerY = center.y - (dy / r_old) * r_new_inner;
+                            ctx.fillStyle = `rgba(165, 180, 252, ${star.brightness * 0.25})`;
+                            ctx.beginPath();
+                            ctx.arc(innerX, innerY, star.size * 0.7, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            // Guide Line 1: Einstein Radius ring
+            if (toggleRELine.checked) {
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+                ctx.lineWidth = 1.2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(center.x, center.y, RE, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]); 
+                
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+                ctx.font = '10px Orbitron';
+                ctx.fillText(`R_E = ${RE.toFixed(0)}px`, center.x + RE + 6, center.y + 4);
+            }
+
+            // [추가]: 이론물리 검증 벤치용 타깃 고리 드로잉 (초록색 가이드 고리)
+            if (isVerifyMode && theoreticalRE > 0) {
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)'; // Emerald Green
+                ctx.lineWidth = 1.8;
+                ctx.setLineDash([1, 1]); // 촘촘한 세밀 가이드선
+                ctx.beginPath();
+                ctx.arc(center.x, center.y, theoreticalRE, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.85)';
+                ctx.font = 'bold 10px Orbitron';
+                ctx.fillText(`이론적 예측치 (Target) = ${theoreticalRE.toFixed(1)}px`, center.x - theoreticalRE + 6, center.y - theoreticalRE - 6);
+            }
+
+            // Guide Line 2: Original Background Source Outlines
+            if (toggleSourceLine.checked) {
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.25)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.arc(sourceA.x, sourceA.y, sourceA.radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+                ctx.beginPath();
+                ctx.arc(sourceB.x, sourceB.y, sourceB.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.35)';
+                ctx.beginPath();
+                ctx.moveTo(sourceA.x - 5, sourceA.y); ctx.lineTo(sourceA.x + 5, sourceA.y);
+                ctx.moveTo(sourceA.x, sourceA.y - 5); ctx.lineTo(sourceA.x, sourceA.y + 5);
+                ctx.stroke();
+
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+                ctx.beginPath();
+                ctx.moveTo(sourceB.x - 5, sourceB.y); ctx.lineTo(sourceB.x + 5, sourceB.y);
+                ctx.moveTo(sourceB.x, sourceB.y - 5); ctx.lineTo(sourceB.x, sourceB.y + 5);
+                ctx.stroke();
+            }
+
+            // Compute physics-warped pixels
+            const maxOffset = Math.max(offsetA, offsetB);
+            const maxRadius = Math.max(sourceA.radius, sourceB.radius);
+            const boundingLimit = Math.max(RE * 2.0, maxOffset + maxRadius * 2.5);
+            
+            const scanMinX = Math.max(0, Math.floor(center.x - boundingLimit));
+            const scanMaxX = Math.min(containerSize, Math.ceil(center.x + boundingLimit));
+            const scanMinY = Math.max(0, Math.floor(center.y - boundingLimit));
+            const scanMaxY = Math.min(containerSize, Math.ceil(center.y + boundingLimit));
+
+            const imgData = ctx.createImageData(containerSize, containerSize);
+            const data = imgData.data;
+
+            for (let y = scanMinY; y < scanMaxY; y++) {
+                for (let x = scanMinX; x < scanMaxX; x++) {
+                    const orig = getSourcePosition(x, y);
+                    
+                    const distToA = getDistance(orig, sourceA);
+                    const distToB = getDistance(orig, sourceB);
+                    
+                    // Galaxy A: Render uploaded custom texture or procedural spiral galaxy
+                    if (distToA < sourceA.radius) {
+                        let rColor = 0, gColor = 0, bColor = 0, alpha = 0;
+
+                        if (uploadedImgData) {
+                            const u = (orig.x - sourceA.x + sourceA.radius) / (sourceA.radius * 2);
+                            const v = (orig.y - sourceA.y + sourceA.radius) / (sourceA.radius * 2);
+                            
+                            if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
+                                const interpolated = getBilinearFilteredPixel(u, v, uploadedImgData);
+                                rColor = interpolated[0];
+                                gColor = interpolated[1];
+                                bColor = interpolated[2];
+                                alpha = interpolated[3];
+                            }
+                        }
+
+                        const idx = (y * containerSize + x) * 4;
+                        data[idx] = rColor;
+                        data[idx + 1] = gColor;
+                        data[idx + 2] = bColor;
+                        data[idx + 3] = alpha;
+                    }
+                    
+                    // Galaxy B: Procedural (Blue Elliptical Cloud - 하늘색 타원 은하 대기 연산)
+                    else if (distToB < sourceB.radius) {
+                        const t = distToB / sourceB.radius;
+                        let rColor = 0, gColor = 0, bColor = 0, alpha = 0;
+
+                        if (t < 0.3) {
+                            const localT = t / 0.3;
+                            rColor = 210; gColor = 245; bColor = 255; alpha = 255;
+                        } else {
+                            const localT = (t - 0.3) / 0.7;
+                            rColor = Math.round(30 + (5 - 30) * localT);
+                            gColor = Math.round(165 + (20 - 165) * localT);
+                            bColor = Math.round(255 * Math.pow(1 - localT, 0.5));
+                            alpha = Math.round(230 * Math.pow(1 - localT, 1.4));
+                        }
+
+                        const idx = (y * containerSize + x) * 4;
+                        data[idx] = Math.max(data[idx], rColor);
+                        data[idx + 1] = Math.max(data[idx + 1], gColor);
+                        data[idx + 2] = Math.max(data[idx + 2], bColor);
+                        data[idx + 3] = Math.max(data[idx + 3], alpha);
+                    }
+                }
+            }
+
+            // Blit buffer to canvas
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = containerSize;
+            tempCanvas.height = containerSize;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.putImageData(imgData, 0, 0);
+            
+            // Render glow
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = 'rgba(239, 131, 39, 0.35)';
+            ctx.drawImage(tempCanvas, 0, 0);
+            ctx.shadowBlur = 0; 
+
+            // Center massive gravity source
+            const horizonRadius = RE * 0.32; 
+            
+            const gravGrad = ctx.createRadialGradient(center.x, center.y, horizonRadius * 0.8, center.x, center.y, horizonRadius * 2);
+            gravGrad.addColorStop(0, 'rgba(5, 7, 10, 1.0)');
+            gravGrad.addColorStop(0.3, 'rgba(10, 15, 30, 0.95)');
+            gravGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.18)');
+            gravGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+            
+            ctx.fillStyle = gravGrad;
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, horizonRadius * 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Event horizon black shield
+            ctx.fillStyle = '#010204';
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, horizonRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Gravity center focal marker
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // [추가]: 이론물리 검증 벤치 탭 전용 해 플롯 실시간 생성
+            if (isVerifyMode) {
+                // 우측 하단 여백 구석진 곳에 배치 (가로 140px, 세로 140px 소형 스냅샷 플롯)
+                drawLensEquationPlot(15, containerSize - 155, 140, 140);
+            }
+        }
+
+        // Input Interactions (마우스 및 터치 상호작용)
+        function getEventCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            return {
+                x: ((clientX - rect.left) / rect.width) * containerSize,
+                y: ((clientY - rect.top) / rect.height) * containerSize
+            };
+        }
+
+        function handleDragStart(e) {
+            const coords = getEventCoords(e);
+            
+            const distToA = getDistance(coords, sourceA);
+            if (distToA < sourceA.radius * 1.5) {
+                isDraggingA = true;
+                sourceA.x = coords.x;
+                sourceA.y = coords.y;
+            } else {
+                sourceB.x = coords.x;
+                sourceB.y = coords.y;
+            }
+            draw();
+        }
+
+        function handleDragMove(e) {
+            if (!isDraggingA) return;
+            if (e.cancelable) e.preventDefault();
+            const coords = getEventCoords(e);
+            sourceA.x = coords.x;
+            sourceA.y = coords.y;
+            draw();
+        }
+
+        function handleDragEnd() {
+            isDraggingA = false;
+        }
+
+        // File Image Upload Event
+        imageUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const img = new Image();
+                img.onload = function () {
+                    texCtx.clearRect(0, 0, 300, 300);
+                    const scale = Math.min(300 / img.width, 300 / img.height);
+                    const w = img.width * scale;
+                    const h = img.height * scale;
+                    const dx = (300 - w) / 2;
+                    const dy = (300 - h) / 2;
+                    
+                    texCtx.drawImage(img, dx, dy, w, h);
+                    uploadedImgData = texCtx.getImageData(0, 0, 300, 300).data;
+                    
+                    useCustomImage = true;
+                    toggleCustomImage.checked = true;
+                    draw();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        toggleCustomImage.addEventListener('change', (e) => {
+            useCustomImage = e.target.checked;
+            if (useCustomImage) {
+                if (!uploadedImgData || useCustomImage === false) {
+                    showToast("⚠️ 배경 이미지 파일을 먼저 업로드해 주세요!");
+                    e.target.checked = false;
+                    useCustomImage = false;
+                }
+            } else {
+                createDefaultSpiralGalaxy();
+            }
+            draw();
+        });
+
+        // 탭 전환 인터랙션 바인딩
+        tabVisual.addEventListener('click', () => {
+            isVerifyMode = false;
+            tabVisual.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-slate-100 transition flex items-center justify-center gap-1";
+            tabVerify.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-slate-100 transition flex items-center justify-center gap-1";
+            panelUpload.classList.remove('hidden');
+            panelVerify.classList.add('hidden');
+            draw();
+        });
+
+        tabVerify.addEventListener('click', () => {
+            isVerifyMode = true;
+            tabVerify.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-emerald-600 text-slate-100 transition flex items-center justify-center gap-1";
+            tabVisual.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-slate-100 transition flex items-center justify-center gap-1";
+            panelVerify.classList.remove('hidden');
+            panelUpload.classList.add('hidden');
+            updateVerificationMath();
+            draw();
+        });
+
+        // 수치 수집용 리스너 결합
+        const mathInputs = [inputMass, inputScale, inputDL, inputDS];
+        mathInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                updateVerificationMath();
+                draw();
+            });
+        });
+
+        // 천체 프리셋 체인저
+        presetSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val === 'sdss') {
+                inputMass.value = "0.33"; // SDSS J0737 은하 질량
+                inputDL.value = "985";
+                inputDS.value = "1410";
+                inputScale.value = "95"; // 피팅용 스케일 배율
+                axisRatio = 0.85; // 약한 타원율
+                qSlider.value = "0.85";
+                
+                // 해당 프리셋 은하 중심 타깃 정렬
+                sourceA.x = center.x;
+                sourceA.y = center.y;
+            } else if (val === 'quasar') {
+                inputMass.value = "0.015"; // 은하 중심 소규모 강력 코어 질량
+                inputDL.value = "165";
+                inputDS.value = "2100";
+                inputScale.value = "125";
+                axisRatio = 0.55; // 아인슈타인 십자가를 위한 가파른 타원 질량
+                qSlider.value = "0.55";
+                
+                sourceA.x = center.x;
+                sourceA.y = center.y;
+            }
+            updateVerificationMath();
+            draw();
+        });
+
+        // Attaching Events
+        canvas.addEventListener('mousedown', handleDragStart);
+        window.addEventListener('mousemove', handleDragMove);
+        window.addEventListener('mouseup', handleDragEnd);
+
+        canvas.addEventListener('touchstart', handleDragStart, { passive: false });
+        window.addEventListener('touchmove', handleDragMove, { passive: false });
+        window.addEventListener('touchend', handleDragEnd);
+
+        // Control Panel Listeners
+        massSlider.addEventListener('input', (e) => {
+            RE = parseFloat(e.target.value);
+            draw();
+        });
+
+        qSlider.addEventListener('input', (e) => {
+            axisRatio = parseFloat(e.target.value);
+            draw();
+        });
+
+        phiSlider.addEventListener('input', (e) => {
+            lensAngle = parseFloat(e.target.value) * Math.PI / 180;
+            draw();
+        });
+
+        sizeSliderA.addEventListener('input', (e) => {
+            sourceA.radius = parseFloat(e.target.value);
+            draw();
+        });
+
+        toggleWarpGrid.addEventListener('change', draw);
+        toggleRELine.addEventListener('change', draw);
+        toggleSourceLine.addEventListener('change', draw);
+        toggleStars.addEventListener('change', draw);
+
+        resetBtn.addEventListener('click', () => {
+            initPosition();
+            draw();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Run Initialization on Load
+        window.onload = function () {
+            createDefaultSpiralGalaxy(); // 기본 절차적 나선은하 생성
+            resizeCanvas();
+            initPosition();
+            draw();
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>

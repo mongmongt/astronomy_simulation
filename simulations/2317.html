@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>태양풍과 밴앨런대 물리 스케일 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .font-sci-fi {
+            font-family: 'Orbitron', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/85 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-4 h-4 rounded-full bg-cyan-500 animate-pulse"></div>
+                <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                    태양-지구 정밀 물리 스케일 시뮬레이터 <span class="text-xs text-cyan-400 font-sci-fi font-normal">[1 AU Scale Journey]</span>
+                </h1>
+            </div>
+            <span class="text-xs text-slate-400 hidden md:inline-block">실제 태양-지구간 거리 대비 물리 감속 효과 실시간 구현</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Simulation Canvas Area (Left/Top 8 Columns) -->
+        <div class="lg:col-span-8 flex flex-col gap-4">
+            <div class="relative bg-black border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex-grow flex flex-col min-h-[480px] md:min-h-[580px]">
+                
+                <!-- Physical HUD Overlay (Telemetries - 핵심 한글 지표 3가지) -->
+                <div class="absolute top-4 left-4 right-4 z-10 grid grid-cols-3 gap-3 text-xs font-sci-fi pointer-events-none">
+                    <div class="bg-slate-950/90 border border-slate-800/80 rounded-lg p-2.5 backdrop-blur-sm text-center">
+                        <div class="text-slate-500 text-[10px] font-bold tracking-wider mb-0.5">태양풍 속도</div>
+                        <div class="text-amber-400 font-bold text-sm font-sci-fi" id="hud-cme-speed">400 km/s</div>
+                    </div>
+                    <div class="bg-slate-950/90 border border-slate-800/80 rounded-lg p-2.5 backdrop-blur-sm text-center">
+                        <div class="text-slate-500 text-[10px] font-bold tracking-wider mb-0.5">지구 도달 시간</div>
+                        <div class="text-cyan-400 font-bold text-sm font-sci-fi" id="hud-transit-time">4.33일</div>
+                    </div>
+                    <div class="bg-slate-950/90 border border-slate-800/80 rounded-lg p-2.5 backdrop-blur-sm text-center">
+                        <div class="text-slate-500 text-[10px] font-bold tracking-wider mb-0.5">자기 보호막 범위</div>
+                        <div class="text-emerald-400 font-bold text-sm font-sci-fi" id="hud-mp-dist">10.0 RE</div>
+                    </div>
+                </div>
+
+                <!-- Simulation Canvas -->
+                <div class="flex-grow relative bg-black">
+                    <canvas id="simCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+                </div>
+
+                <!-- Interactive Legend -->
+                <div class="border-t border-slate-800 bg-slate-950/90 px-4 py-3 text-xs flex flex-wrap gap-4 items-center justify-between">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-cyan-500/30 border border-cyan-400"></span> 
+                            밴앨런 내대
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-indigo-600/30 border border-indigo-400"></span> 
+                            밴앨런 외대
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_6px_#fbbf24]"></span> 
+                            사로잡힌 입자 (자기 거울 감속)
+                        </span>
+                        <span id="legend-wind-type" class="flex items-center gap-1.5">
+                            <span class="w-4 h-0.5 bg-white border-t border-dashed border-slate-400"></span>
+                            태양풍 입자 (도트 자취)
+                        </span>
+                    </div>
+                    <button id="btn-pause" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded border border-slate-700 transition">일시정지</button>
+                </div>
+            </div>
+
+            <!-- Scientific Insights / Real-time explanation -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                <h3 class="font-bold text-slate-200 text-sm mb-2 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    태양풍 지구 도달 분석 브리핑
+                </h3>
+                <p id="analysis-text" class="text-sm text-slate-300 leading-relaxed font-medium">
+                    로드 중...
+                </p>
+            </div>
+        </div>
+
+        <!-- Controls Side Panel (Right 4 Columns) -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- Controls Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-6">
+                <h2 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    조작 변인 설정
+                </h2>
+
+                <!-- Control 1: CME Intensity Slider -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <label for="cme-slider" class="text-xs font-bold text-slate-300 flex items-center gap-1">
+                            코로나 질량 방출 (CME) 강도
+                        </label>
+                        <span id="cme-val-display" class="text-xs font-sci-fi text-amber-400 font-bold bg-amber-950/50 border border-amber-900/50 px-2 py-0.5 rounded">LEVEL 1 (평온)</span>
+                    </div>
+                    <input type="range" id="cme-slider" min="1" max="10" step="0.5" value="1"
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none">
+                    <div class="flex justify-between text-[10px] text-slate-500">
+                        <span>평온한 태양풍 (400 km/s)</span>
+                        <span>초강력 CME (2000 km/s)</span>
+                    </div>
+                </div>
+
+                <!-- Control 2: Magnetic Field Strength Slider (Van Allen Belt size) -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <label for="mag-slider" class="text-xs font-bold text-slate-300">
+                            지구 자기장 세기 (밴앨런대 크기)
+                        </label>
+                        <span id="mag-val-display" class="text-xs font-sci-fi text-cyan-400 font-bold bg-cyan-950/50 border border-cyan-900/50 px-2 py-0.5 rounded">1.0x (표준)</span>
+                    </div>
+                    <input type="range" id="mag-slider" min="0.3" max="2.0" step="0.1" value="1.0"
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500 focus:outline-none">
+                    <div class="flex justify-between text-[10px] text-slate-500">
+                        <span>자기장 약화기 (0.3x)</span>
+                        <span>강력 보호막 (2.0x)</span>
+                    </div>
+                </div>
+
+                <!-- Fast Presets -->
+                <div class="flex flex-col gap-2">
+                    <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">우주 기상 모의 시나리오</span>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <button id="preset-normal" class="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-slate-300 font-medium transition text-center">
+                            평온한 우주 기상
+                        </button>
+                        <button id="preset-carrington" class="py-2 px-3 rounded-lg bg-red-950/50 hover:bg-red-900/50 border border-red-900/50 text-red-300 font-medium transition text-center">
+                            캐링턴 이벤트 (G5)
+                        </button>
+                        <button id="preset-weak" class="py-2 px-3 rounded-lg bg-amber-950/30 hover:bg-amber-900/30 border border-amber-900/30 text-amber-300 font-medium transition text-center">
+                            자기 격변 / 약화기
+                        </button>
+                        <button id="preset-super-shield" class="py-2 px-3 rounded-lg bg-cyan-950/50 hover:bg-cyan-900/50 border border-cyan-900/50 text-cyan-300 font-medium transition text-center">
+                            초자기장 방어막
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Scale Physics Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex-grow">
+                <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    실제 천문 물리 척도 상식
+                </h3>
+                <div class="flex flex-col gap-3 text-xs text-slate-400 leading-relaxed">
+                    <div>
+                        <span class="font-bold text-slate-200">1억 5,000만 km의 여정</span>
+                        <p class="mt-0.5">태양에서 방출된 고에너지 입자는 초속 400km인 보통의 상태에서도 약 4일 이상을 꼬박 날아와야 지구에 다다릅니다. 우주 척도 뷰에서 지구는 정말 눈에 보이지 않는 먼지 크기 수준입니다.</p>
+                    </div>
+                    <div>
+                        <span class="font-bold text-slate-200">충격파에서의 속도 급감</span>
+                        <p class="mt-0.5">태양풍은 초음속으로 오다 지구 전방의 <strong>Bow Shock(활격 충격파)</strong>를 통과하면서 속력이 급락합니다. 상세 뷰에서 입자들이 충격 경계면을 만날 때 감속하는 모습을 관찰하세요!</p>
+                    </div>
+                    <div>
+                        <span class="font-bold text-slate-200">자기 거울 현상의 물리</span>
+                        <p class="mt-0.5">입자가 지구 자기장 양극(북극, 남극)으로 유입될 때, 자기력선 간격이 좁아지며 나선 운동 반경이 급격히 축소됩니다. 이때 극지로 향하는 속도는 점차 감속되어 $0\text{ km/s}$에 도달한 뒤 다시 반사됩니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-900 bg-slate-950 px-6 py-4 text-center text-xs text-slate-500">
+        <p>© 2026 Space Weather Interactive Simulation. 학술적 고증에 따른 실시간 물리 시각화 시스템.</p>
+    </footer>
+
+    <!-- Simulation Implementation Script -->
+    <script>
+        // --------------------------------------------------
+        // 1. 전역 변수 및 초기화 설정
+        // --------------------------------------------------
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 슬라이더 및 UI 요소 탐색
+        const cmeSlider = document.getElementById('cme-slider');
+        const magSlider = document.getElementById('mag-slider');
+        const cmeValDisplay = document.getElementById('cme-val-display');
+        const magValDisplay = document.getElementById('mag-val-display');
+
+        // 필요한 핵심 지표 엘리먼트 획득
+        const hudCmeSpeed = document.getElementById('hud-cme-speed');
+        const hudTransitTime = document.getElementById('hud-transit-time');
+        const hudMpDist = document.getElementById('hud-mp-dist');
+        const analysisText = document.getElementById('analysis-text');
+        const legendWindType = document.getElementById('legend-wind-type');
+
+        const btnPause = document.getElementById('btn-pause');
+
+        // 프리셋 버튼
+        const presetNormal = document.getElementById('preset-normal');
+        const presetCarrington = document.getElementById('preset-carrington');
+        const presetWeak = document.getElementById('preset-weak');
+        const presetSuperShield = document.getElementById('preset-super-shield');
+
+        // 시뮬레이션 상태 변수
+        let cmeLevel = parseFloat(cmeSlider.value); // 1 ~ 10
+        let magStrength = parseFloat(magSlider.value); // 0.3 ~ 2.0
+        let isPaused = false;
+        let animationFrameId;
+        let time = 0;
+
+        // [단일 통합 척도 뷰 구조 좌표 바인딩]
+        // 1.5억 km 정밀 거리 보정을 위한 일체화 배치
+        let earthRadius = 18;  // 지구와 밴앨런대 보호 구조를 한눈에 볼 수 있는 최적의 고정 컴팩트 사이즈
+        let sunRadius = 55;   // 태양의 크기를 비례적으로 적당히 부각
+        let earthX = 0;
+        let earthY = 0;
+        let sunX = 0;
+        let sunY = 0;
+
+        // 태양풍 입자 배열 (65개 유지로 탁월한 시인성 보장)
+        const particles = [];
+        const maxParticles = 65; 
+
+        // 오로라 활성도 변수
+        let auroraPulse = 0;
+
+        // 입자의 물리 갱신 및 자취 그리기 시 정상 참조할 수 있도록 전역 스코프 변수 유지
+        let mpDistancePx = 0;
+
+        // --------------------------------------------------
+        // 2. 창 크기 반응형 처리 및 캔버스 초기화 (단일 고화질 비례)
+        // --------------------------------------------------
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            // 태양은 왼쪽 구석, 지구는 오른쪽 구석에 단일 배치하여 여백과 경로를 완벽히 확보
+            sunX = canvas.width * 0.12;
+            sunY = canvas.height * 0.5;
+            earthX = canvas.width * 0.85;
+            earthY = canvas.height * 0.5;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --------------------------------------------------
+        // 3. 입자 시스템 (Particle System with True Physics Acceleration)
+        // --------------------------------------------------
+        class SolarParticle {
+            constructor() {
+                this.reset();
+                // 초기 분산을 균일화
+                this.x = sunX + Math.random() * (earthX - sunX);
+            }
+
+            reset() {
+                const angle = (Math.random() - 0.5) * (Math.PI * 0.55);
+                const rBoundary = sunRadius + 5;
+                this.x = sunX + Math.cos(angle) * rBoundary;
+                this.y = sunY + Math.sin(angle) * rBoundary;
+                
+                // 태양풍 속도는 CME 슬라이더에 고정식 비례 연동
+                const baseSpeed = 2.5 + (cmeLevel * 0.9);
+                this.vx = Math.cos(angle) * baseSpeed;
+                this.vy = Math.sin(angle) * baseSpeed * 0.15;
+                
+                // 과학적 보정이 들어간 감속용 실제 동적 속도 임베딩
+                this.currentVx = this.vx;
+                this.currentVy = this.vy;
+                
+                this.size = 2.0;
+                this.alpha = 0.8;
+                
+                // 도트 꼬리선 배열 (11프레임 고정)
+                this.history = [];
+                this.maxHistory = 11; 
+                
+                // 포획 상태 관리 플래그
+                this.trapped = false;
+                this.trapT = 0;              
+                this.trapSpeed = 0.007; 
+                this.trapStart = { x: 0, y: 0 };
+                this.trapEnd = { x: 0, y: 0 };
+                this.controlX = 0;
+                this.controlY = 0;
+                
+                // 극지방 나선 나선 회전(Gyration)용 변수
+                this.gyrationSpeed = 16; 
+                this.initialPhase = Math.random() * Math.PI * 2;
+                this.targetPole = 1; // 1: 북극, -1: 남극
+            }
+
+            update() {
+                // 이전 위치 기억
+                this.history.push({ x: this.x, y: this.y });
+                if (this.history.length > this.maxHistory) {
+                    this.history.shift();
+                }
+
+                // [물리 고증 1] 자기력선 밴앨런대에 갇힌 하전 입자 (로런츠 힘 및 자기 거울 효과)
+                if (this.trapped) {
+                    this.trapT += this.trapSpeed;
+                    
+                    if (this.trapT >= 1.0) {
+                        this.reset();
+                        return;
+                    }
+
+                    const t = this.trapT;
+                    // 이차 베지에 곡선으로 물리적 쌍극자 자기력선 중심 전동
+                    const baseRawX = (1 - t) * (1 - t) * this.trapStart.x + 2 * (1 - t) * t * this.controlX + t * t * this.trapEnd.x;
+                    const baseRawY = (1 - t) * (1 - t) * this.trapStart.y + 2 * (1 - t) * t * this.controlY + t * t * this.trapEnd.y;
+
+                    // [과학 고증] 자기 거울 감속 계산: 극지에 도달할수록(t가 1에 접근할수록) 전진 속도를 감속하며 나선 회전력을 극대화
+                    // 회전 반경이 수축하며, 입자가 극지방 대기 물질과 부딪혀 오로라를 피우기 직전에 브레이크가 걸림
+                    const mirrorFactor = Math.sin(t * Math.PI); // t=0.5에서 최대 고도, 극단으로 갈수록 속도가 0에 수렴
+                    const currentGyrRadius = (10 * (1 - t) + 1.5) * magStrength; 
+                    const angle = this.initialPhase + t * this.gyrationSpeed;
+                    
+                    this.x = baseRawX + Math.cos(angle) * currentGyrRadius;
+                    this.y = baseRawY + Math.sin(angle) * currentGyrRadius * 0.5; 
+                    return;
+                }
+
+                // [물리 고증 2] 지구 활격 충격파(Bow Shock) 진입 시 속도 붕괴식 적용
+                const dy = Math.abs(earthY - this.y);
+                
+                // Bow Shock 경계면 검출 (자기권계면의 약 1.35배 전방에 충격파 존재)
+                const bowShockDistancePx = mpDistancePx * 1.35;
+                const shockBoundaryX = earthX - bowShockDistancePx + (dy * dy * 0.0035);
+
+                // 지구 전방 충격파를 넘어서면 속도가 초음속에서 아음속으로 급격히(약 1/4 수준으로) 붕괴하며 휘어짐
+                if (this.x > shockBoundaryX && this.x < earthX) {
+                    this.currentVx = this.vx * 0.22; // 속도 78% 감속 (Subsonic Compression)
+                    this.currentVy = this.vy + ((this.y > earthY ? 1.0 : -1.0) * (cmeLevel * 0.12 + 0.2)); // 난류 굴절
+                } else {
+                    // 충격파 통과 전에는 본연의 초음속 등속 유지
+                    this.currentVx = this.vx;
+                    this.currentVy = this.vy;
+                }
+
+                this.x += this.currentVx;
+                this.y += this.currentVy;
+
+                // [물리 고증 3] 자기권계면(Magnetopause) 충돌 및 밴앨런대 포획 물리 연산
+                const mpBoundaryX = earthX - mpDistancePx + (dy * dy * 0.0035);
+                if (this.x > mpBoundaryX && this.x < earthX) {
+                    
+                    // 자기력선 진입에 잡힐 확률 (지구 자기장의 강도와 진입 궤적에 정비례)
+                    if (Math.random() < 0.14 + (magStrength * 0.07)) {
+                        this.trapped = true;
+                        this.trapT = 0;
+                        this.trapStart = { x: this.x, y: this.y };
+                        
+                        // 남극/북극 오로라대 방향 설정
+                        this.targetPole = Math.random() > 0.5 ? 1 : -1;
+                        const poleYOffset = this.targetPole === 1 ? -earthRadius * 0.8 : earthRadius * 0.8;
+                        this.trapEnd = { x: earthX, y: earthY + poleYOffset };
+
+                        // 자기 쌍극자 모멘트 자력선 제어점 배치
+                        this.controlX = (this.x + earthX) / 2 - 40 * magStrength;
+                        this.controlY = (this.y + this.trapEnd.y) / 2 + (this.targetPole === 1 ? -40 : 40) * magStrength;
+                    } else {
+                        // 미포획 입자들은 자기 보호 장막을 타고 뒤로 편향 우회 유도
+                        const slope = (this.y > earthY) ? 1.5 : -1.5;
+                        this.y += slope * 1.5;
+                    }
+                }
+
+                // 화면 탈출 시 리셋
+                if (this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.save();
+
+                // 1. 카툰 도트 자취 그라데이션 렌더링
+                if (this.history.length > 1) {
+                    for (let i = 0; i < this.history.length; i += 2) {
+                        const pt = this.history[i];
+                        const dotAlpha = (i / this.history.length) * this.alpha;
+                        
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, this.size * 0.6, 0, Math.PI * 2);
+                        
+                        if (this.trapped) {
+                            ctx.fillStyle = `rgba(251, 191, 36, ${dotAlpha})`;
+                        } else {
+                            // 활격 충격파(Bow Shock) 안쪽으로 들어가 서행되는 일반 플라즈마 입자는 연한 청색빛으로 난류 전사
+                            if (this.x > (earthX - mpDistancePx * 1.35)) {
+                                ctx.fillStyle = `rgba(147, 197, 253, ${dotAlpha})`;
+                            } else {
+                                ctx.fillStyle = `rgba(255, 255, 255, ${dotAlpha})`;
+                            }
+                        }
+                        ctx.fill();
+                    }
+                }
+
+                // 2. 입자 중심핵 렌더링
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+
+                if (this.trapped) {
+                    ctx.fillStyle = '#fbbf24'; 
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = '#fbbf24';
+                } else {
+                    if (this.x > (earthX - mpDistancePx * 1.35)) {
+                        ctx.fillStyle = '#93c5fd'; // 감속 입자
+                    } else {
+                        ctx.fillStyle = '#ffffff'; // 초음속 입자
+                    }
+                }
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function resetAllParticles() {
+            particles.length = 0;
+            for (let i = 0; i < maxParticles; i++) {
+                particles.push(new SolarParticle());
+            }
+        }
+
+        // --------------------------------------------------
+        // 4. 슬라이더 이벤트 연동 및 수치 튜닝
+        // --------------------------------------------------
+        function updateSimulationParams() {
+            cmeLevel = parseFloat(cmeSlider.value);
+            magStrength = parseFloat(magSlider.value);
+
+            let cmeText = "";
+            if (cmeLevel <= 2) {
+                cmeText = "LEVEL 1 (평온)";
+                cmeValDisplay.className = "text-xs font-sci-fi text-yellow-400 font-bold bg-yellow-950/50 border border-yellow-900/50 px-2 py-0.5 rounded";
+            } else if (cmeLevel <= 5) {
+                cmeText = "LEVEL 2 (보통)";
+                cmeValDisplay.className = "text-xs font-sci-fi text-amber-500 font-bold bg-amber-950/50 border border-amber-900/50 px-2 py-0.5 rounded";
+            } else if (cmeLevel <= 8) {
+                cmeText = "LEVEL 3 (강력)";
+                cmeValDisplay.className = "text-xs font-sci-fi text-orange-500 font-bold bg-orange-950/50 border border-orange-900/50 px-2 py-0.5 rounded";
+            } else {
+                cmeText = "LEVEL 4 (극한 CME)";
+                cmeValDisplay.className = "text-xs font-sci-fi text-red-500 font-bold bg-red-950/50 border border-red-900/50 px-2 py-0.5 rounded";
+            }
+            cmeValDisplay.innerText = cmeText;
+            magValDisplay.innerText = `${magStrength.toFixed(1)}x (${magStrength < 0.7 ? '자기 격변기' : magStrength > 1.4 ? '보호 장막 강화' : '표준 자기권'})`;
+        }
+
+        cmeSlider.addEventListener('input', updateSimulationParams);
+        magSlider.addEventListener('input', updateSimulationParams);
+
+        // --------------------------------------------------
+        // 5. 시나리오 프리셋 스위치
+        // --------------------------------------------------
+        function applyPreset(cme, mag) {
+            cmeSlider.value = cme;
+            magSlider.value = mag;
+            updateSimulationParams();
+        }
+
+        presetNormal.addEventListener('click', () => applyPreset(1.0, 1.0));
+        presetCarrington.addEventListener('click', () => applyPreset(10.0, 0.7));
+        presetWeak.addEventListener('click', () => applyPreset(4.0, 0.3));
+        presetSuperShield.addEventListener('click', () => applyPreset(1.5, 2.0));
+
+        btnPause.addEventListener('click', () => {
+            isPaused = !isPaused;
+            btnPause.innerText = isPaused ? "재개" : "일시정지";
+            btnPause.classList.toggle('bg-slate-800');
+            btnPause.classList.toggle('bg-cyan-600');
+        });
+
+        // --------------------------------------------------
+        // 6. 캐릭터 렌더링 헬퍼 함수군 (심플 플랫 정형 구조)
+        // --------------------------------------------------
+
+        // [태양 천체 그리기]
+        function drawCartoonSun(x, y, r) {
+            ctx.save();
+            const pulse = 1 + Math.sin(time * 6) * 0.02 * (cmeLevel * 0.4);
+            const currentR = r * pulse;
+
+            ctx.shadowBlur = 30 + cmeLevel * 5;
+            ctx.shadowColor = '#f97316';
+
+            // 1. 주황색 바깥쪽 뾰족 불꽃선 (CME 방출 흐름 연출용)
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            const numSpikes = 22;
+            for (let i = 0; i < numSpikes * 2; i++) {
+                const angle = (i * Math.PI) / numSpikes + time * 0.3;
+                const dist = i % 2 === 0 ? currentR * 1.32 : currentR * 0.95;
+                const sx = x + Math.cos(angle) * dist;
+                const sy = y + Math.sin(angle) * dist;
+                if (i === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // 2. 안쪽 노란색 몸체 원형
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(x, y, currentR, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 3. 태양 표면 활동 무늬 스팟들 (흑점 및 플레어 패턴 고수)
+            ctx.fillStyle = '#eab308';
+            const spots = [
+                {dx: -r*0.45, dy: -r*0.4, radius: r*0.12},
+                {dx: -r*0.55, dy: r*0.35, radius: r*0.15},
+                {dx: r*0.1, dy: -r*0.65, radius: r*0.1},
+                {dx: -r*0.1, dy: r*0.65, radius: r*0.14},
+            ];
+            spots.forEach(s => {
+                ctx.beginPath();
+                ctx.arc(x + s.dx, y + s.dy, s.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 4. 세련된 카툰풍 윤곽 외곽선 마무리
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, currentR, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // [지구 천체 그리기]
+        function drawCartoonEarth(x, y, r) {
+            ctx.save();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#60a5fa';
+
+            // 1. 파란색 바다 본체
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 2. 연녹색 대륙 형태들
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath(); ctx.arc(x - r*0.28, y - r*0.22, r*0.42, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + r*0.4, y + r*0.3, r*0.32, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x - r*0.18, y + r*0.42, r*0.28, 0, Math.PI * 2); ctx.fill();
+
+            // 3. 세련된 카툰풍 윤곽 외곽선 마무리
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // [사진풍의 두꺼운 카툰 활격 충격파 & 자기 장막 렌더링]
+        function drawCartoonShield(x, y, mpDistPx) {
+            ctx.save();
+            
+            // [과학 고증] 1. 지구 활격 충격파 (Bow Shock) - 흰색 실선
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ffffff';
+
+            const bowShockX = x - (mpDistPx * 1.35) + (earthRadius * 1.4);
+            const bowShockWidth = mpDistPx * 0.95;
+            const bowShockHeight = canvas.height * 0.35;
+
+            ctx.beginPath();
+            ctx.ellipse(
+                bowShockX,
+                y,
+                bowShockWidth,
+                bowShockHeight,
+                0,
+                Math.PI * 0.45,
+                Math.PI * 1.55
+            );
+            ctx.stroke();
+
+            // [과학 고증] 2. 안쪽 진짜 자기 장막 (Magnetopause) - 연한 백색 점선 아크
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2.0;
+            ctx.setLineDash([5, 5]);
+            ctx.shadowBlur = 0;
+
+            ctx.beginPath();
+            ctx.ellipse(
+                x - mpDistPx + (earthRadius * 1.4),
+                y,
+                mpDistPx * 0.72,
+                canvas.height * 0.3,
+                0,
+                Math.PI * 0.46,
+                Math.PI * 1.54
+            );
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // [지구 후미로 정연하게 이어지는 백색 자기력선 꼬리 렌더링]
+        function drawCartoonMagneticTail(x, y) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.lineWidth = 2.2;
+            ctx.setLineDash([4, 12]);
+
+            const tailSpread = 1.6;
+            const tailConfigurations = [
+                {yStart: -earthRadius * 0.8, yEnd: -earthRadius * tailSpread, cY: -earthRadius * 1.3},
+                {yStart: earthRadius * 0.8, yEnd: earthRadius * tailSpread, cY: earthRadius * 1.3}
+            ];
+
+            tailConfigurations.forEach(tc => {
+                ctx.beginPath();
+                ctx.moveTo(x - 5, y + tc.yStart);
+                ctx.bezierCurveTo(
+                    x - 45 * magStrength, y + tc.cY,
+                    x + 110 * magStrength, y + tc.yEnd,
+                    canvas.width, y + tc.yEnd * 0.95
+                );
+                ctx.stroke();
+            });
+
+            ctx.restore();
+        }
+
+        // [우주 압축 거리 스케일바를 직접 캔버스 하단에 이쁘게 드로잉]
+        function drawSpaceScaleIndicator() {
+            ctx.save();
+            const startX = sunX + sunRadius + 20;
+            const endX = earthX - earthRadius - 40;
+            const scaleY = canvas.height - 40;
+
+            // 메인 궤도 지지 점선
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(startX, scaleY);
+            ctx.lineTo(endX, scaleY);
+            ctx.stroke();
+
+            // 중간 지점 공간 압축 가위 물결 표식 (1 AU 비례 생략 표현)
+            const midX = (startX + endX) / 2;
+            ctx.strokeStyle = 'rgba(14, 165, 233, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(midX - 10, scaleY - 10);
+            ctx.lineTo(midX - 2, scaleY + 10); // [오류 예방] 암묵적 전역 대입(pt1 = ...) 구문 수정
+            ctx.moveTo(midX + 2, scaleY - 10);
+            ctx.lineTo(midX + 10, scaleY + 10);
+            ctx.stroke();
+
+            // 양경계선 틱 마크
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(startX, scaleY - 5); ctx.lineTo(startX, scaleY + 5);
+            ctx.moveTo(endX, scaleY - 5); ctx.lineTo(earthX - earthRadius - 20, scaleY + 5);
+            ctx.stroke();
+
+            // 스케일 정보 텍스트 오버레이
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.font = '10px Orbitron, Noto Sans KR';
+            ctx.textAlign = 'center';
+            ctx.fillText("실제 비례 거리: 149,600,000 km (1 AU)", (sunX + earthX) / 2, scaleY + 22);
+            ctx.restore();
+        }
+
+        // --------------------------------------------------
+        // 8. 메인 시뮬레이션 및 렌더 헬퍼 루프
+        // --------------------------------------------------
+        function drawSimulation() {
+            if (isPaused) {
+                animationFrameId = requestAnimationFrame(drawSimulation);
+                return;
+            }
+
+            time += 0.015;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // --- [물리 공식 적용] 자기권계면(Magnetopause) 평형 거리 연산 ---
+            const cmeSpeedKms = Math.round(400 + (cmeLevel - 1) * 177.7);
+            const mpDistanceRe = 10.0 * Math.pow((Math.pow(magStrength, 2) / cmeLevel), 1 / 6);
+            const reToPx = earthRadius;
+            mpDistancePx = mpDistanceRe * reToPx; 
+
+            // [과학 고증 4] 지구 도달 소요 시간 추정 계산 (1 AU = 1억 5천만 km를 CME 속도로 날아오는 시간)
+            const actualDistanceKm = 149600000;
+            const transitTimeSeconds = actualDistanceKm / cmeSpeedKms;
+            const transitDays = transitTimeSeconds / (3600 * 24);
+
+            // --- HUD 갱신 (오류 없이 안정적인 매핑) ---
+            hudCmeSpeed.innerText = `${cmeSpeedKms} km/s`;
+            hudTransitTime.innerText = `${transitDays.toFixed(1)}일 (${(transitDays * 24).toFixed(1)}시간)`;
+            hudMpDist.innerHTML = `${mpDistanceRe.toFixed(1)} RE`;
+
+            // [요구사항 반영] 불필요하고 장황한 줄글을 제거하고 현재 속도와 도달 소요 시간만 요약하여 표시
+            const analysisDesc = `현재 설정된 태양풍(CME)의 방출 속도는 <span class='text-amber-400 font-bold'>${cmeSpeedKms} km/s</span>이며, 이 입자가 광활한 우주 공간(약 1억 5,000만 km)을 가로질러 지구에 도달하기까지 걸리는 시간은 약 <span class='text-cyan-400 font-bold'>${transitDays.toFixed(1)}일 (${(transitDays * 24).toFixed(1)}시간)</span>입니다.`;
+            analysisText.innerHTML = analysisDesc;
+
+            // --- [시각화 1] 우주 공간 그리기 ---
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 우주 배경 잔별들
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            for (let i = 0; i < 15; i++) {
+                const starX = (Math.sin(i * 333) * 0.5 + 0.5) * canvas.width;
+                const starY = (Math.cos(i * 777) * 0.5 + 0.5) * canvas.height;
+                ctx.fillRect(starX, starY, 1.5, 1.5);
+            }
+
+            // 우주 스케일 압축선 드로잉
+            drawSpaceScaleIndicator();
+
+            // --- [시각화 2] 밴앨런대 (Van Allen Belts) 오라 렌더링 ---
+            const beltScale = magStrength;
+
+            // 1. 밴앨런 외대
+            ctx.save();
+            let outerBeltGrad = ctx.createRadialGradient(earthX, earthY, earthRadius * 1.8 * beltScale, earthX, earthY, earthRadius * 4.2 * beltScale);
+            outerBeltGrad.addColorStop(0, 'rgba(79, 70, 229, 0.0)');
+            outerBeltGrad.addColorStop(0.5, 'rgba(99, 102, 241, 0.25)');
+            outerBeltGrad.addColorStop(1, 'rgba(79, 70, 229, 0)');
+            
+            ctx.fillStyle = outerBeltGrad;
+            ctx.beginPath();
+            ctx.ellipse(earthX - earthRadius * 3.0 * beltScale, earthY, earthRadius * 1.3 * beltScale, earthRadius * 2.5 * beltScale, 0, 0, Math.PI * 2);
+            ctx.ellipse(earthX + earthRadius * 3.0 * beltScale, earthY, earthRadius * 1.3 * beltScale, earthRadius * 2.5 * beltScale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 2. 밴앨런 내대
+            ctx.save();
+            let innerBeltGrad = ctx.createRadialGradient(earthX, earthY, earthRadius * 1.1 * beltScale, earthX, earthY, earthRadius * 1.9 * beltScale);
+            innerBeltGrad.addColorStop(0, 'rgba(6, 182, 212, 0.0)');
+            innerBeltGrad.addColorStop(0.5, 'rgba(34, 211, 238, 0.35)');
+            innerBeltGrad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+            
+            ctx.fillStyle = innerBeltGrad;
+            ctx.beginPath();
+            ctx.ellipse(earthX - earthRadius * 1.5 * beltScale, earthY, earthRadius * 0.5 * beltScale, earthRadius * 1.1 * beltScale, 0, 0, Math.PI * 2);
+            ctx.ellipse(earthX + earthRadius * 1.5 * beltScale, earthY, earthRadius * 0.5 * beltScale, earthRadius * 1.1 * beltScale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // --- [시각화 3] 카툰 백색 도트 자기 꼬리선 렌더링 ---
+            drawCartoonMagneticTail(earthX, earthY);
+
+            // --- [시각화 4] 지구 전방 카툰 백색 쉴드 장벽(Bow Shock & Magnetopause) 렌더링 ---
+            drawCartoonShield(earthX, earthY, mpDistancePx);
+
+            // --- [시각화 5] 양 극지방 오로라 타원 발광 (상 초록, 하 마젠타) ---
+            auroraPulse += 0.04;
+            const sizePulse = Math.sin(auroraPulse) * 1.2;
+            ctx.save();
+            
+            const auroraColorGreen = `rgba(34, 197, 94, ${0.45 + Math.sin(auroraPulse) * 0.12})`;
+            const auroraColorMagenta = `rgba(168, 85, 247, ${0.45 + Math.cos(auroraPulse) * 0.12})`;
+
+            // 북극 오로라 캡
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#10b981";
+            ctx.fillStyle = auroraColorGreen;
+            ctx.beginPath();
+            ctx.ellipse(earthX, earthY - earthRadius * 0.95, 12 + sizePulse, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 남극 오로라 캡
+            ctx.shadowColor = "#a855f7";
+            ctx.fillStyle = auroraColorMagenta;
+            ctx.beginPath();
+            ctx.ellipse(earthX, earthY + earthRadius * 0.95, 12 + sizePulse, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // --- [시각화 6] 태양 & 지구 그리기 (얼굴 묘사 없는 정형 구체 형태) ---
+            drawCartoonSun(sunX, sunY, sunRadius);
+            drawCartoonEarth(earthX, earthY, earthRadius);
+
+            // --- [시각화 7] 하전 입자 드로잉 및 상태 업데이트 ---
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            animationFrameId = requestAnimationFrame(drawSimulation);
+        }
+
+        // --------------------------------------------------
+        // 9. 시뮬레이션 개시
+        // --------------------------------------------------
+        updateSimulationParams();
+        resetAllParticles();
+        drawSimulation();
+    </script>
+</body>
+</html>

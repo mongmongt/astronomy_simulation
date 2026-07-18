@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우주 기상 시뮬레이션 - 태양풍 & CME 도달 실험</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js 및 OrbitControls 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-[#04060a] text-gray-100 overflow-hidden h-screen flex flex-col md:flex-row">
+
+    <!-- 좌측 제어 패널 -->
+    <div id="control-panel" class="w-full md:w-[390px] bg-[#090d16]/95 backdrop-blur-md border-b md:border-b-0 md:border-r border-gray-800 p-5 flex flex-col justify-between overflow-y-auto shrink-0 z-10 shadow-2xl h-full">
+        <div class="space-y-4">
+            <div>
+                <span class="text-xs font-bold text-amber-500 uppercase tracking-widest">과학 탐구 프로젝트</span>
+                <h1 class="text-xl font-bold text-white mt-1">태양풍 & CME 도달 시뮬레이션</h1>
+                <p class="text-xs text-gray-400 mt-1">위도 변화에 따른 입자 도달량 수치 대조 및 수식 검증</p>
+            </div>
+
+            <div class="bg-[#121824]/80 rounded-xl p-3.5 border border-gray-800 space-y-4">
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-semibold text-amber-400">태양 CME 방출 위도</span>
+                        <span id="sun-lat-val" class="text-sm font-bold text-white">0.0°</span>
+                    </div>
+                    <input type="range" id="sun-lat-slider" min="-90" max="90" step="1" value="0" class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-semibold text-red-400">CME 방출 강도</span>
+                        <span id="cme-intensity-val" class="text-sm font-bold text-white">중형 (M-Class)</span>
+                    </div>
+                    <input type="range" id="cme-intensity-slider" min="1" max="3" step="1" value="2" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-red-500">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-semibold text-blue-400">지구 관측 위도 설정</span>
+                        <span id="earth-lat-val" class="text-sm font-bold text-white">65.0°</span>
+                    </div>
+                    <input type="range" id="earth-lat-slider" min="-90" max="90" step="1" value="65" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button id="btn-launch" class="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-lg shadow-lg active:scale-95 transition-transform">🔥 CME 폭발 방출!</button>
+                <button id="btn-reset" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg">초기화</button>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-gray-800 space-y-4">
+            <div>
+                <h3 class="text-xs font-bold text-gray-300 mb-1">1. 실시간 도달량 분석 (이론값 비교)</h3>
+                <div class="h-[105px] bg-black/40 rounded-lg p-1.5 border border-gray-800">
+                    <canvas id="flux-chart"></canvas>
+                </div>
+            </div>
+            <div>
+                <h3 class="text-xs font-bold text-amber-500 mb-1">2. 시나리오별 누적 도달 기록</h3>
+                <div class="h-[105px] bg-black/40 rounded-lg p-1.5 border border-gray-800">
+                    <canvas id="cumulative-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 우측 3D 시뮬레이션 영역 -->
+    <div id="canvas-container" class="flex-1 relative h-full">
+        <div id="webgl-output" class="w-full h-full"></div>
+        
+        <button id="btn-toggle-table" class="absolute bottom-24 right-4 bg-[#111625]/95 hover:bg-[#1b223c] text-amber-500 border border-gray-800 px-3 py-2 rounded-lg text-xs font-bold shadow-lg pointer-events-auto transition active:scale-95">📊 수치 데이터 표 보기</button>
+
+        <div id="data-table-drawer" class="absolute bottom-0 right-0 left-0 bg-[#090d16]/98 backdrop-blur-md border-t border-gray-800 p-4 transform translate-y-full transition-transform duration-300 ease-in-out h-[240px] z-20 flex flex-col pointer-events-auto">
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-xs font-bold text-amber-500 uppercase tracking-wider">시나리오별 위도 도달량 수치 표</h3>
+                    <span class="text-[9px] text-gray-500">(단위: p/cm²·s)</span>
+                </div>
+                <button id="btn-close-table" class="text-gray-400 hover:text-white text-[10px] font-bold px-2 py-1 bg-gray-800 rounded">닫기</button>
+            </div>
+            <div class="flex-1 overflow-auto border border-gray-800 rounded-lg">
+                <table class="w-full text-[10px] text-left border-collapse" id="data-matrix-table">
+                    <thead class="bg-[#111625] sticky top-0 border-b border-gray-800 text-gray-300 z-10">
+                        <tr id="table-header-row">
+                            <th class="p-2 border-r border-gray-800 sticky left-0 bg-[#111625] z-20 min-w-[70px]">위도</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800/40 text-gray-400" id="table-body-rows"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="absolute bottom-4 left-4 right-4 bg-[#090d16]/95 backdrop-blur-md border border-gray-800 p-4 rounded-xl shadow-lg pointer-events-none max-w-2xl">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-3">
+                <h3 class="text-xs font-bold text-amber-500 uppercase tracking-wider">실시간 수식 매칭 검증 (F = sin²θ · cosθ)</h3>
+                <div class="flex space-x-4 text-xs font-bold">
+                    <span>직격 여부: <span id="hit-status" class="text-green-400">대기 중</span></span>
+                    <span>경보 단계: <span id="space-warning" class="text-blue-400">안정</span></span>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-xs">
+                <div class="bg-black/40 p-2 rounded border border-gray-800/80 text-center">
+                    <span class="text-gray-400 block mb-1">이론적 피크</span>
+                    <span class="text-emerald-400 font-bold">±54.74°</span>
+                </div>
+                <div class="bg-black/40 p-2 rounded border border-gray-800/80 text-center col-span-2">
+                    <span class="text-gray-400 block mb-1">선택 위도 실측치</span>
+                    <span id="current-flux" class="text-white font-bold text-sm">0.0 p/cm²·s</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- [ERROR FIX] 전역 변수 선언 ---
+        let northAuroraIntensity = 0.0;
+        let southAuroraIntensity = 0.0;
+        let particles = [];
+
+        // --- 1. Three.js 기본 설정 ---
+        const container = document.getElementById('webgl-output');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x020306);
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth/container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 7, 16);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        scene.add(new THREE.AmbientLight(0x1a243a, 0.6));
+        const sunLight = new THREE.PointLight(0xff7722, 3.5, 100);
+        sunLight.position.set(-10, 0, 0);
+        scene.add(sunLight);
+
+        // --- 2. 천체 구현 ---
+        const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(1.8, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffaa44 }));
+        sunMesh.position.set(-10, 0, 0);
+        scene.add(sunMesh);
+
+        const earthGroup = new THREE.Group();
+        earthGroup.position.set(10, 0, 0);
+        scene.add(earthGroup);
+
+        const earthMesh = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 32), new THREE.MeshPhongMaterial({ color: 0x2244ff, shininess: 15 }));
+        earthGroup.add(earthMesh);
+
+        const cloudMesh = new THREE.Mesh(new THREE.SphereGeometry(0.62, 32, 32), new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 }));
+        earthGroup.add(cloudMesh);
+
+        // --- 3. 오로라 시스템 ---
+        function createAuroraTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, 'rgba(168, 85, 247, 0)');
+            grad.addColorStop(0.5, 'rgba(16, 185, 129, 0.9)');
+            grad.addColorStop(1, 'rgba(16, 185, 129, 0)');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            return new THREE.CanvasTexture(canvas);
+        }
+        const aurTex = createAuroraTexture();
+        const aurMatN = new THREE.MeshBasicMaterial({ map: aurTex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+        const aurMatS = new THREE.MeshBasicMaterial({ map: aurTex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+        const northAurora = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.16, 32, 1, true), aurMatN);
+        northAurora.position.set(0, 0.52, 0); earthGroup.add(northAurora);
+        const southAurora = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.16, 32, 1, true), aurMatS);
+        southAurora.position.set(0, -0.52, 0); southAurora.rotation.x = Math.PI; earthGroup.add(southAurora);
+
+        // --- 4. 차트 및 데이터 관리 ---
+        const labels = Array.from({length: 37}, (_, i) => `${-90 + i * 5}°`);
+        const theoBase = labels.map(l => { const r = parseInt(l)*Math.PI/180; return Math.abs(Math.pow(Math.sin(r),2)*Math.cos(r)); });
+        
+        const fluxChart = new Chart(document.getElementById('flux-chart'), {
+            type: 'bar',
+            data: { labels: labels, datasets: [
+                { label: '실측', data: new Array(37).fill(0), backgroundColor: 'red' },
+                { label: '이론', data: theoBase.map(v => (v/0.3849)*30), type: 'line', borderColor: '#10b981', fill: false }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { beginAtZero: true } } }
+        });
+
+        const cumulativeChart = new Chart(document.getElementById('cumulative-chart'), {
+            type: 'line',
+            data: { labels: labels, datasets: [] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { beginAtZero: true } } }
+        });
+
+        // --- 5. 테이블 초기화 ---
+        function initTable() {
+            const body = document.getElementById('table-body-rows');
+            body.innerHTML = '';
+            labels.forEach((l, i) => {
+                const tr = document.createElement('tr');
+                tr.id = `row-${i}`;
+                tr.innerHTML = `<td class="p-2 border-r border-gray-800 sticky left-0 bg-[#090d16] font-bold text-gray-300">${l}</td>`;
+                body.appendChild(tr);
+            });
+        }
+        initTable();
+
+        // --- 6. 물리 로직 ---
+        function launchCME(lat, intensity) {
+            const rad = lat * Math.PI / 180;
+            const dir = new THREE.Vector3(Math.cos(rad), Math.sin(rad), 0).normalize();
+            for(let i=0; i<intensity*100; i++) {
+                const p = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+                p.position.set(-8.2, (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5);
+                p.userData = { vel: dir.clone().add(new THREE.Vector3(0, (Math.random()-0.5)*0.2, (Math.random()-0.5)*0.2)).normalize(), speed: 0.1 + Math.random()*0.1 };
+                scene.add(p);
+                particles.push(p);
+            }
+        }
+
+        let scIdx = 0;
+        function updateData(lat, intensity, eLat) {
+            scIdx++;
+            const dist = Math.abs(lat);
+            const baseE = Math.max(0, Math.cos(dist * Math.PI / 180));
+            const scData = labels.map((_, i) => {
+                const r = (-90 + i * 5) * Math.PI / 180;
+                return baseE * Math.abs(Math.pow(Math.sin(r), 2) * Math.cos(r)) * (intensity*50) * 0.08 * (1 + Math.random()*0.3);
+            });
+
+            fluxChart.data.datasets[0].data = scData;
+            const maxVal = Math.max(...scData);
+            if(maxVal > 0) fluxChart.data.datasets[1].data = theoBase.map(v => (v/0.3849)*maxVal);
+            fluxChart.update();
+
+            const color = `hsl(${scIdx * 137}, 70%, 60%)`;
+            cumulativeChart.data.datasets.push({ label: `S${scIdx}`, data: scData, borderColor: color, fill: false, pointRadius: 0 });
+            cumulativeChart.update();
+
+            const head = document.getElementById('table-header-row');
+            const th = document.createElement('th');
+            th.className = "p-2 border-r border-gray-800 text-center text-amber-500";
+            th.innerText = `S${scIdx}(${lat}°)`;
+            head.appendChild(th);
+
+            scData.forEach((v, i) => {
+                const td = document.createElement('td');
+                td.className = "p-2 border-r border-gray-800 text-center font-mono";
+                td.innerText = v.toFixed(1);
+                document.getElementById(`row-${i}`).appendChild(td);
+            });
+
+            document.getElementById('current-flux').innerText = `${scData[Math.floor((eLat+90)/5)].toFixed(1)} p/cm²·s`;
+        }
+
+        // --- 7. 애니메이션 루프 ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            for(let i=particles.length-1; i>=0; i--) {
+                const p = particles[i];
+                p.position.addScaledVector(p.userData.vel, p.userData.speed);
+                const d = p.position.distanceTo(earthGroup.position);
+                
+                if(d < 3 && d > 0.4) {
+                    const pull = new THREE.Vector3(10, p.position.y > 0 ? 0.8 : -0.8, 0).sub(p.position).normalize();
+                    p.userData.vel.lerp(pull, 0.15);
+                }
+                
+                if(d <= 0.5) {
+                    if(p.position.y > 0.15) northAuroraIntensity = Math.min(1, northAuroraIntensity + 0.15);
+                    else if(p.position.y < -0.15) southAuroraIntensity = Math.min(1, southAuroraIntensity + 0.15);
+                    scene.remove(p); particles.splice(i, 1); continue;
+                }
+                if(p.position.x > 15) { scene.remove(p); particles.splice(i, 1); }
+            }
+
+            // 오로라 업데이트
+            northAuroraIntensity *= 0.95;
+            southAuroraIntensity *= 0.95;
+            aurMatN.opacity = northAuroraIntensity;
+            aurMatS.opacity = southAuroraIntensity;
+
+            sunMesh.rotation.y += 0.005;
+            earthMesh.rotation.y += 0.01;
+            cloudMesh.rotation.y += 0.012;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- 8. UI 이벤트 ---
+        document.getElementById('btn-launch').onclick = () => {
+            const l = parseInt(document.getElementById('sun-lat-slider').value);
+            const i = parseInt(document.getElementById('cme-intensity-slider').value);
+            const e = parseInt(document.getElementById('earth-lat-slider').value);
+            launchCME(l, i); updateData(l, i, e);
+        };
+        document.getElementById('btn-reset').onclick = () => location.reload();
+        document.getElementById('btn-toggle-table').onclick = () => document.getElementById('data-table-drawer').classList.toggle('translate-y-full');
+        document.getElementById('btn-close-table').onclick = () => document.getElementById('data-table-drawer').classList.add('translate-y-full');
+        document.getElementById('sun-lat-slider').oninput = e => document.getElementById('sun-lat-val').innerText = `${e.target.value}°`;
+        document.getElementById('earth-lat-slider').oninput = e => document.getElementById('earth-lat-val').innerText = `${e.target.value}°`;
+    </script>
+</body>
+</html>

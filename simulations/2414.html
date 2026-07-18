@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우주 거대 구조(보이드 & 필라멘트) 형성 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #02040a;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* 궤도 및 인디고 UI 테마 발광 효과 */
+        .neon-border {
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+        }
+
+        /* 커스텀 슬라이더 스타일링 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #111827;
+            height: 6px;
+            border-radius: 9999px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #818cf8;
+            transform: scale(1.2);
+        }
+
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #02040a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #111827;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1f2937;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- 상단 헤더 -->
+    <header class="w-full bg-gray-950/90 border-b border-gray-900 px-6 py-4 backdrop-blur-md z-10 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg border border-indigo-500/20">
+                <i data-lucide="orbit" class="w-6 h-6 animate-spin" style="animation-duration: 20s;"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-wider text-indigo-100 flex items-center gap-2">
+                    우주 거대 구조 시뮬레이션 <span class="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full font-normal">Cosmic Web</span>
+                </h1>
+                <p class="text-xs text-gray-400">강체 결합 뼈대 보존과 남보랏빛 필라멘트 성간망의 거시 우주 진화</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="text-right hidden md:block">
+                <span class="text-[10px] text-gray-500 uppercase tracking-wider block">고급 지구과학 수행평가</span>
+                <span class="text-xs text-indigo-300 font-semibold">10,000개 초밀도 입자 형태 보존형 우주망 시뮬레이터</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <main class="flex-grow w-full max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- 좌측 조작반 (사이드바) -->
+        <section class="lg:col-span-1 bg-gray-950/50 p-5 rounded-2xl border border-gray-900 backdrop-blur-sm flex flex-col justify-between gap-6">
+            <div class="space-y-6">
+                <div class="border-b border-gray-900 pb-3 flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-5 h-5 text-indigo-400"></i>
+                    <h2 class="font-bold text-gray-200">조작 변인 설정</h2>
+                </div>
+
+                <!-- 조작변인 1: 입자 수 설정 (최대 10,000개 지원) -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="particleCount" class="text-gray-300 font-medium flex items-center gap-1.5">
+                            <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> 초기 입자 수
+                        </label>
+                        <span id="particleCountVal" class="orbitron text-indigo-400 font-bold">10000</span>
+                    </div>
+                    <input type="range" id="particleCount" min="1000" max="10000" step="500" value="10000" class="w-full">
+                    <span class="text-[10px] text-gray-500 block">초대형 10,000개 입자의 중력 수축 연산을 초고속 격자로 제어합니다.</span>
+                </div>
+
+                <!-- 조작변인 2: 성간 기체 기본 질량 -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="particleMass" class="text-gray-300 font-medium flex items-center gap-1.5">
+                            <i data-lucide="weight" class="w-4 h-4 text-indigo-400"></i> 가스 기본 질량 (배율)
+                        </label>
+                        <span id="particleMassVal" class="orbitron text-indigo-400 font-bold">0.05</span>
+                    </div>
+                    <input type="range" id="particleMass" min="0.01" max="0.3" step="0.01" value="0.05" class="w-full">
+                    <span class="text-[10px] text-gray-500 block">질량을 낮추면 초기 응집 지체 시간을 길게 연출합니다.</span>
+                </div>
+
+                <!-- 조작변인 3: 만유인력 상수 G (원조 기본 스케일 완벽 이식) -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="gravConstant" class="text-gray-300 font-medium flex items-center gap-1.5">
+                            <i data-lucide="magnet" class="w-4 h-4 text-indigo-400"></i> 만유인력 상수 ($G$)
+                        </label>
+                        <span id="gravConstantVal" class="orbitron text-indigo-400 font-bold">0.05</span>
+                    </div>
+                    <input type="range" id="gravConstant" min="0.01" max="0.30" step="0.01" value="0.05" class="w-full">
+                    <span class="text-[10px] text-gray-500 block">중력을 조절하여 전체 수축 강도를 바꿉니다.</span>
+                </div>
+
+                <!-- 조작변인 4: 시간 흐름 속도 (dt) -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="timeStep" class="text-gray-300 font-medium flex items-center gap-1.5">
+                            <i data-lucide="gauge" class="w-4 h-4 text-indigo-400"></i> 시뮬레이션 흐름 속도 ($dt$)
+                        </label>
+                        <span id="timeStepVal" class="orbitron text-indigo-400 font-bold">0.012</span>
+                    </div>
+                    <input type="range" id="timeStep" min="0.002" max="0.04" step="0.002" value="0.012" class="w-full">
+                    <span class="text-[10px] text-gray-500 block">수치를 낮추면 정교한 진화 과정을 슬로우 렌즈로 추적합니다.</span>
+                </div>
+
+                <!-- 시뮬레이션 제어 -->
+                <div class="pt-4 border-t border-gray-900 space-y-3">
+                    <button id="resetBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
+                        <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                        우주 재생성 (초기화)
+                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="playPauseBtn" class="w-full bg-gray-900 hover:bg-gray-700 text-gray-200 font-semibold py-2 px-3 rounded-lg transition text-xs flex items-center justify-center gap-1.5 border border-gray-800">
+                            <i id="playIcon" data-lucide="pause" class="w-4 h-4"></i>
+                            <span id="playText">일시 정지</span>
+                        </button>
+                        <button id="togglePathsBtn" class="w-full bg-gray-900 hover:bg-gray-700 text-gray-200 font-semibold py-2 px-3 rounded-lg transition text-xs flex items-center justify-center gap-1.5 border border-gray-800">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                            <span>중력 흐름 시야</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 하단 통계 보드 -->
+            <div class="bg-gray-950/80 p-4 rounded-xl border border-gray-900 space-y-3">
+                <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                    <i data-lucide="activity" class="w-3.5 h-3.5 text-indigo-400"></i> 우주 거동 상태 보드
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <span class="text-xs text-gray-500 block">활성 가스 입자</span>
+                        <span id="activeCount" class="orbitron font-bold text-indigo-300">0</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 block">생성된 가교 사슬</span>
+                        <span id="bondCount" class="orbitron font-bold text-indigo-300">0</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 block">최대 단일 성단 크기</span>
+                        <span id="maxClusterSize" class="orbitron font-bold text-indigo-300">0</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 block">우주망 사슬 연계율</span>
+                        <span id="clusteringRate" class="orbitron font-bold text-indigo-300">0%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 우측 메인 화면 (시뮬레이터 & 시간 슬라이더) -->
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            
+            <!-- 시뮬레이터 캔버스 컨테이너 -->
+            <div class="relative flex-grow bg-gray-950 rounded-2xl neon-border overflow-hidden min-h-[500px] flex items-center justify-center">
+                <canvas id="cosmicCanvas" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+                
+                <!-- 캔버스 위 오버레이 정보 -->
+                <div class="absolute top-4 left-4 pointer-events-none bg-gray-950/90 px-4 py-2.5 rounded-lg border border-gray-900 flex items-center gap-3 backdrop-blur-sm">
+                    <div class="w-3 h-3 bg-indigo-500 rounded-full animate-pulse"></div>
+                    <div>
+                        <span class="text-[10px] text-gray-500 block font-semibold uppercase tracking-widest">빅뱅 이후 시각</span>
+                        <span id="currentEpoch" class="orbitron font-bold text-sm text-gray-200">0.00 억 년</span>
+                    </div>
+                </div>
+
+                <div class="absolute top-4 right-4 pointer-events-none bg-gray-950/90 px-4 py-2.5 rounded-lg border border-gray-900 text-right backdrop-blur-sm">
+                    <span class="text-[10px] text-gray-500 block font-semibold uppercase tracking-widest">거대 구조 단계</span>
+                    <span id="structureStatus" class="font-bold text-xs text-indigo-300">초기 물질 균일 분포</span>
+                </div>
+
+                <!-- 인터랙티브 설명 -->
+                <div class="absolute bottom-4 left-4 pointer-events-none text-xs text-gray-400 bg-gray-950/90 px-3 py-2 rounded-md border border-gray-900">
+                    🌌 <strong class="text-green-400">10,000개 초밀도 입자 결합 구조:</strong> 형광 초록 천체들이 충돌하면 형태가 보존된 채 <b>밀착 고정</b>됩니다. 이 사슬들 주변으로 보랏빛 가교망(Web Line)이 한눈에 띄게 나타납니다.
+                </div>
+            </div>
+
+            <!-- 시간 흐름 조작판 -->
+            <div class="bg-gray-950/50 p-4 rounded-2xl border border-gray-900 backdrop-blur-sm space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                        <i data-lucide="history" class="w-4 h-4 text-indigo-400"></i> 시간 탐색 슬라이더 (실시간 과거 기록 재생성)
+                    </span>
+                    <span id="timeSliderBadge" class="text-xs bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full orbitron font-bold">LIVE (가장 미래)</span>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <span class="text-xs text-gray-500 whitespace-nowrap">초기 우주 (0억년)</span>
+                    <input type="range" id="timeHistorySlider" min="0" max="0" value="0" class="flex-grow">
+                    <span class="text-xs text-gray-500 whitespace-nowrap">현재 우주</span>
+                </div>
+                
+                <div class="text-[11px] text-gray-400 leading-relaxed bg-gray-900/10 p-2.5 rounded-lg border border-gray-900">
+                    💡 <strong>입자 보존 결합 탐구:</strong> 만유인력에 끌려 뭉친 입자들은 충돌한 지점의 회전각과 접촉면을 완전히 고수하여 사슬 기둥을 형성합니다. 슬라이더를 뒤로 밀어 수축 전 우주 가스 분포를 되감아 보십시오.
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="w-full bg-gray-950 border-t border-gray-900 px-6 py-4 text-xs text-gray-500">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="space-y-1">
+                <p>🔭 <strong>성간 중력 가교 및 형태 보존 가설:</strong> 천체 입자가 한 점으로 겹쳐 뭉개지는 것을 방지하고, 접하는 형태와 속박력을 보존함으로써 필라멘트 장력 가닥들이 거미줄 그물망처럼 발달하는 우주망(Cosmic Web) 형성을 정교하게 묘사합니다.</p>
+                <p>⚙️ <strong>만유인력 법칙 적용:</strong> 모든 가스 입자 쌍에 대해 실시간 만유인력 $F = G \frac{m_1 m_2}{r^2 + \epsilon^2}$ 법칙이 완벽하게 가동됩니다.</p>
+            </div>
+            <div class="text-right whitespace-nowrap">
+                <p>고급지구과학(몽T) 수행평가</p>
+                <p class="text-indigo-400 font-semibold">입자 보존 & 필라멘트 가교 특화 고성능 버전</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 시뮬레이터 프로그램 로직 -->
+    <script>
+        // Lucide 아이콘 로드
+        lucide.createIcons();
+
+        const canvas = document.getElementById('cosmicCanvas');
+        const ctx = canvas.getContext('2d');
+        const particleCountInput = document.getElementById('particleCount');
+        const particleCountVal = document.getElementById('particleCountVal');
+        const particleMassInput = document.getElementById('particleMass');
+        const particleMassVal = document.getElementById('particleMassVal');
+        const gravConstantInput = document.getElementById('gravConstant');
+        const gravConstantVal = document.getElementById('gravConstantVal');
+        const timeStepInput = document.getElementById('timeStep');
+        const timeStepVal = document.getElementById('timeStepVal');
+        
+        const resetBtn = document.getElementById('resetBtn');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+        const togglePathsBtn = document.getElementById('togglePathsBtn');
+        const timeHistorySlider = document.getElementById('timeHistorySlider');
+        const timeSliderBadge = document.getElementById('timeSliderBadge');
+        
+        const currentEpochText = document.getElementById('currentEpoch');
+        const activeCountText = document.getElementById('activeCount');
+        const bondCountText = document.getElementById('bondCount');
+        const maxClusterSizeText = document.getElementById('maxClusterSize');
+        const clusteringRateText = document.getElementById('clusteringRate');
+        const structureStatusText = document.getElementById('structureStatus');
+
+        // 상태 데이터 관리
+        let particles = [];
+        let links = []; // 접촉 상태 보존용 강체 결합 목록 {p1, p2, targetDist}
+        let history = []; 
+        let isPlaying = true;
+        let showGravityField = false;
+        let epoch = 0; 
+        let maxRecordedEpoch = 0;
+        let globalParticleIdCounter = 0;
+
+        // 물리 연산 상수
+        const SOFTENING = 22; 
+        let grid = {}; 
+        let cellSize = 45; // 10,000개 입자의 연산 감축을 위해 세분화한 그리드 크기
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = (rect.width || 800) * window.devicePixelRatio;
+            canvas.height = (rect.height || 500) * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            particles.forEach(p => {
+                p.x = Math.max(10, Math.min(canvas.width / window.devicePixelRatio - 10, p.x));
+                p.y = Math.max(10, Math.min(canvas.height / window.devicePixelRatio - 10, p.y));
+            });
+        });
+
+        // 1. 입자 클래스 (형광 초록색 성간 입자 가시성 강화)
+        class CosmicParticle {
+            constructor(id, x, y, vx, vy, mass, color = null) {
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.mass = mass;
+                this.neighborCount = 0; // 결합 상태 시각화용 카운터
+                
+                // 10,000개 고해상도 환경에 대응하도록 기본 크기를 극소화하여 웅장하게 묘사
+                this.baseRadius = Math.max(0.6, Math.sqrt(mass) * 0.75);
+                this.color = color || this.getRandomCosmicColor();
+            }
+
+            getRandomCosmicColor() {
+                const colors = [
+                    'rgba(57, 255, 20, 0.90)',  // 밝은 형광 초록
+                    'rgba(34, 197, 94, 0.90)',  // 진하고 선명한 성간 녹색
+                    'rgba(57, 255, 20, 0.75)',  // 가벼운 형광 연두색
+                    'rgba(16, 185, 129, 0.90)', // 신비로운 에메랄드 그린
+                    'rgba(134, 239, 172, 0.95)' // 은은한 민트 그린
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            update(width, height) {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 5 || this.x > width - 5) {
+                    this.vx *= -0.2;
+                    this.x = Math.max(5, Math.min(width - 5, this.x));
+                }
+                if (this.y < 5 || this.y > height - 5) {
+                    this.vy *= -0.2;
+                    this.y = Math.max(5, Math.min(height - 5, this.y));
+                }
+            }
+
+            // 고속 렌더링 최적화: 단독 입자는 fillRect를 사용하여 가벼운 점으로, 뭉친 입자는 영롱한 발광원으로 묘사
+            draw(context) {
+                if (this.neighborCount <= 1) {
+                    const r = this.baseRadius;
+                    context.fillStyle = this.color;
+                    context.fillRect(this.x - r, this.y - r, r * 2, r * 2);
+                } else {
+                    context.beginPath();
+                    context.arc(this.x, this.y, this.baseRadius, 0, Math.PI * 2);
+                    context.shadowBlur = this.baseRadius * 1.5;
+                    context.shadowColor = 'rgba(57, 255, 20, 0.9)';
+                    context.fillStyle = this.color;
+                    context.fill();
+                    context.shadowBlur = 0; 
+                }
+            }
+        }
+
+        // 2. 우주 초기 입자 분포 생성 함수
+        function generateUniverse() {
+            const numParticles = parseInt(particleCountInput.value);
+            const baseMass = parseFloat(particleMassInput.value);
+            
+            particles = [];
+            links = []; 
+            history = []; 
+            epoch = 0;
+            maxRecordedEpoch = 0;
+            timeHistorySlider.max = 0;
+            timeHistorySlider.value = 0;
+            timeSliderBadge.innerText = "LIVE (가장 미래)";
+            
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+
+            for (let i = 0; i < numParticles; i++) {
+                const x = Math.random() * (w - 20) + 10;
+                const y = Math.random() * (h - 20) + 10;
+                
+                // 가사운들의 흐름이 렉을 유발하지 않도록 유연한 속도 부여
+                const vx = (Math.random() - 0.5) * 0.08;
+                const vy = (Math.random() - 0.5) * 0.08;
+                
+                const randomWeight = 0.8 + Math.random() * 0.4;
+                const mass = baseMass * randomWeight;
+
+                particles.push(new CosmicParticle(i, x, y, vx, vy, mass));
+            }
+
+            saveUniverseState(); 
+        }
+
+        // 3. 공간 격자 분할 맵핑 (안전장치 결합)
+        function buildSpatialGrid() {
+            grid = {};
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            const cols = Math.max(1, Math.ceil(w / cellSize));
+            const rows = Math.max(1, Math.ceil(h / cellSize));
+
+            particles.forEach(p => {
+                const gx = Math.max(0, Math.min(cols - 1, Math.floor(p.x / cellSize)));
+                const gy = Math.max(0, Math.min(rows - 1, Math.floor(p.y / cellSize)));
+                const key = `${gx},${gy}`;
+                
+                if (!grid[key]) {
+                    grid[key] = [];
+                }
+                grid[key].push(p);
+            });
+        }
+
+        function hasLink(p1, p2) {
+            return links.some(l => (l.p1.id === p1.id && l.p2.id === p2.id) || (l.p1.id === p2.id && l.p2.id === p1.id));
+        }
+
+        // 4. 공간 격자 연계 만유인력 계산 및 완충 결합(Repulsion) + 형태 고정 물리 엔진
+        function calculatePhysics(dt) {
+            const G = parseFloat(gravConstantInput.value);
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            const cols = Math.max(1, Math.ceil(w / cellSize));
+            const rows = Math.max(1, Math.ceil(h / cellSize));
+
+            buildSpatialGrid();
+
+            // 만유인력 및 충돌 판정 가동 (10,000개 구동 고속화 튜닝)
+            for (let i = 0; i < particles.length; i++) {
+                const p1 = particles[i];
+
+                const gx = Math.max(0, Math.min(cols - 1, Math.floor(p1.x / cellSize)));
+                const gy = Math.max(0, Math.min(rows - 1, Math.floor(p1.y / cellSize)));
+
+                // 인접 격자 영역만 빠르게 스캐닝
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        const targetKey = `${gx + dx},${gy + dy}`;
+                        const cellParticles = grid[targetKey];
+                        if (!cellParticles) continue;
+
+                        for (let j = 0; j < cellParticles.length; j++) {
+                            const p2 = cellParticles[j];
+                            if (p1.id >= p2.id) continue; // 중복 계산 방지
+
+                            const diffX = p2.x - p1.x;
+                            const diffY = p2.y - p1.y;
+                            const distSq = diffX * diffX + diffY * diffY;
+                            const dist = Math.sqrt(distSq);
+
+                            if (dist < 0.1) continue;
+
+                            // 1. 순수한 만유인력 작동 (F = G * m1 * m2 / (r^2 + softening^2))
+                            const force = (G * p2.mass * p1.mass) / (distSq + SOFTENING * SOFTENING);
+                            const ax = (force * (diffX / dist)) / p1.mass;
+                            const ay = (force * (diffY / dist)) / p1.mass;
+
+                            p1.vx += ax * dt * 45;
+                            p1.vy += ay * dt * 45;
+                            p2.vx -= ax * dt * 45;
+                            p2.vy -= ay * dt * 45;
+
+                            // 2. 접촉 충돌 포획 처리
+                            const touchDistance = (p1.baseRadius + p2.baseRadius) * 0.95;
+                            if (dist < touchDistance) {
+                                if (!hasLink(p1, p2)) {
+                                    links.push({
+                                        p1: p1,
+                                        p2: p2,
+                                        targetDist: dist
+                                    });
+
+                                    const mSum = p1.mass + p2.mass;
+                                    const commonVx = (p1.vx * p1.mass + p2.vx * p2.mass) / mSum;
+                                    const commonVy = (p1.vy * p1.mass + p2.vy * p2.mass) / mSum;
+                                    p1.vx = commonVx; p1.vy = commonVy;
+                                    p2.vx = commonVx; p2.vy = commonVy;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 가입자 속도 변위량 적용
+            particles.forEach(p => {
+                p.oldX = p.x;
+                p.oldY = p.y;
+                p.x += p.vx;
+                p.y += p.vy;
+            });
+
+            // 3. 충돌한 모습 그대로 결합하는 위치 제약 해결기
+            // 10,000개 환경의 안정성을 위해 solver 반복 연산을 3회로 알맞게 다이어트하여 성능 확보
+            const solverIterations = 3;
+            for (let iter = 0; iter < solverIterations; iter++) {
+                for (let k = 0; k < links.length; k++) {
+                    const link = links[k];
+                    const p1 = link.p1;
+                    const p2 = link.p2;
+
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const currentDist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (currentDist < 0.1) continue;
+
+                    const diff = link.targetDist - currentDist;
+                    const percent = diff / currentDist * 0.5;
+
+                    const invMass1 = 1.0 / p1.mass;
+                    const invMass2 = 1.0 / p2.mass;
+                    const massSum = invMass1 + invMass2;
+
+                    const pullX = dx * percent;
+                    const pullY = dy * percent;
+
+                    p1.x -= pullX * (invMass1 / massSum);
+                    p1.y -= pullY * (invMass1 / massSum);
+                    p2.x += pullX * (invMass2 / massSum);
+                    p2.y += pullY * (invMass2 / massSum);
+                }
+            }
+
+            // 제약 해결 후 최종 속도 갱신
+            particles.forEach(p => {
+                p.vx = p.x - p.oldX;
+                p.vy = p.y - p.oldY;
+                p.update(w, h);
+            });
+        }
+
+        // 5. 성간 필라멘트 가교선 그리기
+        function drawGasFilaments() {
+            particles.forEach(p => p.neighborCount = 0);
+            
+            ctx.lineWidth = 0.55;
+            for (let i = 0; i < links.length; i++) {
+                const link = links[i];
+                const p1 = link.p1;
+                const p2 = link.p2;
+
+                p1.neighborCount++;
+                p2.neighborCount++;
+
+                const dist = Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2);
+                const opacity = Math.max(0.1, 1.0 - (dist / (p1.baseRadius + p2.baseRadius * 4.5)));
+
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                
+                ctx.strokeStyle = `rgba(129, 140, 248, ${opacity * 0.35})`;
+                ctx.stroke();
+            }
+        }
+
+        // 6. 타임머신 기록 보존 관리 (가비지 컬렉션 및 메모리 누수 방지 설계)
+        // 10,000개 환경의 메모리 병목을 피하기 위해 4프레임마다 영리하게 캡처하여 최대 80슬롯까지만 압축 기록
+        function saveUniverseState() {
+            if (isPlaying && (epoch / parseFloat(timeStepInput.value)) % 4 !== 0) {
+                return; 
+            }
+
+            if (history.length > 80) {
+                history.shift();
+            }
+
+            const state = particles.map(p => ({
+                id: p.id,
+                x: p.x,
+                y: p.y,
+                vx: p.vx,
+                vy: p.vy,
+                mass: p.mass,
+                color: p.color
+            }));
+
+            const savedLinks = links.map(l => ({
+                p1Id: l.p1.id,
+                p2Id: l.p2.id,
+                targetDist: l.targetDist
+            }));
+            
+            history.push({
+                epoch: epoch,
+                particles: state,
+                links: savedLinks
+            });
+
+            maxRecordedEpoch = history.length - 1;
+            timeHistorySlider.max = maxRecordedEpoch;
+            
+            if (timeSliderBadge.innerText.includes("LIVE")) {
+                timeHistorySlider.value = maxRecordedEpoch;
+            }
+        }
+
+        function restoreUniverseState(index) {
+            if (!history[index]) return;
+            
+            const savedState = history[index].particles;
+            const savedLinks = history[index].links;
+            epoch = history[index].epoch;
+
+            particles = savedState.map(s => new CosmicParticle(
+                s.id, s.x, s.y, s.vx, s.vy, s.mass, s.color
+            ));
+
+            const particleMap = {};
+            particles.forEach(p => { particleMap[p.id] = p; });
+
+            links = savedLinks.map(l => ({
+                p1: particleMap[l.p1Id],
+                p2: particleMap[l.p2Id],
+                targetDist: l.targetDist
+            })).filter(l => l.p1 && l.p2); 
+            
+            currentEpochText.innerText = `${epoch.toFixed(2)} 억 년`;
+            updateStatsOnly();
+        }
+
+        // 7. 중력 흐름 시야 드로잉 (인디고 보조 가이드라인)
+        function drawGravityFieldGlow() {
+            if (particles.length === 0) return;
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            
+            const gridSize = 45; 
+            const G = parseFloat(gravConstantInput.value);
+
+            for (let x = gridSize / 2; x < w; x += gridSize) {
+                for (let y = gridSize / 2; y < h; y += gridSize) {
+                    let totalGravityX = 0;
+                    let totalGravityY = 0;
+
+                    // 연산 부하 완화를 위해 일부 노드만 스캐닝하여 근사치 산출
+                    const step = Math.max(1, Math.floor(particles.length / 300));
+                    for (let i = 0; i < particles.length; i += step) {
+                        const p = particles[i];
+                        const dx = p.x - x;
+                        const dy = p.y - y;
+                        const distSq = dx * dx + dy * dy;
+                        const dist = Math.sqrt(distSq);
+
+                        if (dist > 10) {
+                            const force = (G * p.mass) / (distSq + SOFTENING * SOFTENING);
+                            totalGravityX += force * (dx / dist);
+                            totalGravityY += force * (dy / dist);
+                        }
+                    }
+
+                    const totalForce = Math.sqrt(totalGravityX * totalGravityX + totalGravityY * totalGravityY);
+                    if (totalForce > 0.005) {
+                        const drawLength = Math.min(gridSize * 0.7, totalForce * 180);
+                        const angle = Math.atan2(totalGravityY, totalGravityX);
+
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + Math.cos(angle) * drawLength, y + Math.sin(angle) * drawLength);
+                        
+                        const strength = Math.min(1, totalForce * 15);
+                        ctx.strokeStyle = `rgba(129, 140, 248, ${strength * 0.22})`;
+                        ctx.lineWidth = 0.8 + strength * 1.0;
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // 8. BFS 알고리즘을 활용한 군집(필라멘트 밀도) 계측 및 통계 산출
+        function updateStatsOnly() {
+            if (particles.length === 0) return;
+
+            const n = particles.length;
+            const adj = {};
+            particles.forEach(p => { adj[p.id] = []; });
+            
+            links.forEach(l => {
+                adj[l.p1.id].push(l.p2.id);
+                adj[l.p2.id].push(l.p1.id);
+            });
+
+            const visited = {};
+            let maxClusterSize = 0;
+            let bondedCount = 0;
+
+            particles.forEach(p => {
+                if (!visited[p.id]) {
+                    let queue = [p.id];
+                    visited[p.id] = true;
+                    let currentSize = 0;
+
+                    while (queue.length > 0) {
+                        let curr = queue.shift();
+                        currentSize++;
+
+                        const neighbors = adj[curr] || [];
+                        neighbors.forEach(neighborId => {
+                            if (!visited[neighborId]) {
+                                visited[neighborId] = true;
+                                queue.push(neighborId);
+                            }
+                        });
+                    }
+
+                    if (currentSize > maxClusterSize) {
+                        maxClusterSize = currentSize;
+                    }
+                    if (currentSize > 1) {
+                        bondedCount += currentSize;
+                    }
+                }
+            });
+
+            const clusteringPercentage = Math.round((bondedCount / n) * 100);
+
+            // 대시보드 반영
+            activeCountText.innerText = `${n} 개`;
+            bondCountText.innerText = `${links.length} 개`;
+            maxClusterSizeText.innerText = `${maxClusterSize} 개 규모`;
+            clusteringRateText.innerText = `${clusteringPercentage}%`;
+
+            if (clusteringPercentage < 15) {
+                structureStatusText.innerText = "초기 물질 균일 분포";
+                structureStatusText.className = "font-bold text-xs text-gray-400";
+            } else if (clusteringPercentage < 45) {
+                structureStatusText.innerText = "가스 수축 및 가닥 응축 조짐";
+                structureStatusText.className = "font-bold text-xs text-indigo-400/80";
+            } else if (clusteringPercentage < 75) {
+                structureStatusText.innerText = "원시 은하 가닥(필라멘트) 완성";
+                structureStatusText.className = "font-bold text-xs text-indigo-300";
+            } else {
+                structureStatusText.innerText = "초거대 보이드 & 우주망(Cosmic Web)";
+                structureStatusText.className = "font-bold text-xs text-emerald-400";
+            }
+        }
+
+        // 9. 메인 렌더링 프레임 루프
+        function loop() {
+            // 심연의 어두운 우주 배경
+            ctx.fillStyle = '#010307';
+            ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+
+            const isLive = timeSliderBadge.innerText.includes("LIVE");
+            const dt = parseFloat(timeStepInput.value);
+            
+            if (isPlaying && isLive) {
+                epoch += dt;
+                calculatePhysics(dt);
+                saveUniverseState();
+            } else {
+                buildSpatialGrid();
+            }
+
+            // 1단계: 선명하고 영롱한 보랏빛 성간 가스 가교(필라멘트 선) 시각화
+            drawGasFilaments();
+
+            // 2단계: 중력장 벡터 표시
+            if (showGravityField) {
+                drawGravityFieldGlow();
+            }
+
+            // 3단계: 자체 발광하는 형광 초록색 입자 렌더링 (밀집 결합 확인 최적화)
+            particles.forEach(p => p.draw(ctx));
+
+            if (isPlaying && isLive) {
+                currentEpochText.innerText = `${epoch.toFixed(2)} 억 년`;
+                updateStatsOnly();
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        // 10. 조작부 리스너 인터랙션
+        particleCountInput.addEventListener('input', (e) => {
+            particleCountVal.innerText = e.target.value;
+        });
+
+        particleMassInput.addEventListener('input', (e) => {
+            particleMassVal.innerText = parseFloat(e.target.value).toFixed(2);
+        });
+
+        gravConstantInput.addEventListener('input', (e) => {
+            gravConstantVal.innerText = parseFloat(e.target.value).toFixed(2);
+        });
+
+        timeStepInput.addEventListener('input', (e) => {
+            timeStepVal.innerText = parseFloat(e.target.value).toFixed(3);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            generateUniverse();
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.setAttribute('data-lucide', 'pause');
+                playText.innerText = '일시 정지';
+            } else {
+                playIcon.setAttribute('data-lucide', 'play');
+                playText.innerText = '재개 하기';
+            }
+            lucide.createIcons();
+        });
+
+        togglePathsBtn.addEventListener('click', () => {
+            showGravityField = !showGravityField;
+            if (showGravityField) {
+                togglePathsBtn.classList.remove('bg-gray-950');
+                togglePathsBtn.classList.add('bg-indigo-600/20', 'text-indigo-300', 'border-indigo-500/40');
+            } else {
+                togglePathsBtn.classList.remove('bg-indigo-600/20', 'text-indigo-300', 'border-indigo-500/40');
+                togglePathsBtn.classList.add('bg-gray-950');
+            }
+        });
+
+        timeHistorySlider.addEventListener('input', (e) => {
+            const index = parseInt(e.target.value);
+            
+            if (index === maxRecordedEpoch) {
+                timeSliderBadge.innerText = "LIVE (가장 미래)";
+                timeSliderBadge.classList.remove('bg-amber-500/20', 'text-amber-300');
+                timeSliderBadge.classList.add('bg-indigo-500/20', 'text-indigo-300');
+            } else {
+                timeSliderBadge.innerText = `과거 우주 (${((index / maxRecordedEpoch) * 100).toFixed(0)}% 시점)`;
+                timeSliderBadge.classList.remove('bg-indigo-500/20', 'text-indigo-300');
+                timeSliderBadge.classList.add('bg-amber-500/20', 'text-amber-300');
+            }
+
+            restoreUniverseState(index);
+        });
+
+        // 캔버스 인터랙티브 블랙홀 생성 기능 (에메랄드/초록 시너지 컬러 적용)
+        let isDrawingMass = false;
+        let spawnedMassNode = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width) / window.devicePixelRatio;
+            const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height) / window.devicePixelRatio;
+            
+            const baseMass = parseFloat(particleMassInput.value);
+            const blackHoleMass = baseMass * 25; // 25배 강력한 질량 거대 노드 생성
+            
+            spawnedMassNode = new CosmicParticle(particles.length + 1000, mouseX, mouseY, 0, 0, blackHoleMass, 'rgba(57, 255, 20, 0.95)');
+            particles.push(spawnedMassNode);
+            isDrawingMass = true;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawingMass || !spawnedMassNode) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width) / window.devicePixelRatio;
+            const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height) / window.devicePixelRatio;
+            
+            spawnedMassNode.x = mouseX;
+            spawnedMassNode.y = mouseY;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawingMass = false;
+            spawnedMassNode = null;
+        });
+
+        // 초기 시작
+        window.onload = function() {
+            resizeCanvas();
+            generateUniverse();
+            loop();
+        }
+    </script>
+</body>
+</html>

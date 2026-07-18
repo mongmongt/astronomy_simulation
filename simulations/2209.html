@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>다양한 조작변인을 통한 혜성의 궤도 탐구</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif;
+            overflow: hidden;
+            background-color: #0b0f19;
+        }
+        canvas {
+            display: block;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+            border: 2px solid #0f172a;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex text-gray-100 selection:bg-indigo-500 selection:text-white">
+
+    <!-- 왼쪽: 메인 우주 시뮬레이션 공간 -->
+    <div class="relative flex-1 h-full bg-[#030712] overflow-hidden">
+        <canvas id="simCanvas" class="w-full h-full"></canvas>
+
+        <!-- 좌측 상단: 실시간 과학적 측정 데이터 (HTML 표준 수식 스타일 및 특수 문자 깨짐 방지) -->
+        <div class="absolute top-4 left-4 bg-gray-950/90 backdrop-blur-md p-4 rounded-xl border border-gray-800 pointer-events-none max-w-xs shadow-2xl transition-all">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-2.5 flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                실시간 궤도 제원 데이터
+            </h2>
+            <div class="space-y-2 text-xs text-gray-300">
+                <div class="flex justify-between border-b border-gray-800/40 pb-1">
+                    <span>중심별과의 거리 (<i>r</i>):</span>
+                    <span id="data-distance" class="font-mono text-emerald-400 font-bold">0.00 AU</span>
+                </div>
+                <div class="flex justify-between border-b border-gray-800/40 pb-1">
+                    <span>혜성의 현재 속도 (<i>v</i>):</span>
+                    <span id="data-speed" class="font-mono text-cyan-400 font-bold">0.00 km/s</span>
+                </div>
+                <div class="flex justify-between border-b border-gray-800/40 pb-1">
+                    <span>궤도 장반경 (<i>a</i>):</span>
+                    <span id="data-semi-major" class="font-mono text-purple-400 font-bold">계산 중</span>
+                </div>
+                <div class="flex justify-between border-b border-gray-800/40 pb-1">
+                    <span>궤도 이심률 (<i>e</i>):</span>
+                    <span id="data-eccentricity" class="font-mono text-fuchsia-400 font-bold">계산 중</span>
+                </div>
+                <div class="flex justify-between border-b border-gray-800/40 pb-1">
+                    <span>역학적 에너지 (<i>E</i>):</span>
+                    <span id="data-energy" class="font-mono font-bold">0.00 J</span>
+                </div>
+                <div class="flex justify-between pt-0.5">
+                    <span>궤도 기하학적 형태:</span>
+                    <span id="data-state" class="font-bold text-amber-400">대기 중</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 좌측 하단: 과학적 탐구 분석 가이드 -->
+        <div class="absolute bottom-4 left-4 bg-gray-950/80 backdrop-blur-md px-4 py-3 rounded-xl border border-gray-800/80 text-xs text-gray-400 max-w-md pointer-events-none">
+            <div class="font-semibold text-gray-200 mb-1 flex items-center gap-1">
+                <span>🪐 케플러 궤도 법칙 탐구</span>
+            </div>
+            <p class="leading-relaxed text-[11px]">
+                혜성이 타원 궤도를 돌 때 실시간 <span class="text-fuchsia-400">이심률(<i>e</i>)</span>을 확인해 보세요. <i>e</i>가 0이면 원형, 0에서 1 사이면 타원이며, <span class="text-rose-400 font-semibold"><i>e</i> &gt;= 1 이 되는 순간 쌍곡선 탈출 궤도</span>가 되어 돌아오지 않음을 정량적으로 증명할 수 있습니다.
+            </p>
+        </div>
+    </div>
+
+    <!-- 오른쪽: 대화형 제어 패널 및 과학적 설명 수록 -->
+    <div class="w-96 h-full bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl z-10 select-none overflow-y-auto font-sans">
+        <!-- 헤더 영역 -->
+        <div class="p-5 border-b border-gray-800 bg-gray-950/50">
+            <h1 class="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                혜성 궤도 탐구 시뮬레이션
+            </h1>
+            <p class="text-[11px] text-gray-400 mt-1">고급 지구과학 천문 가상실험 (2체 문제의 시각화)</p>
+        </div>
+
+        <!-- 핵심 기능 1: 출발 벡터 방향 제어 패드 -->
+        <div class="p-5 border-b border-gray-800 bg-gray-900/40">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold text-indigo-300 uppercase tracking-wider">1. 초기 벡터 조작 (각도 및 크기)</h3>
+                <span class="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full font-semibold font-sans">드래그 조작</span>
+            </div>
+            <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">
+                출발지 원 내부에서 <span class="text-cyan-400 font-semibold">하늘색 원형 손잡이</span>를 마우스나 터치로 끌어 발사 방향과 속도 배율을 실시간으로 조작하세요. <span class="text-emerald-400 font-semibold">실시간 궤도선 예측</span>이 즉각 반영됩니다.
+            </p>
+            
+            <div class="flex justify-center my-2">
+                <div class="relative w-44 h-44 bg-gray-950 rounded-xl border border-gray-800 flex items-center justify-center overflow-hidden">
+                    <div class="absolute inset-0 border-b border-gray-800/30 top-1/2"></div>
+                    <div class="absolute inset-0 border-l border-gray-800/30 left-1/2"></div>
+                    <div class="absolute w-32 h-32 border border-gray-800/20 rounded-full"></div>
+                    <div class="absolute w-16 h-16 border border-gray-800/40 rounded-full"></div>
+                    <canvas id="vectorCanvas" width="176" height="176" class="absolute inset-0 cursor-crosshair"></canvas>
+                </div>
+            </div>
+            
+            <div class="flex justify-between text-[11px] text-gray-400 mt-2 px-1 font-mono">
+                <span>입사 각도: <strong id="val-angle" class="text-cyan-400">0도</strong></span>
+                <span>벡터 배율: <strong id="val-vector-mag" class="text-cyan-400">100%</strong></span>
+            </div>
+        </div>
+
+        <!-- 핵심 기능 2: 조작변인 슬라이더 영역 -->
+        <div class="p-5 border-b border-gray-800 space-y-5">
+            <h3 class="text-xs font-bold text-indigo-300 uppercase tracking-wider">2. 물리적 조작변인 설정</h3>
+
+            <!-- 변인 1: 혜성의 질량 -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                    <label for="slide-comet-mass" class="font-medium text-gray-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> 혜성의 질량 (<i>m</i>)
+                    </label>
+                    <span class="text-cyan-400 font-mono text-xs font-semibold" id="display-comet-mass">1.0 &times; 10<sup>14</sup> kg</span>
+                </div>
+                <input type="range" id="slide-comet-mass" min="0.1" max="10.0" step="0.1" value="1.0" 
+                    class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <!-- 변인 2: 입사 속도 -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                    <label for="slide-speed" class="font-medium text-gray-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> 입사 초기 속도 (<i>v</i><sub>0</sub>)
+                    </label>
+                    <span class="text-indigo-400 font-mono text-xs font-semibold" id="display-speed">25.0 km/s</span>
+                </div>
+                <input type="range" id="slide-speed" min="5" max="60" step="0.5" value="25" 
+                    class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            </div>
+
+            <!-- 변인 3: 중심별의 질량 (유니코드 태양기호 ☉ 깨짐 방지를 위해 M_Sun 으로 통일) -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                    <label for="slide-star-mass" class="font-medium text-gray-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> 중심별의 질량 (<i>M</i>)
+                    </label>
+                    <span class="text-amber-400 font-mono text-xs font-semibold" id="display-star-mass">1.0 M<sub>Sun</sub></span>
+                </div>
+                <input type="range" id="slide-star-mass" min="0.2" max="3.0" step="0.1" value="1.0" 
+                    class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            </div>
+
+            <!-- 변인 4: 중심별과의 거리 (축척 변동) -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                    <label for="slide-distance-scale" class="font-medium text-gray-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> 중심별과의 축척 거리
+                    </label>
+                    <span class="text-emerald-400 font-mono text-xs font-semibold" id="display-distance-scale">3.0 AU</span>
+                </div>
+                <input type="range" id="slide-distance-scale" min="1.0" max="8.0" step="0.1" value="3.0" 
+                    class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+            </div>
+        </div>
+
+        <!-- 과학적 한계점 분석 및 고지 패널 (수식 수정 완료) -->
+        <div class="p-5 border-b border-gray-800 bg-gray-950/30">
+            <h3 class="text-xs font-bold text-rose-300 uppercase tracking-wider mb-2 flex items-center gap-1">
+                ⚠️ 시뮬레이션의 과학적 한계점 및 가정
+            </h3>
+            <ul class="text-[10px] text-gray-400 space-y-1.5 list-disc pl-3 leading-relaxed">
+                <li><strong class="text-gray-300">2체 문제의 가정:</strong> 본 프로그램은 태양계 내 타 행성의 중력 섭동을 배제한 단순 2체(태양-혜성) 물리계만 구축했습니다.</li>
+                <li><strong class="text-gray-300">고정된 중심별:</strong> 혜성이 태양을 당기는 중력 반작용은 무시하고 중심별의 위치를 완전 고정 상태로 단순화했습니다.</li>
+                <li><strong class="text-gray-300">극단값 보호 안전장치:</strong> 거리 <i>r</i> &rarr; 0 일 때 수치해석 오류(속도 발산 무한대)를 예방하고자 <span class="text-rose-400 font-semibold">충돌 경계값 필터(Collision Guard)</span>를 도입해 한계를 보완했습니다.</li>
+            </ul>
+        </div>
+
+        <!-- 조작 버튼 영역 -->
+        <div class="p-5 bg-gray-950/70 mt-auto space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+                <button id="btn-launch" class="py-2.5 px-4 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 active:scale-95 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 text-xs shadow-lg shadow-indigo-500/20">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    혜성 발사
+                </button>
+                <button id="btn-reset" class="py-2.5 px-4 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-200 font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 text-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"/></svg>
+                    초기화
+                </button>
+            </div>
+            
+            <div class="flex items-center justify-between text-xs text-gray-400 bg-gray-900/50 p-2 rounded-lg border border-gray-850">
+                <span>자취 영구 보존</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="check-keep-trail" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 스크립트 엔진 -->
+    <script>
+        const simCanvas = document.getElementById('simCanvas');
+        const simCtx = simCanvas.getContext('2d');
+        const vectorCanvas = document.getElementById('vectorCanvas');
+        const vectorCtx = vectorCanvas.getContext('2d');
+
+        // 가상 우주 물리 모델 정합 상수
+        const G = 1500; 
+        const SOFTENING_FACTOR = 400; // 극단값 계산 발산 방지용 안전 장치
+
+        const state = {
+            comet: { x: 0, y: 0, vx: 0, vy: 0, mass: 1.0, baseSpeed: 25.0, trail: [] },
+            star: { x: 0, y: 0, mass: 1.0 },
+            launchPoint: { x: 0, y: 0 },
+            scale: 3.0,
+            vector: { dx: -0.707, dy: 0.707, magnitude: 1.0 },
+            isLaunched: false,
+            isDraggingVector: false,
+            isCometDestroyed: false,
+            isCometEscaped: false
+        };
+
+        function resizeCanvas() {
+            simCanvas.width = simCanvas.parentElement.clientWidth;
+            simCanvas.height = simCanvas.parentElement.clientHeight;
+            
+            state.star.x = simCanvas.width * 0.38;
+            state.star.y = simCanvas.height * 0.58;
+            state.launchPoint.x = simCanvas.width * 0.80;
+            state.launchPoint.y = simCanvas.height * 0.18;
+            
+            if (!state.isLaunched) {
+                resetCometPosition();
+            }
+        }
+
+        function resetCometPosition() {
+            state.comet.x = state.launchPoint.x;
+            state.comet.y = state.launchPoint.y;
+            state.comet.trail = [];
+            state.isLaunched = false;
+            state.isCometDestroyed = false;
+            state.isCometEscaped = false;
+            
+            // 초기화 시 슬라이더 변인과의 정적 싱크 동기화 구현
+            state.comet.baseSpeed = parseFloat(document.getElementById('slide-speed').value);
+            state.star.mass = parseFloat(document.getElementById('slide-star-mass').value);
+            state.comet.mass = parseFloat(document.getElementById('slide-comet-mass').value);
+            state.scale = parseFloat(document.getElementById('slide-distance-scale').value);
+            
+            updateVelocityFromVector();
+        }
+
+        function updateVelocityFromVector() {
+            const speedScaleFactor = 0.42; 
+            const finalSpeed = state.comet.baseSpeed * state.vector.magnitude * speedScaleFactor;
+            state.comet.vx = state.vector.dx * finalSpeed;
+            state.comet.vy = state.vector.dy * finalSpeed;
+        }
+
+        function stepPhysics() {
+            if (!state.isLaunched || state.isCometDestroyed || state.isCometEscaped) return;
+
+            const dx = state.star.x - state.comet.x;
+            const dy = state.star.y - state.comet.y;
+            const distancePixel = Math.sqrt(dx * dx + dy * dy);
+            const physicalDistance = distancePixel * (state.scale / 3.0);
+
+            // 극단적으로 거리가 줄어들었을 때 만유인력 폭발을 차단하고 정확하게 충돌 판정
+            const starCollisionRadius = 24 + (state.star.mass * 3);
+            if (distancePixel < starCollisionRadius) {
+                state.isCometDestroyed = true;
+                createExplosion(state.comet.x, state.comet.y);
+                return;
+            }
+
+            if (state.comet.x < -1500 || state.comet.x > simCanvas.width + 1500 ||
+                state.comet.y < -1500 || state.comet.y > simCanvas.height + 1500) {
+                state.isCometEscaped = true;
+                return;
+            }
+
+            // [3차시 대비 극단값 보강] 중력 연산 분모에 Softening 및 최소값 보정 장치를 걸어 수치 이상 현상 완전 방지
+            const squaredDistance = (physicalDistance * physicalDistance) + SOFTENING_FACTOR;
+            const forceMagnitude = (G * state.star.mass) / Math.max(10, squaredDistance);
+
+            const ax = (dx / Math.max(1, distancePixel)) * forceMagnitude;
+            const ay = (dy / Math.max(1, distancePixel)) * forceMagnitude;
+
+            state.comet.vx += ax;
+            state.comet.vy += ay;
+            state.comet.x += state.comet.vx;
+            state.comet.y += state.comet.vy;
+
+            state.comet.trail.push({ x: state.comet.x, y: state.comet.y });
+            if (!document.getElementById('check-keep-trail').checked && state.comet.trail.length > 400) {
+                state.comet.trail.shift();
+            }
+        }
+
+        // 실시간 궤도 예측 시스템 (실제 스텝 알고리즘과 수식적 통일화 확보)
+        function drawOrbitPrediction(ctx) {
+            if (state.isLaunched) return;
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(110, 231, 183, 0.4)'; 
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 6]);
+
+            const speedScaleFactor = 0.42;
+            const finalSpeed = state.comet.baseSpeed * state.vector.magnitude * speedScaleFactor;
+            
+            let tempX = state.launchPoint.x;
+            let tempY = state.launchPoint.y;
+            let tempVx = state.vector.dx * finalSpeed;
+            let tempVy = state.vector.dy * finalSpeed;
+
+            ctx.beginPath();
+            ctx.moveTo(tempX, tempY);
+
+            const maxPredictionSteps = 180;
+            const starCollisionRadius = 24 + (state.star.mass * 3);
+
+            for (let i = 0; i < maxPredictionSteps; i++) {
+                const dx = state.star.x - tempX;
+                const dy = state.star.y - tempY;
+                const distancePixel = Math.sqrt(dx * dx + dy * dy);
+
+                if (distancePixel < starCollisionRadius) break;
+
+                const physicalDistance = distancePixel * (state.scale / 3.0);
+                const squaredDistance = (physicalDistance * physicalDistance) + SOFTENING_FACTOR;
+                const forceMagnitude = (G * state.star.mass) / Math.max(10, squaredDistance);
+
+                const ax = (dx / Math.max(1, distancePixel)) * forceMagnitude;
+                const ay = (dy / Math.max(1, distancePixel)) * forceMagnitude;
+
+                tempVx += ax;
+                tempVy += ay;
+                tempX += tempVx;
+                tempY += tempVy;
+
+                ctx.lineTo(tempX, tempY);
+
+                if (tempX < -200 || tempX > simCanvas.width + 200 || tempY < -200 || tempY > simCanvas.height + 200) {
+                    break;
+                }
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        let particles = [];
+        function createExplosion(x, y) {
+            particles = [];
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 2;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                    life: 1.0, color: `hsl(${Math.random() * 25 + 15}, 100%, 60%)`
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.025;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawVectorControl() {
+            const width = vectorCanvas.width;
+            const height = vectorCanvas.height;
+            const cx = width / 2;
+            const cy = height / 2;
+
+            vectorCtx.clearRect(0, 0, width, height);
+
+            vectorCtx.strokeStyle = '#1e293b';
+            vectorCtx.lineWidth = 1;
+            vectorCtx.setLineDash([2, 4]);
+            vectorCtx.beginPath();
+            vectorCtx.arc(cx, cy, 55, 0, Math.PI * 2);
+            vectorCtx.stroke();
+            vectorCtx.setLineDash([]);
+
+            vectorCtx.fillStyle = '#6366f1';
+            vectorCtx.beginPath();
+            vectorCtx.arc(cx, cy, 5, 0, Math.PI * 2);
+            vectorCtx.fill();
+
+            const arrowLength = 60 * state.vector.magnitude;
+            const ax = cx + state.vector.dx * arrowLength;
+            const ay = cy + state.vector.dy * arrowLength;
+
+            vectorCtx.strokeStyle = '#22d3ee';
+            vectorCtx.lineWidth = 2.5;
+            vectorCtx.beginPath();
+            vectorCtx.moveTo(cx, cy);
+            vectorCtx.lineTo(ax, ay);
+            vectorCtx.stroke();
+
+            vectorCtx.fillStyle = '#22d3ee';
+            vectorCtx.beginPath();
+            vectorCtx.arc(ax, ay, 8, 0, Math.PI * 2);
+            vectorCtx.fill();
+            
+            vectorCtx.strokeStyle = '#ffffff';
+            vectorCtx.lineWidth = 1.5;
+            vectorCtx.beginPath();
+            vectorCtx.arc(ax, ay, 10, 0, Math.PI * 2);
+            vectorCtx.stroke();
+        }
+
+        function handleVectorTouch(clientX, clientY) {
+            const rect = vectorCanvas.getBoundingClientRect();
+            const mouseX = clientX - rect.left;
+            const mouseY = clientY - rect.top;
+            const cx = vectorCanvas.width / 2;
+            const cy = vectorCanvas.height / 2;
+            const dx = mouseX - cx;
+            const dy = mouseY - cy;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 5) {
+                state.vector.dx = dx / distance;
+                state.vector.dy = dy / distance;
+                const scaleUnit = distance / 60;
+                state.vector.magnitude = Math.max(0.3, Math.min(1.3, scaleUnit));
+
+                let angleDeg = Math.round(Math.atan2(dy, dx) * (180 / Math.PI));
+                if (angleDeg < 0) angleDeg += 360;
+                document.getElementById('val-angle').textContent = `${angleDeg}도`;
+                document.getElementById('val-vector-mag').textContent = `${Math.round(state.vector.magnitude * 100)}%`;
+
+                if (!state.isLaunched) updateVelocityFromVector();
+                drawVectorControl();
+            }
+        }
+
+        vectorCanvas.addEventListener('mousedown', (e) => { state.isDraggingVector = true; handleVectorTouch(e.clientX, e.clientY); });
+        window.addEventListener('mousemove', (e) => { if (state.isDraggingVector) handleVectorTouch(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', () => { state.isDraggingVector = false; });
+        vectorCanvas.addEventListener('touchstart', (e) => { state.isDraggingVector = true; if (e.touches.length > 0) handleVectorTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }, { passive: false });
+        vectorCanvas.addEventListener('touchmove', (e) => { if (state.isDraggingVector && e.touches.length > 0) handleVectorTouch(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }, { passive: false });
+
+        // 정밀 2체 역학(Keplerian Orbit) 기반 실시간 궤도 요소 연산 (수치오류 및 극단값 보호 코드 추가)
+        function updateStatusUI() {
+            const dx = state.comet.x - state.star.x;
+            const dy = state.comet.y - state.star.y;
+            const distancePixel = Math.sqrt(dx * dx + dy * dy);
+            
+            const distanceAU = (distancePixel / 100) * state.scale;
+            const currentSpeed = Math.sqrt(state.comet.vx * state.comet.vx + state.comet.vy * state.comet.vy) * 2.5;
+
+            const physicalM = state.star.mass * 1.5; 
+            const mu = G * physicalM;
+            
+            // 특정 비궤도 에너지(Specific Orbital Energy, epsilon = v^2/2 - mu/r) 계산
+            const r_physics = distancePixel * (state.scale / 3.0);
+            const v_physics = Math.sqrt(state.comet.vx * state.comet.vx + state.comet.vy * state.comet.vy);
+            const epsilon = (v_physics * v_physics / 2) - (mu / Math.max(r_physics, 1.0));
+            
+            // 실제 물리적 값으로 스케일링된 에너지 출력
+            const kineticEnergy = 0.5 * state.comet.mass * currentSpeed * currentSpeed;
+            const potentialEnergy = - (G * physicalM * state.comet.mass) / Math.max(distanceAU, 0.15);
+            const mechanicalEnergy = kineticEnergy + potentialEnergy;
+
+            // 1. 비각운동량 계산: h = r x v = rx * vy - ry * vx
+            const h = dx * state.comet.vy - dy * state.comet.vx;
+
+            // 2. 이심률 벡터 크기 계산: e = sqrt(1 + 2 * epsilon * h^2 / mu^2)
+            // [3차시 대비 극단값 보강] eccSq 가 부동소수점 정밀도 한계로 미세 음수가 될 때의 NaN 반환 현상 방지 예외 처리
+            const eccSq = 1 + (2 * epsilon * h * h) / (mu * mu);
+            let eccentricity = Math.sqrt(Math.max(0, eccSq));
+
+            // 3. 장반경 계산: a = -mu / (2 * epsilon)
+            let semiMajorAxis = -mu / (Math.max(0.0001, Math.abs(2 * epsilon)));
+            const displaySemiMajor = (semiMajorAxis / 100) * state.scale;
+
+            // 기하학적 형태 판정 및 수치 디스플레이
+            if (mechanicalEnergy < 0) {
+                document.getElementById('data-semi-major').textContent = `${Math.abs(displaySemiMajor).toFixed(2)} AU`;
+                if (eccentricity < 0.005) eccentricity = 0;
+                document.getElementById('data-eccentricity').textContent = eccentricity.toFixed(3);
+            } else {
+                // 탈출 궤도 시 장반경이 유한한 음수값 등으로 왜곡되어 나타나는 현상 제거
+                document.getElementById('data-semi-major').textContent = "무한대 (탈출 궤도)";
+                document.getElementById('data-eccentricity').textContent = eccentricity.toFixed(3);
+            }
+
+            document.getElementById('data-distance').textContent = `${distanceAU.toFixed(2)} AU`;
+            document.getElementById('data-speed').textContent = `${currentSpeed.toFixed(1)} km/s`;
+            
+            const energyEl = document.getElementById('data-energy');
+            energyEl.innerHTML = `${mechanicalEnergy.toFixed(1)} &times; 10<sup>31</sup> J`;
+            energyEl.className = mechanicalEnergy >= 0 ? 'font-mono text-rose-400 font-bold' : 'font-mono text-cyan-400 font-bold';
+
+            const stateEl = document.getElementById('data-state');
+            if (state.isCometDestroyed) {
+                stateEl.textContent = '중심별과 충돌';
+                stateEl.className = 'font-bold text-red-500';
+            } else if (state.isCometEscaped) {
+                stateEl.textContent = '태양계 탈출';
+                stateEl.className = 'font-bold text-sky-400';
+            } else if (state.isLaunched) {
+                stateEl.textContent = mechanicalEnergy >= 0 ? '쌍곡선 탈출 궤도' : '안정적 타원 궤도';
+                stateEl.className = mechanicalEnergy >= 0 ? 'font-bold text-amber-500' : 'font-bold text-emerald-400';
+            } else {
+                stateEl.textContent = '발사 준비 완료';
+                stateEl.className = 'font-bold text-gray-400';
+            }
+        }
+
+        function drawComet(ctx, x, y) {
+            ctx.save();
+            const rGrd = ctx.createRadialGradient(x, y, 1, x, y, 14);
+            rGrd.addColorStop(0, 'rgba(165, 243, 252, 1)'); 
+            rGrd.addColorStop(0.3, 'rgba(129, 140, 248, 0.6)');
+            rGrd.addColorStop(1, 'rgba(99, 102, 241, 0)');
+            ctx.fillStyle = rGrd; ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 3 + (state.comet.mass * 0.25), 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        function drawStar(ctx, x, y) {
+            ctx.save();
+            const radius = 24 + (state.star.mass * 3);
+            const sGrd = ctx.createRadialGradient(x, y, radius * 0.15, x, y, radius * 2.8);
+            sGrd.addColorStop(0, 'rgba(254, 240, 138, 1)'); sGrd.addColorStop(0.2, 'rgba(249, 115, 22, 0.85)'); sGrd.addColorStop(0.6, 'rgba(239, 68, 68, 0.25)'); sGrd.addColorStop(1, 'rgba(239, 68, 68, 0)');
+            ctx.fillStyle = sGrd; ctx.beginPath(); ctx.arc(x, y, radius * 2.8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fffbeb'; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        const backgroundCosmicStars = [];
+        for (let i = 0; i < 90; i++) {
+            backgroundCosmicStars.push({ x: Math.random(), y: Math.random(), size: Math.random() * 1.6 + 0.4, alpha: Math.random() * 0.75 + 0.25 });
+        }
+
+        function drawBackground() {
+            simCtx.fillStyle = '#020617'; simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
+            simCtx.fillStyle = '#ffffff';
+            backgroundCosmicStars.forEach(star => {
+                simCtx.save(); simCtx.globalAlpha = star.alpha; simCtx.beginPath(); simCtx.arc(star.x * simCanvas.width, star.y * simCanvas.height, star.size, 0, Math.PI * 2); simCtx.fill(); simCtx.restore();
+            });
+            simCtx.strokeStyle = 'rgba(71, 85, 105, 0.12)'; simCtx.lineWidth = 1;
+            const gridInterval = 60;
+            for (let x = 0; x < simCanvas.width; x += gridInterval) { simCtx.beginPath(); simCtx.moveTo(x, 0); simCtx.lineTo(x, simCanvas.height); simCtx.stroke(); }
+            for (let y = 0; y < simCanvas.height; y += gridInterval) { simCtx.beginPath(); simCtx.moveTo(0, y); simCtx.lineTo(simCanvas.width, y); simCtx.stroke(); }
+        }
+
+        function renderAll() {
+            stepPhysics(); updateParticles(); drawBackground(); drawStar(simCtx, state.star.x, state.star.y);
+
+            if (!state.isLaunched) {
+                simCtx.save(); simCtx.strokeStyle = 'rgba(99, 102, 241, 0.45)'; simCtx.setLineDash([4, 4]); simCtx.lineWidth = 2; simCtx.beginPath(); simCtx.arc(state.launchPoint.x, state.launchPoint.y, 16, 0, Math.PI * 2); simCtx.stroke();
+                simCtx.fillStyle = '#c084fc'; simCtx.font = 'bold 11px sans-serif'; simCtx.textAlign = 'center'; simCtx.fillText('혜성 출발지', state.launchPoint.x, state.launchPoint.y - 24); simCtx.restore();
+                drawOrbitPrediction(simCtx);
+            }
+
+            if (state.comet.trail.length > 1) {
+                simCtx.save(); simCtx.beginPath(); simCtx.moveTo(state.comet.trail[0].x, state.comet.trail[0].y);
+                for (let i = 1; i < state.comet.trail.length; i++) simCtx.lineTo(state.comet.trail[i].x, state.comet.trail[i].y);
+                simCtx.strokeStyle = 'rgba(139, 92, 246, 0.85)'; simCtx.lineWidth = 2.5; simCtx.shadowColor = '#8b5cf6'; simCtx.shadowBlur = 5; simCtx.stroke(); simCtx.restore();
+            }
+
+            particles.forEach(p => {
+                simCtx.save(); simCtx.globalAlpha = p.life; simCtx.fillStyle = p.color; simCtx.beginPath(); simCtx.arc(p.x, p.y, Math.max(0.1, p.life * 4.5), 0, Math.PI * 2); simCtx.fill(); simCtx.restore();
+            });
+
+            if (state.isLaunched && !state.isCometDestroyed && !state.isCometEscaped) drawComet(simCtx, state.comet.x, state.comet.y);
+            else if (!state.isLaunched) drawComet(simCtx, state.launchPoint.x, state.launchPoint.y);
+
+            updateStatusUI();
+            requestAnimationFrame(renderAll);
+        }
+
+        // 입력장치 이벤트
+        document.getElementById('slide-comet-mass').addEventListener('input', (e) => { state.comet.mass = parseFloat(e.target.value); document.getElementById('display-comet-mass').innerHTML = `${state.comet.mass.toFixed(1)} &times; 10<sup>14</sup> kg`; });
+        document.getElementById('slide-speed').addEventListener('input', (e) => { state.comet.baseSpeed = parseFloat(e.target.value); document.getElementById('display-speed').textContent = `${state.comet.baseSpeed.toFixed(1)} km/s`; if (!state.isLaunched) updateVelocityFromVector(); });
+        document.getElementById('slide-star-mass').addEventListener('input', (e) => { state.star.mass = parseFloat(e.target.value); document.getElementById('display-star-mass').innerHTML = `${state.star.mass.toFixed(1)} M<sub><sub>Sun</sub></sub>`; });
+        document.getElementById('slide-distance-scale').addEventListener('input', (e) => { state.scale = parseFloat(e.target.value); document.getElementById('display-distance-scale').textContent = `${state.scale.toFixed(1)} AU`; if (!state.isLaunched) updateVelocityFromVector(); });
+
+        document.getElementById('btn-launch').addEventListener('click', () => { if (state.isLaunched) resetCometPosition(); state.isLaunched = true; updateVelocityFromVector(); });
+        document.getElementById('btn-reset').addEventListener('click', resetCometPosition);
+
+        window.addEventListener('resize', resizeCanvas);
+        window.onload = function() { resizeCanvas(); drawVectorControl(); renderAll(); };
+    </script>
+</body>
+</html>

@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>외계 우주 기후 시뮬레이터 v3.5 Professional</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 스크롤바 커스터마이징 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #020617;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    body {
+      background-color: #030611;
+      color: #f1f5f9;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    /* 포커스 링 및 슬라이더 스타일 커스텀 */
+    input[type="range"]::-webkit-slider-thumb {
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col select-none overflow-x-hidden">
+
+  <!-- --- 1. 상단 글로벌 헤더 --- -->
+  <header class="bg-slate-950/80 border-b border-slate-900 p-4 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/20">
+          <svg class="w-5 h-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.364l-.707-.707M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-md lg:text-lg font-black tracking-tight text-white flex items-center gap-2">
+            외계 우주 기후 시뮬레이터 <span class="text-indigo-400 text-[10px] font-semibold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">v3.5 Professional</span>
+          </h1>
+          <p class="text-[11px] text-slate-400">CHZ 기상 분석계 · Clausius-Clapeyron 상평형 · 비선형 Stellar Evolution 통합 통제국</p>
+        </div>
+      </div>
+
+      <!-- 천체 연구 프리셋 단추 모음 -->
+      <div id="presetContainer" class="flex flex-wrap items-center gap-1 bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
+        <button data-preset="earth" class="px-2.5 py-1 rounded-md text-[11px] font-bold transition-all bg-indigo-600 text-white shadow-sm">지구 (표준)</button>
+        <button data-preset="mars" class="px-2.5 py-1 rounded-md text-[11px] font-bold transition-all text-slate-400 hover:text-white">화성 (미세기압)</button>
+        <button data-preset="venus_runaway" class="px-2.5 py-1 rounded-md text-[11px] font-bold transition-all text-slate-400 hover:text-white">금성 (92기압 고온)</button>
+        <button data-preset="trappist_1e" class="px-2.5 py-1 rounded-md text-[11px] font-bold transition-all text-slate-400 hover:text-white">트라피스트-1e (조석)</button>
+        <button data-preset="ocean_world" class="px-2.5 py-1 rounded-md text-[11px] font-bold transition-all text-slate-400 hover:text-white">오션월드 (K형)</button>
+        <button data-preset="super_eccentric" class="px-2.5 py-1 rounded-md text-[11px] font-bold transition-all text-slate-400 hover:text-white">초이심률 타원</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- --- 2. 메인 시뮬레이션 인터랙티브 레이아웃 그리드 --- -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5">
+    
+    <!-- --- [좌측 컨트롤러 영역: 그룹화 정돈 (4 Cols)] --- -->
+    <section class="lg:col-span-4 flex flex-col gap-4">
+      <div class="bg-slate-950/60 border border-slate-900 rounded-2xl p-5 shadow-xl flex flex-col gap-5 backdrop-blur-md">
+        <div class="flex items-center justify-between border-b border-slate-900 pb-3">
+          <h2 class="text-xs font-bold text-indigo-400 tracking-wider uppercase flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            물리 시나리오 컨트롤러
+          </h2>
+        </div>
+
+        <!-- 그룹 A. 항성 진화 물리 (Stellar Evolution) -->
+        <div class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="w-1 h-3.5 bg-orange-500 rounded-full"></span>
+            <h3 class="text-[11px] font-black text-orange-400 uppercase tracking-widest">A. 항성 물리 설계</h3>
+          </div>
+
+          <!-- 1. 항성 질량 -->
+          <div class="flex flex-col gap-1 pl-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-300 font-medium">항성 질량 (M<sub>*</sub> / M<sub>☉</sub>)</span>
+              <span id="starMassVal" class="font-mono text-indigo-400 font-bold bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-900/10">1.00 M☉</span>
+            </div>
+            <input id="starMass" type="range" min="0.1" max="2.5" step="0.05" value="1.0" class="w-full h-1 bg-slate-900 rounded appearance-none cursor-pointer accent-indigo-500">
+          </div>
+
+          <!-- 2. 항성 연령 -->
+          <div class="flex flex-col gap-1 pl-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-300 font-medium">주계열 나이 진행률</span>
+              <span id="starAgePercentVal" class="font-mono text-amber-400 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-900/10">46% (46.00억 년)</span>
+            </div>
+            <input id="starAgePercent" type="range" min="1" max="100" step="1" value="46" class="w-full h-1 bg-slate-900 rounded appearance-none cursor-pointer accent-amber-500">
+          </div>
+        </div>
+
+        <!-- 그룹 B. 궤도역학 및 중력 (Orbital Dynamics) -->
+        <div class="space-y-4 border-t border-slate-900/60 pt-4">
+          <div class="flex items-center gap-2">
+            <span class="w-1 h-3.5 bg-blue-500 rounded-full"></span>
+            <h3 class="text-[11px] font-black text-blue-400 uppercase tracking-widest">B. 궤도 역학 설계</h3>
+          </div>
+
+          <!-- 3. 공전 장반경 -->
+          <div class="flex flex-col gap-1 pl-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-300 font-medium">공전 장반경 (a, AU)</span>
+              <span id="semiMajorAxisVal" class="font-mono text-blue-400 font-bold bg-blue-950/40 px-2 py-0.5 rounded border border-blue-900/10">1.000 AU</span>
+            </div>
+            <input id="semiMajorAxis" type="range" min="0.05" max="5.0" step="0.01" value="1.0" class="w-full h-1 bg-slate-900 rounded appearance-none cursor-pointer accent-blue-500">
+          </div>
+
+          <!-- 4. 공전 이심률 -->
+          <div class="flex flex-col gap-1 pl-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-300 font-medium">공전 이심률 (e)</span>
+              <span id="eccentricityVal" class="font-mono text-cyan-400 font-bold bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-900/10">0.0167</span>
+            </div>
+            <input id="eccentricity" type="range" min="0.0" max="0.8" step="0.01" value="0.0167" class="w-full h-1 bg-slate-900 rounded appearance-none cursor-pointer accent-cyan-500">
+          </div>
+        </div>
+
+        <!-- 그룹 C. 대기 화학 및 열역학 변수 (Atmospheric Chemistry) -->
+        <div class="space-y-4 border-t border-slate-900/60 pt-4">
+          <div class="flex items-center gap-2">
+            <span class="w-1 h-3.5 bg-teal-500 rounded-full"></span>
+            <h3 class="text-[11px] font-black text-teal-400 uppercase tracking-widest">C. 대기 기후 변수</h3>
+          </div>
+
+          <!-- 5. 대기 총압 -->
+          <div class="flex flex-col gap-1 pl-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-300 font-medium">지표 총 기압 (P<sub>atm</sub>)</span>
+              <span id="atmospherePressureVal" class="font-mono text-teal-400 font-bold bg-teal-950/40 px-2 py-0.5 rounded border border-teal-900/10">1.000 bar</span>
+            </div>
+            <input id="logPressure" type="range" min="-3" max="2" step="0.05" value="0" class="w-full h-1 bg-slate-900 rounded appearance-none cursor-pointer accent-teal-500">
+          </div>
+
+          <!-- 6. 이산화탄소 농도 -->
+          <div class="flex flex-col gap-1 pl-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-300 font-medium">대기중 CO<sub>2</sub> 농도비</span>
+              <span id="co2PercentVal" class="font-mono text-rose-400 font-bold bg-rose-950/40 px-2 py-0.5 rounded border border-rose-900/10">0.04 %</span>
+            </div>
+            <input id="co2Percent" type="range" min="0.0" max="100.0" step="0.1" value="0.04" class="w-full h-1 bg-slate-900 rounded appearance-none cursor-pointer accent-rose-500">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- --- [중앙 열: 2D 실시간 우주 공간 (5 Cols)] --- -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+      <div class="bg-slate-950/40 border border-slate-900 rounded-2xl overflow-hidden shadow-2xl flex-1 flex flex-col relative min-h-[500px] backdrop-blur-md">
+        
+        <!-- 캔버스 탑 플로팅 인디케이터 -->
+        <div class="absolute top-3 left-3 z-10 flex flex-col gap-1 pointer-events-none">
+          <span id="starClassBadge" class="bg-slate-950/90 backdrop-blur border border-slate-900 text-[10px] px-2.5 py-1 rounded-lg text-slate-200 font-bold flex items-center gap-1.5 shadow-md">
+            <span id="starGlowDot" class="w-1.5 h-1.5 rounded-full text-yellow-400 animate-ping bg-yellow-400"></span>
+            G형 황색항성 (태양형)
+          </span>
+          <span id="starPhysicsBadge" class="bg-slate-950/90 backdrop-blur border border-slate-900 text-[9px] px-2 py-0.5 rounded text-slate-400 font-mono">
+            Luminosity: 1.00 L☉ | Temp: 5778K
+          </span>
+        </div>
+
+        <!-- 우측 상단 조석고정 및 카메라 줌 현황 -->
+        <div class="absolute top-3 right-3 z-10 pointer-events-none flex flex-col gap-1 items-end">
+          <span id="tidalLockBadge" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border shadow-md backdrop-blur-sm bg-emerald-950/90 border-emerald-800 text-emerald-400">
+            🔓 비동기 자유자전 상태
+          </span>
+        </div>
+
+        <!-- 실시간 2D 캔버스 우주 공간 -->
+        <div class="flex-1 w-full relative">
+          <canvas id="orbitCanvas" class="absolute inset-0 w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+        </div>
+
+        <!-- 캔버스 하단 플로팅 툴바 -->
+        <div class="absolute bottom-3 left-3 right-3 bg-slate-950/90 backdrop-blur border border-slate-900 rounded-xl p-3 flex items-center justify-between gap-4 shadow-lg">
+          <div class="flex items-center gap-2">
+            <button id="btnPlayPause" class="py-1 px-3 rounded-lg text-[11px] font-bold transition-all bg-amber-600 hover:bg-amber-500 text-white">
+              일시정지
+            </button>
+            <button id="btnResetOrbit" class="bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] py-1 px-2 rounded-lg border border-slate-800">
+              궤도리셋
+            </button>
+            <button id="btnResetCamera" class="bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] py-1 px-2 rounded-lg border border-slate-800">
+              카메라 복원
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-slate-500 font-mono">가이드라인:</span>
+            <button id="btnToggleLabels" class="text-[10px] py-1 px-2 rounded font-bold border transition bg-slate-900 border-slate-800 text-white">
+              표시
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- --- [우측 열: 외계 생명 분석 텔레메트리 콘솔 (3 Cols)] --- -->
+    <section class="lg:col-span-3 flex flex-col gap-4">
+      <div class="bg-slate-950/60 border border-slate-900 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 backdrop-blur-md">
+        
+        <!-- 연구소 텔레메트리 타이틀 -->
+        <h2 class="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-900 pb-2.5">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+          </svg>
+          실시간 거주가능성 판독국
+        </h2>
+
+        <!-- 실시간 생명체 안착 상태 배너 -->
+        <div id="waterLabelBanner" class="p-2.5 rounded-xl border text-center text-[10.5px] font-black tracking-tight text-emerald-400 border-emerald-500/40 bg-emerald-950/30">
+          액체 물 보존 전구역 안착 (완벽한 거주성)
+        </div>
+
+        <!-- 케플러 공전속도 및 알베도 수치 디스플레이 -->
+        <div class="bg-slate-900/30 border border-slate-900 rounded-lg p-2.5 space-y-2 text-[10px] font-mono text-slate-400">
+          <div class="flex justify-between">
+            <span>실시간 궤도 속도:</span>
+            <span id="telVelocity" class="text-slate-100 font-bold">29.78 km/s</span>
+          </div>
+          <div class="flex justify-between">
+            <span>지표 평균 반사율 (Albedo):</span>
+            <span id="telAlbedo" class="text-sky-400 font-bold">30 %</span>
+          </div>
+          <div class="flex justify-between">
+            <span>이산화탄소 분압 (P_CO2):</span>
+            <span id="telPCO2" class="text-rose-400 font-bold">0.0004 bar</span>
+          </div>
+        </div>
+
+        <!-- 실시간 물 상평형 다이어그램 (P-T Diagram) -->
+        <div class="space-y-1.5">
+          <div class="flex justify-between items-center text-[10px] text-slate-400 font-bold">
+            <span>실시간 지표 물 상평형 ($P$-$T$)</span>
+            <span class="text-[8px] text-teal-400 font-mono">Clausius-Clapeyron</span>
+          </div>
+          <div class="relative w-full aspect-square bg-[#050813] rounded-xl border border-slate-900 overflow-hidden">
+            <svg id="phaseDiagramSvg" class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <!-- 고체(얼음) 영역 -->
+              <path d="M 0 0 L 38 0 L 38 72 L 0 72 Z" fill="rgba(14, 116, 144, 0.15)" />
+              <!-- 기체(수증기) 영역 -->
+              <path d="M 38 72 Q 45 74, 100 83 L 100 100 L 0 100 L 0 72 Z" fill="rgba(234, 88, 12, 0.05)" />
+              <!-- 액체(물) 영역 -->
+              <path d="M 38 0 L 100 0 L 100 83 Q 45 74, 38 72 Z" fill="rgba(16, 185, 129, 0.12)" />
+
+              <path d="M 38 72 Q 45 74, 100 83" fill="none" stroke="rgba(244, 63, 94, 0.5)" stroke-width="1" />
+              <line x1="38" y1="0" x2="38" y2="72" stroke="rgba(56, 189, 248, 0.5)" stroke-width="1" />
+              <line x1="38" y1="72" x2="38" y2="100" stroke="rgba(148, 163, 184, 0.4)" stroke-width="1" />
+
+              <circle cx="100" cy="83" r="1.2" fill="#f43f5e" />
+              <circle cx="38" cy="72" r="1.2" fill="#ffffff" />
+
+              <text x="14" y="25" fill="rgba(56, 189, 248, 0.4)" font-size="4.5" font-weight="bold">얼음</text>
+              <text x="60" y="25" fill="rgba(16, 185, 129, 0.5)" font-size="4.5" font-weight="bold">액체</text>
+              <text x="65" y="93" fill="rgba(234, 88, 12, 0.4)" font-size="4.5" font-weight="bold">수증기</text>
+
+              <!-- 동적 실시간 위치 추적 포인트들 -->
+              <circle id="diagDayPoint" cx="0" cy="0" r="2.2" fill="#f97316" class="animate-pulse" />
+              <text id="diagDayText" x="0" y="0" fill="#ea580c" font-size="3.5" font-weight="bold">낮</text>
+
+              <circle id="diagNightPoint" cx="0" cy="0" r="2.2" fill="#3b82f6" />
+              <text id="diagNightText" x="0" y="0" fill="#3b82f6" font-size="3.5" font-weight="bold">밤</text>
+
+              <circle id="diagMeanPoint" cx="0" cy="0" r="2.8" fill="#6366f1" stroke="#fff" stroke-width="0.5" />
+              <text id="diagMeanText" x="0" y="0" fill="#818cf8" font-size="3.5" font-weight="black">평균</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- --- 연속 생명체 거주지대(CHZ) 연령별 시간 축 그래프 --- -->
+        <div class="space-y-1.5 border-t border-slate-900 pt-3">
+          <div class="flex justify-between items-center text-[10px] text-slate-400 font-bold">
+            <span>항성 생애 골디락스 천이 궤적 (CHZ)</span>
+            <span class="text-[8px] text-orange-400 font-mono">Continuous HZ</span>
+          </div>
+          <div class="relative w-full h-24 bg-[#050813] rounded-xl border border-slate-900 overflow-hidden">
+            <svg id="chzEvolutionSvg" class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <!-- 골디락스 대역 다각형 채우기 -->
+              <path id="chzPoly" d="" fill="rgba(16, 185, 129, 0.15)" stroke="none" />
+              
+              <!-- HZ 경계 궤적 곡선선 -->
+              <path id="chzInnerLine" d="" fill="none" stroke="rgba(16, 185, 129, 0.4)" stroke-width="0.8" />
+              <path id="chzOuterLine" d="" fill="none" stroke="rgba(16, 185, 129, 0.4)" stroke-width="0.8" />
+
+              <!-- 현재 행성 공전 궤도 축 (가로 점선) -->
+              <line id="chzPlanetLine" x1="15" y1="50" x2="95" y2="50" stroke="#3b82f6" stroke-width="0.8" stroke-dasharray="2, 2" />
+              <text id="chzPlanetText" x="16" y="48" fill="#60a5fa" font-size="3.5" font-weight="bold">현재 행성궤도 (1.00 AU)</text>
+
+              <!-- 현재 항성 나이 교차 가이드선 (세로 실선) -->
+              <line id="chzAgeLine" x1="50" y1="10" x2="50" y2="90" stroke="rgba(245, 158, 11, 0.6)" stroke-width="0.8" />
+              <circle id="chzPlanetDot" cx="50" cy="50" r="2" fill="#eab308" />
+
+              <!-- 고정 눈금 데이터 -->
+              <text x="15" y="97" fill="rgba(148, 163, 184, 0.4)" font-size="3.5">ZAMS (0%)</text>
+              <text x="85" y="97" fill="rgba(148, 163, 184, 0.4)" font-size="3.5">수명끝 (100%)</text>
+              <text x="1" y="16" fill="rgba(148, 163, 184, 0.4)" font-size="3.5">3.5 AU</text>
+              <text x="1" y="88" fill="rgba(148, 163, 184, 0.4)" font-size="3.5">0.1 AU</text>
+            </svg>
+          </div>
+          <p class="text-[8px] text-slate-500 leading-normal">
+            항성이 나이가 들면 광도가 점차 증가하므로 생명체 거주지대(녹색 영역)는 점진적으로 먼 곳으로 밀려납니다. 가로 점선이 항성 평생 동안 녹색 밴드를 통과하는 상태가 진정한 거주성 지속 가능 조건입니다.
+          </p>
+        </div>
+
+        <!-- 연간 생명체 거주 확률 게이지 -->
+        <div class="border-t border-slate-900/80 pt-3 flex items-center justify-between gap-3 text-[10px]">
+          <div class="relative w-11 h-11 shrink-0 flex items-center justify-center">
+            <svg class="w-11 h-11 transform -rotate-90">
+              <circle cx="22" cy="22" r="18" class="stroke-slate-900 fill-none" stroke-width="3" />
+              <circle id="gaugeProgressRing" cx="22" cy="22" r="18" class="stroke-emerald-500 fill-none transition-all" stroke-width="3" stroke-dasharray="113.097" stroke-dashoffset="0" />
+            </svg>
+            <span id="gaugePercentText" class="absolute font-mono font-black text-[9px] text-emerald-400">100%</span>
+          </div>
+          <div class="flex-1 flex flex-col gap-0.5 leading-snug">
+            <span class="text-slate-300 font-bold">연간 누적 거주 확률</span>
+            <span class="text-slate-500 text-[9px]">공전 타원궤도 전역에서 생존 가능 온도에 부합하는 일년 주기 내 비율입니다.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- --- 3. 글로벌 푸터 --- -->
+  <footer class="bg-slate-950/90 border-t border-slate-900 p-5 mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-slate-500">
+      <div class="flex flex-wrap gap-4 justify-center">
+        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span> <strong>비선형 진화</strong>: Hurley MS 트랙 계산</span>
+        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-teal-500 rounded-full"></span> <strong>삼중점 조건</strong>: 기압 0.006 bar 액체임계선 수렴</span>
+        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-rose-500 rounded-full"></span> <strong>조석 벌지</strong>: 적색왜성 Tidal 동기화율</span>
+      </div>
+      <div class="font-mono text-[9px]">
+        © 2026 CHZ Premium Dynamics Control Panel. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <!-- --- 4. 시뮬레이션 계산 및 기상 렌더링 코어 엔진 --- -->
+  <script>
+    // --- 글로벌 상태 관리 객체 (Reactive State) ---
+    const state = {
+      starMass: 1.0,
+      semiMajorAxis: 1.0,
+      eccentricity: 0.0167,
+      logPressure: 0,
+      co2Percent: 0.04,
+      starAgePercent: 46,
+
+      isPlaying: true,
+      simSpeed: 1.0,
+      selectedPreset: "earth",
+      showDataLabels: true,
+
+      zoom: 1.0,
+      panOffset: { x: 0, y: 0 },
+      time: 0.0
+    };
+
+    // --- DOM 노드 참조 캐싱 ---
+    const nodes = {
+      starMass: document.getElementById('starMass'),
+      starMassVal: document.getElementById('starMassVal'),
+      starAgePercent: document.getElementById('starAgePercent'),
+      starAgePercentVal: document.getElementById('starAgePercentVal'),
+      semiMajorAxis: document.getElementById('semiMajorAxis'),
+      semiMajorAxisVal: document.getElementById('semiMajorAxisVal'),
+      eccentricity: document.getElementById('eccentricity'),
+      eccentricityVal: document.getElementById('eccentricityVal'),
+      logPressure: document.getElementById('logPressure'),
+      atmospherePressureVal: document.getElementById('atmospherePressureVal'),
+      co2Percent: document.getElementById('co2Percent'),
+      co2PercentVal: document.getElementById('co2PercentVal'),
+      
+      starClassBadge: document.getElementById('starClassBadge'),
+      starGlowDot: document.getElementById('starGlowDot'),
+      starPhysicsBadge: document.getElementById('starPhysicsBadge'),
+      tidalLockBadge: document.getElementById('tidalLockBadge'),
+      waterLabelBanner: document.getElementById('waterLabelBanner'),
+      telVelocity: document.getElementById('telVelocity'),
+      telAlbedo: document.getElementById('telAlbedo'),
+      telPCO2: document.getElementById('telPCO2'),
+
+      btnPlayPause: document.getElementById('btnPlayPause'),
+      btnResetOrbit: document.getElementById('btnResetOrbit'),
+      btnResetCamera: document.getElementById('btnResetCamera'),
+      btnToggleLabels: document.getElementById('btnToggleLabels'),
+
+      // SVGs
+      chzPoly: document.getElementById('chzPoly'),
+      chzInnerLine: document.getElementById('chzInnerLine'),
+      chzOuterLine: document.getElementById('chzOuterLine'),
+      chzPlanetLine: document.getElementById('chzPlanetLine'),
+      chzPlanetText: document.getElementById('chzPlanetText'),
+      chzAgeLine: document.getElementById('chzAgeLine'),
+      chzPlanetDot: document.getElementById('chzPlanetDot'),
+
+      diagDayPoint: document.getElementById('diagDayPoint'),
+      diagDayText: document.getElementById('diagDayText'),
+      diagNightPoint: document.getElementById('diagNightPoint'),
+      diagNightText: document.getElementById('diagNightText'),
+      diagMeanPoint: document.getElementById('diagMeanPoint'),
+      diagMeanText: document.getElementById('diagMeanText'),
+
+      // Gauge
+      gaugeProgressRing: document.getElementById('gaugeProgressRing'),
+      gaugePercentText: document.getElementById('gaugePercentText')
+    };
+
+    // --- 캔버스 초기화 ---
+    const canvas = document.getElementById('orbitCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // --- 물리학 시뮬레이션 계산식 (Pure Functions) ---
+    
+    // 비선형 주계열성 광도 진화 추적 함수 (Hurley et al. 2000 모델 가중 보정치 반영)
+    function getLuminosityAtAge(mass, agePct) {
+      const x = agePct / 100;
+      const baseL = Math.pow(mass, 3.5);
+      const ageFactor = 1 + 0.4 * x + 0.8 * Math.pow(x, 3) + 0.6 * Math.pow(x, 10);
+      return (baseL * ageFactor) / 1.262; 
+    }
+
+    // Kopparapu et al. (2013) CHZ 자동 한계 계산 함수
+    function getKopparapuBoundaries(starTemp, starLum) {
+      const T_eff = Math.max(2600, Math.min(7200, starTemp));
+      const T_star = T_eff - 5780;
+
+      const S_eff_in = 1.107 
+        + 1.332e-4 * T_star 
+        + 1.58e-8 * Math.pow(T_star, 2) 
+        - 8.308e-12 * Math.pow(T_star, 3) 
+        - 1.931e-15 * Math.pow(T_star, 4);
+
+      const S_eff_out = 0.356 
+        + 5.38e-5 * T_star 
+        + 8.68e-9 * Math.pow(T_star, 2) 
+        - 1.362e-12 * Math.pow(T_star, 3) 
+        - 2.71e-16 * Math.pow(T_star, 4);
+
+      const innerBound = Math.sqrt(starLum / S_eff_in);
+      const outerBound = Math.sqrt(starLum / S_eff_out);
+
+      return { innerBound, outerBound };
+    }
+
+    // Clausius-Clapeyron 열역학 관계 기반 포화증기압 곡선의 역산 (수분 끓는점 K 산출)
+    function getWaterBoilingPoint(press) {
+      if (press < 0.0001) return 150;
+      const logP = Math.log(press / 0.00611);
+      const Tc = (237.3 * logP) / (17.27 - logP);
+      return Math.min(647.0, Tc + 273.15);
+    }
+
+    // 지표 성상에 따른 물질의 삼중점 및 상평형도 판별
+    function determineWaterPhase(temp, press) {
+      if (press < 0.00611) {
+        return temp < 273.16 ? "solid" : "gas";
+      } else {
+        const boilingT = getWaterBoilingPoint(press);
+        if (temp < 273.15) return "solid";
+        if (temp >= boilingT) return "gas";
+        return "liquid";
+      }
+    }
+
+    // --- 주계열성 분광형 컬러 프로필 배정기 ---
+    function getStarColor(temp) {
+      if (temp < 3700) {
+        return { main: "#ff3d00", glow: "rgba(255, 61, 0, 0.45)", text: "M형 적색왜성 (초저온)", code: "text-red-500", pingBg: "bg-red-500" };
+      }
+      if (temp < 5200) {
+        return { main: "#ff9100", glow: "rgba(255, 145, 0, 0.45)", text: "K형 오렌지색왜성 (저온)", code: "text-orange-500", pingBg: "bg-orange-500" };
+      }
+      if (temp < 6000) {
+        return { main: "#ffea00", glow: "rgba(255, 234, 0, 0.45)", text: "G형 황색항성 (태양형)", code: "text-yellow-400", pingBg: "bg-yellow-400" };
+      }
+      if (temp < 7500) {
+        return { main: "#f5f5f5", glow: "rgba(245, 245, 245, 0.45)", text: "F형 황백색항성 (중고온)", code: "text-gray-100", pingBg: "bg-slate-300" };
+      }
+      return { main: "#80d8ff", glow: "rgba(128, 216, 255, 0.45)", text: "A형 청백색항성 (고온)", code: "text-blue-300", pingBg: "bg-blue-400" };
+    }
+
+    // --- 거주가능성 등급 분석 라벨 매핑기 ---
+    function getWaterStateLabel(phaseMean, phaseDay, phaseNight, albedo) {
+      if (phaseDay === "liquid" || phaseNight === "liquid" || phaseMean === "liquid") {
+        if (phaseMean === "liquid") {
+          return { text: "액체 물 보존 전구역 안착 (완벽한 거주성)", color: "text-emerald-400 border-emerald-500/40 bg-emerald-950/30" };
+        }
+        return { text: "국소적 액체 보존 (황혼 지대 서식 가능성)", color: "text-teal-400 border-teal-500/40 bg-teal-950/30" };
+      }
+      if (phaseMean === "gas" && phaseDay === "gas") {
+        return { text: "초고온 가스 증발 (폭주 온실 지옥 상태)", color: "text-rose-400 border-rose-500/40 bg-rose-950/30" };
+      }
+      if (albedo > 0.5) {
+        return { text: "폭주 동결 피드백 (화이트아웃 빙결)", color: "text-sky-300 border-sky-400/40 bg-sky-950/40 animate-pulse" };
+      }
+      return { text: "한랭 영구 고체 동토화 (수분 동결 상태)", color: "text-cyan-400 border-cyan-500/40 bg-cyan-950/30" };
+    }
+
+    // --- 모든 핵심 물리 파라미터 일괄 프레임 동기화 계산 함수 ---
+    function computeUnifiedPhysics() {
+      const mass = state.starMass;
+      const sma = state.semiMajorAxis;
+      const ecc = state.eccentricity;
+      const logP = state.logPressure;
+      const co2 = state.co2Percent;
+      const agePct = state.starAgePercent;
+
+      const atmospherePressure = Math.pow(10, logP);
+
+      // 이산화탄소 농도 비선형 가중치 모델
+      const partialPressureCo2 = atmospherePressure * (co2 / 100);
+      const co2Warm = 25 * Math.log(1 + 1200 * partialPressureCo2);
+      const backgroundWarm = 15 * Math.sqrt(atmospherePressure * (1 - co2 / 100));
+      const greenhouseDeltaT = Math.min(550, Math.max(0, co2Warm + backgroundWarm));
+
+      const stellarLifetimeGyr = 10 / Math.pow(mass, 2.5);
+      const currentStellarAgeGyr = (agePct / 100) * stellarLifetimeGyr;
+
+      const luminosity = getLuminosityAtAge(mass, agePct);
+
+      const x = agePct / 100;
+      const ageRadiusFactor = 1 + 0.1 * x + 0.3 * Math.pow(x, 2) + 0.4 * Math.pow(x, 6);
+      const starRadiusInSolar = (Math.pow(mass, 0.8) * ageRadiusFactor) / 1.113;
+
+      const starTemperature = 5778 * Math.pow(luminosity, 0.125) / Math.pow(starRadiusInSolar, 0.5);
+
+      const tidalLockRadius = 0.22 * Math.pow(mass * currentStellarAgeGyr * 10, 1 / 6);
+      const isTidallyLocked = sma < tidalLockRadius;
+
+      const thermalRedistribution = 1 - Math.exp(-0.8 * atmospherePressure);
+
+      // 공전 거리 d 기준 가변 대기 복사 상태 반환 내부 헬퍼 함수
+      function computeAtmospherePhysicsAt(distance) {
+        let albedo = 0.3;
+        let tEq = 278.5 * Math.pow(1 - albedo, 0.25) * Math.pow(luminosity, 0.25) / Math.sqrt(distance);
+        let tSurf = tEq + greenhouseDeltaT;
+
+        // 얼음-알베도 급격 피드백 루프 모사
+        if (tSurf < 273.15) {
+          const coldFactor = Math.max(0, Math.min(1, (273.15 - tSurf) / 33.15));
+          albedo = 0.3 + 0.35 * coldFactor;
+          tEq = 278.5 * Math.pow(1 - albedo, 0.25) * Math.pow(luminosity, 0.25) / Math.sqrt(distance);
+          tSurf = tEq + greenhouseDeltaT;
+        }
+
+        let tDay = tSurf;
+        let tNight = tSurf;
+        const redistFactor = thermalRedistribution;
+
+        if (isTidallyLocked) {
+          tDay = tSurf * (1 + 0.35 * (1 - redistFactor));
+          tNight = Math.max(3.0, tSurf * (1 - 0.85 * (1 - redistFactor)));
+        } else {
+          tDay = tSurf * (1 + 0.05 * (1 - redistFactor));
+          tNight = tSurf * (1 - 0.05 * (1 - redistFactor));
+        }
+
+        return { tEq, tSurf, tDay, tNight, albedo };
+      }
+
+      const kopparapu = getKopparapuBoundaries(starTemperature, luminosity);
+
+      // 실시간 행성 위치 및 케플러 방정식 풀이 궤도 좌표 변환
+      const speedFactor = 0.05 * state.simSpeed;
+      const meanAnomaly = (state.time * speedFactor) % (2 * Math.PI);
+
+      let E = meanAnomaly;
+      for (let k = 0; k < 5; k++) {
+        E = E - (E - ecc * Math.sin(E) - meanAnomaly) / (1 - ecc * Math.cos(E));
+      }
+
+      const cosV = (Math.cos(E) - ecc) / (1 - ecc * Math.cos(E));
+      const sinV = (Math.sqrt(1 - ecc * ecc) * Math.sin(E)) / (1 - ecc * Math.cos(E));
+      const trueAnomaly = Math.atan2(sinV, cosV);
+
+      const currentR = sma * (1 - ecc * Math.cos(E));
+      const currentPhys = computeAtmospherePhysicsAt(currentR);
+
+      const phaseMean = determineWaterPhase(currentPhys.tSurf, atmospherePressure);
+      const phaseDay = determineWaterPhase(currentPhys.tDay, atmospherePressure);
+      const phaseNight = determineWaterPhase(currentPhys.tNight, atmospherePressure);
+
+      // 순간 활성 비스-비바 속도
+      const instantVelocityKms = 29.78 * Math.sqrt(mass * (2 / currentR - 1 / sma));
+
+      return {
+        atmospherePressure,
+        greenhouseDeltaT,
+        stellarLifetimeGyr,
+        currentStellarAgeGyr,
+        luminosity,
+        starRadiusInSolar,
+        starTemperature,
+        tidalLockRadius,
+        isTidallyLocked,
+        thermalRedistribution,
+        hzInner: kopparapu.innerBound,
+        hzOuter: kopparapu.outerBound,
+        currentR,
+        trueAnomaly,
+        currentPhys,
+        phaseMean,
+        phaseDay,
+        phaseNight,
+        instantVelocityKms,
+        computeAtmospherePhysicsAt
+      };
+    }
+
+    // --- 연간 120단계 정밀 궤도 생존 주기 연산 ---
+    function calculateAnnualHabitableRatio(physics) {
+      const steps = 120;
+      let habitablePoints = 0;
+      const ecc = state.eccentricity;
+      const sma = state.semiMajorAxis;
+      const press = physics.atmospherePressure;
+
+      for (let i = 0; i < steps; i++) {
+        const meanAnomaly = (i / steps) * 2 * Math.PI;
+        let E = meanAnomaly;
+        for (let k = 0; k < 5; k++) {
+          E = E - (E - ecc * Math.sin(E) - meanAnomaly) / (1 - ecc * Math.cos(E));
+        }
+        const r = sma * (1 - ecc * Math.cos(E));
+        const phys = physics.computeAtmospherePhysicsAt(r);
+        const pDay = determineWaterPhase(phys.tDay, press);
+        const pNight = determineWaterPhase(phys.tNight, press);
+        
+        if (pDay === "liquid" || pNight === "liquid") {
+          habitablePoints++;
+        }
+      }
+      return (habitablePoints / steps) * 100;
+    }
+
+    // --- CHZ 나이-공동궤적 데이터 생성기 ---
+    function updateChzEvolutionCurve(physics) {
+      const pointsCount = 35;
+      const points = [];
+      const mass = state.starMass;
+
+      for (let i = 0; i <= pointsCount; i++) {
+        const agePct = (i / pointsCount) * 100;
+        const stepLum = getLuminosityAtAge(mass, agePct);
+        const x = agePct / 100;
+        const baseR = Math.pow(mass, 0.8);
+        const stepRadius = (baseR * (1 + 0.1 * x + 0.3 * Math.pow(x, 2) + 0.4 * Math.pow(x, 6))) / 1.113;
+        const stepTemp = 5778 * Math.pow(stepLum, 0.125) / Math.pow(stepRadius, 0.5);
+        const bounds = getKopparapuBoundaries(stepTemp, stepLum);
+
+        points.push({
+          agePct,
+          inner: bounds.innerBound,
+          outer: bounds.outerBound
+        });
+      }
+
+      // 눈금 좌표 매핑 전용 함수
+      const mapAgeToX = (age) => 15 + (age / 100) * 80;
+      const mapDistanceToY = (d) => 90 - (d / 3.5) * 80;
+
+      let innerPath = "";
+      let outerPath = "";
+      points.forEach((pt, idx) => {
+        const x = mapAgeToX(pt.agePct);
+        const yInner = mapDistanceToY(pt.inner);
+        const yOuter = mapDistanceToY(pt.outer);
+
+        if (idx === 0) {
+          innerPath += `M ${x} ${yInner}`;
+          outerPath += `M ${x} ${yOuter}`;
+        } else {
+          innerPath += ` L ${x} ${yInner}`;
+          outerPath += ` L ${x} ${yOuter}`;
+        }
+      });
+
+      // 다각형 영역 빌드
+      let polyPath = "";
+      if (points.length > 0) {
+        polyPath += `M ${mapAgeToX(points[0].agePct)} ${mapDistanceToY(points[0].inner)}`;
+        points.forEach((pt) => {
+          polyPath += ` L ${mapAgeToX(pt.agePct)} ${mapDistanceToY(pt.inner)}`;
+        });
+        for (let i = points.length - 1; i >= 0; i--) {
+          polyPath += ` L ${mapAgeToX(points[i].agePct)} ${mapDistanceToY(points[i].outer)}`;
+        }
+        polyPath += " Z";
+      }
+
+      nodes.chzPoly.setAttribute('d', polyPath);
+      nodes.chzInnerLine.setAttribute('d', innerPath);
+      nodes.chzOuterLine.setAttribute('d', outerPath);
+
+      const planetY = mapDistanceToY(state.semiMajorAxis);
+      const currentX = mapAgeToX(state.starAgePercent);
+
+      nodes.chzPlanetLine.setAttribute('y1', planetY);
+      nodes.chzPlanetLine.setAttribute('y2', planetY);
+      nodes.chzPlanetText.setAttribute('y', planetY - 3);
+      nodes.chzPlanetText.textContent = `현재 행성궤도 (${state.semiMajorAxis.toFixed(2)} AU)`;
+
+      nodes.chzAgeLine.setAttribute('x1', currentX);
+      nodes.chzAgeLine.setAttribute('x2', currentX);
+      
+      nodes.chzPlanetDot.setAttribute('cx', currentX);
+      nodes.chzPlanetDot.setAttribute('cy', planetY);
+    }
+
+    // --- 수동 기압 및 온도 상태 상평형 벡터 매핑 기법 ---
+    function updatePhaseDiagramCurve(physics) {
+      const mapTempToX = (t) => {
+        const minT = 100;
+        const maxT = 700;
+        return 15 + ((t - minT) / (maxT - minT)) * 80;
+      };
+
+      const mapPressToY = (p) => {
+        const minLogP = -4; 
+        const maxLogP = 3;  
+        const logVal = Math.log10(p);
+        return 85 - ((logVal - minLogP) / (maxLogP - minLogP)) * 75;
+      };
+
+      const pBar = physics.atmospherePressure;
+      const pY = mapPressToY(pBar);
+
+      // 낮 매핑
+      const dayX = mapTempToX(physics.currentPhys.tDay);
+      nodes.diagDayPoint.setAttribute('cx', dayX);
+      nodes.diagDayPoint.setAttribute('cy', pY);
+      nodes.diagDayText.setAttribute('x', dayX + 3.5);
+      nodes.diagDayText.setAttribute('y', pY - 1);
+
+      // 밤 매핑
+      const nightX = mapTempToX(physics.currentPhys.tNight);
+      nodes.diagNightPoint.setAttribute('cx', nightX);
+      nodes.diagNightPoint.setAttribute('cy', pY);
+      nodes.diagNightText.setAttribute('x', nightX - 10);
+      nodes.diagNightText.setAttribute('y', pY - 1);
+
+      // 평균 매핑
+      const meanX = mapTempToX(physics.currentPhys.tSurf);
+      nodes.diagMeanPoint.setAttribute('cx', meanX);
+      nodes.diagMeanPoint.setAttribute('cy', pY);
+      nodes.diagMeanText.setAttribute('x', meanX - 4);
+      nodes.diagMeanText.setAttribute('y', pY + 6.5);
+    }
+
+    // --- 2D Canvas 궤도 렌더러 ---
+    function drawOrbitVisualization(physics) {
+      const w = canvas.width / window.devicePixelRatio;
+      const h = canvas.height / window.devicePixelRatio;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#070a13";
+      ctx.fillRect(0, 0, w, h);
+
+      // 우주 백그라운드 그리드 그리법
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.015)";
+      ctx.lineWidth = 1;
+      const gridStep = 45;
+      const gridOffsetX = state.panOffset.x % gridStep;
+      const gridOffsetY = state.panOffset.y % gridStep;
+
+      for (let x = gridOffsetX; x < w; x += gridStep) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = gridOffsetY; y < h; y += gridStep) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      const centerX = w / 2 + state.panOffset.x;
+      const centerY = h / 2 + state.panOffset.y;
+
+      const aphelion = state.semiMajorAxis * (1 + state.eccentricity);
+      const maxTrackedDistance = Math.max(physics.hzOuter, aphelion);
+      const padding = 55;
+
+      const usableRadius = Math.max(0, Math.min(w, h) / 2 - padding);
+      const scale = Math.max(0, usableRadius / (maxTrackedDistance || 1)) * state.zoom;
+
+      const innerRadiusPx = Math.max(0, physics.hzInner * scale);
+      const outerRadiusPx = Math.max(0, physics.hzOuter * scale);
+
+      // 골디락스 영역 그라데이션 광배 그리기
+      try {
+        const grad = ctx.createRadialGradient(
+          centerX, centerY, Math.max(0, innerRadiusPx - 15 * state.zoom),
+          centerX, centerY, outerRadiusPx + 15 * state.zoom
+        );
+        grad.addColorStop(0, "rgba(16, 185, 129, 0.0)");
+        grad.addColorStop(0.2, "rgba(16, 185, 129, 0.12)");
+        grad.addColorStop(0.5, "rgba(16, 185, 129, 0.22)");
+        grad.addColorStop(0.8, "rgba(16, 185, 129, 0.12)");
+        grad.addColorStop(1, "rgba(16, 185, 129, 0.0)");
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, Math.max(0, outerRadiusPx + 15 * state.zoom), 0, 2 * Math.PI);
+        ctx.arc(centerX, centerY, Math.max(0, innerRadiusPx - 15 * state.zoom), 0, 2 * Math.PI, true);
+        ctx.fill();
+      } catch (e) {
+        ctx.fillStyle = "rgba(16, 185, 129, 0.06)";
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outerRadiusPx, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // 골디락스 도넛 점선 가이드
+      ctx.strokeStyle = "rgba(16, 185, 129, 0.4)";
+      ctx.setLineDash([4, 6]);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(centerX, centerY, innerRadiusPx, 0, 2 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.arc(centerX, centerY, outerRadiusPx, 0, 2 * Math.PI); ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (state.showDataLabels) {
+        ctx.fillStyle = "rgba(16, 185, 129, 0.8)";
+        ctx.font = "bold 9px monospace";
+        ctx.fillText(`${physics.hzInner.toFixed(3)} AU`, centerX + innerRadiusPx + 6, centerY - 5);
+        ctx.fillText(`${physics.hzOuter.toFixed(3)} AU`, centerX + outerRadiusPx + 6, centerY + 12);
+      }
+
+      // 조석 고정 한계 원 그리기
+      const lockRadiusPx = Math.max(0, physics.tidalLockRadius * scale);
+      ctx.strokeStyle = "rgba(239, 68, 68, 0.22)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath(); ctx.arc(centerX, centerY, lockRadiusPx, 0, 2 * Math.PI); ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (state.showDataLabels && lockRadiusPx < Math.min(w, h)) {
+        ctx.fillStyle = "rgba(239, 68, 68, 0.55)";
+        ctx.font = "9px monospace";
+        ctx.fillText(`조석 고정 임계 한계: ${physics.tidalLockRadius.toFixed(3)} AU`, centerX - 10, centerY - lockRadiusPx - 6);
+      }
+
+      // 케플러 2D 궤도 타원
+      const aPx = Math.max(0, state.semiMajorAxis * scale);
+      const bPx = Math.max(0, state.semiMajorAxis * Math.sqrt(1 - state.eccentricity * state.eccentricity) * scale);
+      const focusOffsetPx = state.semiMajorAxis * state.eccentricity * scale;
+
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(centerX - focusOffsetPx, centerY, aPx, bPx, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      // 근일점 & 원일점 마커
+      if (state.eccentricity > 0.02 && state.showDataLabels) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        const periX = centerX - focusOffsetPx + aPx;
+        ctx.beginPath(); ctx.arc(periX, centerY, 2.5, 0, 2 * Math.PI); ctx.fill();
+
+        const aphX = centerX - focusOffsetPx - aPx;
+        ctx.beginPath(); ctx.arc(aphX, centerY, 2.5, 0, 2 * Math.PI); ctx.fill();
+      }
+
+      // 중앙 주항성 렌더링
+      const maxStarRadiusPx = 28;
+      const minStarRadiusPx = 4;
+      const starRadiusPx = Math.max(minStarRadiusPx, Math.min(maxStarRadiusPx, 7 * physics.starRadiusInSolar * state.zoom));
+
+      const starStyle = getStarColor(physics.starTemperature);
+
+      const starGlow = ctx.createRadialGradient(
+        centerX, centerY, starRadiusPx * 0.1,
+        centerX, centerY, starRadiusPx * 3.0
+      );
+      starGlow.addColorStop(0, "#ffffff");
+      starGlow.addColorStop(0.2, starStyle.main);
+      starGlow.addColorStop(1, "rgba(0,0,0,0)");
+
+      ctx.fillStyle = starGlow;
+      ctx.beginPath(); ctx.arc(centerX, centerY, Math.max(0, starRadiusPx * 3.0), 0, 2 * Math.PI); ctx.fill();
+
+      ctx.fillStyle = starStyle.main;
+      ctx.beginPath(); ctx.arc(centerX, centerY, starRadiusPx, 0, 2 * Math.PI); ctx.fill();
+
+      // 궤도 위 동적 외계 행성 구체 렌더링
+      const planetX = centerX + physics.currentR * Math.cos(physics.trueAnomaly) * scale;
+      const planetY = centerY + physics.currentR * Math.sin(physics.trueAnomaly) * scale;
+
+      if (physics.isTidallyLocked) {
+        // 조석고정 왜곡 타원 시각효과
+        ctx.strokeStyle = "rgba(239, 68, 68, 0.35)";
+        ctx.lineWidth = 1;
+        ctx.save();
+        ctx.translate(planetX, planetY);
+        ctx.rotate(physics.trueAnomaly);
+        ctx.beginPath(); ctx.ellipse(0, 0, 11, 8, 0, 0, 2 * Math.PI); ctx.stroke();
+        ctx.restore();
+      }
+
+      // 대기압 구름층 대칭 렌더링 (헤일로 광환 효과)
+      if (physics.atmospherePressure > 0.005) {
+        const atmosRadius = Math.max(0, 6.5 + Math.min(12, physics.atmospherePressure * 1.2 + (physics.greenhouseDeltaT / 30)));
+        const atmosGlow = ctx.createRadialGradient(
+          planetX, planetY, 3.0,
+          planetX, planetY, atmosRadius
+        );
+
+        if (physics.phaseMean === "gas") {
+          atmosGlow.addColorStop(0, "rgba(239, 68, 68, 0.35)");
+          atmosGlow.addColorStop(1, "rgba(239, 68, 68, 0)");
+        } else if (physics.phaseMean === "liquid") {
+          atmosGlow.addColorStop(0, "rgba(59, 130, 246, 0.3)");
+          atmosGlow.addColorStop(1, "rgba(16, 185, 129, 0)");
+        } else {
+          atmosGlow.addColorStop(0, "rgba(224, 242, 254, 0.25)");
+          atmosGlow.addColorStop(1, "rgba(224, 242, 254, 0)");
+        }
+        ctx.fillStyle = atmosGlow;
+        ctx.beginPath(); ctx.arc(planetX, planetY, atmosRadius, 0, 2 * Math.PI); ctx.fill();
+      }
+
+      // 행성 반구 터미네이터 ( Terminator - 낮/밤 영역 명암 연출)
+      let daySideColor = "#8e9eb0";
+      let nightSideColor = "#1a1e26";
+
+      if (physics.phaseDay === "liquid") daySideColor = "#2563eb";
+      else if (physics.phaseDay === "gas") daySideColor = "#f97316";
+      else if (physics.currentPhys.albedo > 0.5) daySideColor = "#ffffff";
+
+      if (physics.phaseNight === "liquid") nightSideColor = "#1e3a8a";
+      else if (physics.phaseNight === "solid") nightSideColor = "#0f172a";
+      else if (physics.phaseNight === "gas") nightSideColor = "#7c2d12";
+
+      ctx.save();
+      ctx.translate(planetX, planetY);
+      const angleToStar = Math.atan2(centerY - planetY, centerX - planetX);
+      ctx.rotate(angleToStar);
+
+      ctx.fillStyle = daySideColor;
+      ctx.beginPath(); ctx.arc(0, 0, 5.5, -Math.PI / 2, Math.PI / 2); ctx.fill();
+
+      ctx.fillStyle = nightSideColor;
+      ctx.beginPath(); ctx.arc(0, 0, 5.5, Math.PI / 2, -Math.PI / 2); ctx.fill();
+
+      // 중간 블렌딩 터미네이터
+      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+      ctx.beginPath(); ctx.ellipse(0, 0, 1.8, 5.5, 0, 0, 2 * Math.PI); ctx.fill();
+      ctx.restore();
+
+      ctx.strokeStyle = physics.isTidallyLocked ? "#f43f5e" : "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(planetX, planetY, 5.6, 0, 2 * Math.PI); ctx.stroke();
+
+      if (state.showDataLabels) {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 10px sans-serif";
+        ctx.shadowColor = "#000000";
+        ctx.shadowBlur = 3;
+        ctx.fillText(`행성 (${physics.currentR.toFixed(3)} AU)`, planetX + 11, planetY - 4);
+
+        ctx.font = "9px monospace";
+        ctx.fillStyle = "#cbd5e1";
+        ctx.fillText(`${(physics.currentPhys.tSurf - 273.15).toFixed(0)}°C | ${physics.instantVelocityKms.toFixed(1)}km/s`, planetX + 11, planetY + 7);
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // --- 매끄러운 반응형 렌더링 파이프라인 ---
+    function updateUI() {
+      // 1. 계산식 작동
+      const physics = computeUnifiedPhysics();
+      const annualHab = calculateAnnualHabitableRatio(physics);
+
+      // 2. 좌측 값 매칭
+      nodes.starMassVal.innerHTML = `${state.starMass.toFixed(2)} M<sub>☉</sub>`;
+      nodes.starAgePercentVal.innerText = `${state.starAgePercent}% (${physics.currentStellarAgeGyr.toFixed(2)}억 년)`;
+      nodes.semiMajorAxisVal.innerText = `${state.semiMajorAxis.toFixed(3)} AU`;
+      nodes.eccentricityVal.innerText = state.eccentricity.toFixed(4);
+      nodes.atmospherePressureVal.innerText = `${physics.atmospherePressure.toFixed(3)} bar`;
+      nodes.co2PercentVal.innerText = `${state.co2Percent.toFixed(2)} %`;
+
+      // 3. 플로팅 배지 상태 동적 수정
+      const starStyle = getStarColor(physics.starTemperature);
+      nodes.starClassBadge.childNodes[2].textContent = ` ${starStyle.text}`;
+      nodes.starGlowDot.className = `w-1.5 h-1.5 rounded-full animate-ping ${starStyle.pingBg}`;
+      nodes.starPhysicsBadge.innerHTML = `Luminosity: ${physics.luminosity.toFixed(2)} L<sub>☉</sub> | Temp: ${physics.starTemperature.toFixed(0)}K`;
+
+      if (physics.isTidallyLocked) {
+        nodes.tidalLockBadge.className = "text-[10px] font-bold px-2.5 py-1 rounded-lg border shadow-md backdrop-blur-sm bg-rose-950/90 border-rose-800 text-rose-400";
+        nodes.tidalLockBadge.innerText = "🔒 조석 고정 활성화";
+      } else {
+        nodes.tidalLockBadge.className = "text-[10px] font-bold px-2.5 py-1 rounded-lg border shadow-md backdrop-blur-sm bg-emerald-950/90 border-emerald-800 text-emerald-400";
+        nodes.tidalLockBadge.innerText = "🔓 비동기 자유자전 상태";
+      }
+
+      // 4. 거주성 텍스트 라벨
+      const waterLabel = getWaterStateLabel(physics.phaseMean, physics.phaseDay, physics.phaseNight, physics.currentPhys.albedo);
+      nodes.waterLabelBanner.className = `p-2.5 rounded-xl border text-center text-[10.5px] font-black tracking-tight ${waterLabel.color}`;
+      nodes.waterLabelBanner.innerText = waterLabel.text;
+
+      // 5. 우측 세부 디테일 수치
+      nodes.telVelocity.innerText = `${physics.instantVelocityKms.toFixed(2)} km/s`;
+      nodes.telAlbedo.innerText = `${(physics.currentPhys.albedo * 100).toFixed(0)} %`;
+      nodes.telPCO2.innerText = `${(physics.atmospherePressure * (state.co2Percent / 100)).toFixed(4)} bar`;
+
+      // 6. 게이지 디스플레이 조율
+      nodes.gaugePercentText.innerText = `${annualHab.toFixed(0)}%`;
+      const dasharray = 2 * Math.PI * 18; // 113.097
+      const offset = dasharray * (1 - annualHab / 100);
+      nodes.gaugeProgressRing.setAttribute('stroke-dashoffset', offset);
+
+      // 7. 서브 도표 드로잉
+      updateChzEvolutionCurve(physics);
+      updatePhaseDiagramCurve(physics);
+
+      // 8. 2D 메인 캔버스 그리기
+      drawOrbitVisualization(physics);
+    }
+
+    // --- 애니메이션 시간 연산 루프 ---
+    function animTick() {
+      if (state.isPlaying) {
+        state.time += 0.1;
+      }
+      updateUI();
+      requestAnimationFrame(animTick);
+    }
+
+    // --- 인터랙티브 캔버스 크기 맞춤 조정 함수 ---
+    function adjustCanvasDPI() {
+      const rect = canvas.parentNode.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.resetTransform();
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+
+    // --- 프리셋 데이터 로더 ---
+    function applySelectedPreset(pName) {
+      state.selectedPreset = pName;
+      state.zoom = 1.0;
+      state.panOffset = { x: 0, y: 0 };
+
+      // 활성화 버튼 하이라이트 동기화
+      const buttons = document.querySelectorAll('#presetContainer button');
+      buttons.forEach(btn => {
+        if (btn.getAttribute('data-preset') === pName) {
+          btn.className = "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all bg-indigo-600 text-white shadow-sm";
+        } else {
+          btn.className = "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all text-slate-400 hover:text-white";
+        }
+      });
+
+      switch (pName) {
+        case "earth":
+          state.starMass = 1.0;
+          state.semiMajorAxis = 1.0;
+          state.eccentricity = 0.0167;
+          state.logPressure = 0; // 1.0 bar
+          state.co2Percent = 0.04;
+          state.starAgePercent = 46;
+          break;
+        case "mars":
+          state.starMass = 1.0;
+          state.semiMajorAxis = 1.524;
+          state.eccentricity = 0.0934;
+          state.logPressure = -2.22; // 0.006 bar
+          state.co2Percent = 95.0;
+          state.starAgePercent = 46;
+          break;
+        case "venus_runaway":
+          state.starMass = 1.0;
+          state.semiMajorAxis = 0.723;
+          state.eccentricity = 0.0067;
+          state.logPressure = 1.96; // 92.0 bar
+          state.co2Percent = 96.5;
+          state.starAgePercent = 46;
+          break;
+        case "trappist_1e":
+          state.starMass = 0.09;
+          state.semiMajorAxis = 0.029;
+          state.eccentricity = 0.008;
+          state.logPressure = 0.3; // 2.0 bar
+          state.co2Percent = 1.5;
+          state.starAgePercent = 75;
+          state.zoom = 4.5;
+          break;
+        case "ocean_world":
+          state.starMass = 0.85;
+          state.semiMajorAxis = 0.72;
+          state.eccentricity = 0.02;
+          state.logPressure = 0.7; // 5.0 bar
+          state.co2Percent = 2.0;
+          state.starAgePercent = 55;
+          break;
+        case "super_eccentric":
+          state.starMass = 1.1;
+          state.semiMajorAxis = 1.35;
+          state.eccentricity = 0.55;
+          state.logPressure = -0.3; // 0.5 bar
+          state.co2Percent = 5.0;
+          state.starAgePercent = 30;
+          break;
+      }
+
+      // 슬라이더 바 컨트롤 값 대입 동기화
+      nodes.starMass.value = state.starMass;
+      nodes.starAgePercent.value = state.starAgePercent;
+      nodes.semiMajorAxis.value = state.semiMajorAxis;
+      nodes.eccentricity.value = state.eccentricity;
+      nodes.logPressure.value = state.logPressure;
+      nodes.co2Percent.value = state.co2Percent;
+
+      updateUI();
+    }
+
+    // --- 수동 컨트롤 입력 이벤트 바인딩 ---
+    function bindControlListeners() {
+      // 슬라이더 바 입력 이벤트들
+      nodes.starMass.addEventListener('input', (e) => {
+        state.starMass = parseFloat(e.target.value);
+        state.selectedPreset = "custom";
+        updateUI();
+      });
+      nodes.starAgePercent.addEventListener('input', (e) => {
+        state.starAgePercent = parseInt(e.target.value);
+        state.selectedPreset = "custom";
+        updateUI();
+      });
+      nodes.semiMajorAxis.addEventListener('input', (e) => {
+        state.semiMajorAxis = parseFloat(e.target.value);
+        state.selectedPreset = "custom";
+        updateUI();
+      });
+      nodes.eccentricity.addEventListener('input', (e) => {
+        state.eccentricity = parseFloat(e.target.value);
+        state.selectedPreset = "custom";
+        updateUI();
+      });
+      nodes.logPressure.addEventListener('input', (e) => {
+        state.logPressure = parseFloat(e.target.value);
+        state.selectedPreset = "custom";
+        updateUI();
+      });
+      nodes.co2Percent.addEventListener('input', (e) => {
+        state.co2Percent = parseFloat(e.target.value);
+        state.selectedPreset = "custom";
+        updateUI();
+      });
+
+      // 프리셋 바인딩
+      const buttons = document.querySelectorAll('#presetContainer button');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          applySelectedPreset(btn.getAttribute('data-preset'));
+        });
+      });
+
+      // 툴바 기능들
+      nodes.btnPlayPause.addEventListener('click', () => {
+        state.isPlaying = !state.isPlaying;
+        nodes.btnPlayPause.innerText = state.isPlaying ? "일시정지" : "가동";
+        nodes.btnPlayPause.className = state.isPlaying 
+          ? "py-1 px-3 rounded-lg text-[11px] font-bold transition-all bg-amber-600 hover:bg-amber-500 text-white" 
+          : "py-1 px-3 rounded-lg text-[11px] font-bold transition-all bg-emerald-600 hover:bg-emerald-500 text-white";
+      });
+
+      nodes.btnResetOrbit.addEventListener('click', () => {
+        state.time = 0.0;
+        updateUI();
+      });
+
+      nodes.btnResetCamera.addEventListener('click', () => {
+        state.zoom = 1.0;
+        state.panOffset = { x: 0, y: 0 };
+        updateUI();
+      });
+
+      nodes.btnToggleLabels.addEventListener('click', () => {
+        state.showDataLabels = !state.showDataLabels;
+        nodes.btnToggleLabels.innerText = state.showDataLabels ? "표시" : "숨김";
+        nodes.btnToggleLabels.className = state.showDataLabels 
+          ? "text-[10px] py-1 px-2 rounded font-bold border transition bg-slate-900 border-slate-800 text-white" 
+          : "text-[10px] py-1 px-2 rounded font-bold border transition border-slate-950 text-slate-600";
+        updateUI();
+      });
+    }
+
+    // --- 고급 카메라 드래그 및 마우스 휠 지원 피스 ---
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+
+    function bindCameraGestureListeners() {
+      // 마우스 제어
+      canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragStart.x = e.clientX - state.panOffset.x;
+        dragStart.y = e.clientY - state.panOffset.y;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        state.panOffset.x = e.clientX - dragStart.x;
+        state.panOffset.y = e.clientY - dragStart.y;
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      // 휠 줌 기능
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomIntensity = 0.08;
+        let nextZoom = state.zoom;
+        if (e.deltaY < 0) {
+          nextZoom = Math.min(25.0, state.zoom + zoomIntensity * state.zoom);
+        } else {
+          nextZoom = Math.max(0.15, state.zoom - zoomIntensity * state.zoom);
+        }
+        state.zoom = nextZoom;
+      }, { passive: false });
+
+      // 모바일 및 터치 이동 제어 지원 (Adaptive Design)
+      let isTouching = false;
+      let touchStart = { x: 0, y: 0 };
+
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isTouching = true;
+          touchStart.x = e.touches[0].clientX - state.panOffset.x;
+          touchStart.y = e.touches[0].clientY - state.panOffset.y;
+        }
+      });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (isTouching && e.touches.length === 1) {
+          state.panOffset.x = e.touches[0].clientX - touchStart.x;
+          state.panOffset.y = e.touches[0].clientY - touchStart.y;
+        }
+      });
+
+      canvas.addEventListener('touchend', () => {
+        isTouching = false;
+      });
+    }
+
+    // --- 초기 실행 초기화 시퀀스 ---
+    window.addEventListener('resize', () => {
+      adjustCanvasDPI();
+      updateUI();
+    });
+
+    adjustCanvasDPI();
+    bindControlListeners();
+    bindCameraGestureListeners();
+    applySelectedPreset("earth");
+
+    // 시뮬레이터 루프 시동
+    animTick();
+
+  </script>
+</body>
+</html>

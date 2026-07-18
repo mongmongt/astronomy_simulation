@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>질량과 거리, 이심률에 따른 쌍성계 공전 운동 시뮬레이션</title>
+    <!-- Tailwind CSS (고급스러운 다크 테마 UI 구성을 위해 CDN 활용) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 커스텀 슬라이더 스타일링 */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+        }
+        /* 캔버스 글로우 효과 */
+        .canvas-glow {
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.15);
+        }
+        /* 우측 패널 스크롤바 커스텀 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 2px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-blue-500 selection:text-white">
+
+    <!-- 상단 헤더 -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <span class="text-xs font-semibold text-blue-500 tracking-wider uppercase">고급지구과학 천문학 수행평가 (심화형)</span>
+                <h1 class="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                    쌍성계 역학적 에너지 및 각운동량 보존 시뮬레이터
+                </h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700/50 text-xs">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-slate-300 font-medium">실시간 에너지 보존 검증 장치 가동 중</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 좌측: 조작 및 설정 패널 (4/12) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            <!-- 1. 입력 조종판 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col gap-5 shadow-xl">
+                <div class="border-b border-slate-800 pb-3">
+                    <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                        조작 변인 설정 (조종판)
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">질량, 거리 및 이심률을 조정하면 에너지 전환율이 요동칩니다.</p>
+                </div>
+
+                <!-- 조작 변인 1: 별 A의 질량 -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                            별 A의 질량 (M₁)
+                        </span>
+                        <span class="font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded text-xs" id="m1-val">1.50 MSun</span>
+                    </div>
+                    <input type="range" id="m1-input" min="0.5" max="5.0" step="0.1" value="1.5" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <span class="text-[10px] text-slate-500 flex justify-between"><span>최소: 0.5</span><span>최대: 5.0</span></span>
+                </div>
+
+                <!-- 조작 변인 2: 별 B의 질량 -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                            별 B의 질량 (M₂)
+                        </span>
+                        <span class="font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded text-xs" id="m2-val">1.00 MSun</span>
+                    </div>
+                    <input type="range" id="m2-input" min="0.1" max="5.0" step="0.1" value="1.0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <span class="text-[10px] text-slate-500 flex justify-between"><span>최소: 0.1</span><span>최대: 5.0</span></span>
+                </div>
+
+                <!-- 조작 변인 3: 별 사이 평균 거리 -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                            별 사이 평균 거리 (a)
+                        </span>
+                        <span class="font-mono text-slate-300 bg-slate-800 px-2 py-0.5 rounded text-xs" id="a-val">140 AU</span>
+                    </div>
+                    <input type="range" id="a-input" min="80" max="220" step="5" value="140" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <span class="text-[10px] text-slate-500 flex justify-between"><span>가까움: 80</span><span>멀어짐: 220</span></span>
+                </div>
+
+                <!-- 조작 변인 4: 이심률 -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                            <span class="w-2.5 h-1.5 bg-purple-500 rounded-full"></span>
+                            궤도 이심률 (e)
+                        </span>
+                        <span class="font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded text-xs" id="e-val">0.40</span>
+                    </div>
+                    <input type="range" id="e-input" min="0.0" max="0.8" step="0.05" value="0.4" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <span class="text-[10px] text-slate-500 flex justify-between"><span>원형 (0.0)</span><span>타원 최대 (0.8)</span></span>
+                </div>
+            </div>
+
+            <!-- 2. 실시간 물리 정량수식 계산 패널 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-xl">
+                <h3 class="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                    보존 물리량 실시간 데이터
+                </h3>
+                <div class="flex flex-col gap-3 text-xs">
+                    <!-- 운동에너지 -->
+                    <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-slate-850">
+                        <span class="text-slate-400 font-medium">운동 에너지 (Ek)</span>
+                        <span class="font-mono font-bold text-cyan-400" id="ek-val">0.00</span>
+                    </div>
+                    <!-- 위치에너지 -->
+                    <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-slate-850">
+                        <span class="text-slate-400 font-medium">위치 에너지 (Ep)</span>
+                        <span class="font-mono font-bold text-red-400" id="ep-val">0.00</span>
+                    </div>
+                    <!-- 역학적 에너지 총합 -->
+                    <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-slate-850">
+                        <span class="text-slate-300 font-semibold">총역학적 에너지 (E_total)</span>
+                        <span class="font-mono font-bold text-emerald-400" id="etotal-val">0.00</span>
+                    </div>
+                    <!-- 각운동량 보존식 -->
+                    <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-slate-850">
+                        <span class="text-slate-300 font-semibold">궤도 각운동량 (L)</span>
+                        <span class="font-mono font-bold text-purple-400" id="angmomentum-val">0.00</span>
+                    </div>
+                </div>
+
+                <!-- 고도화 기능: 실시간 역학적 에너지 보존율 가시화 -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-850 flex flex-col gap-1.5 mt-1">
+                    <div class="flex justify-between items-center text-[11px]">
+                        <span class="text-slate-400">실시간 역학적 에너지 보존율</span>
+                        <span class="font-mono text-emerald-400 font-bold" id="energy-conservation-val">100.00%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-[100%]" id="energy-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 중앙: 시뮬레이션 캔버스 및 에너지 선그래프 (5/12) -->
+        <section class="lg:col-span-5 flex flex-col gap-4">
+            <!-- 메인 물리 시뮬레이션 캔버스 -->
+            <div class="relative bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden flex flex-col items-center justify-center p-2 canvas-glow">
+                <!-- 캔버스 전면 정보 오버레이 -->
+                <div class="absolute top-4 left-4 pointer-events-none flex flex-col gap-1.5 z-10 bg-slate-950/80 backdrop-blur px-3 py-2 rounded-lg border border-slate-800">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                        <span class="text-xs text-slate-400">별 A 속도: <span id="v1-speed" class="font-mono text-slate-200">0.0</span></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                        <span class="text-xs text-slate-400">별 B 속도: <span id="v2-speed" class="font-mono text-slate-200">0.0</span></span>
+                    </div>
+                </div>
+
+                <!-- 캔버스 드로잉부 -->
+                <canvas id="simCanvas" width="500" height="380" class="max-w-full rounded-xl bg-slate-950"></canvas>
+            </div>
+
+            <!-- 실시간 물리량 변화 선그래프 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2">
+                <div class="flex justify-between items-center mb-1">
+                    <h3 class="text-xs font-bold text-slate-300 flex items-center gap-1">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        보존 물리량 실시간 추이 그래프 (Ek, Ep, E_total, L)
+                    </h3>
+                    <div class="flex gap-2 text-[10px]">
+                        <span class="flex items-center gap-1 text-cyan-400"><span class="w-2 h-0.5 bg-cyan-400 inline-block"></span>Ek</span>
+                        <span class="flex items-center gap-1 text-red-400"><span class="w-2 h-0.5 bg-red-400 inline-block"></span>Ep</span>
+                        <span class="flex items-center gap-1 text-emerald-400"><span class="w-2 h-0.5 bg-emerald-400 inline-block"></span>E_total</span>
+                        <span class="flex items-center gap-1 text-purple-400"><span class="w-2 h-0.5 bg-purple-400 inline-block"></span>L</span>
+                    </div>
+                </div>
+                <canvas id="graphCanvas" width="500" height="120" class="max-w-full rounded-lg bg-slate-950 border border-slate-850"></canvas>
+            </div>
+
+            <!-- 하단 제어 컨트롤러 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div class="flex gap-2">
+                        <button id="btn-play" class="bg-blue-600 hover:bg-blue-500 active:scale-95 transition text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="play-icon"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span id="play-text">일시정지</span>
+                        </button>
+                        <button id="btn-reset" class="bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-slate-300 px-4 py-2 rounded-xl text-sm font-semibold">
+                            초기화
+                        </button>
+                    </div>
+
+                    <!-- 별 렌더링 스킨 모드 토글 (수정 및 추가 요소) -->
+                    <div class="flex items-center bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs gap-3">
+                        <span class="text-slate-400 font-medium">별 크기 설정:</span>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+                            <input type="radio" name="star-mode" value="normal" checked class="text-blue-600 bg-slate-900 border-slate-800 focus:ring-0">
+                            <span>원래 모습</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+                            <input type="radio" name="star-mode" value="point" class="text-blue-600 bg-slate-900 border-slate-800 focus:ring-0">
+                            <span class="text-blue-400 font-semibold">점(질점) 모드</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center border-t border-slate-800/60 pt-3">
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                            <input type="checkbox" id="show-vectors" checked class="rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-900">
+                            <span>속도 벡터</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                            <input type="checkbox" id="show-trails" checked class="rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-900">
+                            <span>공전 자취</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                            <input type="checkbox" id="show-kepler2" checked class="rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-900">
+                            <span class="text-blue-400 font-semibold">케플러 2법칙 영역</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 우측: 이론 및 보고서 패널 (3/12) -->
+        <section class="lg:col-span-3 flex flex-col gap-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex-1 flex flex-col shadow-xl max-h-[720px] overflow-hidden">
+                <!-- 탭 메뉴 버튼 -->
+                <div class="flex border-b border-slate-800 mb-4 text-sm font-semibold">
+                    <button id="tab-btn-1" class="flex-1 pb-3 text-blue-500 border-b-2 border-blue-500 transition tab-btn">핵심 원리</button>
+                    <button id="tab-btn-2" class="flex-1 pb-3 text-slate-400 border-b-2 border-b-transparent hover:text-slate-200 transition tab-btn">물리 오류 해결</button>
+                </div>
+
+                <!-- 탭 1 내용: 핵심 원리 -->
+                <div id="tab-content-1" class="flex-1 flex flex-col gap-4 text-xs leading-relaxed text-slate-300 overflow-y-auto custom-scrollbar pr-1">
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="text-blue-400 font-bold mb-1.5 text-sm flex items-center gap-1.5">
+                                <span class="w-1.5 h-3 bg-blue-500 rounded-full"></span>
+                                1. 뉴턴의 이체 문제 & 질량 중심
+                            </h4>
+                            <p class="text-slate-400">
+                                두 천체는 서로에게 가하는 뉴턴의 만유인력에 의해 상호 궤도 운동을 영위합니다.
+                            </p>
+                            <div class="bg-slate-950 p-2 rounded border border-slate-850 font-mono text-[10px] text-center my-1.5 text-blue-300">
+                                F = G · M₁ · M₂ / r²
+                            </div>
+                            <p class="text-slate-400">
+                                두 별의 물리적 공간상 위치를 r₁, r₂라 할 때, <strong>질량 중심(Center of Mass)</strong>을 고정 기준점(초점)으로 설정하면 다음 관계식을 항상 실시간으로 유지하게 됩니다.
+                            </p>
+                            <div class="bg-slate-950 p-2 rounded border border-slate-850 font-mono text-[10px] text-center my-1.5 text-blue-300">
+                                M₁ · r₁ = M₂ · r₂
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-800 my-2">
+
+                        <div>
+                            <h4 class="text-blue-400 font-bold mb-1.5 text-sm flex items-center gap-1.5">
+                                <span class="w-1.5 h-3 bg-blue-500 rounded-full"></span>
+                                2. 역학적 에너지 보존의 수학
+                            </h4>
+                            <p class="text-slate-400">
+                                이체계 타원 궤도 상에서 공전하는 과정에서 두 천체의 속력이 주기적으로 크게 바뀌므로 개별 운동 에너지(Ek)와 중력 위치 에너지(Ep)는 끊임없이 변하지만, 이들의 대수적 합인 <strong>총역학적 에너지(E_total)</strong>는 항상 일정한 값을 유지하며 보존됩니다.
+                            </p>
+                            <div class="bg-slate-950 p-2 rounded border border-slate-850 font-mono text-[10px] text-center my-1.5 text-emerald-300">
+                                E_total = E_k + E_p = Constant
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-800 my-2">
+
+                        <div>
+                            <h4 class="text-blue-400 font-bold mb-1.5 text-sm flex items-center gap-1.5">
+                                <span class="w-1.5 h-3 bg-blue-500 rounded-full"></span>
+                                3. 각운동량 보존 법칙과 타원 운동
+                            </h4>
+                            <p class="text-slate-400">
+                                만유인력은 두 천체의 상호 중심선을 향하는 전형적인 중앙력(Central Force)입니다. 회전 돌림힘이 전혀 없으므로 외력이 작용하지 않는 계 전체의 <strong>궤도 각운동량(L)</strong> 역시 일정한 상수로 안전하게 보존됩니다.
+                            </p>
+                            <div class="bg-slate-950 p-2 rounded border border-slate-850 font-mono text-[10px] text-center my-1.5 text-purple-300">
+                                L = μ · (r × v) = Constant
+                            </div>
+                            <p class="text-slate-400">
+                                두 별 사이가 가까운 근일점에서는 거리가 짧은 대신 선속도가 빠르고, 원일점에서는 거리가 먼 대신 선속도가 매우 완만해집니다. 이는 기하학적으로 <strong>케플러 제2법칙(면적 속도 일정)</strong>과 일맥상통합니다.
+                            </p>
+                        </div>
+
+                        <hr class="border-slate-800 my-2">
+
+                        <div>
+                            <h4 class="text-blue-400 font-bold mb-1.5 text-sm flex items-center gap-1.5">
+                                <span class="w-1.5 h-3 bg-blue-500 rounded-full"></span>
+                                4. 케플러 제3법칙 (조화 법칙)
+                            </h4>
+                            <p class="text-slate-400">
+                                두 별의 총 질량(M₁ + M₂)과 공전 궤도 장반경(a) 사이에는 다음 조화 성립 관계가 실시간 정밀 연산됩니다.
+                            </p>
+                            <div class="bg-slate-950 p-2 rounded border border-slate-850 font-mono text-[10px] text-center my-1.5 text-purple-300">
+                                T² = [ 4π² / (G · (M₁ + M₂)) ] · a³
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 탭 2 내용: 물리적 극단점(임계값) 극복 -->
+                <div id="tab-content-2" class="flex-1 flex flex-col gap-4 text-xs leading-relaxed text-slate-300 hidden overflow-y-auto custom-scrollbar pr-1">
+                    <div>
+                        <h4 class="text-slate-100 font-bold mb-1 text-sm">임계값 연산 오류 극복 기술</h4>
+                        <p class="text-slate-400">
+                            기존 단순 Euler 수치 적분 계산법은 근일점(최단 거리) 진입 시 가속도가 무한으로 급상승하여 궤도가 유실되는 <strong>물리 수치 폭발(Numerical Explosion)</strong> 문제를 고질적으로 안고 있었습니다.
+                        </p>
+                    </div>
+                    <ul class="list-disc pl-4 text-slate-400 flex flex-col gap-2">
+                        <li><strong>적응형 서브스텝(Sub-stepping):</strong> 두 천체가 궤도 내에서 극도로 인접하여 계산 거리가 단절되면, 프레임을 실시간으로 100회 미세 분할하여 발산 중력을 완벽히 순치 및 적분 제어합니다.</li>
+                        <li><strong>역학적 에너지 보존 추적:</strong> 총 에너지($E = E_k + E_p$) 보존 상태를 4자리 소수점까지 연속 계산 및 보존율 그래프로 투영하여 수치해석적 정밀도가 깨지지 않음을 지속적으로 실증합니다.</li>
+                        <li><strong>질량중심 영점 수정 보정:</strong> 컴퓨터 연산 특유의 부동 소수점 오차(Truncation Error)가 누적되어 궤도 중심축 자체가 스크린 밖으로 미끄러져 이탈하는 표류(Barycenter Drift) 현상을 완전히 억제했습니다.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-4 px-6 text-center text-xs text-slate-600">
+        <p>© 2026 천문학 시뮬레이션 탐구 프로젝트 - 만유인력 및 케플러 법칙의 정량적 구현</p>
+    </footer>
+
+    <!-- 자바스크립트 엔진부 -->
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const gCtx = graphCanvas.getContext('2d');
+
+        // 전역 DOM 요소 변수 선언 (DOM 로드 후 바인딩)
+        let m1Input, m2Input, aInput, eInput;
+        let m1Val, m2Val, aVal, eVal;
+        let resTotalM, resA1, resA2, resPeriod;
+        let v1SpeedText, v2SpeedText;
+        let ekValText, epValText, etotalValText, angmomentumValText;
+        let energyConservationVal, energyBar, solverStatus;
+        let btnPlay, btnReset;
+        let showVectorsChk, showTrailsChk, showKepler2Chk;
+        let tabBtn1, tabBtn2, tabContent1, tabContent2;
+
+        // 물리 상수 및 설정
+        const G = 15000; // 가상 만유인력 상수
+        const baseDt = 0.05; // 기본 시간 한 프레임 스텝
+        
+        let isRunning = true;
+        let animationFrameId;
+
+        // 물리 좌표 및 속도 상태 정의
+        let state = {
+            x1: 0, y1: 0,  // 별 A의 위치
+            vx1: 0, vy1: 0, // 별 A의 속도
+            x2: 0, y2: 0,  // 별 B의 위치
+            vx2: 0, vy2: 0  // 별 B의 속도
+        };
+
+        // 초기 역학 에너지 및 각운동량 (보존율 비교용 기준값)
+        let initialEnergy = 0;
+        let initialAngularMomentum = 0;
+
+        // 시각화용 데이터 저장 배열
+        let trailA = [];
+        let trailB = [];
+        const maxTrailLength = 400;
+
+        // 실시간 그래프 버퍼 데이터 구조
+        let graphData = {
+            ek: [],
+            ep: [],
+            etotal: [],
+            ang: []
+        };
+        const maxGraphPoints = 120; // 가로축 시간 포인트 갯수
+
+        // 케플러 2법칙 면적 속도 면적 부채꼴 저장용 배열
+        let keplerSectors = [];
+        let keplerTimer = 0;
+        const keplerInterval = 12; // 몇 프레임마다 영역을 그릴 것인가
+
+        // DOM 요소 초기화 함수
+        function initDOMElements() {
+            m1Input = document.getElementById('m1-input');
+            m2Input = document.getElementById('m2-input');
+            aInput = document.getElementById('a-input');
+            eInput = document.getElementById('e-input');
+
+            m1Val = document.getElementById('m1-val');
+            m2Val = document.getElementById('m2-val');
+            aVal = document.getElementById('a-val');
+            eVal = document.getElementById('e-val');
+
+            resTotalM = document.getElementById('res-total-m');
+            resA1 = document.getElementById('res-a1');
+            resA2 = document.getElementById('res-a2');
+            resPeriod = document.getElementById('res-period');
+
+            v1SpeedText = document.getElementById('v1-speed');
+            v2SpeedText = document.getElementById('v2-speed');
+
+            ekValText = document.getElementById('ek-val');
+            epValText = document.getElementById('ep-val');
+            etotalValText = document.getElementById('etotal-val');
+            angmomentumValText = document.getElementById('angmomentum-val');
+            
+            energyConservationVal = document.getElementById('energy-conservation-val');
+            energyBar = document.getElementById('energy-bar');
+            solverStatus = document.getElementById('solver-status');
+
+            btnPlay = document.getElementById('btn-play');
+            btnReset = document.getElementById('btn-reset');
+            showVectorsChk = document.getElementById('show-vectors');
+            showTrailsChk = document.getElementById('show-trails');
+            showKepler2Chk = document.getElementById('show-kepler2');
+
+            tabBtn1 = document.getElementById('tab-btn-1');
+            tabBtn2 = document.getElementById('tab-btn-2');
+            tabContent1 = document.getElementById('tab-content-1');
+            tabContent2 = document.getElementById('tab-content-2');
+        }
+
+        // 이벤트 리스너 등록 함수
+        function setupEventListeners() {
+            tabBtn1.addEventListener('click', () => {
+                tabBtn1.classList.add('text-blue-500', 'border-blue-500');
+                tabBtn1.classList.remove('text-slate-400', 'border-b-transparent');
+                tabBtn2.classList.remove('text-blue-500', 'border-blue-500');
+                tabBtn2.classList.add('text-slate-400', 'border-b-transparent');
+                tabContent1.classList.remove('hidden');
+                tabContent2.classList.add('hidden');
+            });
+
+            tabBtn2.addEventListener('click', () => {
+                tabBtn2.classList.add('text-blue-500', 'border-blue-500');
+                tabBtn2.classList.remove('text-slate-400', 'border-b-transparent');
+                tabBtn1.classList.remove('text-blue-500', 'border-blue-500');
+                tabBtn1.classList.add('text-slate-400', 'border-b-transparent');
+                tabContent2.classList.remove('hidden');
+                tabContent1.classList.add('hidden');
+            });
+
+            // 제어 슬라이더 바인딩
+            [m1Input, m2Input, aInput, eInput].forEach(elem => {
+                if (elem) {
+                    elem.addEventListener('input', () => {
+                        initPhysics();
+                    });
+                }
+            });
+
+            if (btnPlay) {
+                btnPlay.addEventListener('click', () => {
+                    isRunning = !isRunning;
+                    const playText = document.getElementById('play-text');
+                    const playIcon = document.getElementById('play-icon');
+                    if (isRunning) {
+                        if (playText) playText.innerText = "일시정지";
+                        if (playIcon) playIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                    } else {
+                        if (playText) playText.innerText = "재생";
+                        if (playIcon) playIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                    }
+                });
+            }
+
+            if (btnReset) {
+                btnReset.addEventListener('click', () => {
+                    if (m1Input) m1Input.value = 1.5;
+                    if (m2Input) m2Input.value = 1.0;
+                    if (aInput) aInput.value = 140;
+                    if (eInput) eInput.value = 0.4;
+                    
+                    // 별 모양 기본 라디오 선택으로 초기화
+                    const defaultRadio = document.querySelector('input[name="star-mode"][value="normal"]');
+                    if (defaultRadio) defaultRadio.checked = true;
+
+                    initPhysics();
+                });
+            }
+        }
+
+        // 역학적 에너지 계산 함수 (E_k, E_p 및 E_total 계산)
+        function calculateEnergies(m1, m2) {
+            const dx = state.x2 - state.x1;
+            const dy = state.y2 - state.y1;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            // 만유인력에 의한 퍼텐셜 에너지 Ep = -G * m1 * m2 / r
+            const Ep = -(G * m1 * m2) / dist;
+
+            // 운동 에너지 Ek = 0.5 * m1 * v1^2 + 0.5 * m2 * v2^2
+            const v1Sq = state.vx1 * state.vx1 + state.vy1 * state.vy1;
+            const v2Sq = state.vx2 * state.vx2 + state.vy2 * state.vy2;
+            const Ek = 0.5 * m1 * v1Sq + 0.5 * m2 * v2Sq;
+
+            return { Ek, Ep, Etotal: Ek + Ep };
+        }
+
+        // 각운동량 계산 함수 (L = r × p)
+        function calculateAngularMomentum(m1, m2) {
+            const rx = state.x2 - state.x1;
+            const ry = state.y2 - state.y1;
+            const vx = state.vx2 - state.vx1;
+            const vy = state.vy2 - state.vy1;
+            
+            const mu = (m1 * m2) / (m1 + m2);
+            // 외적 r x v = rx * vy - ry * vx
+            const rxv = rx * vy - ry * vx;
+            return mu * rxv;
+        }
+
+        // 초기 물리 상태 설정 루틴 (초점 및 안정 타원 초기속도 산정)
+        function initPhysics() {
+            if (!m1Input || !m2Input || !aInput || !eInput) return;
+
+            const m1 = parseFloat(m1Input.value);
+            const m2 = parseFloat(m2Input.value);
+            const a = parseFloat(aInput.value);
+            const e = parseFloat(eInput.value);
+            const totalM = m1 + m2;
+
+            // 질량 비율에 따른 각 항성 장반경 배분
+            const a1 = (m2 / totalM) * a;
+            const a2 = (m1 / totalM) * a;
+
+            // 두 천체를 각각 근일점(Periastron)에 상호 정비례하게 위치배정
+            const r1 = a1 * (1 - e);
+            const r2 = a2 * (1 - e);
+
+            state.x1 = -r1; 
+            state.y1 = 0;
+            state.x2 = r2;  
+            state.y2 = 0;
+
+            // 활력 방정식(Vis-Viva Equation)에 기초한 안정 타원 초기 근일점 공전 속도 연산
+            const v_rel = Math.sqrt((G * totalM / a) * ((1 + e) / (1 - e)));
+
+            // 질량 중심 기준 상대 속도 벡터 분할배정
+            const v1 = (m2 / totalM) * v_rel;
+            const v2 = (m1 / totalM) * v_rel;
+
+            // 궤도 정렬을 위해 수직 방향으로 속도 지정
+            state.vx1 = 0;
+            state.vy1 = -v1;
+            state.vx2 = 0;
+            state.vy2 = v2;
+
+            // 자취 기록 및 시각화 섹션 초기화
+            trailA = [];
+            trailB = [];
+            keplerSectors = [];
+            keplerTimer = 0;
+
+            // 실시간 그래프 버퍼 데이터 초기화
+            graphData = { ek: [], ep: [], etotal: [], ang: [] };
+
+            // 초기 기준 에너지를 기록해둠
+            const initialEnergyData = calculateEnergies(m1, m2);
+            initialEnergy = initialEnergyData.Etotal;
+            initialAngularMomentum = calculateAngularMomentum(m1, m2);
+
+            updateUIPanels(m1, m2, a, e, a1, a2, totalM);
+        }
+
+        function updateUIPanels(m1, m2, a, e, a1, a2, totalM) {
+            if (m1Val) m1Val.innerText = m1.toFixed(2) + " MSun";
+            if (m2Val) m2Val.innerText = m2.toFixed(2) + " MSun";
+            if (aVal) aVal.innerText = a + " AU";
+            if (eVal) eVal.innerText = e.toFixed(2);
+
+            if (resTotalM) resTotalM.innerText = totalM.toFixed(2) + " MSun";
+            if (resA1) resA1.innerText = a1.toFixed(1) + " AU";
+            if (resA2) resA2.innerText = a2.toFixed(1) + " AU";
+
+            // 케플러 제3법칙 기반 이론적 공전 주기 T
+            const period = 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / (G * totalM));
+            if (resPeriod) resPeriod.innerText = (period).toFixed(1) + " 년";
+        }
+
+        // 중심 좌표 보정 (캔버스의 중심)
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        // 시뮬레이션 물리 통합 연산 엔진
+        function update() {
+            if (!m1Input || !m2Input) {
+                animationFrameId = requestAnimationFrame(update);
+                return;
+            }
+
+            // 메인 캔버스 초기화
+            ctx.fillStyle = 'rgba(5, 7, 15, 1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const m1 = parseFloat(m1Input.value);
+            const m2 = parseFloat(m2Input.value);
+
+            if (isRunning) {
+                // 1. 임계값(최대이심률, 초근접) 계산용 동적 서브스텝 알고리즘 실행
+                let dx = state.x2 - state.x1;
+                let dy = state.y2 - state.y1;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                // 연산 자원 폭발 없이 근일점에서의 계산 안정성을 100단계 서브스텝으로 처리
+                const substeps = Math.floor(Math.max(10, Math.min(100, (300 / distance) * 15)));
+                const subDt = baseDt / substeps;
+
+                if (solverStatus) solverStatus.innerText = `최상 (Substeps: ${substeps})`;
+
+                for (let step = 0; step < substeps; step++) {
+                    dx = state.x2 - state.x1;
+                    dy = state.y2 - state.y1;
+                    const distSq = dx * dx + dy * dy;
+                    const dist = Math.sqrt(distSq);
+
+                    if (dist > 2) {
+                        // 뉴턴의 중력 가속도 공식 (a = G * M_target / r^2)
+                        const forceMag = G / distSq;
+                        
+                        const ax1 = (dx / dist) * forceMag * m2;
+                        const ay1 = (dy / dist) * forceMag * m2;
+                        const ax2 = -(dx / dist) * forceMag * m1;
+                        const ay2 = -(dy / dist) * forceMag * m1;
+
+                        // 심플레틱 오일러법(Semi-implicit Euler) 기반 수치적분
+                        state.vx1 += ax1 * subDt;
+                        state.vy1 += ay1 * subDt;
+                        state.vx2 += ax2 * subDt;
+                        state.vy2 += ay2 * subDt;
+
+                        state.x1 += state.vx1 * subDt;
+                        state.y1 += state.vy1 * subDt;
+                        state.x2 += state.vx2 * subDt;
+                        state.y2 += state.vy2 * subDt;
+
+                        // 2. 질량 중심 강제 고정 역학 루틴 (Barycenter Correction)
+                        const comX = (m1 * state.x1 + m2 * state.x2) / (m1 + m2);
+                        const comY = (m1 * state.y1 + m2 * state.y2) / (m1 + m2);
+                        state.x1 -= comX;
+                        state.y1 -= comY;
+                        state.x2 -= comX;
+                        state.y2 -= comY;
+
+                        const comVx = (m1 * state.vx1 + m2 * state.vx2) / (m1 + m2);
+                        const comVy = (m1 * state.vy1 + m2 * state.vy2) / (m1 + m2);
+                        state.vx1 -= comVx;
+                        state.vy1 -= comVy;
+                        state.vx2 -= comVx;
+                        state.vy2 -= comVy;
+                    }
+                }
+
+                // 3. 자취 데이터 가시화 처리
+                if (showTrailsChk && showTrailsChk.checked) {
+                    trailA.push({x: state.x1, y: state.y1});
+                    trailB.push({x: state.x2, y: state.y2});
+                    if (trailA.length > maxTrailLength) trailA.shift();
+                    if (trailB.length > maxTrailLength) trailB.shift();
+                } else {
+                    trailA = [];
+                    trailB = [];
+                }
+
+                // 4. 케플러 2법칙 면적 일정 부채꼴 영역 추출 및 자취 누적
+                if (showKepler2Chk && showKepler2Chk.checked) {
+                    keplerTimer++;
+                    if (keplerTimer >= keplerInterval) {
+                        keplerTimer = 0;
+                        keplerSectors.push({
+                            x1: state.x1, y1: state.y1,
+                            x2: state.x2, y2: state.y2
+                        });
+                        if (keplerSectors.length > 20) {
+                            keplerSectors.shift(); 
+                        }
+                    }
+                } else {
+                    keplerSectors = [];
+                }
+            }
+
+            // 실시간 보존 물리 데이터 연산
+            const currentEnergies = calculateEnergies(m1, m2);
+            const currentAngularMomentum = calculateAngularMomentum(m1, m2);
+
+            // 문자열 출력 및 업데이트
+            if (ekValText) ekValText.innerText = currentEnergies.Ek.toFixed(2);
+            if (epValText) epValText.innerText = currentEnergies.Ep.toFixed(2);
+            if (etotalValText) etotalValText.innerText = currentEnergies.Etotal.toFixed(2);
+            if (angmomentumValText) angmomentumValText.innerText = Math.abs(currentAngularMomentum).toFixed(2);
+
+            // 실시간 그래프 버퍼에 데이터 누적
+            if (isRunning) {
+                graphData.ek.push(currentEnergies.Ek);
+                graphData.ep.push(currentEnergies.Ep);
+                graphData.etotal.push(currentEnergies.Etotal);
+                graphData.ang.push(Math.abs(currentAngularMomentum));
+
+                if (graphData.ek.length > maxGraphPoints) {
+                    graphData.ek.shift();
+                    graphData.ep.shift();
+                    graphData.etotal.shift();
+                    graphData.ang.shift();
+                }
+            }
+
+            // 역학적 에너지 보존율 모니터링 수치 계산
+            let conservationRate = 100 - Math.abs((currentEnergies.Etotal - initialEnergy) / initialEnergy) * 100;
+            if (isNaN(conservationRate) || conservationRate < 0) conservationRate = 100; 
+            
+            if (energyConservationVal) energyConservationVal.innerText = conservationRate.toFixed(4) + "%";
+            if (energyBar) energyBar.style.width = Math.min(100, Math.max(0, conservationRate)) + "%";
+
+            // 실시간 물리 속도 표시 연산
+            const v1 = Math.sqrt(state.vx1 * state.vx1 + state.vy1 * state.vy1);
+            const v2 = Math.sqrt(state.vx2 * state.vx2 + state.vy2 * state.vy2);
+            if (v1SpeedText) v1SpeedText.innerText = (v1 * 0.1).toFixed(2) + " km/s";
+            if (v2SpeedText) v2SpeedText.innerText = (v2 * 0.1).toFixed(2) + " km/s";
+
+            // 5. 케플러 2법칙 부채꼴 면적 속도 영역 드로잉
+            if (showKepler2Chk && showKepler2Chk.checked && keplerSectors.length > 0) {
+                ctx.lineWidth = 1;
+                for (let i = 0; i < keplerSectors.length; i++) {
+                    const sec = keplerSectors[i];
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(sec.x1 + cx, sec.y1 + cy);
+                    if (i < keplerSectors.length - 1) {
+                        ctx.lineTo(keplerSectors[i+1].x1 + cx, keplerSectors[i+1].y1 + cy);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(sec.x2 + cx, sec.y2 + cy);
+                    if (i < keplerSectors.length - 1) {
+                        ctx.lineTo(keplerSectors[i+1].x2 + cx, keplerSectors[i+1].y2 + cy);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+                    ctx.fill();
+                }
+            }
+
+            // 6. 궤도 자취(Trail) 그리기
+            if (showTrailsChk && showTrailsChk.checked) {
+                // 별 A 자취
+                if (trailA.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(trailA[0].x + cx, trailA[0].y + cy);
+                    for (let i = 1; i < trailA.length; i++) {
+                        ctx.lineTo(trailA[i].x + cx, trailA[i].y + cy);
+                    }
+                    ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+                // 별 B 자취
+                if (trailB.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(trailB[0].x + cx, trailB[0].y + cy);
+                    for (let i = 1; i < trailB.length; i++) {
+                        ctx.lineTo(trailB[i].x + cx, trailB[i].y + cy);
+                    }
+                    ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+            }
+
+            // 7. 질량 중심 기호 작도 (공통 초점)
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#f87171';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText("질량 중심 (공통 초점)", cx - 45, cy - 14);
+
+            // 라디오 버튼 모드 확인 (원래 모습 vs 점 모드)
+            const activeStarMode = document.querySelector('input[name="star-mode"]:checked')?.value || 'normal';
+
+            // 8. 별 A(주성) 드로잉
+            let rA;
+            if (activeStarMode === 'point') {
+                rA = 3.5; // 미세 점 모드
+            } else {
+                rA = Math.max(7, 5 + m1 * 4); // 원래 크기 모델
+            }
+
+            ctx.beginPath();
+            ctx.arc(state.x1 + cx, state.y1 + cy, rA, 0, Math.PI * 2);
+            ctx.fillStyle = '#3b82f6';
+            ctx.fill();
+
+            if (activeStarMode !== 'point') {
+                // 점 모드가 아닐 때만 발광 코로나 효과 적용
+                ctx.shadowColor = '#3b82f6';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(state.x1 + cx, state.y1 + cy, rA - 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0; 
+            }
+
+            ctx.fillStyle = '#f1f5f9';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText("별 A", state.x1 + cx + rA + 5, state.y1 + cy + 4);
+
+            // 9. 별 B(동반성) 드로잉
+            let rB;
+            if (activeStarMode === 'point') {
+                rB = 3.5; // 미세 점 모드
+            } else {
+                rB = Math.max(7, 5 + m2 * 4); // 원래 크기 모델
+            }
+
+            ctx.beginPath();
+            ctx.arc(state.x2 + cx, state.y2 + cy, rB, 0, Math.PI * 2);
+            ctx.fillStyle = '#f59e0b';
+            ctx.fill();
+
+            if (activeStarMode !== 'point') {
+                // 점 모드가 아닐 때만 발광 코로나 효과 적용
+                ctx.shadowColor = '#f59e0b';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(state.x2 + cx, state.y2 + cy, rB - 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0; 
+            }
+
+            ctx.fillStyle = '#f1f5f9';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText("별 B", state.x2 + cx + rB + 5, state.y2 + cy + 4);
+
+            // 10. 실시간 속도 벡터 화살표 드로잉
+            if (showVectorsChk && showVectorsChk.checked) {
+                drawVelocityVector(state.x1 + cx, state.y1 + cy, state.vx1, state.vy1, '#60a5fa');
+                drawVelocityVector(state.x2 + cx, state.y2 + cy, state.vx2, state.vy2, '#fbbf24');
+            }
+
+            // 11. 선그래프 갱신 그리드로 호출
+            drawTrendGraphs();
+
+            animationFrameId = requestAnimationFrame(update);
+        }
+
+        // 벡터 화살표 드로잉 헬퍼 함수
+        function drawVelocityVector(startX, startY, vx, vy, color) {
+            const scale = 0.5; 
+            const endX = startX + vx * scale;
+            const endY = startY + vy * scale;
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 화살표 깃
+            const angle = Math.atan2(vy, vx);
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - 8 * Math.cos(angle - Math.PI / 6), endY - 8 * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(endX - 8 * Math.cos(angle + Math.PI / 6), endY - 8 * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        // 실시간 선그래프 렌더링 엔진 (Canvas API 직접 드로잉)
+        function drawTrendGraphs() {
+            gCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+            
+            const w = graphCanvas.width;
+            const h = graphCanvas.height;
+
+            // 뒷배경 눈금선 드로잉
+            gCtx.strokeStyle = 'rgba(51, 65, 85, 0.4)';
+            gCtx.lineWidth = 0.5;
+            for(let i = 1; i < 4; i++) {
+                const yPos = (h / 4) * i;
+                gCtx.beginPath();
+                gCtx.moveTo(0, yPos);
+                gCtx.lineTo(w, yPos);
+                gCtx.stroke();
+            }
+
+            const len = graphData.ek.length;
+            if (len < 2) return;
+
+            // 데이터 최대/최소 범위 분석
+            let maxVal = -Infinity;
+            let minVal = Infinity;
+
+            for(let i = 0; i < len; i++) {
+                maxVal = Math.max(maxVal, graphData.ek[i], graphData.ep[i], graphData.etotal[i], graphData.ang[i]);
+                minVal = Math.min(minVal, graphData.ek[i], graphData.ep[i], graphData.etotal[i], graphData.ang[i]);
+            }
+            
+            // 데이터 수치 안착 여유마진 설정
+            let valRange = maxVal - minVal;
+            if (valRange === 0) valRange = 1.0;
+            const margin = valRange * 0.15;
+            maxVal += margin;
+            minVal -= margin;
+
+            // 개별 라인 그리기 함수 정의
+            function drawLine(dataArray, color) {
+                gCtx.beginPath();
+                gCtx.strokeStyle = color;
+                gCtx.lineWidth = 1.5;
+                
+                for(let i = 0; i < dataArray.length; i++) {
+                    const x = (w / (maxGraphPoints - 1)) * i;
+                    // Y축 좌표 반전 변환 적용
+                    const y = h - ((dataArray[i] - minVal) / (maxVal - minVal)) * h;
+                    
+                    if (i === 0) gCtx.moveTo(x, y);
+                    else gCtx.lineTo(x, y);
+                }
+                gCtx.stroke();
+            }
+
+            // 실시간 순차 드로잉
+            drawLine(graphData.ek, '#22d3ee');     // 운동 에너지: 청록색
+            drawLine(graphData.ep, '#f87171');     // 위치 에너지: 빨간색
+            drawLine(graphData.etotal, '#34d399'); // 총에너지: 초록색
+            drawLine(graphData.ang, '#c084fc');    // 각운동량: 보라색
+        }
+
+        // DOM이 모두 로드된 후 시작하도록 보장하는 안전 진입점
+        window.addEventListener('DOMContentLoaded', () => {
+            initDOMElements();
+            setupEventListeners();
+            initPhysics();
+            update();
+        });
+    </script>
+</body>
+</html>

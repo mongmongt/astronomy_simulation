@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행성의 겉보기 운동 시뮬레이션</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f17;
+            color: #e2e8f0;
+        }
+        canvas {
+            background-color: #05070c;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+        }
+        /* 입력 폼 스타일 스무스하게 최적화 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 min-h-screen flex flex-col justify-between">
+
+    <!-- 헤더 -->
+    <header class="mb-4 border-b border-slate-800 pb-3">
+        <h1 class="text-xl md:text-2xl font-bold text-white">행성의 겉보기 운동 (순행, 역행, 그리고 유)</h1>
+        <p class="text-xs text-slate-400 mt-1">지구와 행성의 공전 및 궤도 경사각 효과를 고려하여 천구 상에 나타나는 겉보기 경로(순행·역행·유)를 정밀 시각화합니다.</p>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow items-stretch">
+        
+        <!-- 왼쪽: 태양 중심 공전 궤도 (Heliocentric Orbit) -->
+        <div class="lg:col-span-6 flex flex-col bg-[#111827] p-4 rounded-2xl border border-slate-800 shadow-2xl justify-between">
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="text-md font-semibold text-blue-400 flex items-center gap-2">
+                        <span class="inline-block w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
+                        1. 공전 궤도 뷰 (태양 중심 & 관측각 측정)
+                    </h2>
+                </div>
+                <p class="text-[11px] text-slate-400 mb-3">태양 중심 좌표계 위에서의 지구(파랑)와 행성(빨강)의 물리적인 공전 궤도 운동을 관찰합니다.</p>
+            </div>
+            <div class="relative w-full aspect-square bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
+                <canvas id="orbitCanvas" class="w-full h-full"></canvas>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 지구 중심 관측 스크린 및 제어반 -->
+        <div class="lg:col-span-6 flex flex-col gap-4 justify-between">
+            
+            <!-- 오른쪽 상단: 천구 스크린 (Geocentric Projection) -->
+            <div class="bg-[#111827] p-4 rounded-2xl border border-slate-800 shadow-2xl flex flex-col flex-grow justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <h2 class="text-md font-semibold text-purple-400 flex items-center gap-2">
+                            <span class="inline-block w-2.5 h-2.5 bg-purple-500 rounded-full"></span>
+                            2. 천구 투영 뷰 (지구 중심 관측)
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <!-- 실시간 상태 표지판 -->
+                            <span id="motionStateBadge" class="text-xs font-bold px-2 py-0.5 rounded bg-blue-900 text-blue-200">순행</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center mb-3 text-[10px] md:text-[11px]">
+                        <p class="text-slate-400">지구에서 바라보는 천구 상의 행성 겉보기 경로입니다. (궤도 경사각에 의한 $y$축 변화)</p>
+                        <!-- 범례 추가 -->
+                        <div class="flex flex-wrap items-center gap-3 font-semibold bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-1 bg-cyan-400 rounded-full"></span>순행 (서➔동)</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-1 bg-amber-500 rounded-full"></span>유 (방향 전환)</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-1 bg-red-500 rounded-full"></span>역행 (동➔서)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative w-full aspect-[16/10] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+                    <canvas id="projectionCanvas" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <!-- 오른쪽 하단: 조작 및 설정 패널 -->
+            <div class="bg-[#111827] p-4 rounded-2xl border border-slate-800 shadow-2xl flex flex-col gap-4">
+                
+                <!-- 슬라이더 및 타이핑 수치 제어부 (조작 변인 - 완전 독립 분리 및 키보드 입력 지원) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 변인 1: 행성의 공전 궤도 반경 -->
+                    <div class="bg-slate-950/50 p-3 rounded-lg border border-slate-800/60 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-xs font-medium text-slate-300">행성 궤도 반지름 ($a_p$)</span>
+                            <div class="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">
+                                <input type="number" id="radiusInput" min="0.4" max="2.5" step="0.01" value="1.52" class="w-12 bg-transparent text-right text-xs font-bold text-blue-400 focus:outline-none">
+                                <span class="text-[10px] text-slate-500 font-bold">AU</span>
+                            </div>
+                        </div>
+                        <input type="range" id="planetRadius" min="0.4" max="2.5" step="0.01" value="1.52" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        <div class="flex justify-between text-[9px] text-slate-500 mt-1">
+                            <span>0.40 AU</span>
+                            <span class="text-blue-500 font-semibold">1.00 AU (지구)</span>
+                            <span>2.50 AU</span>
+                        </div>
+                    </div>
+
+                    <!-- 변인 2: 행성의 공전 주기 -->
+                    <div class="bg-slate-950/50 p-3 rounded-lg border border-slate-800/60 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-xs font-medium text-slate-300">행성 공전 주기 ($P_p$)</span>
+                            <div class="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">
+                                <input type="number" id="periodInput" min="0.20" max="4.0" step="0.01" value="1.87" class="w-12 bg-transparent text-right text-xs font-bold text-purple-400 focus:outline-none">
+                                <span class="text-[10px] text-slate-500 font-bold">년</span>
+                            </div>
+                        </div>
+                        <input type="range" id="planetPeriod" min="0.20" max="4.0" step="0.01" value="1.87" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                        <div class="flex justify-between text-[9px] text-slate-500 mt-1">
+                            <span>0.20 년 (빠름)</span>
+                            <span class="text-purple-500 font-semibold">1.00 년 (지구)</span>
+                            <span>4.00 년</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 천문학적 변인 조작 공간 (공전 궤도 경사각) -->
+                <div class="grid grid-cols-1 gap-4 pt-1 border-t border-slate-800/40">
+                    <!-- 보조 변인 1: 궤도 경사각 -->
+                    <div class="bg-slate-950/50 p-3 rounded-lg border border-slate-800/60 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-xs font-medium text-slate-300">공전 궤도 경사각 ($i$)</span>
+                            <div class="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">
+                                <input type="number" id="incInput" min="0.0" max="15.0" step="0.1" value="5.0" class="w-12 bg-transparent text-right text-xs font-bold text-emerald-400 focus:outline-none">
+                                <span class="text-[10px] text-slate-500 font-bold">°</span>
+                            </div>
+                        </div>
+                        <input type="range" id="orbitInclination" min="0.0" max="15.0" step="0.1" value="5.0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                        <div class="flex justify-between text-[9px] text-slate-500 mt-1">
+                            <span>0.0° (완전 2D 평면 운동)</span>
+                            <span>15.0° (극단적 타행성 경사각)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 설정 변경 및 제어 버튼 -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+                    
+                    <div class="text-[10px] text-slate-400">
+                        * 속도 슬라이더를 <strong class="text-red-400">0.0x</strong>으로 맞추면 시뮬레이션이 정지(일시정지)됩니다.
+                    </div>
+
+                    <!-- 작동 버튼 그룹 -->
+                    <div class="flex flex-wrap gap-2">
+                        <!-- 경로 그리기 토글 -->
+                        <button id="traceBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs px-3 py-2 rounded-lg transition">
+                            경로 그리기 시작
+                        </button>
+                        <!-- 초기화 -->
+                        <button id="resetBtn" class="bg-slate-700 hover:bg-slate-600 text-white font-medium text-xs px-3 py-2 rounded-lg transition">
+                            초기화
+                        </button>
+                    </div>
+
+                    <!-- 배속 속도 제어기 (최솟값 0.0 설정으로 정지 기능 구현) -->
+                    <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 font-bold">배속:</span>
+                        <input type="range" id="simSpeed" min="0.0" max="2.0" step="0.05" value="1.0" class="w-20 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-400">
+                        <span id="speedValDisplay" class="text-[10px] text-slate-200 font-mono font-bold w-14 text-right">1.00x</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 스크립트 작성 -->
+    <script>
+        // 캔버스 요소 획득
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const projectionCanvas = document.getElementById('projectionCanvas');
+
+        const ctxOrbit = orbitCanvas.getContext('2d');
+        const ctxProj = projectionCanvas.getContext('2d');
+
+        // 입력 컨트롤 제어반 바인딩
+        const radiusSlider = document.getElementById('planetRadius');
+        const radiusInput = document.getElementById('radiusInput');
+        
+        const periodSlider = document.getElementById('planetPeriod');
+        const periodInput = document.getElementById('periodInput');
+        
+        const inclinationSlider = document.getElementById('orbitInclination');
+        const incInput = document.getElementById('incInput');
+        
+        const speedSlider = document.getElementById('simSpeed');
+        const speedValDisplay = document.getElementById('speedValDisplay');
+        const traceBtn = document.getElementById('traceBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        const motionStateBadge = document.getElementById('motionStateBadge');
+
+        // 물리 상수 및 제어 변수 선언 (완전히 독립된 슬라이더 조작 지원)
+        const rEarth = 1.0; // 지구 반지름 고정 (1 AU)
+        const pEarth = 1.0; // 지구 주기 고정 (1 년)
+        
+        let rPlanet = parseFloat(radiusSlider.value); 
+        let pPlanet = parseFloat(periodSlider.value);
+        let inclinationDeg = parseFloat(inclinationSlider.value);
+        let inclination = inclinationDeg * (Math.PI / 180); // 라디안 변환
+
+        let isTracing = false; // 현재 경로를 기록하는지 여부
+        let simTime = 0; // 시뮬레이션 시간 흐름
+        let pathPoints = []; // 기록된 좌표 점들 [{ex, ey, px, py, angle, x, y, state}]
+
+        // --- 양방향 정밀 수치 연동 바인딩 구현 ---
+        
+        // 1. 반지름 양방향 바인딩
+        radiusSlider.addEventListener('input', () => {
+            rPlanet = parseFloat(radiusSlider.value);
+            radiusInput.value = rPlanet.toFixed(2);
+            clearTrace();
+        });
+        radiusInput.addEventListener('change', () => {
+            let val = parseFloat(radiusInput.value);
+            if (isNaN(val)) val = 1.0;
+            val = Math.max(0.4, Math.min(2.5, val));
+            radiusInput.value = val.toFixed(2);
+            radiusSlider.value = val;
+            rPlanet = val;
+            clearTrace();
+        });
+
+        // 2. 주기 양방향 바인딩
+        periodSlider.addEventListener('input', () => {
+            pPlanet = parseFloat(periodSlider.value);
+            periodInput.value = pPlanet.toFixed(2);
+            clearTrace();
+        });
+        periodInput.addEventListener('change', () => {
+            let val = parseFloat(periodInput.value);
+            if (isNaN(val)) val = 1.0;
+            val = Math.max(0.2, Math.min(4.0, val));
+            periodInput.value = val.toFixed(2);
+            periodSlider.value = val;
+            pPlanet = val;
+            clearTrace();
+        });
+
+        // 3. 경사각 양방향 바인딩
+        inclinationSlider.addEventListener('input', () => {
+            inclinationDeg = parseFloat(inclinationSlider.value);
+            inclination = inclinationDeg * (Math.PI / 180);
+            incInput.value = inclinationDeg.toFixed(1);
+            clearTrace();
+        });
+        incInput.addEventListener('change', () => {
+            let val = parseFloat(incInput.value);
+            if (isNaN(val)) val = 0.0;
+            val = Math.max(0.0, Math.min(15.0, val));
+            incInput.value = val.toFixed(1);
+            inclinationSlider.value = val;
+            inclinationDeg = val;
+            inclination = val * (Math.PI / 180);
+            clearTrace();
+        });
+
+        // 4. 배속 조절 레이블 업데이트
+        speedSlider.addEventListener('input', () => {
+            const speed = parseFloat(speedSlider.value);
+            if (speed === 0) {
+                speedValDisplay.textContent = "정지";
+                speedValDisplay.className = "text-[10px] text-red-400 font-mono font-bold w-14 text-right animate-pulse";
+            } else {
+                speedValDisplay.textContent = speed.toFixed(2) + "x";
+                speedValDisplay.className = "text-[10px] text-slate-200 font-mono font-bold w-14 text-right";
+            }
+        });
+
+        traceBtn.addEventListener('click', () => {
+            isTracing = !isTracing;
+            traceBtn.textContent = isTracing ? "경로 그리기 중지" : "경로 그리기 시작";
+            if (isTracing) {
+                traceBtn.classList.remove('bg-emerald-600');
+                traceBtn.classList.add('bg-red-600');
+            } else {
+                traceBtn.classList.remove('bg-red-600');
+                traceBtn.classList.add('bg-emerald-600');
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            clearTrace();
+        });
+
+        function clearTrace() {
+            pathPoints = [];
+        }
+
+        // 캔버스 크기 조정 함수
+        function resize() {
+            const orbitWidth = orbitCanvas.parentElement.clientWidth;
+            orbitCanvas.width = orbitWidth;
+            orbitCanvas.height = orbitWidth;
+
+            const projWidth = projectionCanvas.parentElement.clientWidth;
+            projectionCanvas.width = projWidth;
+            projectionCanvas.height = projWidth * 0.625; // 16:10 비율 구현
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 3D 구면 좌표계로부터 지구 중심 적경 및 황위각을 도출하는 헬퍼 함수
+        function getApparentAngleAndLatitude(t) {
+            const thetaE = ((2 * Math.PI) / pEarth) * t;
+            const thetaP = ((2 * Math.PI) / pPlanet) * t;
+
+            const ex_t = rEarth * Math.cos(thetaE);
+            const ey_t = rEarth * Math.sin(thetaE);
+
+            const xp_t = rPlanet * Math.cos(thetaP);
+            const yp_t = rPlanet * Math.sin(thetaP) * Math.cos(inclination);
+            const zp_t = rPlanet * Math.sin(thetaP) * Math.sin(inclination);
+
+            const dx_t = xp_t - ex_t;
+            const dy_t = yp_t - ey_t;
+            const dz_t = zp_t;
+
+            let ang = Math.atan2(dy_t, dx_t);
+            if (ang < 0) ang += 2 * Math.PI;
+
+            const dist = Math.sqrt(dx_t * dx_t + dy_t * dy_t);
+            const lat = Math.atan2(dz_t, dist);
+
+            return { angle: ang, latitude: lat, ex: ex_t, ey: ey_t, px: xp_t, py: yp_t };
+        }
+
+        // 메인 업데이트 및 그리기 루프
+        function loop() {
+            const speedVal = parseFloat(speedSlider.value);
+            
+            // 배속이 0이면 물리 시간이 업데이트되지 않음 (정지 상태 구현)
+            if (speedVal > 0) {
+                const dt = 0.008 * speedVal;
+                simTime += dt;
+            }
+
+            // 계산 영역
+            const cx = orbitCanvas.width / 2;
+            const cy = orbitCanvas.height / 2;
+            const maxR = Math.max(rEarth, rPlanet);
+            
+            // 궤도 축척 계산
+            const scale = (orbitCanvas.width / 2) * 0.82 / maxR;
+
+            // 실시간 물리 위치 및 겉보기 각도 획득
+            const currentPos = getApparentAngleAndLatitude(simTime);
+            const angle = currentPos.angle;
+            const latitude = currentPos.latitude;
+
+            // 2D 캔버스 드로잉용 행성 및 지구의 화면 좌표 변환
+            const ex = cx + currentPos.ex * scale;
+            const ey = cy - currentPos.ey * scale;
+            const px = cx + currentPos.px * scale;
+            const py = cy - currentPos.py * scale;
+
+            // [천문학 정합성 개선] 천체 관측도 표준인 '동쪽(좌측) 방향 적경 증가' 원리를 충족시키기 위한 x좌표 반전식 적용
+            const projX = (1 - angle / (2 * Math.PI)) * projectionCanvas.width;
+            const projY = projectionCanvas.height / 2 - latitude * (projectionCanvas.height * 2.2);
+
+            // [물리 수학적 고도화] 물리 속도와 무관하게 고정 시간차(dt_diff = 0.0015) 동안의 겉보기 각 변화율을 분석하여
+            // 순행(Prograde), 유(Stationary), 역행(Retrograde) 상태 정밀 판독
+            const nextPos = getApparentAngleAndLatitude(simTime + 0.0015);
+            let dAng = nextPos.angle - angle;
+            // 주기 경계 보정
+            if (dAng > Math.PI) dAng -= 2 * Math.PI;
+            if (dAng < -Math.PI) dAng += 2 * Math.PI;
+
+            // "유(留)" 문턱값 정의: 0.0015년 동안 각도 변화량이 0.00085 라디안(약 0.05도) 이하일 때로 판독
+            const stationaryThreshold = 0.00085;
+            let motionState = "prograde"; // 기본 순행
+
+            if (Math.abs(dAng) < stationaryThreshold) {
+                motionState = "stationary"; // 유
+            } else if (dAng < 0) {
+                motionState = "retrograde"; // 역행
+            }
+
+            // 경로 기록 조건 제어
+            if (speedVal > 0 && isTracing) {
+                pathPoints.push({
+                    ex: ex, ey: ey,
+                    px: px, py: py,
+                    angle: angle,
+                    x: projX,
+                    y: projY,
+                    state: motionState
+                });
+
+                // 지나치게 쌓이지 않게 최대 보존 길이 설정
+                if (pathPoints.length > 1500) {
+                    pathPoints.shift();
+                }
+            }
+
+
+            // ----------------------------------------------------
+            // 1. 공전 궤도 그리기 (Heliocentric Orbit View)
+            // ----------------------------------------------------
+            ctxOrbit.clearRect(0, 0, orbitCanvas.width, orbitCanvas.height);
+
+            // 태양 그리기
+            ctxOrbit.fillStyle = '#f59e0b';
+            ctxOrbit.shadowBlur = 10;
+            ctxOrbit.shadowColor = '#f59e0b';
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(cx, cy, 10, 0, Math.PI * 2);
+            ctxOrbit.fill();
+            ctxOrbit.shadowBlur = 0; // 원상 복구
+
+            // 지구 궤도 (파란색)
+            ctxOrbit.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+            ctxOrbit.lineWidth = 1;
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(cx, cy, rEarth * scale, 0, Math.PI * 2);
+            ctxOrbit.stroke();
+
+            // 경사각 i가 적용된 3D 궤도의 평면 투영(타원 궤도선) 정밀 렌더링
+            ctxOrbit.strokeStyle = 'rgba(239, 68, 68, 0.3)';
+            ctxOrbit.lineWidth = 1;
+            ctxOrbit.beginPath();
+            ctxOrbit.ellipse(cx, cy, rPlanet * scale, rPlanet * scale * Math.cos(inclination), 0, 0, Math.PI * 2);
+            ctxOrbit.stroke();
+
+            // 지구(파란원) 및 행성(빨간원) 궤도상 위치 묘사
+            ctxOrbit.fillStyle = '#3b82f6';
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(ex, ey, 6, 0, Math.PI * 2);
+            ctxOrbit.fill();
+
+            // 타원 궤도면 위의 정밀한 3D 투영 좌표 기반 행성 위치 묘사 (빨간원)
+            ctxOrbit.fillStyle = '#ef4444';
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(px, py, 6, 0, Math.PI * 2);
+            ctxOrbit.fill();
+
+            // 천체 한글 텍스트 출력
+            ctxOrbit.fillStyle = '#cbd5e1';
+            ctxOrbit.font = '10px Noto Sans KR';
+            ctxOrbit.fillText("지구", ex + 10, ey - 5);
+            ctxOrbit.fillText(rPlanet > rEarth ? "외행성" : "내행성", px + 10, py - 5);
+
+            // 현재 실시간 시선 투영선 (지구 ➔ 행성 ➔ 천구 끝지점)
+            const len = orbitCanvas.width * 2.0;
+            const dx_au = currentPos.px - currentPos.ex;
+            const dy_au = currentPos.py - currentPos.ey;
+            const dist = Math.sqrt(dx_au * dx_au + dy_au * dy_au);
+            const tX = ex + (dx_au / dist) * len;
+            const tY = ey - (dy_au / dist) * len; // 화면 좌표 상하 반전 대응
+
+            ctxOrbit.strokeStyle = 'rgba(234, 179, 8, 0.45)'; // 황색 점선 투영선
+            ctxOrbit.lineWidth = 1.2;
+            ctxOrbit.setLineDash([4, 4]);
+            ctxOrbit.beginPath();
+            ctxOrbit.moveTo(ex, ey);
+            ctxOrbit.lineTo(tX, tY);
+            ctxOrbit.stroke();
+            ctxOrbit.setLineDash([]);
+
+
+            // ----------------------------------------------------
+            // 2. 투영 별자리 스크린 그리기 (Projection Screen View)
+            // ----------------------------------------------------
+            ctxProj.clearRect(0, 0, projectionCanvas.width, projectionCanvas.height);
+
+            // 황도 기준선 (Latitude = 0 수평 가이드선)
+            ctxProj.strokeStyle = 'rgba(30, 41, 59, 0.8)';
+            ctxProj.lineWidth = 1;
+            ctxProj.beginPath();
+            ctxProj.moveTo(0, projectionCanvas.height / 2);
+            ctxProj.lineTo(projectionCanvas.width, projectionCanvas.height / 2);
+            ctxProj.stroke();
+
+            // 동/서 방향 설명 추가 (관측 기준 왼쪽이 동쪽, 오른쪽이 서쪽)
+            ctxProj.fillStyle = '#94a3b8';
+            ctxProj.font = 'bold 12px Noto Sans KR';
+            ctxProj.fillText("동 (East)", 15, projectionCanvas.height / 2 - 40);
+            ctxProj.fillText("서 (West)", projectionCanvas.width - 75, projectionCanvas.height / 2 - 40);
+
+            // 천구 상의 가로축 각도 눈금 배치 (투영되는 적경 각도와의 시각적 직관성 연계)
+            ctxProj.strokeStyle = '#1e293b';
+            ctxProj.lineWidth = 1;
+            ctxProj.fillStyle = '#475569';
+            ctxProj.font = '9px monospace';
+            for (let i = 0; i <= 8; i++) {
+                const xPos = (projectionCanvas.width / 8) * i;
+                ctxProj.beginPath();
+                ctxProj.moveTo(xPos, 0);
+                ctxProj.lineTo(xPos, projectionCanvas.height);
+                ctxProj.stroke();
+                
+                // 동쪽이 왼쪽이므로 눈금 각도 순서도 반대로 가도록 보정
+                const gridDeg = Math.round(((8 - i) / 8) * 360);
+                ctxProj.fillText(gridDeg % 360 + "°", xPos + 4, projectionCanvas.height - 8);
+            }
+
+            // 배경 별자리 데코레이션
+            ctxProj.fillStyle = '#ffffff';
+            const starCoords = [
+                [30, 40], [120, 25], [210, 50], [340, 20], [450, 45], [550, 30],
+                [80, 180], [180, 190], [290, 175], [400, 195], [510, 180], [580, 170]
+            ];
+            starCoords.forEach(st => {
+                const sx = (st[0] / 600) * projectionCanvas.width;
+                const sy = (st[1] / 200) * projectionCanvas.height;
+                ctxProj.beginPath();
+                ctxProj.arc(sx, sy, 0.8, 0, Math.PI * 2);
+                ctxProj.fill();
+            });
+
+            // 겉보기 궤적 그리기 (순행/역행/유 상태별 고유 색상 및 굵기로 분리 렌더링)
+            if (pathPoints.length > 1) {
+                for (let i = 1; i < pathPoints.length; i++) {
+                    const p1 = pathPoints[i - 1];
+                    const p2 = pathPoints[i];
+
+                    // 원 경계 영역(0도 ➔ 360도 교차 지점) 가로지르는 선 찢어짐 끊기 예외처리
+                    if (Math.abs(p1.x - p2.x) < projectionCanvas.width * 0.8) {
+                        if (p2.state === "retrograde") {
+                            ctxProj.strokeStyle = '#ef4444'; // 역행: 적색
+                            ctxProj.lineWidth = 3.5;
+                        } else if (p2.state === "stationary") {
+                            ctxProj.strokeStyle = '#f59e0b'; // 유: 황색/주황색
+                            ctxProj.lineWidth = 4.0;         // 방향 전환 구간을 굵게 표시하여 두드러지게 표현
+                        } else {
+                            ctxProj.strokeStyle = '#06b6d4'; // 순행: 청록색
+                            ctxProj.lineWidth = 2.0;
+                        }
+                        
+                        ctxProj.beginPath();
+                        ctxProj.moveTo(p1.x, p1.y);
+                        ctxProj.lineTo(p2.x, p2.y);
+                        ctxProj.stroke();
+                    }
+                }
+            }
+
+            // 실시간 투영 중심 행성 구체 렌더링 (천구 뷰)
+            let planetColor = '#06b6d4';
+            if (motionState === "retrograde") {
+                planetColor = '#ef4444';
+            } else if (motionState === "stationary") {
+                planetColor = '#f59e0b';
+            }
+
+            ctxProj.fillStyle = planetColor;
+            ctxProj.shadowBlur = 12;
+            ctxProj.shadowColor = planetColor;
+            ctxProj.beginPath();
+            ctxProj.arc(projX, projY, 8, 0, Math.PI * 2);
+            ctxProj.fill();
+            ctxProj.shadowBlur = 0;
+
+            // 천구 투영점 매핑 가이드라인 (빛나는 노란빛 점)
+            ctxProj.fillStyle = '#eab308';
+            ctxProj.shadowBlur = 10;
+            ctxProj.shadowColor = '#eab308';
+            ctxProj.beginPath();
+            ctxProj.arc(projX, projY, 4, 0, Math.PI * 2);
+            ctxProj.fill();
+            ctxProj.shadowBlur = 0;
+
+            // 우측 상단 배지 상태 갱신 (순행, 유, 역행 상태의 구체적 분기 반영)
+            if (motionState === "retrograde") {
+                motionStateBadge.textContent = "역행 (동 ➔ 서)";
+                motionStateBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-900 text-red-200 border border-red-700 animate-pulse";
+            } else if (motionState === "stationary") {
+                motionStateBadge.textContent = "유 (留) - 방향 전환";
+                motionStateBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-600";
+            } else {
+                motionStateBadge.textContent = "순행 (서 ➔ 동)";
+                motionStateBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-200 border border-cyan-800";
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        // 초기 실행 시작
+        loop();
+    </script>
+</body>
+</html>

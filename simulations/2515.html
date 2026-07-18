@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>일식 및 월식 발생 조건 시뮬레이터 (눈금 정렬 수정판)</title>
+  <!-- Tailwind CSS & FontAwesome CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Prevent overall page scroll to keep single-screen workspace */
+    html, body {
+      height: 100vh;
+      overflow: hidden;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.8);
+      border: 2px solid #ffffff;
+      height: 16px;
+      width: 16px;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header Section (Compact Height) -->
+  <header class="bg-slate-900/95 border-b border-slate-800 px-5 py-2 flex flex-col sm:flex-row justify-between items-center shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="bg-indigo-600 p-1.5 rounded-lg shadow-lg shadow-indigo-500/30 animate-pulse">
+        <i class="fa-solid fa-circle-notch text-sm text-white animate-spin" style="animation-duration: 10s;"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-black tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          일식·월식 발생 조건 분석 시뮬레이터
+        </h1>
+        <p class="text-[10px] text-slate-400">지구과학 천문 기하학 실험기 (한 화면 최적화)</p>
+      </div>
+    </div>
+    
+    <!-- Action buttons -->
+    <div class="flex gap-2 mt-2 sm:mt-0">
+      <button id="theoryBtn" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold rounded border border-slate-700 flex items-center gap-1">
+        <i class="fa-solid fa-book-open text-indigo-400"></i> 과학적 원리
+      </button>
+      <button id="limitBtn" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold rounded border border-slate-700 flex items-center gap-1">
+        <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> 과학적 한계점
+      </button>
+    </div>
+  </header>
+
+  <!-- 가이드 탑바 (Compact Height) -->
+  <div class="bg-slate-900/40 border-b border-slate-800/60 px-5 py-1 text-[10px] text-slate-400 flex items-center gap-3 justify-center shrink-0">
+    <span class="font-bold text-indigo-400"><i class="fa-solid fa-circle-info"></i> 가이드:</span>
+    <span>[1단계] 왼쪽에서 변인 조작</span>
+    <i class="fa-solid fa-chevron-right text-slate-700"></i>
+    <span>[2단계] 중앙 궤도 정렬 분석</span>
+    <i class="fa-solid fa-chevron-right text-slate-700"></i>
+    <span>[3단계] 오른쪽 결과 스크린 실시간 관측</span>
+  </div>
+
+  <!-- Main Workspace Layout (Uses flex-1, overflow-hidden and min-h-0 to lock single screen) -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 min-h-0 overflow-hidden">
+    
+    <!-- Left Column: Variable Control Panel (4 Cols) -->
+    <section class="lg:col-span-4 flex flex-col gap-4 bg-slate-900/30 border border-slate-800/60 p-4 rounded-xl shadow-xl h-full overflow-y-auto">
+      <div class="border-b border-slate-800 pb-2 shrink-0">
+        <h2 class="text-xs font-black text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-sliders"></i> [1단계] 조종판 (조작 변인)
+        </h2>
+        <p class="text-[10px] text-slate-400 mt-0.5">슬라이더를 조작하여 일식과 월식의 발생 조건을 충족해 보세요.</p>
+      </div>
+
+      <div class="flex-1 flex flex-col gap-3 justify-center">
+        
+        <!-- 조작 변인 1: 달의 공전 각도 (황경 차) -->
+        <div class="bg-slate-950/60 border border-slate-800/40 p-3 rounded-lg space-y-1 shadow-inner">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="font-bold text-slate-200 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+              달의 공전 위치 (황경 차이)
+            </span>
+            <span id="angleVal" class="text-indigo-400 font-mono font-bold bg-indigo-950/40 px-1.5 py-0.2 rounded border border-indigo-900/30">180°</span>
+          </div>
+          <p class="text-[10px] text-slate-500">
+            <strong class="text-amber-500/85">0°는 삭(일식 가능)</strong> / <strong class="text-purple-400/85">180°는 망(월식 가능)</strong>
+          </p>
+          <input type="range" id="angleRange" min="0" max="360" step="0.5" value="180" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+          <div class="flex justify-between text-[9px] text-slate-500 font-mono font-bold">
+            <span class="text-amber-500">0° (삭)</span>
+            <span>90° (상현)</span>
+            <span class="text-purple-400">180° (망)</span>
+            <span>270° (하현)</span>
+            <span class="text-amber-500">360° (삭)</span>
+          </div>
+        </div>
+
+        <!-- 조작 변인 2: 백도 기울기 -->
+        <div class="bg-slate-950/60 border border-slate-800/40 p-3 rounded-lg space-y-1 shadow-inner">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="font-bold text-slate-200 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+              백도 기울기 (공전 궤도 경사)
+            </span>
+            <span id="tiltVal" class="text-purple-400 font-mono font-bold bg-purple-950/40 px-1.5 py-0.2 rounded border border-purple-900/30">5.14°</span>
+          </div>
+          <p class="text-[10px] text-slate-500">
+            <strong class="text-emerald-400/85">0°가 되면</strong> 궤도가 수평 일치하여 매달 식이 발생합니다.
+          </p>
+          <input type="range" id="tiltRange" min="0" max="10" step="0.1" value="5.14" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+          <div class="flex justify-between text-[9px] text-slate-500 font-mono font-bold">
+            <span class="text-emerald-400">0° (수평 일치)</span>
+            <span class="text-purple-400">5.14° (실제 우주)</span>
+            <span>10° (최대 경사)</span>
+          </div>
+        </div>
+
+        <!-- 조작 변인 3: 승교점 각도 -->
+        <div class="bg-slate-950/60 border border-slate-800/40 p-3 rounded-lg space-y-1 shadow-inner">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="font-bold text-slate-200 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              승교점 방향 각도
+            </span>
+            <span id="nodeVal" class="text-emerald-400 font-mono font-bold bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-900/30">0°</span>
+          </div>
+          <p class="text-[10px] text-slate-500">
+            교차점의 축 각도로, <strong class="text-emerald-400/85">0°일 때</strong>만 태양 정렬에 맞물립니다.
+          </p>
+          <input type="range" id="nodeRange" min="0" max="180" step="1" value="0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+          <div class="flex justify-between text-[9px] text-slate-500 font-mono font-bold">
+            <span class="text-emerald-400">0° (정렬 일치)</span>
+            <span class="text-rose-400">90° (수직/식 불가)</span>
+            <span>180°</span>
+          </div>
+        </div>
+
+        <!-- 자동 재생 제어 장치 -->
+        <div class="bg-slate-950/80 border border-slate-800/80 rounded-lg p-3 space-y-2">
+          <span class="text-[10px] font-bold text-slate-400 block"><i class="fa-solid fa-circle-play text-indigo-400"></i> 자동 공전 제어</span>
+          <div class="flex gap-2">
+            <button id="playBtn" class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded text-xs transition-all flex items-center justify-center gap-1">
+              <i class="fa-solid fa-play"></i> 자동 재생
+            </button>
+            <button id="pauseBtn" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded text-xs transition-all flex items-center justify-center gap-1 border border-slate-700">
+              <i class="fa-solid fa-pause"></i> 정지
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[9px] text-slate-500 whitespace-nowrap">공전 속도</span>
+            <input type="range" id="speedRange" min="0.1" max="2.0" step="0.1" value="0.5" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-slate-400">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Center Column: Orbital Map (5 Cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-3 bg-slate-900/30 border border-slate-800/60 p-4 rounded-xl shadow-xl h-full min-h-0 overflow-hidden">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2 shrink-0">
+        <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-globe"></i> [2단계] 우주 궤도도 (Top & Side View)
+        </h2>
+        <span class="text-[9px] px-1.5 py-0.2 bg-slate-800 text-slate-400 border border-slate-700 rounded font-mono">Real-time Map</span>
+      </div>
+
+      <!-- Render Area containing both canvases (flex split 50/50 without overflow) -->
+      <div class="flex-1 flex flex-col bg-slate-950 border border-slate-800/60 rounded-lg overflow-hidden min-h-0 relative">
+        
+        <!-- Top View Plane -->
+        <div class="flex-1 min-h-0 relative border-b border-slate-900">
+          <span class="absolute top-1.5 left-2 text-[9px] font-bold text-slate-300 bg-slate-900/90 px-1.5 py-0.2 rounded border border-slate-800/50 z-10">
+            [평면도] 황도면 투영 (Top View)
+          </span>
+          <div class="absolute left-2 top-7 text-[8px] text-amber-500 font-bold bg-amber-950/40 border border-amber-900/30 px-1 py-0.2 rounded pointer-events-none z-10">
+            ☀️ 태양빛 방향 ➔ ➔
+          </div>
+          <canvas id="topViewCanvas" class="w-full h-full block"></canvas>
+        </div>
+
+        <!-- Side View Plane -->
+        <div class="flex-1 min-h-0 relative">
+          <span class="absolute top-1.5 left-2 text-[9px] font-bold text-slate-300 bg-slate-900/90 px-1.5 py-0.2 rounded border border-slate-800/50 z-10">
+            [측면도] 백도 경사 및 고도 (Side View)
+          </span>
+          <div class="absolute left-2 top-7 text-[8px] text-indigo-400 font-bold bg-indigo-950/40 border border-indigo-900/30 px-1 py-0.2 rounded pointer-events-none z-10">
+            🌌 보라선: 달 공전 백도선
+          </div>
+          <canvas id="sideViewCanvas" class="w-full h-full block"></canvas>
+        </div>
+
+        <!-- Legend (설명 상자 - Compact) -->
+        <div class="absolute bottom-1.5 right-2 bg-slate-900/90 border border-slate-800 text-[8px] p-1.5 rounded flex flex-col gap-0.5 text-slate-400 pointer-events-none max-w-[120px] z-10">
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>태양 (좌측 광원)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            <span>지구 (센터)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+            <span>달 (공전 천체)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Results & Observation Views (3 Cols) -->
+    <section class="lg:col-span-3 flex flex-col gap-3 bg-slate-900/30 border border-slate-800/60 p-4 rounded-xl shadow-xl h-full min-h-0 overflow-hidden">
+      <div class="border-b border-slate-800 pb-2 shrink-0">
+        <h2 class="text-xs font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-chart-line"></i> [3단계] 관측 결과 모니터
+        </h2>
+        <p class="text-[10px] text-slate-400 mt-0.5">조작 결과가 실시간 렌더링됩니다.</p>
+      </div>
+
+      <!-- Realtime Diagnosis Box -->
+      <div id="statusBadge" class="py-2.5 px-3 rounded-lg border flex flex-col items-center justify-center text-center gap-0.5 shadow-md transition-all duration-300 bg-slate-950 border-slate-800 shrink-0">
+        <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wide">식 현상 발생 실시간 검증</span>
+        <span id="statusText" class="text-xs font-black tracking-wide text-slate-300">식 없음 (일반 상황)</span>
+        <span id="detailStatusText" class="text-[9px] text-slate-400 px-1.5 py-0.2 rounded bg-slate-900/50 mt-0.5">정렬을 맞춰보세요.</span>
+      </div>
+
+      <!-- View Box 1: Solar Eclipse Apparent View (flex component) -->
+      <div class="flex-1 min-h-0 flex flex-col bg-slate-950 border border-slate-800 rounded-lg overflow-hidden relative">
+        <div class="bg-slate-900/80 px-2 py-1 border-b border-slate-800 text-[9px] font-bold text-slate-300 flex justify-between items-center shrink-0">
+          <span>일식 뷰 (지구 관측)</span>
+          <span class="text-[8px] text-amber-500 font-bold bg-slate-950 px-1 rounded">삭(0°) 전후</span>
+        </div>
+        <div class="flex-1 min-h-0 relative bg-black">
+          <canvas id="eclipseViewCanvas" class="w-full h-full block"></canvas>
+          <span id="eclipseOverlayText" class="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-slate-400 bg-slate-950/80 px-1.5 py-0.2 rounded border border-slate-800/50">지구에서 본 태양</span>
+        </div>
+      </div>
+
+      <!-- View Box 2: Lunar Eclipse Cross Section Apparent View (flex component) -->
+      <div class="flex-1 min-h-0 flex flex-col bg-slate-950 border border-slate-800 rounded-lg overflow-hidden relative">
+        <div class="bg-slate-900/80 px-2 py-1 border-b border-slate-800 text-[9px] font-bold text-slate-300 flex justify-between items-center shrink-0">
+          <span>월식 뷰 (본그림자 교차)</span>
+          <span class="text-[8px] text-indigo-400 font-bold bg-slate-950 px-1 rounded">망(180°) 전후</span>
+        </div>
+        <div class="flex-1 min-h-0 relative bg-black">
+          <canvas id="moonShadowCanvas" class="w-full h-full block"></canvas>
+          <span id="moonOverlayText" class="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-slate-400 bg-slate-950/80 px-1.5 py-0.2 rounded border border-slate-800/50">지구의 본그림자 및 달</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal: Scientific Background Information -->
+  <div id="theoryModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl p-6 relative">
+      <button onclick="closeModal('theoryModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-all text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-lg font-bold text-indigo-400 mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-book-open"></i> 일식과 월식의 과학적 천문 원리
+      </h3>
+      <div class="space-y-4 text-sm text-slate-300 leading-relaxed">
+        <div>
+          <h4 class="font-bold text-white mb-1">1. 식(Eclipse) 발생 기하학 조건</h4>
+          <p>
+            태양(S), 지구(E), 달(M)의 공전 주기에 의해 세 천체가 우주선상에 정확히 **일직선**으로 일치할 때 발생합니다. 달이 태양과 지구 사이에 오면 일식(Solar), 지구가 태양과 달 사이에 오면 월식(Lunar)이 발생합니다.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-bold text-white mb-1">2. 황도면과 백도면의 교선 및 식 조건의 관계</h4>
+          <p>
+            달이 지구를 공전하는 궤도면(백도면)은 지구의 공전 궤도면(황도면)에 대해 **약 5.14°** 기울어져 있습니다. 따라서 달이 '삭'이나 '망'의 주기를 맞아도 궤도 교점이 지구-태양 선상에 정렬되어 있지 않다면 그림자는 지구의 위나 아래로 빗겨나가게 됩니다.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-bold text-white mb-1">3. 황위 수식 모델 (Mathematical Model)</h4>
+          <p>
+            식 현상의 발생 여부는 달의 황위 $\beta$가 다음과 같은 수학적 범위를 만족할 때 결정됩니다.
+          </p>
+          <div class="bg-indigo-950/40 border border-indigo-900/50 p-3 rounded-lg text-xs font-mono text-indigo-300 space-y-1 my-2">
+            <div>$\beta \approx i \cdot \sin(\lambda - \Omega)$</div>
+            <div>- $i$: 백도 기울기 (궤도 경사각)</div>
+            <div>- $\lambda$: 달의 황경, $\Omega$: 승교점 황경</div>
+            <div class="mt-1 text-[11px] text-slate-400">$\beta$ 값이 태양과 달의 시반경(각크기) 합보다 작을 때 기하학적 식(Eclipse) 조건이 성립합니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Project Limitations -->
+  <div id="limitModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl p-6 relative">
+      <button onclick="closeModal('limitModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-all text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-triangle-exclamation"></i> 천문 시뮬레이션의 물리적 한계점 분석
+      </h3>
+      <div class="space-y-3.5 text-xs text-slate-300 leading-relaxed">
+        <p>수행평가 4차시의 **'과학적 한계점 분석'** 평가 기준에 맞춰 작성된 서술적 한계점입니다.</p>
+        <ul class="list-disc pl-5 space-y-2">
+          <li><strong>천체 척도의 왜곡 (Scale Deformation):</strong> 실제 지구와 달의 거리($\approx 384,000 \text{ km}$) 및 크기 비례를 한 브라우저 화면에 그대로 표현하는 것은 기술적으로 불가능합니다. 따라서 화면 묘사를 위해 거리와 천체 반지름의 크기를 기하학적으로 왜곡하여 표현하였습니다.</li>
+          <li><strong>공전 이심률 무시 ($e \approx 0$):</strong> 실제 지구와 달의 공전 궤도는 타원이지만, 궤도의 기하학적 교점에 따른 식 발생 조건 고찰에 집중하기 위해 원궤도(이심률 0)로 모델링을 단순화하였습니다.</li>
+          <li><strong>태양의 점광원/평행광선 간소화:</strong> 실제 태양은 면적을 가진 구형 광원이라 지구의 본그림자 폭이 달의 궤도에 따라 수축하지만, 시각 정보의 단순화를 위해 평행에 가까운 반그림자 광축 모델로 연출했습니다.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulation Control Script -->
+  <script>
+    // Canvas & Context setup
+    const topCanvas = document.getElementById('topViewCanvas');
+    const sideCanvas = document.getElementById('sideViewCanvas');
+    const eclipseCanvas = document.getElementById('eclipseViewCanvas');
+    const shadowCanvas = document.getElementById('moonShadowCanvas');
+
+    const ctxTop = topCanvas.getContext('2d');
+    const ctxSide = sideCanvas.getContext('2d');
+    const ctxEclipse = eclipseCanvas.getContext('2d');
+    const ctxShadow = shadowCanvas.getContext('2d');
+
+    // Controls DOM Mapping
+    const angleRange = document.getElementById('angleRange');
+    const tiltRange = document.getElementById('tiltRange');
+    const nodeRange = document.getElementById('nodeRange');
+    const speedRange = document.getElementById('speedRange');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+
+    const angleVal = document.getElementById('angleVal');
+    const tiltVal = document.getElementById('tiltVal');
+    const nodeVal = document.getElementById('nodeVal');
+
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const detailStatusText = document.getElementById('detailStatusText');
+
+    // System States
+    let moonAngle = 180;
+    let orbitTilt = 5.14;
+    let nodeAngle = 0;
+    let isPlaying = false;
+    let playSpeed = 0.5;
+    let animId = null;
+
+    // Convert helper
+    const toRad = (deg) => (deg * Math.PI) / 180;
+
+    // Calculate 3D Orbital Coordinates (Relative to Earth Center)
+    // Here we map moon radius to 75px for tight layout fitting
+    function calculateMoonPosition(angle, tilt, node, r = 75) {
+      const theta = toRad(angle);
+      const i = toRad(tilt);
+      const omega = toRad(node);
+
+      // Orbital frame coordinate definition
+      const xOrb = r * Math.cos(theta - omega);
+      const yOrb = r * Math.sin(theta - omega);
+
+      // Rotate into ecliptic frame by orbital inclination
+      const x = (xOrb * Math.cos(omega) - yOrb * Math.sin(omega) * Math.cos(i));
+      const y = (xOrb * Math.sin(omega) + yOrb * Math.cos(omega) * Math.cos(i));
+      const z = yOrb * Math.sin(i); // Vertical elevation
+
+      return { x, y, z };
+    }
+
+    // Main Draw Runner
+    function drawAll() {
+      drawTopView();
+      drawSideView();
+      const status = checkEclipseStatus();
+      drawEclipseApparentView(status);
+      drawMoonShadowApparentView(status);
+      updateStatusUI(status);
+    }
+
+    // 1. TOP VIEW (Ecliptic Projection Plane)
+    function drawTopView() {
+      ctxTop.clearRect(0, 0, topCanvas.width, topCanvas.height);
+      const cx = topCanvas.width / 2;
+      const cy = topCanvas.height / 2;
+      const rEarth = 18;
+      const rMoon = 6;
+
+      // Draw Grid lines for structural view
+      ctxTop.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+      ctxTop.lineWidth = 1;
+      for (let x = 30; x < topCanvas.width; x += 40) {
+        ctxTop.beginPath(); ctxTop.moveTo(x, 0); ctxTop.lineTo(x, topCanvas.height); ctxTop.stroke();
+      }
+
+      // Solar lighting representation (From left to right)
+      const rayGlow = ctxTop.createLinearGradient(0, cy, cx - 35, cy);
+      rayGlow.addColorStop(0, 'rgba(251, 191, 36, 0.15)');
+      rayGlow.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctxTop.fillStyle = rayGlow;
+      ctxTop.fillRect(0, cy - 50, cx - 35, 100);
+
+      // Shadow projection (Umbra & Penumbra) on Top-view plane
+      ctxTop.fillStyle = 'rgba(15, 23, 42, 0.85)'; // Core Earth shadow
+      ctxTop.beginPath();
+      ctxTop.moveTo(cx, cy - rEarth);
+      ctxTop.lineTo(topCanvas.width, cy - rEarth * 0.9);
+      ctxTop.lineTo(topCanvas.width, cy + rEarth * 0.9);
+      ctxTop.lineTo(cx, cy + rEarth);
+      ctxTop.closePath();
+      ctxTop.fill();
+
+      // Earth body draw
+      const earthGlow = ctxTop.createRadialGradient(cx + 3, cy, 2, cx, cy, rEarth);
+      earthGlow.addColorStop(0, '#93c5fd');
+      earthGlow.addColorStop(0.5, '#3b82f6');
+      earthGlow.addColorStop(1, '#1d4ed8');
+      ctxTop.fillStyle = earthGlow;
+      ctxTop.beginPath();
+      ctxTop.arc(cx, cy, rEarth, 0, Math.PI * 2);
+      ctxTop.fill();
+
+      // Draw orbit node line
+      const nodeR = toRad(nodeAngle);
+      ctxTop.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+      ctxTop.lineWidth = 1.2;
+      ctxTop.setLineDash([5, 5]);
+      ctxTop.beginPath();
+      ctxTop.moveTo(cx - 100 * Math.cos(nodeR), cy - 100 * Math.sin(nodeR));
+      ctxTop.lineTo(cx + 100 * Math.cos(nodeR), cy + 100 * Math.sin(nodeR));
+      ctxTop.stroke();
+      ctxTop.setLineDash([]);
+
+      // Draw Moon orbit projection
+      ctxTop.strokeStyle = 'rgba(99, 102, 241, 0.3)';
+      ctxTop.lineWidth = 1.5;
+      ctxTop.beginPath();
+      ctxTop.arc(cx, cy, 75, 0, Math.PI * 2);
+      ctxTop.stroke();
+
+      // Current Moon representation
+      const mPos = calculateMoonPosition(moonAngle, orbitTilt, nodeAngle, 75);
+      const mx = cx + mPos.x;
+      const my = cy + mPos.y;
+
+      const moonGrad = ctxTop.createRadialGradient(mx - 2, my - 2, 1, mx, my, rMoon);
+      moonGrad.addColorStop(0, '#ffffff');
+      moonGrad.addColorStop(1, '#64748b');
+      ctxTop.fillStyle = moonGrad;
+      ctxTop.beginPath();
+      ctxTop.arc(mx, my, rMoon, 0, Math.PI * 2);
+      ctxTop.fill();
+
+      // Labels & Guides
+      ctxTop.fillStyle = '#cbd5e1';
+      ctxTop.font = 'bold 9px sans-serif';
+      ctxTop.fillText('지구', cx - 10, cy - rEarth - 4);
+      ctxTop.fillText('달', mx - 6, my - rMoon - 4);
+      
+      // Node marker labels
+      ctxTop.fillStyle = '#10b981';
+      ctxTop.fillText('교선축', cx + 60 * Math.cos(nodeR), cy + 60 * Math.sin(nodeR) - 4);
+    }
+
+    // 2. SIDE VIEW (Elevation/Tilt Profiler)
+    function drawSideView() {
+      ctxSide.clearRect(0, 0, sideCanvas.width, sideCanvas.height);
+      const cx = sideCanvas.width / 2;
+      const cy = sideCanvas.height / 2;
+      const rEarth = 18;
+      const rMoon = 6;
+
+      // Draw horizontal Grid lines
+      ctxSide.strokeStyle = 'rgba(30, 41, 59, 0.3)';
+      ctxSide.lineWidth = 1;
+      for (let y = 15; y < sideCanvas.height; y += 25) {
+        ctxSide.beginPath(); ctxSide.moveTo(0, y); ctxSide.lineTo(sideCanvas.width, y); ctxSide.stroke();
+      }
+
+      // Ecliptic baseline
+      ctxSide.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+      ctxSide.lineWidth = 1.5;
+      ctxSide.beginPath();
+      ctxSide.moveTo(30, cy);
+      ctxSide.lineTo(sideCanvas.width - 30, cy);
+      ctxSide.stroke();
+
+      // Earth shadow cone
+      const umbraH = 11;
+      ctxSide.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctxSide.beginPath();
+      ctxSide.moveTo(cx, cy - rEarth);
+      ctxSide.lineTo(sideCanvas.width, cy - umbraH);
+      ctxSide.lineTo(sideCanvas.width, cy + umbraH);
+      ctxSide.lineTo(cx, cy + rEarth);
+      ctxSide.closePath();
+      ctxSide.fill();
+
+      // Orbit plane trajectory path
+      ctxSide.strokeStyle = 'rgba(99, 102, 241, 0.45)';
+      ctxSide.lineWidth = 2;
+      ctxSide.beginPath();
+      for (let a = 0; a <= 360; a += 5) {
+        const p = calculateMoonPosition(a, orbitTilt, nodeAngle, 75);
+        if (a === 0) ctxSide.moveTo(cx + p.x, cy - p.z);
+        else ctxSide.lineTo(cx + p.x, cy - p.z);
+      }
+      ctxSide.closePath();
+      ctxSide.stroke();
+
+      // Earth Sphere
+      const earthGrad = ctxSide.createRadialGradient(cx, cy - 2, 2, cx, cy, rEarth);
+      earthGrad.addColorStop(0, '#3b82f6');
+      earthGrad.addColorStop(1, '#1e3a8a');
+      ctxSide.fillStyle = earthGrad;
+      ctxSide.beginPath();
+      ctxSide.arc(cx, cy, rEarth, 0, Math.PI * 2);
+      ctxSide.fill();
+
+      // Moon Side profile
+      const mPos = calculateMoonPosition(moonAngle, orbitTilt, nodeAngle, 75);
+      const mx = cx + mPos.x;
+      const my = cy - mPos.z;
+
+      // Direct eclipse path (Moon shadow profile on Earth center if at lunar node crossing near solar path)
+      if (mPos.x < 0) {
+        ctxSide.fillStyle = 'rgba(245, 158, 11, 0.2)';
+        ctxSide.beginPath();
+        ctxSide.moveTo(mx, my - rMoon);
+        ctxSide.lineTo(cx, cy - (mPos.z * (cx / (cx - Math.abs(mPos.x)))));
+        ctxSide.lineTo(mx, my + rMoon);
+        ctxSide.closePath();
+        ctxSide.fill();
+      }
+
+      // Draw Moon Sphere
+      const moonGrad = ctxSide.createRadialGradient(mx, my - 2, 1, mx, my, rMoon);
+      moonGrad.addColorStop(0, '#f8fafc');
+      moonGrad.addColorStop(1, '#475569');
+      ctxSide.fillStyle = moonGrad;
+      ctxSide.beginPath();
+      ctxSide.arc(mx, my, rMoon, 0, Math.PI * 2);
+      ctxSide.fill();
+
+      // Guide labels
+      ctxSide.fillStyle = '#cbd5e1';
+      ctxSide.font = '9px sans-serif';
+      ctxSide.fillText('황도면(수평선)', 40, cy - 5);
+      
+      // Draw indicator of actual height elevation offset
+      ctxSide.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+      ctxSide.lineWidth = 1;
+      ctxSide.beginPath();
+      ctxSide.moveTo(mx, cy);
+      ctxSide.lineTo(mx, my);
+      ctxSide.stroke();
+    }
+
+    // 3. Mathematical check of actual Eclipse/Lunar Alignment status
+    function checkEclipseStatus() {
+      const mPos = calculateMoonPosition(moonAngle, orbitTilt, nodeAngle, 75);
+      const angle = moonAngle % 360;
+
+      // Solar Eclipse Check (0도 주변 - 삭)
+      if (angle > 346 || angle < 14) {
+        const offset = Math.sqrt(mPos.y * mPos.y + mPos.z * mPos.z);
+        if (offset < 3.2) return { code: 'total_solar', val: offset };
+        if (offset < 7.2) return { code: 'partial_solar', val: offset };
+        if (offset < 11.5) return { code: 'minor_solar', val: offset };
+      }
+
+      // Lunar Eclipse Check (180도 주변 - 망)
+      if (angle > 166 && angle < 194) {
+        const offset = Math.sqrt(mPos.y * mPos.y + mPos.z * mPos.z);
+        if (offset < 10.0) return { code: 'total_lunar', val: offset };
+        if (offset < 18.0) return { code: 'partial_lunar', val: offset };
+        if (offset < 30.0) return { code: 'penumbral_lunar', val: offset };
+      }
+
+      return { code: 'none', val: 999 };
+    }
+
+    // 4. Solar Eclipse View
+    function drawEclipseApparentView(status) {
+      ctxEclipse.clearRect(0, 0, eclipseCanvas.width, eclipseCanvas.height);
+      const cx = eclipseCanvas.width / 2;
+      const cy = eclipseCanvas.height / 2;
+      const rSun = 26;
+      const rMoon = 26.5;
+
+      ctxEclipse.fillStyle = '#020617';
+      ctxEclipse.fillRect(0, 0, eclipseCanvas.width, eclipseCanvas.height);
+
+      // Stars background
+      ctxEclipse.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      for(let i=0; i<15; i++) {
+        let starX = (cx + i * 43) % eclipseCanvas.width;
+        let starY = (cy - i * 17 + 100) % eclipseCanvas.height;
+        ctxEclipse.fillRect(starX, starY, 1, 1);
+      }
+
+      // Sun base background corona glow
+      const sunGlow = ctxEclipse.createRadialGradient(cx, cy, rSun - 5, cx, cy, rSun + 18);
+      sunGlow.addColorStop(0, '#fef08a');
+      sunGlow.addColorStop(0.2, '#f59e0b');
+      sunGlow.addColorStop(1, 'rgba(239, 68, 68, 0)');
+      ctxEclipse.fillStyle = sunGlow;
+      ctxEclipse.beginPath();
+      ctxEclipse.arc(cx, cy, rSun + 18, 0, Math.PI * 2);
+      ctxEclipse.fill();
+
+      // Core Sun
+      ctxEclipse.fillStyle = '#fbbf24';
+      ctxEclipse.beginPath();
+      ctxEclipse.arc(cx, cy, rSun, 0, Math.PI * 2);
+      ctxEclipse.fill();
+
+      // Render Moon if near Solar alignment
+      if (moonAngle < 40 || moonAngle > 320) {
+        const mPos = calculateMoonPosition(moonAngle, orbitTilt, nodeAngle, 75);
+        let relAngle = moonAngle;
+        if (relAngle > 180) relAngle -= 360;
+
+        const mx = cx + relAngle * 2.8;
+        const my = cy - mPos.z * 13.0; // scale elevation to apparent angular size offset
+
+        ctxEclipse.shadowBlur = (status.code === 'total_solar') ? 22 : 0;
+        ctxEclipse.shadowColor = '#fef08a';
+
+        ctxEclipse.fillStyle = '#090d16'; // Moon body
+        ctxEclipse.beginPath();
+        ctxEclipse.arc(mx, my, rMoon, 0, Math.PI * 2);
+        ctxEclipse.fill();
+        ctxEclipse.shadowBlur = 0;
+      }
+    }
+
+    // 5. Lunar Eclipse View
+    function drawMoonShadowApparentView(status) {
+      ctxShadow.clearRect(0, 0, shadowCanvas.width, shadowCanvas.height);
+      const cx = shadowCanvas.width / 2;
+      const cy = shadowCanvas.height / 2;
+      const rUmbra = 28;
+      const rPenumbra = 50;
+      const rMoon = 12;
+
+      ctxShadow.fillStyle = '#020617';
+      ctxShadow.fillRect(0, 0, shadowCanvas.width, shadowCanvas.height);
+
+      // Penumbra (Faint outer glow shadow)
+      const penGrad = ctxShadow.createRadialGradient(cx, cy, rUmbra, cx, cy, rPenumbra);
+      penGrad.addColorStop(0, 'rgba(15, 23, 42, 0.95)');
+      penGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+      ctxShadow.fillStyle = penGrad;
+      ctxShadow.beginPath();
+      ctxShadow.arc(cx, cy, rPenumbra, 0, Math.PI * 2);
+      ctxShadow.fill();
+
+      // Umbra (Core shadow)
+      const umbGrad = ctxShadow.createRadialGradient(cx, cy, rUmbra - 10, cx, cy, rUmbra);
+      umbGrad.addColorStop(0, '#040811');
+      umbGrad.addColorStop(1, '#0f172a');
+      ctxShadow.fillStyle = umbGrad;
+      ctxShadow.beginPath();
+      ctxShadow.arc(cx, cy, rUmbra, 0, Math.PI * 2);
+      ctxShadow.fill();
+
+      ctxShadow.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctxShadow.beginPath();
+      ctxShadow.arc(cx, cy, rUmbra, 0, Math.PI * 2);
+      ctxShadow.stroke();
+
+      // Render Moon if near Opposition
+      if (moonAngle > 130 && moonAngle < 230) {
+        const mPos = calculateMoonPosition(moonAngle, orbitTilt, nodeAngle, 75);
+        const mx = cx + (moonAngle - 180) * 2.2;
+        const my = cy - mPos.z * 5.2;
+
+        let moonColorStart = '#f1f5f9';
+        let moonColorEnd = '#94a3b8';
+
+        if (status.code === 'total_lunar') {
+          // Blood Moon Color
+          moonColorStart = '#ef4444';
+          moonColorEnd = '#7f1d1d';
+        } else if (status.code === 'partial_lunar') {
+          moonColorStart = '#fca5a5';
+          moonColorEnd = '#3f1111';
+        }
+
+        const moonGrad = ctxShadow.createRadialGradient(mx - 3, my - 3, 2, mx, my, rMoon);
+        moonGrad.addColorStop(0, moonColorStart);
+        moonGrad.addColorStop(1, moonColorEnd);
+        ctxShadow.fillStyle = moonGrad;
+        ctxShadow.beginPath();
+        ctxShadow.arc(mx, my, rMoon, 0, Math.PI * 2);
+        ctxShadow.fill();
+      }
+    }
+
+    // 6. Realtime Status UI Update
+    function updateStatusUI(status) {
+      statusBadge.className = "py-2.5 px-3 rounded-lg border flex flex-col items-center justify-center text-center gap-0.5 shadow-md transition-all duration-300 bg-slate-950 border-slate-800 shrink-0";
+      
+      switch (status.code) {
+        case 'total_solar':
+          statusBadge.classList.add("bg-amber-950/40", "border-amber-500/55");
+          statusText.innerText = "개기일식 (Total Solar Eclipse)";
+          statusText.className = "text-[11px] font-black text-amber-400 uppercase tracking-wider";
+          detailStatusText.innerText = "달이 태양을 완전히 정통으로 가렸습니다!";
+          break;
+        case 'partial_solar':
+          statusBadge.classList.add("bg-orange-950/30", "border-orange-500/50");
+          statusText.innerText = "부분 / 금환일식 발생";
+          statusText.className = "text-[11px] font-black text-orange-400";
+          detailStatusText.innerText = "태양의 테두리 또는 일부가 가려집니다.";
+          break;
+        case 'minor_solar':
+          statusBadge.classList.add("bg-yellow-950/20", "border-yellow-700/40");
+          statusText.innerText = "미미한 부분일식 진행 중";
+          statusText.className = "text-[11px] font-black text-yellow-300";
+          detailStatusText.innerText = "달의 가장자리가 태양 끝자락을 물고 지나갑니다.";
+          break;
+        case 'total_lunar':
+          statusBadge.classList.add("bg-rose-950/40", "border-rose-500/55");
+          statusText.innerText = "개기월식 (Total Lunar Eclipse)";
+          statusText.className = "text-[11px] font-black text-rose-400 tracking-wider";
+          detailStatusText.innerText = "달이 완전히 지구 본그림자에 숨어 붉은색을 띱니다.";
+          break;
+        case 'partial_lunar':
+          statusBadge.classList.add("bg-red-950/20", "border-red-500/40");
+          statusText.innerText = "부분월식 진행 중";
+          statusText.className = "text-[11px] font-black text-red-300";
+          detailStatusText.innerText = "달의 일부가 지구 본그림자에 가려집니다.";
+          break;
+        case 'penumbral_lunar':
+          statusBadge.classList.add("bg-indigo-950/25", "border-indigo-500/40");
+          statusText.innerText = "반페월식 관측 중";
+          statusText.className = "text-[11px] font-black text-indigo-400";
+          detailStatusText.innerText = "지구의 반그림자에 통과하여 어두워집니다.";
+          break;
+        default:
+          statusBadge.classList.add("bg-slate-950", "border-slate-800/80");
+          statusText.innerText = "식 현상 미발생 (일반 우주)";
+          statusText.className = "text-[11px] font-bold text-slate-400";
+          detailStatusText.innerText = "공전 각도가 어긋나거나, 상하 높이가 다릅니다.";
+      }
+    }
+
+    // ---------------------------------------------
+    // Event Listeners & Sliders control linkage
+    // ---------------------------------------------
+    angleRange.addEventListener('input', (e) => {
+      moonAngle = parseFloat(e.target.value);
+      angleVal.innerText = `${moonAngle.toFixed(1)}°`;
+      drawAll();
+    });
+
+    tiltRange.addEventListener('input', (e) => {
+      orbitTilt = parseFloat(e.target.value);
+      tiltVal.innerText = `${orbitTilt.toFixed(2)}°`;
+      drawAll();
+    });
+
+    nodeRange.addEventListener('input', (e) => {
+      nodeAngle = parseFloat(e.target.value);
+      nodeVal.innerText = `${nodeAngle.toFixed(0)}°`;
+      drawAll();
+    });
+
+    speedRange.addEventListener('input', (e) => {
+      playSpeed = parseFloat(e.target.value);
+    });
+
+    // Animation Loop
+    function runAnimation() {
+      if (!isPlaying) return;
+      moonAngle = (moonAngle + playSpeed) % 360;
+      angleRange.value = moonAngle;
+      angleVal.innerText = `${moonAngle.toFixed(1)}°`;
+      drawAll();
+      animId = requestAnimationFrame(runAnimation);
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (!isPlaying) {
+        isPlaying = true;
+        playBtn.classList.add('bg-indigo-700', 'ring-2', 'ring-indigo-500');
+        runAnimation();
+      }
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      isPlaying = false;
+      playBtn.classList.remove('bg-indigo-700', 'ring-2', 'ring-indigo-500');
+      if (animId) cancelAnimationFrame(animId);
+    });
+
+    // Modal Control Handler
+    const theoryModal = document.getElementById('theoryModal');
+    const limitModal = document.getElementById('limitModal');
+
+    document.getElementById('theoryBtn').addEventListener('click', () => {
+      theoryModal.classList.remove('hidden');
+      setTimeout(() => theoryModal.classList.add('opacity-100'), 10);
+    });
+
+    document.getElementById('limitBtn').addEventListener('click', () => {
+      limitModal.classList.remove('hidden');
+      setTimeout(() => limitModal.classList.add('opacity-100'), 10);
+    });
+
+    window.closeModal = function(id) {
+      const modal = document.getElementById(id);
+      modal.classList.remove('opacity-100');
+      setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+
+    // Auto Window Resize
+    function resize() {
+      const w = topCanvas.parentElement.clientWidth;
+      const h = topCanvas.parentElement.clientHeight;
+      topCanvas.width = w; topCanvas.height = h;
+      
+      const sw = sideCanvas.parentElement.clientWidth;
+      const sh = sideCanvas.parentElement.clientHeight;
+      sideCanvas.width = sw; sideCanvas.height = sh;
+
+      eclipseCanvas.width = eclipseCanvas.parentElement.clientWidth;
+      eclipseCanvas.height = eclipseCanvas.parentElement.clientHeight;
+
+      shadowCanvas.width = shadowCanvas.parentElement.clientWidth;
+      shadowCanvas.height = shadowCanvas.parentElement.clientHeight;
+      drawAll();
+    }
+
+    window.onload = () => {
+      resize();
+      window.addEventListener('resize', resize);
+    };
+  </script>
+</body>
+</html>

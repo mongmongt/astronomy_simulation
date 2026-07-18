@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>외계 행성계 거주 가능 영역 시뮬레이션</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #e2e8f0;
+        }
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Custom scrollbar for control panels */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-slate-950">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between z-10 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-lg animate-pulse">
+                <i class="fa-solid fa-shuttle-space text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wider text-white">ExoHab Simulator</h1>
+                <p class="text-xs text-slate-400">외계 행성계 복사 평형 및 거주 가능 영역(골디락스 존) 시뮬레이션</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-xs bg-slate-800 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded-full orbitron">
+                v2.2.1-CONSTANT_SPEED
+            </span>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex overflow-hidden relative">
+        
+        <!-- Left Sidebar: Controls -->
+        <aside class="w-96 bg-slate-900/90 border-r border-slate-800 p-6 flex flex-col justify-between overflow-y-auto shrink-0 z-10 backdrop-blur-md">
+            <div class="space-y-5">
+                <div class="border-b border-slate-800 pb-3">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-500"></i> 변인 통제 패널
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">항성과 행성의 물리적 매개변수를 조정하세요.</p>
+                </div>
+
+                <!-- Star Type Quick Selector -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-300">항성 분광형 프리셋</label>
+                    <div class="grid grid-cols-4 gap-1.5 text-[11px]">
+                        <button onclick="setStarPreset('O')" class="px-1 py-1 rounded bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700/50 text-blue-200 transition-all font-bold">O형</button>
+                        <button onclick="setStarPreset('G')" class="px-1 py-1 rounded bg-yellow-900/40 hover:bg-yellow-800/60 border border-yellow-700/50 text-yellow-200 transition-all font-bold">G형(태양)</button>
+                        <button onclick="setStarPreset('K')" class="px-1 py-1 rounded bg-orange-900/40 hover:bg-orange-800/60 border border-orange-700/50 text-orange-200 transition-all font-bold">K형</button>
+                        <button onclick="setStarPreset('M')" class="px-1 py-1 rounded bg-red-900/40 hover:bg-red-800/60 border border-red-700/50 text-red-200 transition-all font-bold">M형</button>
+                    </div>
+                </div>
+
+                <!-- 1. Star Luminosity (L) -->
+                <div class="space-y-1 bg-slate-950 p-3.5 rounded-xl border border-slate-800/50">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-sun text-yellow-500"></i> 중심별 광도 ($L$)
+                        </span>
+                        <span id="val-luminosity" class="text-xs font-bold text-yellow-400 orbitron">1.00 L☉</span>
+                    </div>
+                    <input type="range" id="input-luminosity" min="0.01" max="100" step="0.01" value="1.0" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+                    <div class="flex justify-between text-[9px] text-slate-500 orbitron">
+                        <span>0.01 L☉</span>
+                        <span>100 L☉</span>
+                    </div>
+                </div>
+
+                <!-- 2. Planet Semi-major Axis (a) -->
+                <div class="space-y-1 bg-slate-950 p-3.5 rounded-xl border border-slate-800/50">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-ellipsis-h text-cyan-500"></i> 공전 장반경 ($a$)
+                        </span>
+                        <span id="val-distance" class="text-xs font-bold text-cyan-400 orbitron">1.00 AU</span>
+                    </div>
+                    <input type="range" id="input-distance" min="0.1" max="15.0" step="0.05" value="1.0" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    <div class="flex justify-between text-[9px] text-slate-500 orbitron">
+                        <span>0.1 AU</span>
+                        <span>15.0 AU</span>
+                    </div>
+                </div>
+
+                <!-- 3. Orbital Eccentricity (e) -->
+                <div class="space-y-1 bg-slate-950 p-3.5 rounded-xl border border-slate-800/50">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-compass-drafting text-purple-400"></i> 궤도 이심률 ($e$)
+                        </span>
+                        <span id="val-eccentricity" class="text-xs font-bold text-purple-400 orbitron">0.000</span>
+                    </div>
+                    <input type="range" id="input-eccentricity" min="0.000" max="0.500" step="0.001" value="0.000" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                    <div class="flex justify-between text-[9px] text-slate-500">
+                        <span>0.000 (원형)</span>
+                        <span>0.500 (타원형 제한)</span>
+                    </div>
+                </div>
+
+                <!-- 4. Planet Albedo (A) -->
+                <div class="space-y-1 bg-slate-950 p-3.5 rounded-xl border border-slate-800/50">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-half-stroke text-emerald-500"></i> 행성 알베도 ($A$)
+                        </span>
+                        <span id="val-albedo" class="text-xs font-bold text-emerald-400 orbitron">0.30</span>
+                    </div>
+                    <input type="range" id="input-albedo" min="0.0" max="0.95" step="0.05" value="0.30" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    <div class="flex justify-between text-[9px] text-slate-500">
+                        <span>0.0 (완전 흡수)</span>
+                        <span>0.95 (강한 반사)</span>
+                    </div>
+                </div>
+
+                <!-- 5. Atmosphere Toggle (Greenhouse Effect Selection) -->
+                <div class="space-y-1.5 bg-slate-950 p-3.5 rounded-xl border border-slate-800/50">
+                    <label class="text-xs font-semibold text-slate-200 flex items-center gap-1.5 mb-2">
+                        <i class="fa-solid fa-cloud text-indigo-400"></i> 대기 온실 효과 ($\Delta T$)
+                    </label>
+                    <div class="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                        <button id="btn-atm-none" onclick="setAtmosphere(false)" class="flex-1 text-[11px] py-1.5 rounded-md font-bold transition-all text-slate-400 hover:text-white">
+                            대기 없음 (Equilibrium)
+                        </button>
+                        <button id="btn-atm-earth" onclick="setAtmosphere(true)" class="flex-1 text-[11px] py-1.5 rounded-md font-bold transition-all bg-indigo-600 text-white shadow">
+                            지구형 대기 (+33°C)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulation Settings -->
+                <div class="pt-2 border-t border-slate-800/60 space-y-2">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">시뮬레이션 제어</h3>
+                    <div class="flex gap-2">
+                        <button id="btn-play-pause" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-1.5 px-3 rounded-lg flex items-center justify-center gap-2 font-semibold text-xs transition-all shadow-lg shadow-indigo-600/20">
+                            <i id="icon-play-pause" class="fa-solid fa-pause"></i> <span id="text-play-pause">일시정지</span>
+                        </button>
+                        <button id="btn-reset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-3 rounded-lg flex items-center justify-center transition-all text-xs">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scientific Background Info -->
+            <div class="mt-4 pt-3 border-t border-slate-800/60 space-y-2 text-xs text-slate-400">
+                <div class="p-3 bg-slate-950/60 rounded-lg border border-slate-850">
+                    <div class="font-semibold text-slate-300 mb-1">복사 평형 관계식</div>
+                    <p class="font-serif italic leading-relaxed text-slate-400 mb-2">
+                        T = [ L (1 - A) / (16 π σ r²) ]<sup>1/4</sup> + $\Delta T_{\text{atm}}$
+                    </p>
+                    <div class="font-semibold text-slate-300 mb-1">케플러 타원 궤도식 (반지름 $r$)</div>
+                    <p class="font-serif italic text-slate-400 leading-normal mb-1">
+                        r = a(1 - e²) / (1 + e·cos θ)
+                    </p>
+                    <p class="mt-1 text-[9px] text-slate-500 leading-normal">
+                        * S<sub>max</sub> = 1.11 S☉ (안쪽 한계: 0.95 AU)<br>
+                        * S<sub>min</sub> = 0.76 S☉ (바깥쪽 한계: 1.15 AU)
+                    </p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Area: Interactive 2D Visualizer -->
+        <main class="flex-1 flex flex-col justify-between p-6 relative overflow-hidden">
+            <!-- Top stats bar -->
+            <div class="flex justify-between items-start z-10 pointer-events-none w-full">
+                <div class="bg-slate-900/80 backdrop-blur-md p-4 rounded-xl border border-slate-800 shadow-xl max-w-sm pointer-events-auto">
+                    <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-indigo-400"></i> 생명 거주 가능 영역 범위
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-slate-950 p-2.5 rounded border border-slate-800">
+                            <div class="text-slate-400 mb-0.5">안쪽 경계 (0.95 AU 기준)</div>
+                            <div id="goldilocks-inner" class="text-orange-400 font-bold orbitron">0.95 AU</div>
+                        </div>
+                        <div class="bg-slate-950 p-2.5 rounded border border-slate-800">
+                            <div class="text-slate-400 mb-0.5">바깥쪽 경계 (1.15 AU 기준)</div>
+                            <div id="goldilocks-outer" class="text-blue-400 font-bold orbitron">1.15 AU</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Info Panel -->
+                <div class="bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-lg border border-slate-800 text-xs text-slate-300 flex items-center gap-3 shadow-md pointer-events-auto">
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span> 실시간 공전 중</span>
+                    <span class="text-slate-500">|</span>
+                    <button onclick="toggleGrid()" class="hover:text-white transition-colors flex items-center gap-1"><i class="fa-solid fa-border-all"></i> 그리드 토글</button>
+                </div>
+            </div>
+
+            <!-- Interactive Canvas Viewport -->
+            <div class="absolute inset-0 z-0">
+                <canvas id="simulation-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+            </div>
+
+            <!-- Zoom Controller -->
+            <div class="absolute left-6 bottom-28 z-10 flex flex-col gap-2 pointer-events-auto">
+                <div class="bg-slate-900/95 border border-slate-800 rounded-xl p-1.5 flex flex-col gap-1.5 shadow-2xl backdrop-blur-md">
+                    <button onclick="zoomBtn(1.2)" class="w-10 h-10 bg-slate-850 hover:bg-slate-700 active:bg-slate-600 text-slate-200 hover:text-white rounded-lg flex items-center justify-center transition-all" title="확대 (+)">
+                        <i class="fa-solid fa-plus text-lg"></i>
+                    </button>
+                    <button onclick="zoomBtn(1.0 / 1.2)" class="w-10 h-10 bg-slate-850 hover:bg-slate-700 active:bg-slate-600 text-slate-200 hover:text-white rounded-lg flex items-center justify-center transition-all" title="축소 (-)">
+                        <i class="fa-solid fa-minus text-lg"></i>
+                    </button>
+                    <div class="h-px bg-slate-800 my-0.5"></div>
+                    <button onclick="resetCamera()" class="w-10 h-10 bg-indigo-950/80 border border-indigo-800/40 hover:bg-indigo-900 active:bg-indigo-800 text-indigo-400 hover:text-indigo-300 rounded-lg flex items-center justify-center transition-all text-xs font-bold" title="기본 시야">
+                        1x
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bottom Control Block -->
+            <div class="z-10 pointer-events-none w-full flex flex-col gap-2">
+                
+                <!-- Floating Info and Scale line -->
+                <div class="flex justify-between items-center w-full">
+                    <div class="bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-lg border border-slate-800/60 text-[10px] text-slate-400 flex items-center gap-3 pointer-events-auto">
+                        <span>마우스 드래그로 화면 이동 / 좌측 +/- 및 마우스 휠로 카메라 조절</span>
+                        <span class="text-slate-600">|</span>
+                        <button onclick="resetCamera()" class="text-indigo-400 hover:text-indigo-300 font-semibold">카메라 리셋</button>
+                    </div>
+                </div>
+
+                <!-- Integrated Compact Horizontal Dashboard Bar -->
+                <div class="bg-slate-900/95 backdrop-blur-md py-3 px-6 rounded-xl border border-indigo-500/20 shadow-2xl w-full pointer-events-auto flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
+                    
+                    <!-- Left Section: Basic Planet Status (Real-time dynamic distance r) -->
+                    <div class="flex items-center gap-2 bg-slate-950/50 px-4 py-2 rounded-lg border border-slate-850 shrink-0">
+                        <i class="fa-solid fa-circle-notch text-cyan-400 animate-spin text-xs"></i>
+                        <span class="text-slate-400 text-xs font-medium">실시간 거리 ($r$):</span>
+                        <strong id="report-distance" class="text-slate-200 orbitron text-sm font-extrabold">1.000 AU</strong>
+                    </div>
+
+                    <!-- Center Section: Ultra-compact Habitability Grade -->
+                    <div class="flex items-center gap-3 bg-slate-950/80 px-5 py-1.5 rounded-lg border border-slate-800 shrink-0">
+                        <!-- Tiny visual Grade indicator -->
+                        <div id="grade-circle" class="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm border-2 transition-all duration-300 shrink-0">
+                            -
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-[9px] text-slate-500 font-black uppercase tracking-wider leading-none mb-1">실시간 환경 평가</span>
+                            <span id="report-suitability" class="text-indigo-400 font-black text-xs orbitron leading-none">계산 중</span>
+                        </div>
+                    </div>
+
+                    <!-- Right Section: Temperature Core Info & Micro bar -->
+                    <div class="flex items-center gap-3 bg-slate-950/80 px-5 py-1.5 rounded-lg border border-slate-800 shrink-0">
+                        <div class="flex flex-col text-right">
+                            <span class="text-[9px] text-slate-500 font-black uppercase tracking-wider leading-none mb-1">실시간 표면 온도</span>
+                            <div class="flex items-baseline gap-1.5">
+                                <span id="planet-temp-k" class="font-extrabold orbitron text-white text-xs leading-none">278.6 K</span>
+                                <span id="planet-temp-c" class="font-semibold text-slate-400 orbitron text-[10px] leading-none">(5.4 °C)</span>
+                            </div>
+                        </div>
+                        <!-- Thermometer fluid bar -->
+                        <div class="w-16 bg-slate-900 h-1 rounded-full overflow-hidden border border-slate-800">
+                            <div id="thermometer-bar" class="bg-gradient-to-r from-blue-500 via-green-400 to-red-500 h-full rounded-full transition-all duration-300" style="width: 50%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden but preserved DOM nodes to avoid breaking JS reference errors -->
+                    <span id="planet-status-badge" class="hidden"></span>
+                    <span id="grade-title" class="hidden"></span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Info / Mathematical explanation Modal overlay -->
+    <div id="info-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl p-6 relative shadow-2xl">
+            <button onclick="toggleModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white mb-3">물리학적 배경 지식</h3>
+            <div class="space-y-3 text-sm text-slate-300 leading-relaxed overflow-y-auto max-h-[70vh] pr-2">
+                <p>
+                    <strong>1. 행성의 표면 온도 및 복사 평형 공식:</strong><br>
+                    행성이 흡수하는 항성 복사 에너지와 우주로 방출하는 지구 복사 에너지가 완벽하게 균형을 이루는 복사 평형 상태 하에서 도출되는 행성 온도식입니다. 대기가 존재할 경우 온실가스가 에너지를 흡수하여 재방출함으로써 표면 온도가 상승합니다.
+                </p>
+                <div class="bg-slate-950 p-3 rounded font-serif italic text-center text-slate-200">
+                    T = ( L (1 - A) / (16 π σ r²) )<sup>1/4</sup> + ΔT<sub>atm</sub>
+                </div>
+                <ul class="list-disc pl-5 space-y-1 text-xs text-slate-400">
+                    <li>$L$: 중심별의 광도 (태양 광도 단위를 W로 변환)</li>
+                    <li>$A$: 행성의 알베도(반사율, 0 ~ 1)</li>
+                    <li>$r$: 실시간 중심별로부터의 거리 (m)</li>
+                    <li>$\sigma$: 슈테판-볼츠만 상수 ($5.67 \times 10^{-8} \text{ W/m}^2\text{K}^4$)</li>
+                    <li>$\Delta T_{\text{atm}}$: 대기 온실 효과 가산 상수 (지구형 대기 기준 약 $+33\text{K}$)</li>
+                </ul>
+                <p>
+                    <strong>2. 케플러 궤도 기하학 및 타원 궤도:</strong><br>
+                    실제 행성들은 완벽한 원이 아닌 타원형 궤도로 공전합니다. 이심률($e$)이 클수록 타원은 찌그러지며, 행성과 별의 실시간 거리($r$)는 공전 각도($\theta$)에 따라 다음과 같이 계속 변화합니다.
+                </p>
+                <div class="bg-slate-950 p-3 rounded font-serif italic text-center text-slate-200">
+                    r = a(1 - e²) / (1 + e · cos θ)
+                </div>
+                <ul class="list-disc pl-5 space-y-1 text-xs text-slate-400">
+                    <li>$a$: 공전 궤도 장반경 (Semi-major axis, AU)</li>
+                    <li>$e$: 궤도 이심률 (Eccentricity, 0 ~ 0.500)</li>
+                    <li>$\theta$: 중심별과 행성이 이루는 진변칙각 (True Anomaly)</li>
+                </ul>
+                <p>
+                    <strong>3. 균일 공전 애니메이션 (각속도 일정):</strong><br>
+                    기존 시뮬레이터에서는 케플러 제2법칙(면적 속도 일정 법칙)을 엄밀히 적용하여 원일점에서 공전 속도가 크게 느려지는 현상이 나타났으나, 탐구 및 관측 속도의 효율성을 보장하기 위해 한 주기 내에서 완벽히 일치하는 등속 원형/타원 각속도 공전 방식으로 개선 적용되었습니다.
+                </p>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="toggleModal(false)" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating action help button -->
+    <button onclick="toggleModal(true)" class="fixed bottom-20 right-6 bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all z-20">
+        <i class="fa-solid fa-circle-info text-xl"></i>
+    </button>
+
+    <!-- JavaScript logic and rendering simulation -->
+    <script>
+        // --- CONSTANTS ---
+        const L_SUN = 3.828e26; // W (Sun's luminosity)
+        const AU_METERS = 1.496e11; // m (1 Astronomical Unit)
+        const SIGMA = 5.670374e-8; // W/m^2K^4 (Stefan-Boltzmann Constant)
+        
+        // Corrected S values matching actual solar system HZ boundaries (0.95 ~ 1.15 AU)
+        const S_MAX = 1.108; 
+        const S_MIN = 0.756; 
+        
+        // --- SYSTEM STATE ---
+        let state = {
+            luminosity: 1.0, // L_sun unit
+            distance: 1.0,   // Semi-major axis (a), AU unit
+            eccentricity: 0.0, // Orbit eccentricity (e), 0.000 ~ 0.500
+            albedo: 0.30,    // Albedo value (A), 0 ~ 1
+            hasAtmosphere: true, // Greenhouse effect toggle
+            isPlaying: true,
+            showGrid: true,
+            camera: {
+                x: 0,
+                y: 0,
+                zoom: 1.0
+            },
+            planetAngle: 0, // True anomaly (theta) in radians
+            mouse: {
+                isDragging: false,
+                lastX: 0,
+                lastY: 0
+            }
+        };
+
+        // Star type definitions for presets
+        const PRESETS = {
+            O: { luminosity: 80.0, distance: 9.0, eccentricity: 0.0, albedo: 0.30, label: "O형 청색거성" },
+            G: { luminosity: 1.0, distance: 1.0, eccentricity: 0.0, albedo: 0.30, label: "G형 황색왜성(태양)" },
+            K: { luminosity: 0.3, distance: 0.5, eccentricity: 0.0, albedo: 0.30, label: "K형 주황색왜성" },
+            M: { luminosity: 0.03, distance: 0.15, eccentricity: 0.0, albedo: 0.30, label: "M형 적색왜성" }
+        };
+
+        // --- DOM ELEMENTS ---
+        const canvas = document.getElementById('simulation-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const inputLuminosity = document.getElementById('input-luminosity');
+        const valLuminosity = document.getElementById('val-luminosity');
+
+        const inputDistance = document.getElementById('input-distance');
+        const valDistance = document.getElementById('val-distance');
+
+        const inputEccentricity = document.getElementById('input-eccentricity');
+        const valEccentricity = document.getElementById('val-eccentricity');
+
+        const inputAlbedo = document.getElementById('input-albedo');
+        const valAlbedo = document.getElementById('val-albedo');
+
+        const btnPlayPause = document.getElementById('btn-play-pause');
+        const iconPlayPause = document.getElementById('icon-play-pause');
+        const textPlayPause = document.getElementById('text-play-pause');
+        const btnReset = document.getElementById('btn-reset');
+
+        const btnAtmNone = document.getElementById('btn-atm-none');
+        const btnAtmEarth = document.getElementById('btn-atm-earth');
+
+        const goldilocksInner = document.getElementById('goldilocks-inner');
+        const goldilocksOuter = document.getElementById('goldilocks-outer');
+
+        const planetTempK = document.getElementById('planet-temp-k');
+        const planetTempC = document.getElementById('planet-temp-c');
+        const thermometerBar = document.getElementById('thermometer-bar');
+        const planetStatusBadge = document.getElementById('planet-status-badge');
+
+        const reportDistance = document.getElementById('report-distance');
+        const reportSuitability = document.getElementById('report-suitability');
+
+        const gradeCircle = document.getElementById('grade-circle');
+        const gradeTitle = document.getElementById('grade-title');
+
+        const infoModal = document.getElementById('info-modal');
+
+        // --- INITIALIZATION ---
+        function init() {
+            setupEventListeners();
+            resizeCanvas();
+            resetCamera();
+            
+            window.requestAnimationFrame(animate);
+        }
+
+        function setupEventListeners() {
+            // Inputs
+            inputLuminosity.addEventListener('input', (e) => {
+                state.luminosity = parseFloat(e.target.value);
+                updateValues();
+            });
+
+            inputDistance.addEventListener('input', (e) => {
+                state.distance = parseFloat(e.target.value);
+                updateValues();
+            });
+
+            inputEccentricity.addEventListener('input', (e) => {
+                state.eccentricity = parseFloat(e.target.value);
+                updateValues();
+            });
+
+            inputAlbedo.addEventListener('input', (e) => {
+                state.albedo = parseFloat(e.target.value);
+                updateValues();
+            });
+
+            // Action Buttons
+            btnPlayPause.addEventListener('click', () => {
+                state.isPlaying = !state.isPlaying;
+                if (state.isPlaying) {
+                    iconPlayPause.className = 'fa-solid fa-pause';
+                    textPlayPause.textContent = '일시정지';
+                } else {
+                    iconPlayPause.className = 'fa-solid fa-play';
+                    textPlayPause.textContent = '시뮬레이션 재개';
+                }
+            });
+
+            btnReset.addEventListener('click', () => {
+                state.luminosity = 1.0;
+                state.distance = 1.0;
+                state.eccentricity = 0.0;
+                state.albedo = 0.30;
+                state.hasAtmosphere = true;
+                state.planetAngle = 0;
+                
+                inputLuminosity.value = 1.0;
+                inputDistance.value = 1.0;
+                inputEccentricity.value = 0.000;
+                inputAlbedo.value = 0.30;
+                
+                setAtmosphere(true);
+                updateValues();
+                resetCamera();
+            });
+
+            // Interactive Canvas Mouse/Touch controls
+            canvas.addEventListener('mousedown', (e) => {
+                state.mouse.isDragging = true;
+                state.mouse.lastX = e.clientX;
+                state.mouse.lastY = e.clientY;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (state.mouse.isDragging) {
+                    const dx = e.clientX - state.mouse.lastX;
+                    const dy = e.clientY - state.mouse.lastY;
+                    state.camera.x += dx;
+                    state.camera.y += dy;
+                    state.mouse.lastX = e.clientX;
+                    state.mouse.lastY = e.clientY;
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                state.mouse.isDragging = false;
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = 1.1;
+                if (e.deltaY < 0) {
+                    zoomCamera(zoomFactor);
+                } else {
+                    zoomCamera(1.0 / zoomFactor);
+                }
+            }, { passive: false });
+
+            // Touch events for mobile compatibility
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    state.mouse.isDragging = true;
+                    state.mouse.lastX = e.touches[0].clientX;
+                    state.mouse.lastY = e.touches[0].clientY;
+                }
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (state.mouse.isDragging && e.touches.length === 1) {
+                    const dx = e.touches[0].clientX - state.mouse.lastX;
+                    const dy = e.touches[0].clientY - state.mouse.lastY;
+                    state.camera.x += dx;
+                    state.camera.y += dy;
+                    state.mouse.lastX = e.touches[0].clientX;
+                    state.mouse.lastY = e.touches[0].clientY;
+                }
+            });
+
+            canvas.addEventListener('touchend', () => {
+                state.mouse.isDragging = false;
+            });
+
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+
+        // Camera zooming functions
+        function zoomCamera(factor) {
+            state.camera.zoom = Math.max(0.1, Math.min(state.camera.zoom * factor, 150));
+        }
+
+        function zoomBtn(factor) {
+            zoomCamera(factor);
+        }
+
+        function resetCamera() {
+            state.camera.x = canvas.width / 2;
+            state.camera.y = canvas.height / 2;
+            
+            const distance = state.distance;
+            const maxHabitableBound = Math.sqrt(state.luminosity / S_MIN);
+            const maxOrbitDistance = distance * (1 + state.eccentricity);
+            const scaleBase = Math.max(maxOrbitDistance, maxHabitableBound);
+            
+            state.camera.zoom = (canvas.height * 0.35) / scaleBase;
+        }
+
+        function toggleGrid() {
+            state.showGrid = !state.showGrid;
+        }
+
+        function toggleModal(show) {
+            if (show) {
+                infoModal.classList.remove('hidden');
+            } else {
+                infoModal.classList.add('hidden');
+            }
+        }
+
+        // Set atmosphere greenhouse toggle
+        function setAtmosphere(hasAtm) {
+            state.hasAtmosphere = hasAtm;
+            if (hasAtm) {
+                btnAtmEarth.className = "flex-1 text-[11px] py-1.5 rounded-md font-bold transition-all bg-indigo-600 text-white shadow";
+                btnAtmNone.className = "flex-1 text-[11px] py-1.5 rounded-md font-bold transition-all text-slate-400 hover:text-white";
+            } else {
+                btnAtmEarth.className = "flex-1 text-[11px] py-1.5 rounded-md font-bold transition-all text-slate-400 hover:text-white";
+                btnAtmNone.className = "flex-1 text-[11px] py-1.5 rounded-md font-bold transition-all bg-indigo-600 text-white shadow";
+            }
+            updateValues();
+        }
+
+        // Apply pre-configured star properties
+        function setStarPreset(type) {
+            const p = PRESETS[type];
+            if (p) {
+                state.luminosity = p.luminosity;
+                state.distance = p.distance;
+                state.eccentricity = p.eccentricity;
+                state.albedo = p.albedo;
+                
+                inputLuminosity.value = p.luminosity;
+                inputDistance.value = p.distance;
+                inputEccentricity.value = p.eccentricity;
+                inputAlbedo.value = p.albedo;
+                
+                updateValues();
+                resetCamera();
+            }
+        }
+
+        // --- MATH & SIMULATION LOGIC ---
+        
+        // Calculate the Inner and Outer Habitable limits (AU)
+        function getHabitableZoneLimits() {
+            const inner = Math.sqrt(state.luminosity / S_MAX);
+            const outer = Math.sqrt(state.luminosity / S_MIN);
+            return { inner, outer };
+        }
+
+        // Calculate Keplerian real-time distance r based on current true anomaly theta
+        // r = a * (1 - e^2) / (1 + e * cos(theta))
+        function calculateRealtimeDistance() {
+            const a = state.distance;
+            const e = state.eccentricity;
+            const theta = state.planetAngle;
+            return (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+        }
+
+        // Calculate Planetary temperature dynamically based on real-time distance r & atmosphere toggle
+        function calculatePlanetTemperature(r_au) {
+            const l_watts = state.luminosity * L_SUN;
+            const r_meters = r_au * AU_METERS;
+            
+            const numerator = l_watts * (1 - state.albedo);
+            const denominator = 16 * Math.PI * SIGMA * Math.pow(r_meters, 2);
+            
+            let tempK = Math.pow(numerator / denominator, 0.25);
+            
+            // Add Earth greenhouse correction (+33K) if toggled
+            if (state.hasAtmosphere) {
+                tempK += 33.0;
+            }
+            
+            const tempC = tempK - 273.15;
+            
+            return { tempK, tempC };
+        }
+
+        // Update calculations & visual widgets
+        function updateValues() {
+            // Update Text Displays
+            valLuminosity.textContent = `${state.luminosity.toFixed(2)} L☉`;
+            valDistance.textContent = `${state.distance.toFixed(2)} AU`;
+            valEccentricity.textContent = state.eccentricity.toFixed(3);
+            valAlbedo.textContent = state.albedo.toFixed(2);
+
+            // Calculate Goldilocks bounds
+            const hz = getHabitableZoneLimits();
+            goldilocksInner.textContent = `${hz.inner.toFixed(2)} AU`;
+            goldilocksOuter.textContent = `${hz.outer.toFixed(2)} AU`;
+
+            // Real-time orbital radius r
+            const r_au = calculateRealtimeDistance();
+            reportDistance.textContent = `${r_au.toFixed(3)} AU`;
+
+            // Calculate Real-time Temperature
+            const temp = calculatePlanetTemperature(r_au);
+            planetTempK.textContent = `${temp.tempK.toFixed(1)} K`;
+            planetTempC.textContent = `${temp.tempC.toFixed(1)} °C`;
+
+            // Adjust Temp Bar Color fill (100K to 400K range mapping)
+            const minScale = 150; 
+            const maxScale = 380; 
+            let percentage = ((temp.tempK - minScale) / (maxScale - minScale)) * 100;
+            percentage = Math.max(0, Math.min(percentage, 100));
+            thermometerBar.style.width = `${percentage}%`;
+            
+            // Color variations based on temp
+            if (temp.tempC < 0) {
+                thermometerBar.className = "bg-gradient-to-r from-blue-600 to-blue-400 h-full rounded-full transition-all duration-300";
+            } else if (temp.tempC > 50) {
+                thermometerBar.className = "bg-gradient-to-r from-red-400 to-red-600 h-full rounded-full transition-all duration-300";
+            } else {
+                thermometerBar.className = "bg-gradient-to-r from-blue-400 via-emerald-400 to-yellow-400 h-full rounded-full transition-all duration-300";
+            }
+
+            const isInHZ = (r_au >= hz.inner && r_au <= hz.outer);
+            
+            // --- DETAILED HABITABILITY GRADE SYSTEM ---
+            let score = 0;
+            
+            // 1. Distance factor
+            if (isInHZ) {
+                const hzCenter = (hz.inner + hz.outer) / 2;
+                const halfWidth = (hz.outer - hz.inner) / 2;
+                const deviation = Math.abs(r_au - hzCenter) / halfWidth; 
+                score += (1.0 - deviation * 0.4) * 60; 
+            } else {
+                if (r_au < hz.inner) {
+                    score += (r_au / hz.inner) * 25; 
+                } else {
+                    score += (hz.outer / r_au) * 20;
+                }
+            }
+            
+            // 2. Temperature factor (Liquid water ranges 273.15K ~ 373.15K on surface)
+            // If atmosphere is on, comfortable range is centered near 288K (+15C). 
+            // If atmosphere is off, comfortable equilibrium is centered around 255K (-18C).
+            const optTempK = state.hasAtmosphere ? 288 : 255; 
+            const tempDiff = Math.abs(temp.tempK - optTempK);
+            if (tempDiff < 45) {
+                score += (1.0 - (tempDiff / 45)) * 40; 
+            } else {
+                score += 2;
+            }
+
+            // Map combined score to Grade
+            score = Math.round(score);
+            let grade = 'F';
+            let gradeDesc = '생명 생존 불가';
+            let gradeClass = 'border-red-500 bg-red-950/60 text-red-400';
+            
+            if (score >= 92) {
+                grade = 'S';
+                gradeDesc = '최적 환경';
+                gradeClass = 'border-amber-400 bg-amber-950/60 text-amber-300 shadow-md shadow-amber-500/20';
+            } else if (score >= 80) {
+                grade = 'A';
+                gradeDesc = '우수 환경';
+                gradeClass = 'border-emerald-500 bg-emerald-950/60 text-emerald-400';
+            } else if (score >= 65) {
+                grade = 'B';
+                gradeDesc = '생명활동 가능';
+                gradeClass = 'border-cyan-500 bg-cyan-950/60 text-cyan-400';
+            } else if (score >= 45) {
+                grade = 'C';
+                gradeDesc = '인공 거주구 필요';
+                gradeClass = 'border-yellow-600 bg-yellow-950/60 text-yellow-500';
+            } else if (score >= 25) {
+                grade = 'D';
+                gradeDesc = '척박한 불모 환경';
+                gradeClass = 'border-orange-500 bg-orange-950/60 text-orange-400';
+            } else {
+                grade = 'F';
+                gradeDesc = '생존 불가';
+                gradeClass = 'border-red-600 bg-red-950/60 text-red-500';
+            }
+
+            // Update DOM Elements for Grade
+            gradeCircle.textContent = grade;
+            gradeCircle.className = `w-9 h-9 rounded-full flex items-center justify-center font-black text-sm border-2 transition-all duration-300 ${gradeClass}`;
+            gradeTitle.textContent = gradeDesc;
+
+            // Update standard feedback status
+            if (isInHZ) {
+                planetStatusBadge.textContent = `HABITABLE`;
+                planetStatusBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-green-400 bg-green-950/80 border border-green-800";
+                reportSuitability.textContent = `${gradeDesc} (${score}%)`;
+            } else {
+                if (r_au < hz.inner) {
+                    planetStatusBadge.textContent = "TOO HOT";
+                    planetStatusBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-red-400 bg-red-950/80 border border-red-850";
+                    reportSuitability.textContent = `온도 과열 (${score}%)`;
+                } else {
+                    planetStatusBadge.textContent = "TOO COLD";
+                    planetStatusBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-blue-400 bg-blue-950/80 border border-blue-850";
+                    reportSuitability.textContent = `저온 결빙 (${score}%)`;
+                }
+            }
+        }
+
+        // --- VISUAL RENDERING LOOP ---
+        function animate(timestamp) {
+            if (state.isPlaying) {
+                // FIXED: 항상 일정한 각속도(Constant Angular Velocity)로 돌도록 조정
+                const orbitAngularVelocity = 0.025 / Math.sqrt(state.distance);
+                
+                state.planetAngle += orbitAngularVelocity;
+                if (state.planetAngle > Math.PI * 2) {
+                    state.planetAngle -= Math.PI * 2;
+                }
+                
+                // Live state updates on dashboard during animation
+                updateValues();
+            }
+
+            draw();
+            window.requestAnimationFrame(animate);
+        }
+
+        function draw() {
+            // Clean Canvas
+            ctx.fillStyle = '#070a13';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const cx = state.camera.x;
+            const cy = state.camera.y;
+            const zoom = state.camera.zoom;
+
+            // 1. Grid
+            if (state.showGrid) {
+                drawGrid(cx, cy, zoom);
+            }
+
+            // Space Background Stars
+            drawSpaceBackground();
+
+            // 2. Draw Habitable Zone
+            const hz = getHabitableZoneLimits();
+            const rInnerPx = hz.inner * zoom;
+            const rOuterPx = hz.outer * zoom;
+
+            // Gradient centered at the Star (Focus of the system)
+            const hzGradient = ctx.createRadialGradient(cx, cy, rInnerPx, cx, cy, rOuterPx);
+            hzGradient.addColorStop(0, 'rgba(16, 185, 129, 0.0)');   
+            hzGradient.addColorStop(0.1, 'rgba(16, 185, 129, 0.25)'); 
+            hzGradient.addColorStop(0.5, 'rgba(52, 211, 153, 0.3)');  
+            hzGradient.addColorStop(0.9, 'rgba(16, 185, 129, 0.25)');
+            hzGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');   
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, rOuterPx, 0, Math.PI * 2);
+            ctx.arc(cx, cy, rInnerPx, 0, Math.PI * 2, true); 
+            ctx.fillStyle = hzGradient;
+            ctx.fill();
+
+            // Boundary circles
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, rInnerPx, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, rOuterPx, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]); 
+
+            // 3. Draw Elliptical Orbit Path (Analytical Geometry)
+            const a = state.distance * zoom;
+            const e = state.eccentricity;
+            const b = a * Math.sqrt(1 - e * e);
+            const c = a * e; 
+            
+            // Keplerian orbital focus correction (Center shifted left to match positive pericenter on right)
+            const ellipseCenterX = cx - c;
+            const ellipseCenterY = cy;
+
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.18)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.ellipse(ellipseCenterX, ellipseCenterY, a, b, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 4. Draw Central Star (Remains at Focus)
+            drawCentralStar(cx, cy, zoom);
+
+            // 5. Draw Planet at its actual calculated position
+            const r_au_current = calculateRealtimeDistance();
+            const r_px_current = r_au_current * zoom;
+            
+            // Polar coordinates translation relative to focus (Star)
+            const planetX = cx + Math.cos(state.planetAngle) * r_px_current;
+            const planetY = cy + Math.sin(state.planetAngle) * r_px_current;
+            
+            drawPlanet(planetX, planetY, r_au_current);
+            
+            // 6. Scale Ruler
+            drawScaleRuler(zoom);
+        }
+
+        // Draw grid
+        function drawGrid(cx, cy, zoom) {
+            const gridSpacing = 1.0 * zoom; 
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.15)';
+            ctx.lineWidth = 1;
+
+            let startX = cx % gridSpacing;
+            for (let x = startX; x < canvas.width; x += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            let startY = cy % gridSpacing;
+            for (let y = startY; y < canvas.height; y += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+            ctx.lineWidth = 1.5;
+            
+            ctx.beginPath();
+            ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height);
+            ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy);
+            ctx.stroke();
+        }
+
+        function drawStarGlow(cx, cy, radius, color) {
+            const glowGradient = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius * 3.5);
+            glowGradient.addColorStop(0, color);
+            glowGradient.addColorStop(0.15, color);
+            glowGradient.addColorStop(0.4, 'rgba(251, 146, 60, 0.15)');
+            glowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius * 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawCentralStar(cx, cy, zoom) {
+            const baseRadius = 14;
+            const starRadius = Math.max(5, baseRadius * Math.pow(state.luminosity, 0.25));
+            
+            let starColor = '#fcd34d'; 
+            let coreColor = '#ffffff';
+
+            if (state.luminosity >= 30.0) {
+                starColor = '#60a5fa'; 
+                coreColor = '#e0f2fe';
+            } else if (state.luminosity < 0.1) {
+                starColor = '#f87171'; 
+                coreColor = '#fef2f2';
+            } else if (state.luminosity < 0.8) {
+                starColor = '#fb923c'; 
+                coreColor = '#fff7ed';
+            }
+
+            drawStarGlow(cx, cy, starRadius, starColor);
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, starRadius, 0, Math.PI * 2);
+            ctx.fillStyle = starColor;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, starRadius * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = coreColor;
+            ctx.fill();
+        }
+
+        function drawPlanet(px, py, r_au) {
+            const planetRadius = 8;
+            
+            const cx = state.camera.x;
+            const cy = state.camera.y;
+            const dx = px - cx;
+            const dy = py - cy;
+            const angleToStar = Math.atan2(dy, dx);
+
+            let planetColor = '#22d3ee'; 
+            let AtmosphereColor = 'rgba(34, 211, 238, 0.4)';
+
+            const hz = getHabitableZoneLimits();
+            if (r_au < hz.inner) {
+                planetColor = '#fb7185'; 
+                AtmosphereColor = 'rgba(251, 113, 133, 0.4)';
+            } else if (r_au > hz.outer) {
+                planetColor = '#93c5fd'; 
+                AtmosphereColor = 'rgba(147, 197, 253, 0.2)';
+            }
+
+            // Atmosphere Glow
+            const atmosphereGlow = ctx.createRadialGradient(px, py, planetRadius, px, py, planetRadius * 1.6);
+            atmosphereGlow.addColorStop(0, AtmosphereColor);
+            atmosphereGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = atmosphereGlow;
+            ctx.beginPath();
+            ctx.arc(px, py, planetRadius * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Base Body
+            ctx.beginPath();
+            ctx.arc(px, py, planetRadius, 0, Math.PI * 2);
+            ctx.fillStyle = planetColor;
+            ctx.fill();
+
+            // Day-Night Shadow
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(px, py, planetRadius, 0, Math.PI * 2);
+            ctx.clip();
+
+            // Night Side
+            ctx.fillStyle = 'rgba(11, 15, 25, 0.85)';
+            ctx.beginPath();
+            ctx.translate(px, py);
+            ctx.rotate(angleToStar);
+            ctx.rect(-planetRadius * 0.1, -planetRadius * 1.2, planetRadius * 1.5, planetRadius * 2.4);
+            ctx.fill();
+            ctx.restore();
+
+            // Orbit indicator ring
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.arc(px, py, planetRadius + 4, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        function drawScaleRuler(zoom) {
+            const rulerWidthAu = 1.0; 
+            let rulerWidthPx = rulerWidthAu * zoom;
+            
+            let text = "1.0 AU";
+            if (rulerWidthPx < 30) {
+                rulerWidthPx = 5.0 * zoom;
+                text = "5.0 AU";
+            } else if (rulerWidthPx > 250) {
+                rulerWidthPx = 0.1 * zoom;
+                text = "0.1 AU";
+            }
+
+            const x = 30;
+            const y = canvas.height - 90; 
+
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+
+            ctx.beginPath();
+            ctx.moveTo(x, y - 5);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x + rulerWidthPx, y);
+            ctx.lineTo(x + rulerWidthPx, y - 5);
+            ctx.stroke();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px Orbitron';
+            ctx.fillText(text, x + (rulerWidthPx / 2) - 15, y - 8);
+        }
+
+        // Star background generator
+        let spaceStars = [];
+        function drawSpaceBackground() {
+            if (spaceStars.length === 0) {
+                for (let i = 0; i < 150; i++) {
+                    spaceStars.push({
+                        x: Math.random(),
+                        y: Math.random(),
+                        size: Math.random() * 1.2,
+                        opacity: Math.random() * 0.8 + 0.2
+                    });
+                }
+            }
+
+            ctx.save();
+            spaceStars.forEach(star => {
+                const px = star.x * canvas.width;
+                const py = star.y * canvas.height;
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                ctx.fillRect(px, py, star.size, star.size);
+            });
+            ctx.restore();
+        }
+
+        window.onload = function() {
+            init();
+            updateValues();
+        };
+
+    </script>
+</body>
+</html>

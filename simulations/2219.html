@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>허블 법칙 & 은하 공전 복합 도플러 효과 시뮬레이터</title>
+    <!-- Tailwind CSS for Modern UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for High-quality Real-time Plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2.5 rounded-lg shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-user-astronaut text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        복합 도플러 효과 시뮬레이터
+                        <span class="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">상대론적 시공간 정밀 모델</span>
+                    </h1>
+                    <p class="text-xs text-gray-400">특수 상대성 이론의 시간 지연(Freeze) 및 광도 감쇠(Dimming) 효과가 적용된 우주론적 시뮬레이션</p>
+                </div>
+            </div>
+            <div class="flex gap-4 text-sm text-gray-300 bg-gray-900/80 px-4 py-2 rounded-lg border border-gray-800">
+                <div><span class="text-gray-500">현재 고유 기준 파장 (λ₀):</span> <span class="font-mono text-indigo-400 font-semibold" id="headerRestWavelength">656.30 nm</span></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto p-4 md:p-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column (3 Columns): Guide (Top-Left) & Controls (Bottom-Left) -->
+        <section class="lg:col-span-3 flex flex-col gap-6 justify-between">
+            
+            <!-- 1. Mathematical Background (Top-Left) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-4 backdrop-blur-sm shadow-xl">
+                <h3 class="font-semibold text-white flex items-center gap-2 border-b border-gray-800 pb-2 mb-3">
+                    <i class="fa-solid fa-graduation-cap text-indigo-400"></i> 상대론적 우주론 물리 법칙
+                </h3>
+                <div class="space-y-3 text-xs leading-relaxed">
+                    <div class="bg-gray-950/50 p-2.5 rounded-lg border border-gray-800/80 space-y-1">
+                        <div class="flex justify-between font-mono text-gray-300">
+                            <span class="text-gray-400">1. 상대론적 시간 지연 (Time Dilation)</span>
+                        </div>
+                        <p class="text-emerald-400 font-semibold font-mono text-center my-1">dt_obs = dt_proper / √[1 - β²]</p>
+                        <p class="text-[10px] text-gray-500 leading-tight">속도가 빛의 속도에 접근하면 시간이 거의 흐르지 않아, 지구 관측자 시점에서 <b>별들의 공전 운동이 멈추게(Freeze)</b> 보입니다.</p>
+                    </div>
+
+                    <div class="bg-gray-950/50 p-2.5 rounded-lg border border-gray-800/80 space-y-1">
+                        <div class="flex justify-between font-mono text-gray-300">
+                            <span class="text-gray-400">2. 도플러 감쇠 (Doppler Dimming)</span>
+                        </div>
+                        <p class="text-red-400 font-semibold font-mono text-center my-1">I_obs = I₀ × [ (1-β)/(1+β) ]²</p>
+                        <p class="text-[10px] text-gray-500 leading-tight">멀어지는 속도가 빨라지면 광자의 에너지가 감소해 <b>천체가 급격히 어두워지며 소멸(Fade out)</b>합니다.</p>
+                    </div>
+
+                    <div class="bg-gray-950/50 p-2.5 rounded-lg border border-gray-800/80 space-y-1">
+                        <div class="flex justify-between font-mono text-gray-300">
+                            <span class="text-gray-400">3. 우주론적 지평선 (Horizon)</span>
+                        </div>
+                        <p class="text-indigo-300 font-mono text-[11px] leading-tight text-justify">후퇴 속도가 빛의 속도(c)에 도달하는 우주 경계면에서는 적색편이가 무한대(∞)가 되어 에너지가 0이 되고 시간은 완전히 정지합니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Controls Panel (Bottom-Left) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-4 backdrop-blur-sm shadow-xl flex-grow flex flex-col justify-center space-y-4">
+                <div>
+                    <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-500"></i> 물리 변인 제어 (조절기)
+                    </h2>
+                    <p class="text-[10px] text-gray-400 mt-0.5">변인을 조절해 시간과 빛의 상대성 변화를 직접 관찰하세요.</p>
+                </div>
+
+                <!-- Rest Wavelength Selector (λ0) -->
+                <div class="space-y-1.5 bg-gray-950/40 p-2.5 rounded-lg border border-gray-800">
+                    <label class="text-[11px] font-medium text-gray-300 flex items-center justify-between">
+                        <span class="flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            기준 파장 고유값 (λ₀)
+                        </span>
+                        <span class="text-xs font-mono text-emerald-400 font-semibold" id="lambdaVal">656.3 nm</span>
+                    </label>
+                    
+                    <!-- Presets -->
+                    <div class="grid grid-cols-4 gap-1 text-[9px] mb-1.5">
+                        <button onclick="setLambdaPreset(656.3, 'H-α (적색)')" class="bg-gray-800 hover:bg-indigo-900 text-gray-200 p-1 rounded font-semibold text-center transition-colors">H-α</button>
+                        <button onclick="setLambdaPreset(486.1, 'H-β (청색)')" class="bg-gray-800 hover:bg-indigo-900 text-gray-200 p-1 rounded font-semibold text-center transition-colors">H-β</button>
+                        <button onclick="setLambdaPreset(589.0, 'Na I (황색)')" class="bg-gray-800 hover:bg-indigo-900 text-gray-200 p-1 rounded font-semibold text-center transition-colors">Na I</button>
+                        <button onclick="setLambdaPreset(393.4, 'Ca II (자외)')" class="bg-gray-800 hover:bg-indigo-900 text-gray-200 p-1 rounded font-semibold text-center transition-colors">Ca II</button>
+                    </div>
+
+                    <input type="range" id="restWavelength" min="380.0" max="750.0" value="656.3" step="1.0" 
+                        class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400 transition-colors">
+                </div>
+
+                <!-- Hubble Constant (H0) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label for="hubbleConst" class="text-[11px] font-medium text-gray-300 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                            허블 상수 (H₀)
+                        </label>
+                        <span class="text-xs font-mono text-indigo-400 font-semibold" id="hubbleVal">75 km/s/Mpc</span>
+                    </div>
+                    <input type="range" id="hubbleConst" min="50" max="150" value="75" step="1" 
+                        class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-colors">
+                </div>
+
+                <!-- Galaxy Distance (D) - Extended to 4000Mpc to enable beta -> 1 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label for="distance" class="text-[11px] font-medium text-gray-300 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                            은하까지의 거리 (D) <span class="text-[9px] text-red-400 font-bold">(키우면 시간지연 극대화!)</span>
+                        </label>
+                        <span class="text-xs font-mono text-indigo-400 font-semibold" id="distanceVal">2.0 Mpc</span>
+                    </div>
+                    <input type="range" id="distance" min="0.0" max="4000.0" value="2.0" step="10" 
+                        class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-colors">
+                </div>
+
+                <!-- Orbital Velocity (v_orb) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label for="orbitalVel" class="text-[11px] font-medium text-gray-300 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            최대 고유 공전 속도 (v<sub>orb</sub>)
+                        </label>
+                        <span class="text-xs font-mono text-indigo-400 font-semibold" id="orbitalVal">300 km/s</span>
+                    </div>
+                    <input type="range" id="orbitalVel" min="50" max="400" value="300" step="5" 
+                        class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-colors">
+                </div>
+
+                <!-- Inclination Angle (i) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label for="inclination" class="text-[11px] font-medium text-gray-300 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                            은하 경사각 (시선 각도 i)
+                        </label>
+                        <span class="text-xs font-mono text-indigo-400 font-semibold" id="inclinationVal">60°</span>
+                    </div>
+                    <input type="range" id="inclination" min="0" max="90" value="60" step="1" 
+                        class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-colors">
+                </div>
+            </div>
+        </section>
+
+        <!-- Center Column (5 Columns): Visual Simulation (Effect) -->
+        <section class="lg:col-span-5 bg-gray-900/60 border border-gray-800 rounded-2xl p-5 backdrop-blur-sm shadow-xl flex flex-col justify-between">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-nodes text-emerald-400"></i> 중앙: 은하 관측 시뮬레이션 (효과)
+                </h3>
+                <span class="text-[10px] text-gray-400 flex items-center gap-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span> 청색편이 
+                    <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> 적색편이
+                </span>
+            </div>
+            
+            <!-- Expanded Canvas Space -->
+            <div class="relative w-full aspect-square bg-gray-950 rounded-xl border border-gray-800 flex items-center justify-center overflow-hidden">
+                <!-- Relative Time Speed Warning Indicator -->
+                <div class="absolute top-3 left-3 bg-red-950/80 border border-red-800/80 px-2.5 py-1 rounded text-[10px] text-red-200 font-mono z-10" id="timeDilationIndicator">
+                    지구 관측 시간 흐름율: 100%
+                </div>
+
+                <div class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-gray-900/95 px-4 py-1.5 rounded-full text-[10px] text-gray-400 border border-gray-800 flex items-center gap-1.5 shadow-lg z-10">
+                    <i class="fa-solid fa-arrow-down text-blue-400 animate-pulse"></i> 화면 아래쪽이 지구(관측자) 방향
+                </div>
+                <canvas id="galaxyCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Simulation Parameters Status -->
+            <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                <div class="bg-gray-950/60 p-3 rounded-lg border border-gray-800/80">
+                    <span class="text-gray-500 block text-[10px]">은하 후퇴 속도(v<sub>H</sub>)</span>
+                    <span class="font-mono text-red-400 font-bold text-sm" id="calcVH">140.0 km/s</span>
+                </div>
+                <div class="bg-gray-950/60 p-3 rounded-lg border border-gray-800/80">
+                    <span class="text-gray-500 block text-[10px]">최대 공전 속도 성분</span>
+                    <span class="font-mono text-blue-400 font-bold text-sm" id="calcVRot">± 259.8 km/s</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column (4 Columns): Real-time Plotting Graph -->
+        <section class="lg:col-span-4 bg-gray-900/60 border border-gray-800 rounded-2xl p-5 backdrop-blur-sm shadow-xl flex flex-col justify-between">
+            <div class="border-b border-gray-800 pb-3 mb-4">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-line text-indigo-400"></i> 우측: 실시간 합산 시선 속도 곡선
+                </h3>
+            </div>
+            
+            <!-- Graph Space -->
+            <div class="w-full aspect-square bg-gray-950 rounded-xl border border-gray-800 p-3 flex items-center justify-center">
+                <div class="w-full h-full relative">
+                    <canvas id="dopplerChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Live Doppler shift status -->
+            <div class="mt-4 bg-gray-950/60 p-3.5 rounded-lg border border-gray-800/80 text-xs">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">관측 파장 도플러 변동 범위 (Δλ)</span>
+                    <span class="font-mono text-emerald-400 font-bold text-sm" id="calcWavelength">655.32 ~ 657.28 nm</span>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">
+                    * <b>거리를 2500Mpc 이상</b>으로 늘려보세요. 별들이 멈춰 서며(지연), 광량이 감소하여 어둠 속으로 완전히 빨려 들어갑니다.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 bg-gray-950/80 px-6 py-3 mt-6 text-center text-[11px] text-gray-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>© 2026 Doppler Cosmic Simulator. 교육 시각화 도구.</p>
+            <p>공동 기여 연구 자료 (상대론적 효과 엔진 탑재)</p>
+        </div>
+    </footer>
+
+    <!-- Simulation Script Logic -->
+    <script>
+        // -------------------------------------------------------------
+        // 1. Initial Parameters & Configurations
+        // -------------------------------------------------------------
+        let LAMBDA_0 = 656.3; // Base wavelength in nm
+        const C = 299792.458; // Speed of light in km/s
+
+        // UI Elements
+        const hubbleSlider = document.getElementById('hubbleConst');
+        const distanceSlider = document.getElementById('distance');
+        const orbitalSlider = document.getElementById('orbitalVel');
+        const inclinationSlider = document.getElementById('inclination');
+        const restWavelengthSlider = document.getElementById('restWavelength');
+
+        const hubbleVal = document.getElementById('hubbleVal');
+        const distanceVal = document.getElementById('distanceVal');
+        const orbitalVal = document.getElementById('orbitalVal');
+        const inclinationVal = document.getElementById('inclinationVal');
+        const lambdaVal = document.getElementById('lambdaVal');
+        const headerRestWavelength = document.getElementById('headerRestWavelength');
+        const timeDilationIndicator = document.getElementById('timeDilationIndicator');
+
+        const calcVH = document.getElementById('calcVH');
+        const calcVRot = document.getElementById('calcVRot');
+        const calcWavelength = document.getElementById('calcWavelength');
+
+        // Canvas Setup
+        const canvas = document.getElementById('galaxyCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Stars inside the simulated galaxy
+        const numStars = 350; 
+        const stars = [];
+
+        // Dynamic State for Time Dilation
+        let currentCentralTimeDilation = 1.0;
+
+        // Preset Setter
+        function setLambdaPreset(value, label) {
+            restWavelengthSlider.value = value;
+            updateAll();
+        }
+
+        // -------------------------------------------------------------
+        // 2. Class Definition for Galaxy Stars (with Relativistic Physics)
+        // -------------------------------------------------------------
+        class Star {
+            constructor() {
+                this.r = 20 + Math.random() * 120;
+                this.angle = Math.random() * Math.PI * 2;
+                this.size = 1.0 + Math.random() * 2.5;
+                this.baseOpacity = 0.5 + Math.random() * 0.5;
+                this.opacity = this.baseOpacity;
+            }
+
+            update(maxV_orb, inclinationDeg, h_0, distance_Mpc) {
+                // 1. 기본 후퇴 속도 (허블 법칙)
+                const v_h = h_0 * distance_Mpc;
+
+                // 2. 고유 회전 성분
+                const R_scale = 38; 
+                const v_rotation_magnitude = maxV_orb * (1 - Math.exp(-this.r / R_scale));
+                
+                // 3. 시선 속도 합산
+                const inclinationRad = (inclinationDeg * Math.PI) / 180;
+                const v_rot_projected = v_rotation_magnitude * Math.cos(this.angle) * Math.sin(inclinationRad);
+                const v_total = v_h + v_rot_projected;
+
+                // [상대론적 물리인자 추출]
+                // beta가 1.0에 도달하여 수식의 파탄이 나지 않도록 파장 계산용 beta 범위 조정
+                const betaForShift = Math.max(-0.9999, Math.min(0.9999, v_total / C));
+                const betaForDilation = Math.max(-1.0, Math.min(1.0, v_total / C));
+                
+                // 4. 시간 지연 효과 (Time Dilation): 속도가 광속에 이르면 시간이 정지하여 dTheta가 0이 됨
+                const dilationFactor = Math.sqrt(1 - betaForDilation * betaForDilation);
+                
+                // 시간 흐름을 보정한 회전 운동
+                const dTheta_proper = (v_rotation_magnitude / (this.r * 5.0)) * 0.04;
+                const dTheta_observed = dTheta_proper * dilationFactor;
+                
+                this.angle += dTheta_observed;
+                if (this.angle > Math.PI * 2) this.angle -= Math.PI * 2;
+
+                // 5. 상대론적 도플러 편이 파장 도출
+                const dopplerShiftFactor = Math.sqrt((1 + betaForShift) / (1 - betaForShift));
+                this.observed_lambda = LAMBDA_0 * dopplerShiftFactor;
+                this.v_rot_projected = v_rot_projected;
+                this.v_total = v_total;
+
+                // 6. 상대론적 광도 감쇠 (Doppler Dimming): 멀어질수록 별이 아주 어두워짐
+                const dopplerIntensityFactor = Math.sqrt((1 - betaForShift) / (1 + betaForShift));
+                this.opacity = this.baseOpacity * Math.pow(dopplerIntensityFactor, 2.5);
+                
+                if (this.opacity < 0.01) this.opacity = 0;
+            }
+
+            draw(ctx, centerX, centerY, inclinationDeg) {
+                const inclinationRad = (inclinationDeg * Math.PI) / 180;
+                const cosI = Math.cos(inclinationRad);
+                
+                const x = centerX + this.r * Math.cos(this.angle);
+                const y = centerY + this.r * Math.sin(this.angle) * cosI;
+
+                const params = getWavelengthColor(this.v_total, this.observed_lambda);
+
+                ctx.beginPath();
+                ctx.arc(x, y, this.size, 0, Math.PI * 2);
+                
+                ctx.fillStyle = `rgba(${params.r}, ${params.g}, ${params.b}, ${this.opacity})`;
+                ctx.shadowBlur = this.size * 1.5 * this.opacity;
+                ctx.shadowColor = `rgb(${params.r}, ${params.g}, ${params.b})`;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // Initialize population
+        for (let i = 0; i < numStars; i++) {
+            stars.push(new Star());
+        }
+
+        // -------------------------------------------------------------
+        // 3. Wavelength to RGB / Dynamic Relative Offset Color Mapping
+        // -------------------------------------------------------------
+        function getWavelengthColor(velocity, currentLambda) {
+            let baseRGB = nanometersToRGB(LAMBDA_0);
+            const scale = Math.min(1.0, Math.abs(velocity) / 600); 
+
+            let r = baseRGB.r;
+            let g = baseRGB.g;
+            let b = baseRGB.b;
+
+            if (velocity > 15) {
+                // Redshift (적색 편이)
+                r = 255;
+                g = Math.max(15, Math.round(baseRGB.g - baseRGB.g * scale * 0.7));
+                b = Math.max(15, Math.round(baseRGB.b - baseRGB.b * scale * 0.8));
+            } else if (velocity < -15) {
+                // Blueshift (청색 편이)
+                r = Math.max(15, Math.round(baseRGB.r - baseRGB.r * scale * 0.8));
+                g = Math.min(255, Math.round(baseRGB.g + (230 - baseRGB.g) * scale * 0.5));
+                b = 255;
+            }
+
+            return { r, g, b };
+        }
+
+        function nanometersToRGB(wl) {
+            let r = 0, g = 0, b = 0;
+            if (wl >= 380 && wl < 440) {
+                r = -(wl - 440) / (440 - 380);
+                b = 1.0;
+            } else if (wl >= 440 && wl < 490) {
+                g = (wl - 440) / (490 - 440);
+                b = 1.0;
+            } else if (wl >= 490 && wl < 510) {
+                g = 1.0;
+                b = -(wl - 510) / (510 - 490);
+            } else if (wl >= 510 && wl < 580) {
+                r = (wl - 510) / (580 - 510);
+                g = 1.0;
+            } else if (wl >= 580 && wl < 645) {
+                r = 1.0;
+                g = -(wl - 645) / (645 - 580);
+            } else if (wl >= 645 && wl <= 780) {
+                r = 1.0;
+            } else {
+                if (wl < 380) { r = 0.5; g = 0.0; b = 0.8; }
+                else { r = 0.6; g = 0.0; b = 0.0; }
+            }
+
+            let factor = 0;
+            if (wl >= 380 && wl < 420) {
+                factor = 0.3 + 0.7 * (wl - 380) / (420 - 380);
+            } else if (wl >= 420 && wl < 701) {
+                factor = 1.0;
+            } else if (wl >= 701 && wl <= 780) {
+                factor = 0.3 + 0.7 * (780 - wl) / (780 - 700);
+            } else {
+                factor = 0.3;
+            }
+
+            return {
+                r: Math.round(r * factor * 255),
+                g: Math.round(g * factor * 255),
+                b: Math.round(b * factor * 255)
+            };
+        }
+
+        // -------------------------------------------------------------
+        // 4. Chart.js Setup (Y-axis bounds adjusted for relativistic scales)
+        // -------------------------------------------------------------
+        const chartCtx = document.getElementById('dopplerChart').getContext('2d');
+        
+        function generateChartData() {
+            const h_0 = parseFloat(hubbleSlider.value);
+            const dist = parseFloat(distanceSlider.value);
+            const maxV_orb = parseFloat(orbitalSlider.value);
+            const inclination = parseFloat(inclinationSlider.value);
+
+            const v_h = h_0 * dist;
+            const inclinationRad = (inclination * Math.PI) / 180;
+
+            const labels = [];
+            const combinedData = [];
+            const hubbleData = [];
+
+            for (let r_pos = -120; r_pos <= 120; r_pos += 5) {
+                labels.push(r_pos);
+                
+                hubbleData.push(v_h);
+
+                const abs_r = Math.abs(r_pos);
+                const R_scale = 35;
+                const v_rotation_magnitude = maxV_orb * (1 - Math.exp(-abs_r / R_scale));
+
+                const direction = r_pos >= 0 ? 1 : -1;
+                const v_rot_projected = v_rotation_magnitude * direction * Math.sin(inclinationRad);
+
+                const v_total = v_h + v_rot_projected;
+                combinedData.push(v_total);
+            }
+
+            return { labels, combinedData, hubbleData };
+        }
+
+        const initialData = generateChartData();
+
+        const dopplerChart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: initialData.labels,
+                datasets: [
+                    {
+                        label: '합산 시선 속도 (v_total)',
+                        data: initialData.combinedData,
+                        borderColor: '#818cf8',
+                        backgroundColor: 'rgba(129, 140, 248, 0.08)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.25,
+                        pointRadius: 0,
+                    },
+                    {
+                        label: '허블 후퇴 속도 (v_H)',
+                        data: initialData.hubbleData,
+                        borderColor: '#f87171',
+                        borderDash: [6, 4],
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#9ca3af',
+                            font: { family: 'Noto Sans KR', size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#111827',
+                        borderColor: '#374151',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '은하 중심으로부터 반경 (r)',
+                            color: '#9ca3af',
+                            font: { family: 'Noto Sans KR', size: 10 }
+                        },
+                        grid: { color: '#1f2937' },
+                        ticks: { color: '#6b7280', maxTicksLimit: 8 }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '관측 속도 (km/s)',
+                            color: '#9ca3af',
+                            font: { family: 'Noto Sans KR', size: 10 }
+                        },
+                        grid: { color: '#1f2937' },
+                        ticks: { color: '#6b7280' },
+                        suggestedMin: -600,
+                        suggestedMax: 320000 
+                    }
+                }
+            }
+        });
+
+        // -------------------------------------------------------------
+        // 5. Update Loop
+        // -------------------------------------------------------------
+        function updateAll() {
+            LAMBDA_0 = parseFloat(restWavelengthSlider.value);
+            const h_0 = parseFloat(hubbleSlider.value);
+            const dist = parseFloat(distanceSlider.value);
+            const maxV_orb = parseFloat(orbitalSlider.value);
+            const inclination = parseFloat(inclinationSlider.value);
+
+            // Print control text
+            hubbleVal.textContent = `${h_0} km/s/Mpc`;
+            distanceVal.textContent = `${dist.toFixed(1)} Mpc`;
+            orbitalVal.textContent = `${maxV_orb} km/s`;
+            inclinationVal.textContent = `${inclination}°`;
+            lambdaVal.textContent = `${LAMBDA_0.toFixed(1)} nm`;
+            headerRestWavelength.textContent = `${LAMBDA_0.toFixed(2)} nm`;
+
+            // Calculations
+            const v_h = h_0 * dist;
+            const inclinationRad = (inclination * Math.PI) / 180;
+            const max_v_rot_projected = maxV_orb * Math.sin(inclinationRad);
+
+            // Dashboard texts
+            calcVH.textContent = `${v_h.toFixed(1)} km/s`;
+            calcVRot.textContent = `± ${max_v_rot_projected.toFixed(1)} km/s`;
+
+            const min_v = v_h - max_v_rot_projected;
+            const max_v = v_h + max_v_rot_projected;
+            
+            // 적용: 상대론적 도플러 공식을 통한 최소/최대 파장 변동 범위 도출
+            const min_beta = Math.max(-0.9999, Math.min(0.9999, min_v / C));
+            const max_beta = Math.max(-0.9999, Math.min(0.9999, max_v / C));
+
+            const min_lambda = LAMBDA_0 * Math.sqrt((1 + min_beta) / (1 - min_beta));
+            const max_lambda = LAMBDA_0 * Math.sqrt((1 + max_beta) / (1 - max_beta));
+
+            calcWavelength.textContent = `${min_lambda.toFixed(2)} ~ ${max_lambda.toFixed(2)} nm`;
+
+            // 지구 관측시간의 상대속도 비율 계산
+            const centralBeta = Math.max(-1.0, Math.min(1.0, v_h / C));
+            currentCentralTimeDilation = Math.sqrt(1 - centralBeta * centralBeta);
+            
+            const timePercent = currentCentralTimeDilation * 100;
+
+            // [수정] 멈췄을 때 흐름율 표시를 "멈춤 (0%)"으로 명확히 표기
+            if (timePercent <= 1.0) {
+                timeDilationIndicator.textContent = `지구 관측 시간 흐름율: 멈춤 (0%)`;
+                timeDilationIndicator.className = "absolute top-3 left-3 bg-red-600 border border-red-500 px-2.5 py-1 rounded text-[10px] text-white font-mono font-bold z-10 animate-pulse";
+            } else {
+                timeDilationIndicator.textContent = `지구 관측 시간 흐름율: ${timePercent.toFixed(1)}%`;
+                if (currentCentralTimeDilation < 0.15) {
+                    timeDilationIndicator.className = "absolute top-3 left-3 bg-red-950/80 border border-red-800/80 px-2.5 py-1 rounded text-[10px] text-red-200 font-mono z-10 animate-pulse";
+                } else {
+                    timeDilationIndicator.className = "absolute top-3 left-3 bg-indigo-950/85 border border-indigo-800/80 px-2.5 py-1 rounded text-[10px] text-indigo-200 font-mono z-10";
+                }
+            }
+
+            // Update Graph dataset data dynamically
+            const fresh = generateChartData();
+            dopplerChart.data.datasets[0].data = fresh.combinedData;
+            dopplerChart.data.datasets[1].data = fresh.hubbleData;
+            
+            // Adjust chart Y-axis scale based on current cosmic speeds for optimal zoom
+            if (v_h > 200000) {
+                dopplerChart.options.scales.y.suggestedMax = 320000;
+                dopplerChart.options.scales.y.suggestedMin = -10000;
+            } else if (v_h > 50000) {
+                dopplerChart.options.scales.y.suggestedMax = 100000;
+                dopplerChart.options.scales.y.suggestedMin = -5000;
+            } else {
+                dopplerChart.options.scales.y.suggestedMax = 5000;
+                dopplerChart.options.scales.y.suggestedMin = -600;
+            }
+
+            dopplerChart.update(); 
+        }
+
+        // Add event listeners for direct sliders
+        [hubbleSlider, distanceSlider, orbitalSlider, inclinationSlider, restWavelengthSlider].forEach(slider => {
+            slider.addEventListener('input', updateAll);
+        });
+
+        // Initial launch update
+        updateAll();
+
+        // -------------------------------------------------------------
+        // 6. Real-time Canvas Animation Loop
+        // -------------------------------------------------------------
+        function resizeCanvas() {
+            const rect = canvas.parentNode.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function animate() {
+            // Space simulation trails
+            ctx.fillStyle = 'rgba(11, 15, 25, 0.18)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const displayWidth = canvas.width / window.devicePixelRatio;
+            const displayHeight = canvas.height / window.devicePixelRatio;
+            const centerX = displayWidth / 2;
+            const centerY = displayHeight / 2;
+
+            const h_0 = parseFloat(hubbleSlider.value);
+            const dist = parseFloat(distanceSlider.value);
+            const maxV_orb = parseFloat(orbitalSlider.value);
+            const inclination = parseFloat(inclinationSlider.value);
+
+            // Render Galactic Bulge Core (Dimmed dynamically based on hubble speed!)
+            const v_h = h_0 * dist;
+            const beta = Math.max(-1.0, Math.min(1.0, v_h / C));
+            const intensityFactor = Math.pow(Math.sqrt((1 - Math.max(-0.9999, Math.min(0.9999, beta))) / (1 + Math.max(-0.9999, Math.min(0.9999, beta)))), 2); // Core dimming
+
+            const baseCoreColor = nanometersToRGB(LAMBDA_0);
+            const inclinationRad = (inclination * Math.PI) / 180;
+            const coreGrad = ctx.createRadialGradient(centerX, centerY, 1, centerX, centerY, 30);
+            coreGrad.addColorStop(0, `rgba(255, 255, 255, ${intensityFactor})`);
+            coreGrad.addColorStop(0.3, `rgba(${baseCoreColor.r}, ${baseCoreColor.g}, ${baseCoreColor.b}, ${0.75 * intensityFactor})`);
+            coreGrad.addColorStop(1, `rgba(${baseCoreColor.r}, ${baseCoreColor.g}, ${baseCoreColor.b}, 0)`);
+            
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, 28, 28 * Math.cos(inclinationRad), 0, 0, Math.PI * 2);
+            ctx.fillStyle = coreGrad;
+            ctx.fill();
+
+            // Render stars
+            stars.forEach(star => {
+                star.update(maxV_orb, inclination, h_0, dist);
+                star.draw(ctx, centerX, centerY, inclination);
+            });
+
+            // [추가] 시간이 실제로 정지했을 때 (지구 관측 시간 흐름율이 1% 이하로 떨어질 때)
+            // 화면 중앙에 정지 상태임을 시각적으로 선언하는 안내 카드를 띄웁니다.
+            if (currentCentralTimeDilation <= 0.01) {
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(centerX - 130, centerY - 50, 260, 100);
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(centerX - 130, centerY - 50, 260, 100);
+                
+                ctx.font = 'bold 15px Noto Sans KR';
+                ctx.fillStyle = '#ef4444';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚠️ 시간 정지 상태 (멈춤)', centerX, centerY - 15);
+                
+                ctx.font = '11px Noto Sans KR';
+                ctx.fillStyle = '#9ca3af';
+                ctx.fillText('후퇴 속도가 광속(c)에 도달하여', centerX, centerY + 15);
+                ctx.fillText('지구 관측 시점의 시간 흐름이 정지했습니다.', centerX, centerY + 32);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Window Load starter
+        window.onload = function() {
+            resizeCanvas();
+            animate();
+        };
+    </script>
+</body>
+</html>

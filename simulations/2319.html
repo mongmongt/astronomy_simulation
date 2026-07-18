@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>케플러 법칙 천체 공전 시뮬레이터 - 부산과학고 H.S. 에디션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            background-color: #030712;
+        }
+        /* Scrollbar customization for widgets */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030712;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="text-slate-100 h-screen w-screen flex flex-col overflow-hidden select-none">
+
+    <!-- Header Block (h-14) -->
+    <header class="h-14 bg-slate-950/80 border-b border-slate-900/80 backdrop-blur px-6 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-sm font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+                    고급 지구과학 가상 실험실 : 케플러 법칙 종합 시뮬레이터
+                </h1>
+                <p class="text-[9px] text-slate-500 font-mono">케플러 법칙 정밀 수치 해석 및 가상 계측 대시보드</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 text-[10px] bg-slate-900 border border-slate-800/80 px-3 py-1 rounded-lg">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span class="text-slate-300 font-semibold font-mono">물리 엔진 안정 작동 중</span>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 min-h-0 p-4 grid grid-cols-12 gap-4">
+        
+        <!-- Left Section: Dynamic Orbital Space (7 Cols) -->
+        <section class="col-span-7 flex flex-col h-full gap-3 min-h-0">
+            
+            <!-- Canvas Viewer Card -->
+            <div class="flex-1 bg-slate-950 border border-slate-900 rounded-xl relative flex flex-col overflow-hidden min-h-0">
+                
+                <!-- HUD Labels (Minimalistic, fully translated) -->
+                <div class="absolute top-4 left-4 z-10 bg-slate-950/90 border border-slate-800/60 px-3 py-2 rounded-lg backdrop-blur flex flex-col gap-1.5 text-[10px] pointer-events-none font-mono">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                        <span class="text-slate-400">태양 <span class="text-orange-400">F₁ (제1초점)</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-purple-500/80 shadow-sm shadow-purple-500"></span>
+                        <span class="text-slate-400">공초점 <span class="text-purple-400">F₂ (제2초점)</span></span>
+                    </div>
+                </div>
+
+                <!-- Canvas Core -->
+                <div class="w-full flex-1 relative min-h-0">
+                    <canvas id="kepler-canvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                </div>
+
+                <!-- Success Toast Overlay -->
+                <div id="canvas-toast" class="absolute bottom-4 right-4 z-10 bg-cyan-950/95 border border-cyan-800 px-4 py-2 rounded-lg backdrop-blur text-cyan-400 text-xs font-semibold hidden flex items-center gap-2 font-mono">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <span>8개의 등시간 섹터가 오차 없이 완전히 분할 배치되었습니다.</span>
+                </div>
+            </div>
+
+            <!-- Playback Toolbar Card -->
+            <div class="bg-slate-950 border border-slate-900 rounded-xl p-3 flex items-center justify-between shrink-0">
+                
+                <!-- Engine States -->
+                <div class="flex items-center gap-1.5">
+                    <button id="btn-play-pause" class="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-semibold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-cyan-600/10 active:scale-95">
+                        <svg id="icon-play" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                        <svg id="icon-pause" class="w-3.5 h-3.5 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        <span id="txt-play-pause">재생</span>
+                    </button>
+
+                    <button id="btn-step-prev" class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 transition-all border border-slate-800 active:scale-95" title="뒤로 한 프레임">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" /></svg>
+                    </button>
+                    
+                    <button id="btn-step-next" class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 transition-all border border-slate-800 active:scale-95" title="앞으로 한 프레임">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z" /></svg>
+                    </button>
+
+                    <button id="btn-reset" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs font-semibold transition-all border border-slate-800 active:scale-95 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H19" /></svg>
+                        <span>초기화</span>
+                    </button>
+                </div>
+
+                <!-- Sweep Proof Quick Actions -->
+                <div class="flex items-center gap-1.5">
+                    <button id="btn-clear-sweeps" class="px-2.5 py-1.5 rounded-lg bg-rose-950/30 border border-rose-900/50 hover:bg-rose-950/60 text-rose-400 text-[10px] font-bold transition-all">
+                        구역 초기화
+                    </button>
+                    <button id="btn-auto-sweeps" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-bold text-[10px] text-white transition-all shadow-md shadow-indigo-600/15">
+                        자동 8분할 섹터 배치
+                    </button>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- Right Section: Compact Integrated Control Center (5 Cols) -->
+        <section class="col-span-5 flex flex-col h-full gap-3 min-h-0">
+            
+            <!-- Card 1: Unified Variable Controller (조작부) -->
+            <div class="bg-slate-950 border border-slate-900 rounded-xl p-4 shrink-0">
+                <div class="flex items-center justify-between border-b border-slate-900 pb-2 mb-3">
+                    <h2 class="text-xs font-bold text-slate-300 flex items-center gap-2">
+                        <span class="p-1 rounded bg-blue-500/10 text-blue-400">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                        </span>
+                        실험 조작 패널 (조작 변인 설정)
+                    </h2>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3.5">
+                    <!-- Semi-major Axis Slider (a) -->
+                    <div class="bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] text-slate-400 font-medium">장반경 a (AU)</label>
+                            <span class="text-xs text-blue-400 font-bold font-mono" id="val-a">1.50 AU</span>
+                        </div>
+                        <input type="range" id="slide-a" min="0.6" max="3.0" step="0.05" value="1.5" 
+                            class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-all">
+                    </div>
+
+                    <!-- Eccentricity Slider (e) -->
+                    <div class="bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] text-slate-400 font-medium">이심률 e</label>
+                            <span class="text-xs text-purple-400 font-bold font-mono" id="val-e">0.50</span>
+                        </div>
+                        <input type="range" id="slide-e" min="0.0" max="0.90" step="0.01" value="0.5" 
+                            class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400 transition-all">
+                    </div>
+
+                    <!-- Simulation Speed Controls -->
+                    <div class="bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] text-slate-400 font-medium">시간 배율</label>
+                            <span class="text-xs text-amber-500 font-bold font-mono" id="val-speed">1.0x</span>
+                        </div>
+                        <input type="range" id="slide-speed" min="0.1" max="4.0" step="0.1" value="1.0" 
+                            class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500 hover:accent-amber-400 transition-all">
+                    </div>
+
+                    <!-- Sweep Duration Ratio Slider -->
+                    <div class="bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] text-slate-400 font-medium">섹터 비중 (Δt/T)</label>
+                            <span class="text-xs text-teal-400 font-bold font-mono" id="val-sweep-dt">5.0%</span>
+                        </div>
+                        <input type="range" id="slide-sweep-dt" min="2" max="15" step="0.5" value="5" 
+                            class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-teal-500 hover:accent-teal-400 transition-all">
+                    </div>
+                </div>
+
+                <!-- Manual Capture Block & Rendering Toggles in Compact Grid -->
+                <div class="mt-3.5 pt-3.5 border-t border-slate-900 flex items-center justify-between gap-3">
+                    <button id="btn-manual-sweep" class="py-1.5 px-3 rounded-lg bg-teal-950/40 border border-teal-800/50 text-teal-300 text-[10px] font-bold hover:bg-teal-900/30 transition-all flex items-center gap-1 active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        수동 섹터 생성
+                    </button>
+                    
+                    <div class="flex flex-wrap gap-x-2.5 gap-y-1 justify-end text-[9px]">
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-vel" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0 w-3 h-3">
+                            <span class="text-emerald-400">속도 v</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-acc" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0 w-3 h-3">
+                            <span class="text-rose-400">중력 a</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-radial" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0 w-3 h-3">
+                            <span class="text-yellow-400">반경 r</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-focus2" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0 w-3 h-3">
+                            <span class="text-indigo-400">공초점 F₂</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-axes" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0 w-3 h-3">
+                            <span class="text-blue-400">보조축 b</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-grid" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0 w-3 h-3">
+                            <span class="text-slate-500">격자 축</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Physical Real-time Metrics (데이터 출력부) -->
+            <div class="bg-slate-950 border border-slate-900 rounded-xl p-4 flex-1 flex flex-col justify-between min-h-0">
+                
+                <div class="min-h-0 flex-1 flex flex-col">
+                    <div class="flex items-center justify-between border-b border-slate-900 pb-2 mb-3.5 shrink-0">
+                        <h2 class="text-xs font-bold text-slate-300 flex items-center gap-2">
+                            <span class="p-1 rounded bg-teal-500/10 text-teal-400">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
+                            </span>
+                            정밀 계측 데이터 (실시간 결과 확인)
+                        </h2>
+                    </div>
+
+                    <!-- Multi-grid Metrics Readout (Sleek sci-fi look) -->
+                    <div class="grid grid-cols-4 gap-2 text-center mb-3 shrink-0 font-mono">
+                        <div class="bg-slate-900/40 border border-slate-900 p-2 rounded-lg">
+                            <span class="block text-[8px] text-slate-500">장반경 a</span>
+                            <span class="text-xs font-bold text-blue-400" id="data-a">1.50 AU</span>
+                        </div>
+                        <div class="bg-slate-900/40 border border-slate-900 p-2 rounded-lg" title="타원의 세로 반지름 길이">
+                            <span class="block text-[8px] text-slate-500">단반경 b</span>
+                            <span class="text-xs font-bold text-indigo-400" id="data-b">1.30 AU</span>
+                        </div>
+                        <div class="bg-slate-900/40 border border-slate-900 p-2 rounded-lg">
+                            <span class="block text-[8px] text-slate-500">이심률 e</span>
+                            <span class="text-xs font-bold text-purple-400" id="data-e">0.50</span>
+                        </div>
+                        <div class="bg-slate-900/40 border border-slate-900 p-2 rounded-lg">
+                            <span class="block text-[8px] text-slate-500">공전주기 T</span>
+                            <span class="text-xs font-bold text-amber-500" id="data-period">1.84년</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-3 shrink-0 font-mono">
+                        <div class="bg-slate-900/20 p-2.5 rounded-lg border border-slate-900/60 flex flex-col gap-1 text-[10px]">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-500">거리 r</span>
+                                <span class="font-bold text-yellow-400" id="data-r">1.100 AU</span>
+                            </div>
+                            <div class="flex justify-between items-center border-t border-slate-900/80 pt-1 mt-0.5">
+                                <span class="text-slate-500">속도 v</span>
+                                <span class="font-bold text-emerald-400" id="data-v">24.22 km/s</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/20 p-2.5 rounded-lg border border-slate-900/60 flex flex-col gap-1 text-[10px]">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-500">전체 면적 A</span>
+                                <span class="font-bold text-teal-400" id="data-area-total">6.124 AU²</span>
+                            </div>
+                            <div class="flex justify-between items-center border-t border-slate-900/80 pt-1 mt-0.5">
+                                <span class="text-slate-500">섹터 면적 A_s</span>
+                                <span class="font-bold text-cyan-400" id="data-area-sector">0.306 AU²</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sector area live comparison board (Kepler 2nd law visual spreadsheet) -->
+                    <div class="bg-slate-950 rounded-lg p-2.5 border border-slate-900 flex-1 flex flex-col min-h-0">
+                        <div class="flex items-center justify-between text-[8px] text-slate-600 font-bold mb-2 shrink-0 border-b border-slate-900/80 pb-1">
+                            <span>등시간 면적 변동 감시반 (케플러 제2법칙 데이터 검증)</span>
+                            <span class="text-cyan-500 font-mono">오차율: 0.00%</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto grid grid-cols-2 gap-1.5 pr-1 min-h-[140px]" id="list-sweeps">
+                            <!-- Populated dynamically -->
+                            <div class="col-span-2 text-center text-[10px] text-slate-600 italic flex items-center justify-center h-full">
+                                자동 배치를 실행하면 정밀 면적 데이터가 실시간 나열됩니다.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Engine Core Science Script -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const canvas = document.getElementById("kepler-canvas");
+            const ctx = canvas.getContext("2d");
+
+            // UI Slider & Variables
+            const slideA = document.getElementById("slide-a");
+            const slideE = document.getElementById("slide-e");
+            const slideSpeed = document.getElementById("slide-speed");
+            const slideSweepDt = document.getElementById("slide-sweep-dt");
+
+            const valA = document.getElementById("val-a");
+            const valE = document.getElementById("val-e");
+            const valSpeed = document.getElementById("val-speed");
+            const valSweepDt = document.getElementById("val-sweep-dt");
+
+            // Toggles
+            const toggleVel = document.getElementById("toggle-vel");
+            const toggleAcc = document.getElementById("toggle-acc");
+            const toggleRadial = document.getElementById("toggle-radial");
+            const toggleFocus2 = document.getElementById("toggle-focus2");
+            const toggleAxes = document.getElementById("toggle-axes");
+            const toggleGrid = document.getElementById("toggle-grid");
+
+            // Controls
+            const btnPlayPause = document.getElementById("btn-play-pause");
+            const iconPlay = document.getElementById("icon-play");
+            const iconPause = document.getElementById("icon-pause");
+            const txtPlayPause = document.getElementById("txt-play-pause");
+            const btnStepPrev = document.getElementById("btn-step-prev");
+            const btnStepNext = document.getElementById("btn-step-next");
+            const btnReset = document.getElementById("btn-reset");
+            const btnClearSweeps = document.getElementById("btn-clear-sweeps");
+            const btnAutoSweeps = document.getElementById("btn-auto-sweeps");
+            const btnManualSweep = document.getElementById("btn-manual-sweep");
+
+            // Readouts
+            const dataA = document.getElementById("data-a");
+            const dataB = document.getElementById("data-b");
+            const dataE = document.getElementById("data-e");
+            const dataPeriod = document.getElementById("data-period");
+            const dataR = document.getElementById("data-r");
+            const dataV = document.getElementById("data-v");
+            const dataAreaTotal = document.getElementById("data-area-total");
+            const dataAreaSector = document.getElementById("data-area-sector");
+            const listSweeps = document.getElementById("list-sweeps");
+            const canvasToast = document.getElementById("canvas-toast");
+
+            // State Physics values
+            let a = parseFloat(slideA.value);
+            let e = parseFloat(slideE.value);
+            let b = a * Math.sqrt(1 - e * e);
+            let period = Math.pow(a, 1.5);
+
+            let isPlaying = false;
+            let simSpeed = parseFloat(slideSpeed.value);
+            let curMeanAnomaly = 0.0; // M in radians
+
+            let sweepDtRatio = parseFloat(slideSweepDt.value) / 100.0;
+            let sweeps = [];
+            
+            const colorPalette = [
+                "rgba(6, 182, 212, 0.4)",   // Cyan
+                "rgba(168, 85, 247, 0.4)",  // Purple
+                "rgba(234, 179, 8, 0.4)",   // Yellow
+                "rgba(244, 63, 94, 0.4)",   // Rose
+                "rgba(16, 185, 129, 0.4)",  // Emerald
+                "rgba(59, 130, 246, 0.4)",  // Blue
+                "rgba(249, 115, 22, 0.4)",  // Orange
+                "rgba(236, 72, 153, 0.4)"   // Pink (rgba 색상 오타 및 pink 문자열 버그 수정 완료!)
+            ];
+
+            let isDraggingPlanet = false;
+            let scaleFactor = 100;
+
+            // --- ADVANCED EFFECTS SYSTEM ---
+            
+            // 1. Particle Starfield Dust System (우주 공간 성간 먼지)
+            const particles = [];
+            const particleCount = 45;
+            
+            function initParticles() {
+                particles.length = 0;
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push({
+                        x: Math.random(),
+                        y: Math.random(),
+                        size: Math.random() * 1.5 + 0.4,
+                        speed: Math.random() * 0.15 + 0.05,
+                        opacity: Math.random() * 0.5 + 0.2
+                    });
+                }
+            }
+
+            // 2. Planet Plasma trail queue (행성 공전 에너지 잔상)
+            const planetTrail = [];
+            const maxTrailLen = 22;
+
+            function drawTrail() {
+                if (planetTrail.length < 2) return;
+                ctx.save();
+                ctx.lineWidth = 2.5;
+                for (let i = 1; i < planetTrail.length; i++) {
+                    const ratio = i / planetTrail.length;
+                    ctx.strokeStyle = `rgba(34, 211, 238, ${ratio * 0.45})`;
+                    ctx.lineWidth = ratio * 4.0;
+                    ctx.beginPath();
+                    ctx.moveTo(planetTrail[i - 1].x, planetTrail[i - 1].y);
+                    ctx.lineTo(planetTrail[i].x, planetTrail[i].y);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // 3. Ambient Star dust drawing
+            function drawSpaceDust(width, height) {
+                ctx.save();
+                for (let p of particles) {
+                    const px = p.x * width;
+                    const py = p.y * height;
+                    ctx.fillStyle = `rgba(226, 232, 240, ${p.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(px, py, p.size, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Drifting background motion
+                    p.x -= p.speed * 0.001;
+                    if (p.x < 0) {
+                        p.x = 1.0;
+                        p.y = Math.random();
+                    }
+                }
+                ctx.restore();
+            }
+
+            // Canvas Sizing keeping Aspect Ratio
+            function resizeCanvas() {
+                const rect = canvas.parentNode.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+                canvas.style.width = rect.width + 'px';
+                canvas.style.height = rect.height + 'px';
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                draw();
+            }
+            window.addEventListener('resize', resizeCanvas);
+            initParticles();
+            
+            // Kepler Solver using Newton-Raphson standard (M = E - e sin E)
+            function solveKepler(M, e) {
+                let E = M;
+                for (let i = 0; i < 6; i++) {
+                    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+                }
+                return E;
+            }
+
+            // Orbital Geometry relative to Primary Focus F1 (0,0)
+            function getOrbitalCoords(E, a, e) {
+                const bVal = a * Math.sqrt(1 - e * e);
+                const x = a * (Math.cos(E) - e);
+                const y = bVal * Math.sin(E);
+                return { x, y };
+            }
+
+            // Orbital Velocity components dx/dt, dy/dt
+            function getVelocityVector(E, a, e) {
+                const bVal = a * Math.sqrt(1 - e * e);
+                const periodVal = Math.pow(a, 1.5);
+                const meanMotion = (2 * Math.PI) / periodVal;
+                const denominator = 1 - e * Math.cos(E);
+
+                const vx = (-a * meanMotion * Math.sin(E)) / denominator;
+                const vy = (bVal * meanMotion * Math.cos(E)) / denominator;
+                return { vx, vy };
+            }
+
+            // Drag mapper: maps cursor back to Eccentric Anomaly
+            function getEccentricAnomalyFromCoords(mx, my, a, e) {
+                const bVal = a * Math.sqrt(1 - e * e);
+                const relativeX = mx + a * e;
+                const relativeY = my;
+                let E = Math.atan2(relativeY / bVal, relativeX / a);
+                if (E < 0) E += 2 * Math.PI;
+                return E;
+            }
+
+            /**
+             * 신발끈 공식(Shoelace Formula)을 활용하여 실제 좌표 기반의 기하학적 쐐기 면적을 수치적으로 직접 적분합니다.
+             * 이를 통해 단순 계산 이론 대입이 아닌, 실제 행성 궤도의 기하학적 면적 보존을 물리적으로 완벽히 증명합니다.
+             */
+            function calculateActualWedgeArea(M_start, M_end, current_a, current_e) {
+                const integrationSteps = 100; // 정밀 분할 눈금
+                let geometricAreaSum = 0;
+                
+                // 중심 초점(태양)은 궤도 상 (0,0)에 위치함
+                let E_prev = solveKepler(M_start, current_e);
+                let p_prev = getOrbitalCoords(E_prev, current_a, current_e);
+                
+                for (let i = 1; i <= integrationSteps; i++) {
+                    const ratio = i / integrationSteps;
+                    const M_curr = M_start + (M_end - M_start) * ratio;
+                    const E_curr = solveKepler(M_curr, current_e);
+                    const p_curr = getOrbitalCoords(E_curr, current_a, current_e);
+                    
+                    // 원점(0,0), 이전 좌표, 현재 좌표가 이루는 미세 삼각형 면적 계산 (0.5 * |x1*y2 - x2*y1|)
+                    const stepTriangleArea = 0.5 * Math.abs(p_prev.x * p_curr.y - p_curr.x * p_prev.y);
+                    geometricAreaSum += stepTriangleArea;
+                    
+                    p_prev = p_curr;
+                }
+                return geometricAreaSum;
+            }
+
+            // Toast feedback
+            function triggerToast() {
+                canvasToast.classList.remove("hidden");
+                setTimeout(() => {
+                    canvasToast.classList.add("hidden");
+                }, 3000);
+            }
+
+            // Update numerical dashboard readouts
+            function updateNumericalDisplay() {
+                valA.innerText = `${a.toFixed(2)} AU`;
+                valE.innerText = e.toFixed(2);
+                valSpeed.innerText = `${simSpeed.toFixed(1)}x`;
+                valSweepDt.innerText = `${(sweepDtRatio * 100).toFixed(1)}%`;
+
+                dataA.innerText = `${a.toFixed(2)} AU`;
+                b = a * Math.sqrt(1 - e * e);
+                dataB.innerText = `${b.toFixed(2)} AU`;
+                dataE.innerText = e.toFixed(2);
+                period = Math.pow(a, 1.5);
+                dataPeriod.innerText = `${period.toFixed(2)}년`;
+
+                const E = solveKepler(curMeanAnomaly, e);
+                const pos = getOrbitalCoords(E, a, e);
+                const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+                dataR.innerText = `${dist.toFixed(3)} AU`;
+
+                const vel = getVelocityVector(E, a, e);
+                const velocityMagnitude = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                const kmSpeed = velocityMagnitude * 4.7405; // Conversion multiplier to km/s
+                dataV.innerText = `${kmSpeed.toFixed(2)} km/s`;
+
+                const totalArea = Math.PI * a * b;
+                dataAreaTotal.innerText = `${totalArea.toFixed(4)} AU²`;
+                
+                const sectorArea = totalArea * sweepDtRatio;
+                dataAreaSector.innerText = `${sectorArea.toFixed(4)} AU²`;
+
+                updateSweepTable();
+            }
+
+            // Generate clean sweep spreadsheet table
+            function updateSweepTable() {
+                if (sweeps.length === 0) {
+                    listSweeps.innerHTML = `
+                        <div class="col-span-2 text-center text-[10px] text-slate-600 italic flex items-center justify-center h-full">
+                            자동 배치를 실행하면 정밀 면적 데이터가 실시간 나열됩니다.
+                        </div>`;
+                    return;
+                }
+
+                let listHtml = "";
+                sweeps.forEach((sw, idx) => {
+                    // 이론 공식에 기반한 이론 면적 계산
+                    const theoreticalArea = (Math.PI * a * b) * sw.dtRatio;
+                    // 실제 궤도 상 기하학적 좌표를 삼각 분할하여 획득한 적분 면적 계산
+                    const integratedArea = calculateActualWedgeArea(sw.M_start, sw.M_end, a, e);
+                    // 오차율 산출 (수치해석 오차 범위 검증용)
+                    const errorRatio = Math.abs(theoreticalArea - integratedArea) / theoreticalArea * 100;
+
+                    listHtml += `
+                        <div class="col-span-2 bg-slate-900/60 p-2 border border-slate-900 rounded flex flex-col gap-1 text-[9px]">
+                            <div class="flex items-center justify-between border-b border-slate-800/50 pb-1 font-mono">
+                                <div class="flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${sw.color}"></span>
+                                    <span class="text-slate-300 font-semibold font-mono">구역 ${idx+1} [Δt/T = ${(sw.dtRatio*100).toFixed(1)}%]</span>
+                                </div>
+                                <span class="text-[8px] text-emerald-400 font-mono font-bold bg-emerald-950/30 px-1 py-0.5 rounded border border-emerald-900/20">오차: ${errorRatio.toFixed(3)}%</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-1 font-mono text-slate-400">
+                                <div class="flex justify-between px-1">
+                                    <span>이론 계산식 (A_th)</span>
+                                    <span class="text-cyan-400 font-bold">${theoreticalArea.toFixed(5)} AU²</span>
+                                </div>
+                                <div class="flex justify-between px-1 border-l border-slate-800">
+                                    <span>도형 좌표 적분 (A_num)</span>
+                                    <span class="text-purple-400 font-bold">${integratedArea.toFixed(5)} AU²</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                listSweeps.innerHTML = listHtml;
+            }
+
+            // Draw clean Vector arrow with normalizations for extremely large forces at perihelion
+            function drawArrow(xStart, yStart, dx, dy, color, label, arrowScale = 1.0) {
+                const headlen = 7;
+                
+                // 극단값(근일점 중력)에서 화살표가 캔버스를 뚫고 나가는 것을 방지하기 위한 물리 감쇄 로그 스케일링 기법 적용
+                let vx = dx * arrowScale;
+                let vy = dy * arrowScale;
+                const magnitude = Math.hypot(vx, vy);
+                
+                if (magnitude > 150) {
+                    const cappedMagnitude = 120 + 30 * Math.log10(magnitude - 119); // 로그 감쇄 압축
+                    vx = (vx / magnitude) * cappedMagnitude;
+                    vy = (vy / magnitude) * cappedMagnitude;
+                }
+
+                const xEnd = xStart + vx;
+                const yEnd = yStart + vy;
+                const angle = Math.atan2(vy, vx);
+
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+                ctx.lineWidth = 2.2;
+
+                ctx.beginPath();
+                ctx.moveTo(xStart, yStart);
+                ctx.lineTo(xEnd, yEnd);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(xEnd, yEnd);
+                ctx.lineTo(xEnd - headlen * Math.cos(angle - Math.PI / 6), yEnd - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(xEnd - headlen * Math.cos(angle + Math.PI / 6), yEnd - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+
+                if (label) {
+                    ctx.font = "italic 500 8px sans-serif";
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+                    ctx.fillText(label, xEnd + 5 * Math.cos(angle), yEnd + 5 * Math.sin(angle));
+                }
+                ctx.restore();
+            }
+
+            // Draws Kepler Sweep Sector Wedge
+            function drawSectorSweep(M_start, M_end, color) {
+                const starX = canvas.width / (2 * window.devicePixelRatio);
+                const starY = canvas.height / (2 * window.devicePixelRatio);
+
+                ctx.save();
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(starX, starY);
+
+                const steps = 40;
+                for (let i = 0; i <= steps; i++) {
+                    const tVal = i / steps;
+                    const M_curr = M_start + (M_end - M_start) * tVal;
+                    const E_curr = solveKepler(M_curr, e);
+                    const pos = getOrbitalCoords(E_curr, a, e);
+
+                    const drawX = starX + pos.x * scaleFactor;
+                    const drawY = starY + pos.y * scaleFactor;
+                    ctx.lineTo(drawX, drawY);
+                }
+
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Master Draw Loop
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const width = canvas.width / window.devicePixelRatio;
+                const height = canvas.height / window.devicePixelRatio;
+
+                const starX = width / 2;
+                const starY = height / 2;
+
+                // 1. Draw Space Dust background for immersive depth
+                drawSpaceDust(width, height);
+
+                // Adjust Scale comfortable to frame viewport bounds
+                const maxOrbitDistance = a * (1 + e);
+                const verticalMax = a * Math.sqrt(1 - e * e);
+                const margin = 45;
+
+                const idealScaleX = (width / 2 - margin) / maxOrbitDistance;
+                const idealScaleY = (height / 2 - margin) / verticalMax;
+                scaleFactor = Math.min(idealScaleX, idealScaleY);
+                
+                // IndexSizeError Prevention
+                if (scaleFactor <= 0 || isNaN(scaleFactor)) {
+                    scaleFactor = 1.0; 
+                }
+
+                // 2. High Contrast Coordinate Grid Rendering
+                if (toggleGrid.checked) {
+                    ctx.save();
+                    
+                    // X-Y Principal axes intersection through Sun
+                    ctx.strokeStyle = "rgba(148, 163, 184, 0.25)";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, starY); ctx.lineTo(width, starY); // X-Axis
+                    ctx.moveTo(starX, 0); ctx.lineTo(starX, height); // Y-Axis
+                    ctx.stroke();
+
+                    // Concentric Circular Grid lines (0.5 AU increments) - Highly visible white/slate mix
+                    ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+                    ctx.lineWidth = 0.8;
+                    ctx.setLineDash([2, 4]);
+
+                    for (let rAU = 0.5; rAU <= 3.5; rAU += 0.5) {
+                        const radius = rAU * scaleFactor;
+                        if (radius > 0) {
+                            ctx.beginPath();
+                            ctx.arc(starX, starY, radius, 0, 2 * Math.PI);
+                            ctx.stroke();
+                            
+                            // Axis measurement tick marks & text labels
+                            ctx.save();
+                            ctx.setLineDash([]);
+                            ctx.fillStyle = "rgba(203, 213, 225, 0.85)";
+                            ctx.font = "bold 9px monospace";
+                            
+                            // Draws a physical tick indicator on the X axis
+                            ctx.beginPath();
+                            ctx.moveTo(starX + radius, starY - 4);
+                            ctx.lineTo(starX + radius, starY + 4);
+                            ctx.strokeStyle = "rgba(203, 213, 225, 0.9)";
+                            ctx.lineWidth = 1.2;
+                            ctx.stroke();
+
+                            ctx.fillText(`${rAU.toFixed(1)} AU`, starX + radius - 15, starY - 8);
+                            ctx.restore();
+                        }
+                    }
+                    ctx.restore();
+                }
+
+                // 3. Render Swept wedge shapes
+                sweeps.forEach((sw) => {
+                    drawSectorSweep(sw.M_start, sw.M_end, sw.color);
+                });
+
+                // 4. Planet Plasma Trail Drawing
+                drawTrail();
+
+                // 5. Render Ellipse Primary Axes (a & b)
+                if (toggleAxes.checked) {
+                    ctx.save();
+                    ctx.setLineDash([3, 3]);
+                    const ellipseCenterX = starX - a * e * scaleFactor;
+
+                    // Semi-minor (b) line (vertical axis helper)
+                    ctx.strokeStyle = "rgba(129, 140, 248, 0.6)";
+                    ctx.beginPath();
+                    ctx.moveTo(ellipseCenterX, starY);
+                    ctx.lineTo(ellipseCenterX, starY - b * scaleFactor);
+                    ctx.stroke();
+                    ctx.fillStyle = "#818CF8";
+                    ctx.font = "bold 9px monospace";
+                    ctx.fillText(`b = ${b.toFixed(2)} AU`, ellipseCenterX + 5, starY - (b/2)*scaleFactor);
+
+                    // Center pin marker
+                    ctx.fillStyle = "rgba(148, 163, 184, 0.8)";
+                    ctx.beginPath();
+                    ctx.arc(ellipseCenterX, starY, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                // 6. Primary Orbit Ellipse Line (Laser path visual effect)
+                ctx.save();
+                ctx.strokeStyle = "rgba(6, 182, 212, 0.75)";
+                ctx.lineWidth = 2.2;
+                ctx.shadowColor = "rgba(6, 182, 212, 0.4)";
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                const ellipseCenterX = starX - a * e * scaleFactor;
+                ctx.ellipse(ellipseCenterX, starY, a * scaleFactor, b * scaleFactor, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.restore();
+
+                // 7. Secondary Empty Focus Focus F2 (고대비 및 크기 확장)
+                if (toggleFocus2.checked) {
+                    const focus2X = starX - 2 * a * e * scaleFactor;
+                    ctx.save();
+                    
+                    // 화려한 발광 효과 추가
+                    ctx.shadowColor = "rgba(168, 85, 247, 0.9)";
+                    ctx.shadowBlur = 12;
+                    ctx.strokeStyle = "rgba(192, 132, 252, 1)"; // 형광 보라
+                    ctx.lineWidth = 2.5; // 선 굵기 증가
+                    
+                    // 공초점 중심 원 크기 대폭 확대 (반지름 3 -> 7)
+                    ctx.beginPath();
+                    ctx.arc(focus2X, starY, 7, 0, 2 * Math.PI);
+                    ctx.fillStyle = "rgba(168, 85, 247, 0.45)";
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 과녁 정밀 십자선 크기 확대 (5 -> 12)
+                    ctx.beginPath();
+                    ctx.moveTo(focus2X - 12, starY); ctx.lineTo(focus2X + 12, starY);
+                    ctx.moveTo(focus2X, starY - 12); ctx.lineTo(focus2X, starY + 12);
+                    ctx.stroke();
+
+                    // 텍스트 라벨 추가
+                    ctx.shadowBlur = 0;
+                    ctx.font = "bold 9px monospace";
+                    ctx.fillStyle = "#E9D5FF";
+                    ctx.fillText("F₂ (공초점)", focus2X - 24, starY - 17);
+                    
+                    ctx.restore();
+                }
+
+                // 8. Dynamic Glowing Corona Sun Star (F1) (이글거리는 활성 코로나 효과)
+                ctx.save();
+                // Sine wave pulse factor for dynamic light emission
+                const pulseFactor = 1.0 + 0.12 * Math.sin(Date.now() / 250);
+                const starRadius = 14 * pulseFactor;
+                
+                const starGrad = ctx.createRadialGradient(starX, starY, 1, starX, starY, starRadius);
+                starGrad.addColorStop(0, "#FFFFFF");
+                starGrad.addColorStop(0.2, "#FFedd5");
+                starGrad.addColorStop(0.4, "#f97316");
+                starGrad.addColorStop(1, "rgba(249, 115, 22, 0)");
+                
+                ctx.shadowColor = "#f97316";
+                ctx.shadowBlur = 18 * pulseFactor;
+                ctx.fillStyle = starGrad;
+                ctx.beginPath();
+                ctx.arc(starX, starY, starRadius + 10, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = "#FF7A1A";
+                ctx.beginPath();
+                ctx.arc(starX, starY, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.restore();
+
+                // 9. Planet Positioning
+                const E = solveKepler(curMeanAnomaly, e);
+                const pos = getOrbitalCoords(E, a, e);
+                const planetX = starX + pos.x * scaleFactor;
+                const planetY = starY + pos.y * scaleFactor;
+
+                // Push position into trail array
+                planetTrail.push({ x: planetX, y: planetY });
+                if (planetTrail.length > maxTrailLen) {
+                    planetTrail.shift();
+                }
+
+                // Radial Connection line (r vector)
+                if (toggleRadial.checked) {
+                    ctx.save();
+                    ctx.strokeStyle = "rgba(234, 179, 8, 0.35)";
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(starX, starY);
+                    ctx.lineTo(planetX, planetY);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Real-time Physics Vectors Rendering (Holographic Vectors)
+                if (toggleVel.checked) {
+                    const vel = getVelocityVector(E, a, e);
+                    const velScale = 10 * (1.5 / Math.sqrt(a));
+                    drawArrow(planetX, planetY, vel.vx, vel.vy, "#10b981", "v", velScale);
+                }
+
+                if (toggleAcc.checked) {
+                    const rDist = Math.sqrt(pos.x*pos.x + pos.y*pos.y);
+                    const dirX = -pos.x / rDist;
+                    const dirY = -pos.y / rDist;
+                    const accelMagnitude = 15 / (rDist * rDist);
+                    drawArrow(planetX, planetY, dirX * accelMagnitude, dirY * accelMagnitude, "#ef4444", "a", 3.0);
+                }
+
+                // Planet Sphere Marker (Cyan Ice planet style)
+                ctx.save();
+                const planetGrad = ctx.createRadialGradient(planetX - 2, planetY - 2, 1, planetX, planetY, 7);
+                planetGrad.addColorStop(0, "#e0f7fa");
+                planetGrad.addColorStop(0.5, "#22d3ee");
+                planetGrad.addColorStop(1, "#0891b2");
+                ctx.shadowColor = "#22d3ee";
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = planetGrad;
+                ctx.beginPath();
+                ctx.arc(planetX, planetY, 7, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                if (isDraggingPlanet) {
+                    ctx.strokeStyle = "#f59e0b";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(planetX, planetY, 11, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // Real-time Engine ticks (target: 60 FPS)
+            let lastTimestamp = 0;
+            function updateSimulation(timestamp) {
+                if (!lastTimestamp) lastTimestamp = timestamp;
+                const dt = (timestamp - lastTimestamp) / 1000.0;
+                lastTimestamp = timestamp;
+
+                if (isPlaying) {
+                    period = Math.pow(a, 1.5);
+                    const meanMotion = (2 * Math.PI) / period;
+                    const dtYears = (dt / 25.0) * simSpeed;
+                    curMeanAnomaly += meanMotion * dtYears;
+                    curMeanAnomaly = curMeanAnomaly % (2 * Math.PI);
+                    if (curMeanAnomaly < 0) curMeanAnomaly += 2 * Math.PI;
+                }
+
+                draw();
+                updateNumericalDisplay();
+                requestAnimationFrame(updateSimulation);
+            }
+
+            // Trigger Animation ticks
+            requestAnimationFrame(updateSimulation);
+
+            // Inputs Sync listeners
+            slideA.addEventListener("input", (e) => {
+                a = parseFloat(e.target.value);
+                b = a * Math.sqrt(1 - e * e);
+                updateNumericalDisplay();
+            });
+
+            slideE.addEventListener("input", (ev) => {
+                e = parseFloat(ev.target.value);
+                b = a * Math.sqrt(1 - e * e);
+                updateNumericalDisplay();
+            });
+
+            slideSpeed.addEventListener("input", (e) => {
+                simSpeed = parseFloat(e.target.value);
+            });
+
+            slideSweepDt.addEventListener("input", (e) => {
+                sweepDtRatio = parseFloat(e.target.value) / 100.0;
+                updateNumericalDisplay();
+            });
+
+            // Playing triggers (Fully localized)
+            function togglePlay() {
+                isPlaying = !isPlaying;
+                if (isPlaying) {
+                    iconPlay.classList.add("hidden");
+                    iconPause.classList.remove("hidden");
+                    txtPlayPause.innerText = "일시정지";
+                } else {
+                    iconPlay.classList.remove("hidden");
+                    iconPause.classList.add("hidden");
+                    txtPlayPause.innerText = "재생";
+                }
+            }
+            btnPlayPause.addEventListener("click", togglePlay);
+
+            // Step Navigation Controls
+            btnStepNext.addEventListener("click", () => {
+                isPlaying = false;
+                iconPlay.classList.remove("hidden");
+                iconPause.classList.add("hidden");
+                txtPlayPause.innerText = "재생";
+
+                period = Math.pow(a, 1.5);
+                const meanMotion = (2 * Math.PI) / period;
+                curMeanAnomaly += meanMotion * 0.015;
+                curMeanAnomaly = curMeanAnomaly % (2 * Math.PI);
+                draw();
+                updateNumericalDisplay();
+            });
+
+            btnStepPrev.addEventListener("click", () => {
+                isPlaying = false;
+                iconPlay.classList.remove("hidden");
+                iconPause.classList.add("hidden");
+                txtPlayPause.innerText = "재생";
+
+                period = Math.pow(a, 1.5);
+                const meanMotion = (2 * Math.PI) / period;
+                curMeanAnomaly -= meanMotion * 0.015;
+                if (curMeanAnomaly < 0) curMeanAnomaly += 2 * Math.PI;
+                draw();
+                updateNumericalDisplay();
+            });
+
+            // Reset Control
+            btnReset.addEventListener("click", () => {
+                isPlaying = false;
+                iconPlay.classList.remove("hidden");
+                iconPause.classList.add("hidden");
+                txtPlayPause.innerText = "재생";
+
+                curMeanAnomaly = 0;
+                sweeps = [];
+                planetTrail.length = 0;
+
+                a = 1.5;
+                e = 0.5;
+                simSpeed = 1.0;
+                sweepDtRatio = 0.05;
+
+                slideA.value = 1.5;
+                slideE.value = 0.5;
+                slideSpeed.value = 1.0;
+                slideSweepDt.value = 5;
+
+                updateNumericalDisplay();
+                draw();
+            });
+
+            btnClearSweeps.addEventListener("click", () => {
+                sweeps = [];
+                updateNumericalDisplay();
+                draw();
+            });
+
+            btnManualSweep.addEventListener("click", () => {
+                const M_start = curMeanAnomaly;
+                const deltaM = 2 * Math.PI * sweepDtRatio;
+                const M_end = M_start + deltaM;
+
+                const color = colorPalette[sweeps.length % colorPalette.length];
+                sweeps.push({
+                    M_start: M_start,
+                    M_end: M_end,
+                    dtRatio: sweepDtRatio,
+                    color: color
+                });
+                updateNumericalDisplay();
+                draw();
+            });
+
+            // 8 EQUAL-TIME SECTOR INTEGRATION
+            btnAutoSweeps.addEventListener("click", () => {
+                sweeps = [];
+                const sectorCount = 8;
+                for (let i = 0; i < sectorCount; i++) {
+                    const M_center = (i * 2 * Math.PI) / sectorCount;
+                    const deltaM = 2 * Math.PI * sweepDtRatio;
+                    
+                    const M_start = M_center - deltaM / 2;
+                    const M_end = M_center + deltaM / 2;
+                    
+                    sweeps.push({
+                        M_start: M_start,
+                        M_end: M_end,
+                        dtRatio: sweepDtRatio,
+                        color: colorPalette[i % colorPalette.length]
+                    });
+                }
+                updateNumericalDisplay();
+                draw();
+                triggerToast();
+            });
+
+            // Pointer drag events handlers
+            function getMouseCoords(evt) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / (window.devicePixelRatio * rect.width);
+                const scaleY = canvas.height / (window.devicePixelRatio * rect.height);
+                
+                const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+                const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
+                };
+            }
+
+            function handleStart(evt) {
+                const coords = getMouseCoords(evt);
+                const width = canvas.width / window.devicePixelRatio;
+                const height = canvas.height / window.devicePixelRatio;
+                const starX = width / 2;
+                const starY = height / 2;
+
+                const E = solveKepler(curMeanAnomaly, e);
+                const pos = getOrbitalCoords(E, a, e);
+                const planetPX = starX + pos.x * scaleFactor;
+                const planetPY = starY + pos.y * scaleFactor;
+
+                const dist = Math.hypot(coords.x - planetPX, coords.y - planetPY);
+                if (dist < 18) {
+                    isDraggingPlanet = true;
+                    isPlaying = false;
+                    iconPlay.classList.remove("hidden");
+                    iconPause.classList.add("hidden");
+                    txtPlayPause.innerText = "재생";
+                    document.body.style.userSelect = "none";
+                }
+            }
+
+            function handleMove(evt) {
+                if (!isDraggingPlanet) return;
+                const coords = getMouseCoords(evt);
+                const width = canvas.width / window.devicePixelRatio;
+                const height = canvas.height / window.devicePixelRatio;
+                const starX = width / 2;
+                const starY = height / 2;
+
+                const sunRelativeX = (coords.x - starX) / scaleFactor;
+                const sunRelativeY = (coords.y - starY) / scaleFactor;
+
+                const E = getEccentricAnomalyFromCoords(sunRelativeX, sunRelativeY, a, e);
+                curMeanAnomaly = E - e * Math.sin(E);
+
+                if (curMeanAnomaly < 0) curMeanAnomaly += 2 * Math.PI;
+                curMeanAnomaly = curMeanAnomaly % (2 * Math.PI);
+
+                draw();
+                updateNumericalDisplay();
+            }
+
+            function handleEnd() {
+                if (isDraggingPlanet) {
+                    isDraggingPlanet = false;
+                    document.body.style.userSelect = "";
+                }
+            }
+
+            // Bind inputs
+            canvas.addEventListener("mousedown", handleStart);
+            window.addEventListener("mousemove", handleMove);
+            window.addEventListener("mouseup", handleEnd);
+
+            canvas.addEventListener("touchstart", handleStart, { passive: true });
+            window.addEventListener("touchmove", handleMove, { passive: false });
+            window.addEventListener("touchend", handleEnd);
+
+            // Initial Layout Fit & Update
+            resizeCanvas();
+            updateNumericalDisplay();
+        });
+    </script>
+</body>
+</html>

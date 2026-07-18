@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급지구과학 수행평가 - 별이 두 개지요 (정밀 시뮬레이터)</title>
+    <style>
+        :root {
+            --bg-dark: #070a13;
+            --panel-bg: #0f172a;
+            --panel-border: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #34d399;
+            --accent-amber: #fbbf24;
+            --accent-pink: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 컨트롤 패널 레이아웃 */
+        #sidebar {
+            width: 380px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .sidebar-header h1 {
+            font-size: 22px;
+            color: var(--accent-blue);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .control-section {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .control-section h2 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-blue);
+            margin-bottom: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .input-group {
+            margin-bottom: 14px;
+        }
+
+        .input-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .input-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .input-label {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .input-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            accent-color: var(--accent-blue);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+        }
+
+        /* 숫자 직접 입력 상자 */
+        .number-input {
+            width: 85px;
+            background-color: #020617;
+            border: 1px solid #334155;
+            color: var(--accent-green);
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+            text-align: right;
+            outline: none;
+        }
+
+        .number-input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .unit {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: 2px;
+            font-weight: normal;
+        }
+
+        /* 프리셋 버튼 그리드 */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-preset {
+            padding: 8px;
+            background-color: #1e293b;
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .btn-preset:hover {
+            background-color: var(--accent-blue);
+            color: #0f172a;
+            border-color: var(--accent-blue);
+        }
+
+        /* 토글 옵션 스타일 */
+        .toggle-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .toggle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334155;
+            transition: .3s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-blue);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(14px);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 20px 24px;
+            background-color: #020617;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-footer-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--accent-blue);
+            color: #0f172a;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        button:hover {
+            background-color: #7dd3fc;
+        }
+
+        #btn-pause {
+            background-color: var(--accent-green);
+        }
+
+        #btn-pause:hover {
+            background-color: #6ee7b7;
+        }
+
+        #btn-pause.paused {
+            background-color: var(--accent-amber);
+        }
+
+        #btn-pause.paused:hover {
+            background-color: #fde047;
+        }
+
+        /* 메인 시뮬레이션 영역 */
+        #sim-area {
+            flex: 1;
+            position: relative;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 면적 속도 및 조화법칙 실시간 이중 그래프 컨테이너 (바닥을 꽉 채우게 튜닝) */
+        #graph-container {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            width: calc(100% - 30px);
+            height: 175px;
+            background-color: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+        }
+
+        .graph-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .graph-box h3 {
+            font-size: 11px;
+            color: var(--accent-blue);
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+
+        .graph-box canvas {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 정보 대시보드 - 상단 우측으로 안전 격리하여 레이아웃 충돌 제로화 */
+        #dashboard {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 14px 18px;
+            width: 325px;
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+        }
+
+        #dashboard h2 {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+            font-size: 12px;
+            gap: 10px;
+        }
+
+        .stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .stat-value {
+            font-family: monospace;
+            font-weight: 700;
+            color: var(--accent-green);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .stat-value.warning {
+            color: var(--accent-amber);
+        }
+
+        /* 카메라 탐색 제어 인터페이스 오버레이 (사이즈 컴팩트화) */
+        #camera-controls {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            gap: 6px;
+            z-index: 10;
+        }
+
+        .cam-btn {
+            background-color: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cam-btn:hover {
+            background-color: var(--accent-blue);
+            color: #0f172a;
+            border-color: var(--accent-blue);
+        }
+
+        #btn-cam-auto.auto-on {
+            color: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 좌측 사이드바: 정밀 제어 조작 패널 -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h1>별이 두 개지요</h1>
+            <p>고급지구과학 고정밀 천문 역학 시뮬레이터<br>태양 질량(M<sub>☉</sub>) 및 목성 질량(M<sub>J</sub>) 표준계 도입</p>
+        </div>
+
+        <!-- 학술 프리셋 섹션 -->
+        <div class="control-section">
+            <h2>🧪 시뮬레이션 프리셋 실험실</h2>
+            <div class="preset-grid">
+                <div class="btn-preset" onclick="loadPreset('stable_s')">안정 외곽 공전</div>
+                <div class="btn-preset" onclick="loadPreset('asymmetry')">극단 비대칭 성계</div>
+                <div class="btn-preset" onclick="loadPreset('kepler16')">실제계: Kepler-16b</div>
+                <div class="btn-preset" onclick="loadPreset('chaos')">3체 중력 붕괴</div>
+            </div>
+        </div>
+
+        <!-- 전역 및 환경 설정 -->
+        <div class="control-section">
+            <h2>⚙️ 전역 및 시각 효과 설정</h2>
+            <div class="input-group">
+                <div class="input-header">
+                    <span class="input-label">시간 배속 (시뮬레이션 속도)</span>
+                </div>
+                <div class="input-controls">
+                    <input type="range" id="slide-speed" min="1" max="10" step="1" value="1">
+                    <input type="number" id="num-speed" class="number-input" min="1" max="10" step="1" value="1">
+                    <span class="unit">배속</span>
+                </div>
+            </div>
+
+            <div class="toggle-group">
+                <div class="toggle-item">
+                    <span style="color: var(--text-main);">그리드망 표시</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-grid" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-item">
+                    <span style="color: var(--text-main);">천체 이동 궤적 표시</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-trails" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 항성 1 제어 영역 -->
+        <div class="control-section">
+            <h2>🟡 항성 1 (대칭 중심 우측)</h2>
+            <div class="input-group">
+                <div class="input-header">
+                    <span class="input-label">항성 1 질량 <span class="unit">(M<sub>☉</sub>)</span></span>
+                </div>
+                <div class="input-controls">
+                    <input type="range" id="slide-m1" min="0.08" max="300" step="0.01" value="1.00">
+                    <input type="number" id="num-m1" class="number-input" min="0.08" max="300" step="0.01" value="1.00">
+                </div>
+            </div>
+            <div class="input-group">
+                <div class="input-header">
+                    <span class="input-label">항성 1 반지름 <span class="unit">(R<sub>☉</sub>)</span></span>
+                </div>
+                <div class="input-controls">
+                    <input type="range" id="slide-r1" min="0.1" max="1000" step="0.1" value="1.0">
+                    <input type="number" id="num-r1" class="number-input" min="0.1" max="1000" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 항성 2 제어 영역 -->
+        <div class="control-section">
+            <h2>🔴 항성 2 (대칭 중심 좌측)</h2>
+            <div class="input-group">
+                <div class="input-header">
+                    <span class="input-label">항성 2 질량 <span class="unit">(M<sub>☉</sub>)</span></span>
+                </div>
+                <div class="input-controls">
+                    <input type="range" id="slide-m2" min="0.08" max="300" step="0.01" value="1.00">
+                    <input type="number" id="num-m2" class="number-input" min="0.08" max="300" step="0.01" value="1.00">
+                </div>
+            </div>
+            <div class="input-group">
+                <div class="input-header">
+                    <span class="input-label">항성 2 반지름 <span class="unit">(R<sub>☉</sub>)</span></span>
+                </div>
+                <div class="input-controls">
+                    <input type="range" id="slide-r2" min="0.1" max="1000" step="0.1" value="1.0">
+                    <input type="number" id="num-r2" class="number-input" min="0.1" max="1000" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 행성 제어 영역 -->
+        <div class="control-section">
+            <h2>🔵 공전 행성 (외부 대순환)</h2>
+            <div class="input-group">
+                <div class="input-header">
+                    <span class="input-label">행성 질량 <span class="unit">(M<sub>J</sub>)</span></span>
+                </div>
+                <div class="input-controls">
+                    <input type="range" id="slide-mp" min="0.01" max="13.0" step="0.01" value="1.00">
+                    <input type="number" id="num-mp" class="number-input" min="0.01" max="13.0" step="0.01" value="1.00">
+                </div>
+            </div>
+            <div class="input-group">
+                <div class="input-header">
+                    <span class="input-label">행성 반지름 <span class="unit">(R<sub>J</sub>)</span></span>
+                </div>
+                <div class="input-controls">
+                    <input type="range" id="slide-rp" min="0.1" max="2.5" step="0.01" value="1.00">
+                    <input type="number" id="num-rp" class="number-input" min="0.1" max="2.5" step="0.01" value="1.00">
+                </div>
+            </div>
+            <div class="input-group">
+                <div class="input-header">
+                    <span class="input-label">초기 궤도 반경 <span class="unit">(AU 기준)</span></span>
+                </div>
+                <div class="input-controls">
+                    <input type="range" id="slide-orb" min="80" max="350" step="1" value="190">
+                    <input type="number" id="num-orb" class="number-input" min="80" max="350" step="1" value="190">
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="btn-footer-group">
+                <button id="btn-pause">일시정지</button>
+                <button id="btn-reset">초기화 (R)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 우측 메인 화면 및 계기판 -->
+    <div id="sim-area">
+        <!-- 카메라 제어 그룹 -->
+        <div id="camera-controls">
+            <button class="cam-btn" id="btn-zoom-in" title="화면 확대">➕ 확대</button>
+            <button class="cam-btn" id="btn-zoom-out" title="화면 축소">➖ 축소</button>
+            <button class="cam-btn" id="btn-cam-origin" title="공통 질량 중심으로 카메라를 복귀시킵니다.">🏠 원점 이동</button>
+            <button class="cam-btn auto-on" id="btn-cam-auto" title="모든 천체가 화면에 잡히도록 스케일을 자동 보정합니다.">🎥 자동 추적: ON</button>
+        </div>
+
+        <canvas id="starCanvas"></canvas>
+
+        <!-- 면적 속도 및 조화법칙 이중 실시간 그래프 -->
+        <div id="graph-container">
+            <div class="graph-box">
+                <h3>📈 면적 속도 (dA/dt) 변동 추이</h3>
+                <canvas id="graphCanvas"></canvas>
+            </div>
+            <div class="graph-box">
+                <h3>📊 조화 법칙 상수 (P²/a³) 측정 역사</h3>
+                <canvas id="keplerCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- 물리 계기판 및 조작 가이드 통합본 -->
+        <div id="dashboard">
+            <h2>📊 실시간 물리 계기판 <span style="font-size:10px; font-weight:normal; color:var(--text-muted)">SI 환산 단위</span></h2>
+            <div class="stat-row">
+                <span class="stat-label">행성 속력 (v):</span>
+                <span id="stat-speed" class="stat-value">0.00 km/s</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">면적 속도 (dA/dt):</span>
+                <span id="stat-area" class="stat-value">0.00 AU²/yr</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">평균 면적 속도:</span>
+                <span id="stat-area-avg" class="stat-value" style="color: var(--accent-blue);">0.00 AU²/yr</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">조화 법칙 상수 (P²/a³):</span>
+                <span id="stat-kepler" class="stat-value warning">측정 중...</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">평균 조화 법칙 상수:</span>
+                <span id="stat-kepler-avg" class="stat-value warning" style="color: var(--accent-amber);">측정 중...</span>
+            </div>
+            <!-- 가독성과 공간 절약을 위해 가이드 라인을 대시보드 하단에 고정 통합 -->
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--panel-border); font-size: 10px; color: var(--accent-blue); line-height: 1.4;">
+                📌 <b>마우스 조작법 안내</b><br>
+                • <b>화면 이동(Pan):</b> 좌클릭 드래그<br>
+                • <b>행성 발사(Slingshot):</b> 우클릭 드래그<br>
+                • <b>확대/축소(Zoom):</b> 마우스 휠 스크롤
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 메인 시뮬레이션 캔버스
+        const canvas = document.getElementById('starCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 그래프 캔버스 1 (면적 속도)
+        const graphCanvas = document.getElementById('graphCanvas');
+        const gCtx = graphCanvas.getContext('2d');
+
+        // 그래프 캔버스 2 (조화 법칙)
+        const keplerCanvas = document.getElementById('keplerCanvas');
+        const kCtx = keplerCanvas.getContext('2d');
+
+        // 카메라 정밀 제어 버튼 바인딩
+        const btnZoomIn = document.getElementById('btn-zoom-in');
+        const btnZoomOut = document.getElementById('btn-zoom-out');
+        const btnCamOrigin = document.getElementById('btn-cam-origin');
+        const btnCamAuto = document.getElementById('btn-cam-auto');
+
+        // 반응형 해상도 맞춤 연산
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+
+            // 두 그래프 캔버스 크기 독립 정규화
+            const box1 = graphCanvas.parentElement;
+            graphCanvas.width = box1.clientWidth;
+            graphCanvas.height = box1.clientHeight - 25;
+
+            const box2 = keplerCanvas.parentElement;
+            keplerCanvas.width = box2.clientWidth;
+            keplerCanvas.height = box2.clientHeight - 25;
+        }
+        window.addEventListener('resize', () => {
+            resize();
+            initPhysics();
+        });
+
+        // 3체 시뮬레이션 기본 연산 물리 상수 상수화
+        const G = 100.0; 
+        const dt = 0.25;  
+        const maxTrace = 800; 
+
+        // 천체 객체 정의 및 라이프 사이클 상태 관리
+        let s1 = {}, s2 = {}, planet = {};
+        
+        // 트레이싱 기록 데이터
+        let s1History = [], s2History = [], planetHistory = [];
+        let systemTime = 0;
+        let lastOrbitVal = null; 
+
+        // 정밀 공전 주기 및 누적각 측정을 위한 제어 변수 (각변위 방식 도입)
+        let prevAngle = 0;
+        let cumulativeAngle = 0;
+        let lastOrbitTime = 0;
+
+        // 카메라 설정 상태 변수
+        let currentScale = 1.0;
+        let currentCenterX = 0;
+        let currentCenterY = 0;
+        let isAutoCamera = true; 
+
+        // 실시간 그래프 축적용 데이터 배열
+        let areaVelocityHistory = [];
+        let keplerHistory = []; 
+
+        // 평균값 계산을 위한 데이터 보존 배열 (전체 측정 기록용)
+        let areaVelocityAccumulator = [];
+
+        // 일시정지 제어 변수
+        let isPaused = false;
+
+        // 마우스 행성 발사체 인터랙션 상태 변수
+        let isAiming = false;
+        let aimStart = { x: 0, y: 0 };
+        let aimCurrent = { x: 0, y: 0 };
+
+        // 화면 이동 패닝(Panning) 상태 변수
+        let isPanning = false;
+        let panStart = { x: 0, y: 0 };
+
+        // 지수 표기법 포맷터 헬퍼 함수
+        function formatScientific(value, precision = 2) {
+            if (value === null || isNaN(value)) return "측정 중...";
+            if (value === 0) return "0";
+            
+            const exp = Math.floor(Math.log10(Math.abs(value)));
+            if (Math.abs(exp) < 3) {
+                return value.toFixed(4);
+            }
+            
+            const base = value / Math.pow(10, exp);
+            
+            const superscriptMap = {
+                '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+                '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+                '-': '⁻', '+': '⁺'
+            };
+            
+            const expStr = exp.toString().split('').map(char => superscriptMap[char] || char).join('');
+            return `${base.toFixed(precision)} × 10${expStr}`;
+        }
+
+        // 물리 연산 초기화 루틴
+        function initPhysics() {
+            const m1 = parseFloat(document.getElementById('num-m1').value);
+            const r1_phys = parseFloat(document.getElementById('num-r1').value);
+            const m2 = parseFloat(document.getElementById('num-m2').value);
+            const r2_phys = parseFloat(document.getElementById('num-r2').value);
+            
+            const mp_raw = parseFloat(document.getElementById('num-mp').value);
+            const mp = mp_raw * 0.000954; 
+            
+            const rp_phys = parseFloat(document.getElementById('num-rp').value);
+            const initOrbit = parseFloat(document.getElementById('num-orb').value);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            const d = 110; 
+            const totalM = m1 + m2;
+            
+            const distS1 = (m2 / totalM) * d;
+            const distS2 = (m1 / totalM) * d;
+
+            const v1 = Math.sqrt((G * m2 * m2) / (d * totalM));
+            const v2 = Math.sqrt((G * m1 * m1) / (d * totalM));
+
+            const starScale = 15.0;
+            const planetScale = 1.54;
+
+            // 항성 1 (주황색)
+            s1 = {
+                x: cx + distS1, y: cy,
+                vx: 0, vy: v1,
+                mass: m1, 
+                radiusPhys: r1_phys, 
+                radius: Math.max(4, Math.log10(r1_phys + 1) * starScale), 
+                color: '#f97316'
+            };
+
+            // 항성 2 (빨간색)
+            s2 = {
+                x: cx - distS2, y: cy,
+                vx: 0, vy: -v2,
+                mass: m2, 
+                radiusPhys: r2_phys, 
+                radius: Math.max(4, Math.log10(r2_phys + 1) * starScale), 
+                color: '#ef4444'
+            };
+
+            // 외부 대순환 행성 (하늘색)
+            const vp = Math.sqrt((G * totalM) / initOrbit) * 0.97;
+            planet = {
+                x: cx, y: cy - initOrbit,
+                vx: vp, vy: 0,
+                mass: mp, 
+                radiusPhys: rp_phys, 
+                radius: Math.max(2, rp_phys * planetScale), 
+                color: '#38bdf8'
+            };
+
+            s1History = [];
+            s2History = [];
+            planetHistory = [];
+            
+            systemTime = 0;
+            lastOrbitVal = null;
+
+            prevAngle = Math.atan2(planet.y - cy, planet.x - cx);
+            cumulativeAngle = 0;
+            lastOrbitTime = 0;
+
+            currentCenterX = cx;
+            currentCenterY = cy;
+            currentScale = 1.0;
+
+            areaVelocityHistory = [];
+            areaVelocityAccumulator = [];
+            keplerHistory = []; 
+
+            isPaused = false;
+            const btnPause = document.getElementById('btn-pause');
+            btnPause.innerText = "일시정지";
+            btnPause.classList.remove('paused');
+
+            setAutoCamera(true);
+
+            document.getElementById('stat-kepler').innerText = "측정 중...";
+            document.getElementById('stat-kepler').classList.add('warning');
+            document.getElementById('stat-kepler-avg').innerText = "측정 중...";
+            document.getElementById('stat-kepler-avg').classList.add('warning');
+            document.getElementById('stat-area-avg').innerText = "0.00 AU²/yr";
+        }
+
+        // 학술 실험 프리셋 로더 함수 (Kepler-16 실측 프리셋 정교화 탑재)
+        function loadPreset(presetName) {
+            switch(presetName) {
+                case 'stable_s':
+                    updateControls({ m1: 1.0, r1: 1.0, m2: 1.0, r2: 1.0, mp: 1.0, rp: 1.0, orb: 190 });
+                    break;
+                case 'asymmetry':
+                    updateControls({ m1: 15.0, r1: 3.5, m2: 0.1, r2: 0.2, mp: 10.0, rp: 1.8, orb: 220 });
+                    break;
+                case 'kepler16':
+                    // [실제 관측 천문 데이터 적용]
+                    updateControls({ m1: 0.69, r1: 0.65, m2: 0.20, r2: 0.23, mp: 0.33, rp: 0.75, orb: 220 });
+                    break;
+                case 'chaos':
+                    updateControls({ m1: 150.0, r1: 10.0, m2: 150.0, r2: 10.0, mp: 8.0, rp: 2.0, orb: 90 });
+                    break;
+            }
+        }
+
+        function updateControls(values) {
+            for (let key in values) {
+                const slider = document.getElementById('slide-' + key);
+                const numInput = document.getElementById('num-' + key);
+                if(slider && numInput) {
+                    slider.value = values[key];
+                    numInput.value = values[key].toFixed(key === 'orb' ? 0 : 2);
+                }
+            }
+            initPhysics();
+        }
+
+        // 중력 작용 함수 (F = GMm / r^2)
+        function applyGravity(p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const distSq = dx * dx + dy * dy + 0.5; 
+            const dist = Math.sqrt(distSq);
+
+            const force = (G * p1.mass * p2.mass) / distSq;
+            
+            const ax = (force * (dx / dist)) / p1.mass;
+            const ay = (force * (dy / dist)) / p1.mass;
+
+            p1.vx += ax * dt;
+            p1.vy += ay * dt;
+        }
+
+        // 탄성 충돌 연산
+        function resolveCollisions() {
+            const bodies = [s1, s2, planet];
+
+            for (let i = 0; i < bodies.length; i++) {
+                for (let j = i + 1; j < bodies.length; j++) {
+                    const b1 = bodies[i];
+                    const b2 = bodies[j];
+
+                    const dx = b2.x - b1.x;
+                    const dy = b2.y - b1.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const minDist = b1.radius + b2.radius;
+
+                    if (dist < minDist) {
+                        const overlap = minDist - dist;
+                        const nx = dx / (dist || 1);
+                        const ny = dy / (dist || 1);
+
+                        b1.x -= nx * overlap * 0.5;
+                        b1.y -= ny * overlap * 0.5;
+                        b2.x += nx * overlap * 0.5;
+                        b2.y += ny * overlap * 0.5;
+
+                        const kx = b1.vx - b2.vx;
+                        const ky = b1.vy - b2.vy;
+                        const vn = kx * nx + ky * ny;
+
+                        if (vn > 0) {
+                            const restitution = 0.6; 
+                            const totalM = b1.mass + b2.mass;
+                            const impulse = (2.0 * vn) / totalM;
+
+                            b1.vx -= impulse * b2.mass * nx * restitution;
+                            b1.vy -= impulse * b2.mass * ny * restitution;
+                            b2.vx += impulse * b1.mass * nx * restitution;
+                            b2.vy += impulse * b1.mass * ny * restitution;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 정밀 입력창 + 슬라이더 동기화 파이프라인
+        const variables = ['m1', 'r1', 'm2', 'r2', 'mp', 'rp', 'orb', 'speed'];
+        variables.forEach(id => {
+            const slider = document.getElementById('slide-' + id);
+            const numInput = document.getElementById('num-' + id);
+
+            slider.addEventListener('input', (e) => {
+                numInput.value = parseFloat(e.target.value).toFixed(id === 'speed' ? 0 : 2);
+                syncAndRefresh(id);
+            });
+
+            numInput.addEventListener('change', (e) => {
+                let val = parseFloat(e.target.value);
+                const min = parseFloat(slider.min);
+                const max = parseFloat(slider.max);
+
+                if (isNaN(val)) val = min;
+                if (val < min) val = min;
+                if (val > max) val = max;
+
+                e.target.value = val.toFixed(id === 'speed' ? 0 : 2);
+                slider.value = val;
+                syncAndRefresh(id);
+            });
+        });
+
+        function syncAndRefresh(changedId) {
+            if(changedId === 'speed') return; 
+            initPhysics(); 
+        }
+
+        // 일시정지 제어 이벤트 리스너
+        const btnPause = document.getElementById('btn-pause');
+        btnPause.addEventListener('click', () => {
+            isPaused = !isPaused;
+            if (isPaused) {
+                btnPause.innerText = "계속하기";
+                btnPause.classList.add('paused');
+            } else {
+                btnPause.innerText = "일시정지";
+                btnPause.classList.remove('paused');
+            }
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', initPhysics);
+        
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                initPhysics();
+            } else if (e.key === ' ' || e.key === 'p' || e.key === 'P') { 
+                btnPause.click();
+            }
+        });
+
+        // --- 카메라 수동 및 자동 기동제어 이벤트 바인딩 ---
+        function setAutoCamera(value) {
+            isAutoCamera = value;
+            if (isAutoCamera) {
+                btnCamAuto.innerText = "🎥 자동 추적: ON";
+                btnCamAuto.classList.add('auto-on');
+            } else {
+                btnCamAuto.innerText = "🎥 자동 추적: OFF";
+                btnCamAuto.classList.remove('auto-on');
+            }
+        }
+
+        btnZoomIn.addEventListener('click', () => {
+            setAutoCamera(false);
+            currentScale = Math.min(10.0, currentScale * 1.3);
+        });
+
+        btnZoomOut.addEventListener('click', () => {
+            setAutoCamera(false);
+            currentScale = Math.max(0.01, currentScale / 1.3);
+        });
+
+        btnCamOrigin.addEventListener('click', () => {
+            setAutoCamera(false);
+            currentCenterX = canvas.width / 2;
+            currentCenterY = canvas.height / 2;
+            currentScale = 1.0;
+        });
+
+        btnCamAuto.addEventListener('click', () => {
+            setAutoCamera(!isAutoCamera);
+        });
+
+        // 마우스 휠 스크롤을 이용한 캔버스 스케일 조절
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            setAutoCamera(false);
+            const zoomFactor = 1.12;
+            if (e.deltaY < 0) {
+                currentScale = Math.min(10.0, currentScale * zoomFactor);
+            } else {
+                currentScale = Math.max(0.01, currentScale / zoomFactor);
+            }
+        }, { passive: false });
+
+        // 마우스 클릭 및 드래그 분기 연산 (좌클릭: 패닝 이동 / 우클릭: 슬링샷 발사)
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            const graphContainer = document.getElementById('graph-container');
+            const gRect = graphContainer.getBoundingClientRect();
+            if (e.clientX >= gRect.left && e.clientX <= gRect.right &&
+                e.clientY >= gRect.top && e.clientY <= gRect.bottom) {
+                return;
+            }
+
+            if (e.button === 0) { // 좌클릭 (0): 화면 이동(Panning)
+                isPanning = true;
+                setAutoCamera(false); 
+                panStart.x = e.clientX;
+                panStart.y = e.clientY;
+            } else if (e.button === 2 || e.button === 1) { // 우클릭 (2) 또는 휠클릭 (1): 행성 발사(Slingshot)
+                isAiming = true;
+                aimStart.x = (clickX - canvas.width / 2) / currentScale + currentCenterX;
+                aimStart.y = (clickY - canvas.height / 2) / currentScale + currentCenterY;
+                aimCurrent.x = aimStart.x;
+                aimCurrent.y = aimStart.y;
+                e.preventDefault(); // 컨텍스트 메뉴 차단 보정
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                const dx = e.clientX - panStart.x;
+                const dy = e.clientY - panStart.y;
+                currentCenterX -= dx / currentScale;
+                currentCenterY -= dy / currentScale;
+                panStart.x = e.clientX;
+                panStart.y = e.clientY;
+            } else if (isAiming) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                aimCurrent.x = (mouseX - canvas.width / 2) / currentScale + currentCenterX;
+                aimCurrent.y = (mouseY - canvas.height / 2) / currentScale + currentCenterY;
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 0) { // 좌클릭 해제
+                isPanning = false;
+            } else if ((e.button === 2 || e.button === 1) && isAiming) { // 우클릭/휠클릭 해제 및 발사
+                isAiming = false;
+
+                const dx = aimStart.x - aimCurrent.x;
+                const dy = aimStart.y - aimCurrent.y;
+                const launchVelocityScale = 0.08;
+
+                planet.x = aimStart.x;
+                planet.y = aimStart.y;
+                planet.vx = dx * launchVelocityScale;
+                planet.vy = dy * launchVelocityScale;
+
+                planetHistory = [];
+                systemTime = 0;
+                orbitPeriod = 0;
+                cumulativeAngle = 0;
+                lastOrbitTime = 0;
+                lastOrbitVal = null;
+                areaVelocityAccumulator = []; 
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                prevAngle = Math.atan2(planet.y - cy, planet.x - cx);
+
+                document.getElementById('stat-kepler').innerText = "측정 중...";
+                document.getElementById('stat-kepler').classList.add('warning');
+                document.getElementById('stat-kepler-avg').innerText = "측정 중...";
+                document.getElementById('stat-kepler-avg').classList.add('warning');
+                document.getElementById('stat-area-avg').innerText = "0.00 AU²/yr";
+            }
+        });
+
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+
+        // 이중 그래프 드로잉
+        function drawDoubleGraphs() {
+            gCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+            const padLeft = 60, padRight = 15, padTop = 15, padBottom = 25;
+            const gW = graphCanvas.width - padLeft - padRight;
+            const gH = graphCanvas.height - padTop - padBottom;
+
+            gCtx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            gCtx.lineWidth = 1;
+            const gridLines = 8;
+            for (let r = 0; r <= gridLines; r++) {
+                const y = padTop + (gH * r) / gridLines;
+                gCtx.beginPath();
+                gCtx.moveTo(padLeft, y);
+                gCtx.lineTo(padLeft + gW, y);
+                gCtx.stroke();
+            }
+
+            gCtx.strokeStyle = '#f8fafc';
+            gCtx.lineWidth = 1.5;
+            gCtx.beginPath();
+            gCtx.moveTo(padLeft, padTop);
+            gCtx.lineTo(padLeft, padTop + gH);
+            gCtx.lineTo(padLeft + gW, padTop + gH);
+            gCtx.stroke();
+
+            if (areaVelocityHistory.length > 0) {
+                let maxVal = -Infinity;
+                let minVal = Infinity;
+                for (let i = 0; i < areaVelocityHistory.length; i++) {
+                    if (areaVelocityHistory[i] > maxVal) maxVal = areaVelocityHistory[i];
+                    if (areaVelocityHistory[i] < minVal) minVal = areaVelocityHistory[i];
+                }
+
+                const diff = maxVal - minVal;
+                const pad = diff === 0 ? 0.2 : diff * 0.05; 
+                const displayMin = Math.max(0, minVal - pad);
+                const displayMax = maxVal + pad;
+                const scaleY = displayMax - displayMin || 1.0;
+
+                gCtx.fillStyle = '#f1f5f9'; 
+                gCtx.font = '9px monospace';
+                gCtx.textAlign = 'right';
+                gCtx.textBaseline = 'middle';
+
+                for (let r = 0; r <= gridLines; r += 2) {
+                    const y = padTop + (gH * r) / gridLines;
+                    const val = displayMax - (scaleY * r) / gridLines;
+                    gCtx.fillText(val.toFixed(3), padLeft - 6, y);
+                }
+
+                gCtx.save();
+                gCtx.translate(14, padTop + gH / 2);
+                gCtx.rotate(-Math.PI / 2);
+                gCtx.textAlign = 'center';
+                gCtx.font = '10px sans-serif';
+                gCtx.fillText("면적 속도 (dA/dt) [AU²/yr]", 0, 0);
+                gCtx.restore();
+
+                gCtx.textAlign = 'center';
+                gCtx.font = '10px sans-serif';
+                gCtx.fillText("시간 흐름 (t) [yr]", padLeft + gW / 2, padTop + gH + 15);
+
+                gCtx.save();
+                gCtx.strokeStyle = '#34d399'; 
+                gCtx.lineWidth = 2.5;
+                gCtx.shadowBlur = 8;
+                gCtx.shadowColor = '#34d399';
+                gCtx.beginPath();
+                const maxPoints = Math.floor(gW);
+                if (areaVelocityHistory.length > maxPoints) {
+                    areaVelocityHistory.shift();
+                }
+                for (let i = 0; i < areaVelocityHistory.length; i++) {
+                    const x = padLeft + (i / (maxPoints - 1)) * gW;
+                    const ratio = (areaVelocityHistory[i] - displayMin) / scaleY;
+                    const y = padTop + gH - (ratio * gH);
+                    if (i === 0) gCtx.moveTo(x, y);
+                    else gCtx.lineTo(x, y);
+                }
+                gCtx.stroke();
+                gCtx.restore();
+            }
+
+            // [그래프 2: 조화 법칙 상수 측정 추이]
+            kCtx.clearRect(0, 0, keplerCanvas.width, keplerCanvas.height);
+            const kW = keplerCanvas.width - padLeft - padRight;
+            const kH = keplerCanvas.height - padTop - padBottom;
+
+            kCtx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            kCtx.lineWidth = 1;
+            for (let r = 0; r <= gridLines; r++) {
+                const y = padTop + (kH * r) / gridLines;
+                kCtx.beginPath();
+                kCtx.moveTo(padLeft, y);
+                kCtx.lineTo(padLeft + kW, y);
+                kCtx.stroke();
+            }
+
+            kCtx.strokeStyle = '#f8fafc';
+            kCtx.lineWidth = 1.5;
+            kCtx.beginPath();
+            kCtx.moveTo(padLeft, padTop);
+            kCtx.lineTo(padLeft, padTop + kH);
+            kCtx.lineTo(padLeft + kW, padTop + kH);
+            kCtx.stroke();
+
+            if (keplerHistory.length > 0) {
+                let maxK = -Infinity;
+                let minK = Infinity;
+                for (let i = 0; i < keplerHistory.length; i++) {
+                    if (keplerHistory[i] > maxK) maxK = keplerHistory[i];
+                    if (keplerHistory[i] < minK) minK = keplerHistory[i];
+                }
+
+                const diffK = maxK - minK;
+                const padK = diffK === 0 ? 0.1 : diffK * 0.1; 
+                const displayMinK = Math.max(0, minK - padK);
+                const displayMaxK = maxK + padK;
+                const scaleYK = displayMaxK - displayMinK || 1.0;
+
+                kCtx.fillStyle = '#f1f5f9';
+                kCtx.font = '9px monospace';
+                kCtx.textAlign = 'right';
+                kCtx.textBaseline = 'middle';
+
+                for (let r = 0; r <= gridLines; r += 2) {
+                    const y = padTop + (kH * r) / gridLines;
+                    const val = displayMaxK - (scaleYK * r) / gridLines;
+                    kCtx.fillText(formatScientific(val, 2), padLeft - 6, y);
+                }
+
+                kCtx.save();
+                kCtx.translate(14, padTop + kH / 2);
+                kCtx.rotate(-Math.PI / 2);
+                kCtx.textAlign = 'center';
+                kCtx.font = '10px sans-serif';
+                kCtx.fillText("조화 비 (P²/a³) [yr²/AU³]", 0, 0);
+                kCtx.restore();
+
+                kCtx.textAlign = 'center';
+                kCtx.font = '10px sans-serif';
+                kCtx.fillText("공전 누적 회차 (N)", padLeft + kW / 2, padTop + kH + 15);
+
+                kCtx.save();
+                kCtx.strokeStyle = '#fbbf24'; 
+                kCtx.lineWidth = 2.5;
+                kCtx.shadowBlur = 8;
+                kCtx.shadowColor = '#fbbf24';
+                kCtx.beginPath();
+                const maxKPoints = Math.floor(kW);
+                if (keplerHistory.length > maxKPoints) {
+                    keplerHistory.shift();
+                }
+                for (let i = 0; i < keplerHistory.length; i++) {
+                    const x = padLeft + (i / Math.max(1, keplerHistory.length - 1)) * kW;
+                    const ratio = (keplerHistory[i] - displayMinK) / scaleYK;
+                    const y = padTop + kH - (ratio * kH);
+                    if (i === 0) kCtx.moveTo(x, y);
+                    else kCtx.lineTo(x, y);
+                    
+                    kCtx.fillStyle = '#fbbf24';
+                    kCtx.beginPath();
+                    kCtx.arc(x, y, 3.5, 0, Math.PI * 2);
+                    kCtx.fill();
+                }
+                kCtx.stroke();
+                kCtx.restore();
+            }
+        }
+
+        // 60FPS 프레임 렌더링 업데이트 엔진
+        function update() {
+            const timeSpeedMultiplier = parseInt(document.getElementById('num-speed').value) || 1;
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            const showGrid = document.getElementById('toggle-grid').checked;
+            const showTrails = document.getElementById('toggle-trails').checked;
+
+            if (!isPaused) {
+                for (let step = 0; step < timeSpeedMultiplier; step++) {
+                    applyGravity(s1, s2);
+                    applyGravity(s2, s1);
+                    applyGravity(s1, planet); 
+                    applyGravity(s2, planet);
+                    applyGravity(planet, s1);
+                    applyGravity(planet, s2);
+
+                    s1.x += s1.vx * dt; s1.y += s1.vy * dt;
+                    s2.x += s2.vx * dt; s2.y += s2.vy * dt;
+                    if (!isAiming) {
+                        planet.x += planet.vx * dt; planet.y += planet.vy * dt;
+                    }
+
+                    resolveCollisions();
+
+                    systemTime += dt;
+
+                    const currentAngle = Math.atan2(planet.y - cy, planet.x - cx);
+                    let deltaAngle = currentAngle - prevAngle;
+
+                    if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
+                    if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
+
+                    if (!isAiming) {
+                        cumulativeAngle += deltaAngle;
+                    }
+                    prevAngle = currentAngle;
+
+                    if (Math.abs(cumulativeAngle) >= 2 * Math.PI) {
+                        orbitPeriod = systemTime - lastOrbitTime;
+                        lastOrbitTime = systemTime;
+                        cumulativeAngle = 0; 
+
+                        const initOrbit = parseFloat(document.getElementById('num-orb').value);
+                        
+                        const rawRatio = (orbitPeriod * orbitPeriod) / Math.pow(initOrbit, 3);
+                        const m_total_sun = s1.mass + s2.mass;
+                        const kRatio = rawRatio * (m_total_sun); 
+
+                        lastOrbitVal = kRatio; 
+                        keplerHistory.push(kRatio); 
+                    }
+                }
+
+                if (showTrails) {
+                    s1History.push({ x: s1.x, y: s1.y });
+                    s2History.push({ x: s2.x, y: s2.y });
+                    if (!isAiming) {
+                        planetHistory.push({ x: planet.x, y: planet.y });
+                    }
+                } else {
+                    s1History = [];
+                    s2History = [];
+                    planetHistory = [];
+                }
+
+                if (s1History.length > maxTrace) s1History.shift();
+                if (s2History.length > maxTrace) s2History.shift();
+                if (planetHistory.length > maxTrace) planetHistory.shift();
+            }
+
+            // --- 카메라 제어 로직 ---
+            if (isAutoCamera) {
+                const minX = Math.min(s1.x, s2.x, planet.x);
+                const maxX = Math.max(s1.x, s2.x, planet.x);
+                const minY = Math.min(s1.y, s2.y, planet.y);
+                const maxY = Math.max(s1.y, s2.y, planet.y);
+
+                const targetCenterX = (minX + maxX) / 2;
+                const targetCenterY = (minY + maxY) / 2;
+
+                const margin = 1.35;
+                const systemWidth = Math.max((maxX - minX) * margin, 200);
+                const systemHeight = Math.max((maxY - minY) * margin, 200);
+
+                const viewWidth = canvas.width - 100;
+                const viewHeight = canvas.height - 270; 
+
+                const scaleX = viewWidth / systemWidth;
+                const scaleY = viewHeight / systemHeight;
+                let targetScale = Math.min(scaleX, scaleY);
+
+                targetScale = Math.min(targetScale, 1.2); 
+                targetScale = Math.max(targetScale, 0.03); 
+
+                currentScale += (targetScale - currentScale) * 0.05;
+                currentCenterX += (targetCenterX - currentCenterX) * 0.05;
+                currentCenterY += (targetCenterY - currentCenterY) * 0.05;
+            }
+
+            // --- 물리 해석 계측식 연산부 ---
+            const curSpeed = Math.sqrt(planet.vx * planet.vx + planet.vy * planet.vy);
+            const speedKms = curSpeed * 1.55; 
+            document.getElementById('stat-speed').innerText = speedKms.toFixed(2) + " km/s";
+
+            const rx = planet.x - cx;
+            const ry = planet.y - cy;
+            const areaVelocity = 0.5 * Math.abs(rx * planet.vy - ry * planet.vx);
+            const areaAuYr = areaVelocity * 0.082; 
+            document.getElementById('stat-area').innerText = areaAuYr.toFixed(2) + " AU²/yr";
+
+            if (!isPaused && !isAiming) {
+                areaVelocityHistory.push(areaAuYr);
+                areaVelocityAccumulator.push(areaAuYr); 
+            }
+
+            // 1. 평균 면적 속도 계산 및 표기
+            if (areaVelocityAccumulator.length > 0) {
+                const areaSum = areaVelocityAccumulator.reduce((sum, val) => sum + val, 0);
+                const areaAvg = areaSum / areaVelocityAccumulator.length;
+                document.getElementById('stat-area-avg').innerText = areaAvg.toFixed(2) + " AU²/yr";
+            }
+
+            // 2. 조화 법칙 상수 및 해당 평균값 연산
+            const keplerDisplay = document.getElementById('stat-kepler');
+            const keplerAvgDisplay = document.getElementById('stat-kepler-avg');
+            if (lastOrbitVal !== null) {
+                keplerDisplay.innerText = formatScientific(lastOrbitVal, 3) + " yr²/AU³";
+                keplerDisplay.classList.remove('warning');
+
+                const keplerSum = keplerHistory.reduce((sum, val) => sum + val, 0);
+                const keplerAvg = keplerSum / keplerHistory.length;
+                keplerAvgDisplay.innerText = formatScientific(keplerAvg, 3) + " yr²/AU³";
+                keplerAvgDisplay.classList.remove('warning');
+            } else {
+                keplerDisplay.innerText = "측정 중 (1공전 필요)";
+                keplerDisplay.classList.add('warning');
+                keplerAvgDisplay.innerText = "측정 중 (1공전 필요)";
+                keplerAvgDisplay.classList.add('warning');
+            }
+
+            // --- 비주얼 렌더링 드로잉 ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(currentScale, currentScale);
+            ctx.translate(-currentCenterX, -currentCenterY);
+
+            // 월드 가상 우주 그리드 렌더링
+            if (showGrid) {
+                ctx.strokeStyle = '#111827';
+                ctx.lineWidth = 1;
+                const step = 50;
+                const gridRange = 8000; 
+                for (let x = -gridRange; x < gridRange; x += step) {
+                    ctx.beginPath(); ctx.moveTo(x, -gridRange); ctx.lineTo(x, gridRange); ctx.stroke();
+                }
+                for (let y = -gridRange; y < gridRange; y += step) {
+                    ctx.beginPath(); ctx.moveTo(-gridRange, y); ctx.lineTo(gridRange, y); ctx.stroke();
+                }
+            }
+
+            // 성계 질량공동중심 가이드라인 구체원
+            const initOrbit = parseFloat(document.getElementById('num-orb').value);
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.04)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, initOrbit, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 궤적 트레일 라인 드로잉
+            function drawTrace(history, strokeColor) {
+                if (history.length < 2) return;
+                ctx.beginPath();
+                ctx.moveTo(history[0].x, history[0].y);
+                for (let i = 1; i < history.length; i++) {
+                    ctx.lineTo(history[i].x, history[i].y);
+                }
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = 2 / currentScale; 
+                ctx.stroke();
+            }
+
+            if (showTrails) {
+                drawTrace(s1History, 'rgba(249, 115, 22, 0.25)'); 
+                drawTrace(s2History, 'rgba(239, 68, 68, 0.25)');  
+                drawTrace(planetHistory, 'rgba(56, 189, 248, 0.45)'); 
+            }
+
+            // 천체 및 글로우 렌더러
+            function drawCelestial(body, glowColor) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(body.x, body.y, body.radius, 0, Math.PI * 2);
+                ctx.fillStyle = body.color;
+                ctx.shadowBlur = body.radius * 1.5;
+                ctx.shadowColor = glowColor;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // 천체 객체 렌더링
+            drawCelestial(s1, '#f97316');
+            drawCelestial(s2, '#ef4444');
+            drawCelestial(planet, '#38bdf8');
+
+            // 마우스 행성 발사 겨냥선 인터랙션 비주얼라이저
+            if (isAiming) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(aimStart.x, aimStart.y, planet.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+                ctx.fill();
+
+                ctx.strokeStyle = 'var(--accent-blue)';
+                ctx.lineWidth = 3 / currentScale;
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = 'var(--accent-blue)';
+                ctx.beginPath();
+                ctx.moveTo(aimStart.x, aimStart.y);
+                ctx.lineTo(aimCurrent.x, aimCurrent.y);
+                ctx.stroke();
+
+                const angle = Math.atan2(aimCurrent.y - aimStart.y, aimCurrent.x - aimStart.x);
+                const arrowSize = 10 / currentScale;
+                ctx.beginPath();
+                ctx.moveTo(aimCurrent.x, aimCurrent.y);
+                ctx.lineTo(aimCurrent.x - arrowSize * Math.cos(angle - Math.PI/6), aimCurrent.y - arrowSize * Math.sin(angle - Math.PI/6));
+                ctx.lineTo(aimCurrent.x - arrowSize * Math.cos(angle + Math.PI/6), aimCurrent.y - arrowSize * Math.sin(angle + Math.PI/6));
+                ctx.fillStyle = 'var(--accent-blue)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.restore(); 
+
+            // 이중 실시간 그래프 드로잉
+            drawDoubleGraphs();
+
+            requestAnimationFrame(update);
+        }
+
+        // 반응형 해상도 최초 셋 및 시뮬레이션 동작 개시
+        resize();
+        initPhysics();
+        update();
+    </script>
+</body>
+</html>

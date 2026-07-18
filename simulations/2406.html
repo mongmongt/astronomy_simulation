@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급지구과학 기하학적 시뮬레이션: 내행성의 위상과 이각 변화 분석기</title>
+    <!-- Tailwind CSS for premium space UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for sleek icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #030712; /* Space deep black */
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 text-white p-2 rounded-lg shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-arrows-to-eye text-xl animate-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black tracking-tight text-white flex items-center gap-2">
+                        내행성 위상 2D 평면 기하학 분석 시뮬레이터
+                        <span class="text-[10px] bg-indigo-500/20 text-indigo-400 px-2.5 py-0.5 rounded-full font-bold border border-indigo-500/30">고급지구과학 수행평가</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 mt-0.5">완벽한 원궤도 Polar 뷰 기준의 분할선 구조 및 고정 시직경 정밀 드로잉</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-400 border border-slate-800 bg-slate-950 px-3 py-1.5 rounded-md">
+                    <i class="fa-solid fa-calculator text-indigo-400 mr-1.5"></i>위상 형상 고정 스케일 및 3D 입체 경사각 오버레이 탑재
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- ================= 좌측: 조종판 및 궤도 물리 데이터 피드백 (4 Cols) ================= -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- Control Variables -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-6">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-850">
+                    <h2 class="font-bold text-base flex items-center gap-2 text-indigo-400">
+                        <i class="fa-solid fa-sliders"></i> 제어 패널 (조작 변인)
+                    </h2>
+                    <span class="text-[10px] bg-indigo-950 text-indigo-400 border border-indigo-900/60 px-2 py-0.5 rounded-full font-semibold">입력계</span>
+                </div>
+                
+                <!-- Variable 1: Orbital Radius (r) -->
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                            조작변인 1: 공전 궤도 반지름 ($r$)
+                        </label>
+                        <span id="radius-val" class="text-xs font-bold text-amber-400 bg-amber-950/40 px-2.5 py-0.5 rounded border border-amber-500/30">0.72 AU</span>
+                    </div>
+                    <input type="range" id="param-r" min="0.25" max="0.85" step="0.01" value="0.72" 
+                           class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    <div class="flex justify-between text-[9px] text-slate-500 mt-1">
+                        <span>0.25 AU (내측 궤도)</span>
+                        <span>0.85 AU (지구 인접 궤도)</span>
+                    </div>
+                </div>
+
+                <!-- Variable 2: Orbit Inclination (i) -->
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                            조작변인 2: 궤도 기울기 ($i$)
+                        </label>
+                        <span id="inclination-val" class="text-xs font-bold text-cyan-400 bg-cyan-950/40 px-2.5 py-0.5 rounded border border-cyan-500/30">15.0°</span>
+                    </div>
+                    <input type="range" id="param-i" min="-25" max="25" step="1" value="15" 
+                           class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    <div class="flex justify-between text-[9px] text-slate-500 mt-1">
+                        <span>-25° (남측 최대 경사)</span>
+                        <span>25° (북측 최대 경사)</span>
+                    </div>
+                </div>
+
+                <!-- Physics Connection Information -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-2">
+                    <span class="text-xs text-indigo-300 font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-info"></i> 물리 법칙 및 궤도 기하 정보
+                    </span>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        만유인력과 구심력이 역학적으로 균형을 이루어 원운동하므로, 내행성의 공전 반지름이 작아질수록 선공전 속도는 빨라지는 물리적 반비례 상관관계를 가집니다.
+                    </p>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        우측 상단의 지구 관측 단면은 위상 각도 변화 분석을 돕고자 **시직경 크기가 고정**되어 그려집니다. 실제 관측 각크기 수치 정보는 화면 내부에 직접 표기됩니다.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Left Realtime Dashboard (Transferred Elements) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                <h3 class="font-bold text-sm text-slate-300 pb-2 border-b border-slate-850 flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-simple text-indigo-400"></i> 실시간 궤도 데이터
+                </h3>
+                
+                <div class="space-y-3 text-xs">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                        <span class="text-slate-500 block font-medium">이각 크기 ($\epsilon$)</span>
+                        <span id="data-elongation" class="text-base font-black text-emerald-400 mt-1 block">38.4°</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                        <span class="text-slate-500 block font-medium">황도면 이탈 고도 ($Z$)</span>
+                        <span id="data-height" class="text-base font-black text-cyan-400 mt-1 block">0.00 AU</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                        <span class="text-slate-500 block font-medium">지구-행성간 거리 ($d$)</span>
+                        <span id="data-distance" class="text-base font-black text-sky-400 mt-1 block">0.000 AU</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                        <span class="text-slate-500 block font-medium">실시간 선속도 ($v$)</span>
+                        <span id="data-speed" class="text-base font-black text-violet-400 mt-1 block">0.000 AU/s</span>
+                    </div>
+                </div>
+
+                <!-- Gemini API Integration -->
+                <div class="pt-4 border-t border-slate-850 space-y-3">
+                    <button id="btn-gemini" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md shadow-emerald-700/20">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ 현 궤도 경사각에 대한 AI 정밀 물리 분석
+                    </button>
+                    <div id="gemini-output" class="text-[11px] text-slate-300 p-3 bg-slate-950 rounded-lg hidden border border-slate-850 leading-relaxed max-h-48 overflow-y-auto"></div>
+                </div>
+
+                <!-- Play/Pause and Speed Settings -->
+                <div class="pt-4 border-t border-slate-850 space-y-3">
+                    <div class="flex gap-2">
+                        <button id="btn-play-pause" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md shadow-indigo-600/15">
+                            <i class="fa-solid fa-pause"></i> <span id="play-text">일시정지</span>
+                        </button>
+                        <button id="btn-reset" class="bg-slate-800 hover:bg-slate-750 text-slate-300 py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 text-xs font-semibold">
+                            <i class="fa-solid fa-rotate-left"></i> 위치 초기화
+                        </button>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                            <span>시뮬레이션 시간 속도</span>
+                            <span id="time-step-val" class="font-bold text-slate-300">1.0x</span>
+                        </div>
+                        <input type="range" id="time-step" min="0.1" max="3.0" step="0.1" value="1.0" 
+                               class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ================= 중앙: 궤도면 및 실제 움직이는 모델 + 수직선 상세 뷰 (5 Cols) ================= -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- Output A: Main Orbit Simulator -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                        <span class="inline-flex w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse"></span>
+                        중앙 상단: 수직 정사영 2D 원형 공전면
+                    </h3>
+                    <span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded">Polar View</span>
+                </div>
+                <div class="bg-slate-950 flex flex-col justify-center items-center p-4 relative" style="min-height: 380px;">
+                    <canvas id="canvas-orbit" class="max-w-full aspect-square bg-slate-950 cursor-pointer rounded-lg"></canvas>
+                    
+                    <!-- Drag Guide -->
+                    <div class="absolute bottom-3 left-3 right-3 bg-slate-900/95 backdrop-blur border border-slate-800 rounded-lg p-2.5 flex items-start gap-2 text-[10px] text-slate-400 pointer-events-none">
+                        <i class="fa-solid fa-circle-info text-indigo-400 mt-0.5"></i>
+                        <div>
+                            <span class="text-white font-semibold">마우스 수동 제어 활성화:</span> 궤도 위의 **지구(Blue)나 내행성(Amber)을 마우스나 터치로 직접 클릭하여 드래그**해 원하는 정렬 각도에서 고정 기하 구조를 탐구할 수 있습니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output C: Detailed Vector / Perpendicular Division View -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+                    <h3 class="font-bold text-xs text-slate-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-magnifying-glass-chart text-emerald-400"></i>
+                        내행성 중심의 빛/시선 분할 기하학 상세 원리
+                    </h3>
+                    <span class="text-[9px] bg-indigo-950 text-indigo-400 border border-indigo-800 px-2.5 py-0.5 rounded-full font-bold">정밀 분할선</span>
+                </div>
+                <div class="bg-slate-950 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <!-- Zoom Canvas -->
+                    <canvas id="canvas-zoom" class="w-full md:w-1/2 aspect-square bg-slate-950 rounded-xl border border-slate-900"></canvas>
+                    
+                    <!-- Text Vector Legend -->
+                    <div class="w-full md:w-1/2 space-y-3 text-xs">
+                        <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-800/80">
+                            <span class="font-bold text-yellow-400 block mb-1">■ 태양-행성선 분할면 (Terminator)</span>
+                            <p class="text-slate-400 leading-relaxed text-[11px]">
+                                노란색 실선은 태양 광원 방향에 완벽히 수직합니다. 이 선을 경계로 행성의 대낮(밝은 면)과 깊은 밤이 정확히 50:50으로 양분됩니다.
+                            </p>
+                        </div>
+                        <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-800/80">
+                            <span class="font-bold text-sky-400 block mb-1">■ 지구-행성선 분할면 (Observer Horizon)</span>
+                            <p class="text-slate-400 leading-relaxed text-[11px]">
+                                파란색 실선은 지구 관찰자의 시선 벡터에 수직합니다. 이 하늘색 선을 경계로 지구 방향을 마주한 영역만이 망원경 시야에 들어옵니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output D: 3D Orbit Inclination View -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+                    <h3 class="font-bold text-xs text-slate-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-cube text-indigo-400"></i>
+                        중앙 아래: 3차원 입체 경사각 및 공전면 관측 뷰
+                    </h3>
+                    <span class="text-[9px] bg-indigo-950 text-indigo-400 border border-indigo-800 px-2.5 py-0.5 rounded-full font-bold">3D 입체화</span>
+                </div>
+                <div class="bg-slate-950 p-4 flex flex-col justify-center items-center relative" style="min-height: 240px;">
+                    <canvas id="canvas-orbit-3d" class="max-w-full aspect-square bg-slate-950 cursor-grab active:cursor-grabbing rounded-lg"></canvas>
+                    
+                    <!-- Drag Guide for 3D View -->
+                    <div class="absolute bottom-3 left-3 right-3 bg-slate-900/95 backdrop-blur border border-slate-800 rounded-lg p-2 flex items-start gap-2 text-[9px] text-slate-400 pointer-events-none">
+                        <i class="fa-solid fa-rotate text-indigo-400 mt-0.5"></i>
+                        <div>
+                            <span class="text-white font-semibold">마우스 3D 회전 제어:</span> 드래그하여 카메라 각도(Pitch/Yaw)를 회전해 보세요. 두 궤도 평면의 기울어짐($i$)과 상하 편차($Z$)가 기하학적으로 완벽히 가시화됩니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ================= 우측: 망원경 및 관측 특화 데이터 피드백 (3 Cols) ================= -->
+        <section class="lg:col-span-3 flex flex-col gap-6">
+            
+            <!-- Output B: Right Top - Apparent Observed Phase Cross-section -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                        <span class="inline-flex w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        우측상단: 지구 관측 위상 단면
+                    </h3>
+                    <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">고정 크기</span>
+                </div>
+                <div class="bg-slate-950 flex-1 flex flex-col justify-center items-center p-4 relative" style="min-height: 240px;">
+                    <canvas id="canvas-telescope" class="max-w-full aspect-square bg-slate-950 rounded-lg"></canvas>
+                    
+                    <div class="absolute top-3 right-3 bg-slate-900/85 backdrop-blur border border-slate-800 text-[9px] px-2.5 py-1.5 rounded text-slate-400 font-bold flex flex-col gap-1">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#06b6d4]"></span>
+                            <span>황도 수직 기준축</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>
+                            <span>행성 실제 위상축</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Observational Dashboard -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex-1 flex flex-col justify-between">
+                <div>
+                    <h3 class="font-bold text-sm text-slate-300 mb-4 pb-2 border-b border-slate-850 flex items-center gap-1.5">
+                        <i class="fa-solid fa-magnifying-glass text-rose-400"></i> 실시간 관측 대시보드
+                    </h3>
+                    
+                    <!-- Observational specific details -->
+                    <div class="space-y-4 text-xs">
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                            <span class="text-slate-500 block font-medium">지구 관측 위상 형상</span>
+                            <span id="data-phase-name" class="text-base font-black text-amber-400 mt-1 block">동방 초승달</span>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-slate-500 font-medium">실시간 관측 시직경 (Angular Diameter)</span>
+                                <span id="data-angular-size" class="text-xs font-bold text-rose-400">24.5"</span>
+                            </div>
+                            <!-- Apparent size gauge bar -->
+                            <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                                <div id="angular-size-bar" class="bg-rose-500 h-1.5 rounded-full" style="width: 35%;"></div>
+                            </div>
+                            <div class="flex justify-between text-[9px] text-slate-500 mt-1">
+                                <span>합 부근 (소: 10")</span>
+                                <span>합 부근 (대: 64")</span>
+                            </div>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                            <span class="text-slate-500 block font-medium">축 어긋남 각도 (Tilt Angle)</span>
+                            <span id="data-tilt" class="text-base font-black text-rose-400 mt-1 block">0.0°</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 text-[10px] text-slate-500 border-t border-slate-850 pt-3 flex items-start gap-1.5">
+                    <i class="fa-solid fa-circle-question text-indigo-400 mt-0.5"></i>
+                    <span>위 상단 돋보기 망원경 뷰는 형상을 왜곡 없이 보기 위해 시직경 크기가 고정되어 있습니다. 실제 관측 각 크기는 실시간 시직경 수치와 게이지를 참고하세요.</span>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-850 bg-slate-950 py-6 text-center text-xs text-slate-500 px-4">
+        <p>© 2026 고급지구과학 시뮬레이션 프로젝트. 3차원 정사영 및 그림자 축 회전 물리 연산.</p>
+    </footer>
+
+    <!-- Astronomical Simulation Script Logic -->
+    <script>
+        // --- 1. CONFIGURATION & STATE ---
+        const orbitCanvas = document.getElementById('canvas-orbit');
+        const telescopeCanvas = document.getElementById('canvas-telescope');
+        const zoomCanvas = document.getElementById('canvas-zoom');
+        const orbit3DCanvas = document.getElementById('canvas-orbit-3d');
+        
+        const orbitCtx = orbitCanvas.getContext('2d');
+        const telescopeCtx = telescopeCanvas.getContext('2d');
+        const zoomCtx = zoomCanvas.getContext('2d');
+        const orbit3DCtx = orbit3DCanvas.getContext('2d');
+
+        function scaleCanvasForDPI(canvas, ctx, size) {
+            const dpi = window.devicePixelRatio || 1;
+            canvas.width = size * dpi;
+            canvas.height = size * dpi;
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+            ctx.scale(dpi, dpi);
+        }
+
+        const sizeOrbit = 380;
+        const sizeTelescope = 240;
+        const sizeZoom = 180;
+        const sizeOrbit3D = 240;
+
+        scaleCanvasForDPI(orbitCanvas, orbitCtx, sizeOrbit);
+        scaleCanvasForDPI(telescopeCanvas, telescopeCtx, sizeTelescope);
+        scaleCanvasForDPI(zoomCanvas, zoomCtx, sizeZoom);
+        scaleCanvasForDPI(orbit3DCanvas, orbit3DCtx, sizeOrbit3D);
+
+        let state = {
+            r: 0.72,            // Semi-major axis
+            i: 15.0,            // Orbit Inclination (degrees)
+            earthAngle: 0,      // Earth's position angle
+            planetAngle: 1.2,    // Inner planet's true anomaly angle
+            isPlaying: true,    // Flow control
+            timeStep: 1.0,      // Simulation rate
+            
+            // Mouse drag position control on 2D orbit circle
+            isDraggingPlanet: false,
+            isDraggingEarth: false,
+
+            // Interactive Camera Controls for the 3D Orbit Viewer
+            pitch3D: 20 * Math.PI / 180, // Elevation angle
+            yaw3D: -35 * Math.PI / 180,  // Azimuth angle
+            isDragging3D: false,
+            lastMouseX3D: 0,
+            lastMouseY3D: 0
+        };
+
+        const R_Earth_pixel = 145; // Fixed 2D Scale: 1.0 AU = 145 pixels
+        const apiKey = ""; // Environment API Key
+
+        // --- 2. PLANE GEOMETRY & VECTOR CALCULATIONS ---
+        function calculateAstronomicalDetails() {
+            // Earth Position (R_E = 1.0 AU) on standard Ecliptic (Z=0)
+            const Ex = Math.cos(state.earthAngle);
+            const Ey = Math.sin(state.earthAngle);
+            const Ez = 0.0;
+
+            // Planet Position on its tilted orbit plane
+            const theta = state.planetAngle;
+            const Px_orb = state.r * Math.cos(theta);
+            const Py_orb = state.r * Math.sin(theta);
+
+            // 3D Matrix Rotation (X-axis) around Sun focus
+            const cosI = Math.cos(state.i * Math.PI / 180);
+            const sinI = Math.sin(state.i * Math.PI / 180);
+            
+            const Px = Px_orb;
+            const Py = Py_orb * cosI;
+            const Pz = Py_orb * sinI; // Tilted Z height above ecliptic
+
+            // Relative Distance Vector (P -> E)
+            const dx = Px - Ex;
+            const dy = Py - Ey;
+            const dz = Pz - Ez;
+            const d = Math.sqrt(dx*dx + dy*dy + dz*dz); // Distance in AU
+
+            // Sightline unit vector
+            const ux_z = dx / d;
+            const uy_z = dy / d;
+            const uz_z = dz / d;
+
+            // Ecliptic North projection on skyplane
+            const uy_x = -uz_z * ux_z;
+            const uy_y = -uz_z * uy_z;
+            const uy_z_plane = 1.0 - uz_z * uz_z;
+            const len_uy = Math.sqrt(uy_x*uy_x + uy_y*uy_y + uy_z_plane*uy_z_plane);
+            
+            let u_up = { x: 0, y: 0, z: 1 };
+            if (len_uy > 1e-6) {
+                u_up.x = uy_x / len_uy;
+                u_up.y = uy_y / len_uy;
+                u_up.z = uy_z_plane / len_uy;
+            }
+
+            // Sky Plane Right vector
+            const u_right = {
+                x: u_up.y * uz_z - u_up.z * uy_z,
+                y: u_up.z * ux_z - u_up.x * uz_z,
+                z: u_up.x * uy_z - u_up.y * ux_z
+            };
+
+            // Sun Vector from Planet focus
+            const PSx = -Px;
+            const PSy = -Py;
+            const PSz = -Pz;
+
+            // Project Sun direction onto local Sky plane coordinate
+            const S_sky_x = PSx * u_right.x + PSy * u_right.y + PSz * u_right.z;
+            const S_sky_y = PSx * u_up.x + PSy * u_up.y + PSz * u_up.z;
+
+            // Light orientation angle
+            const phi = Math.atan2(-S_sky_y, S_sky_x);
+
+            // Phase Angle (S - P - E)
+            let cosPsi = (PSx * (Ex - Px) + PSy * (Ey - Py) + PSz * (Ez - Pz)) / (state.r * d);
+            cosPsi = Math.max(-1, Math.min(1, cosPsi)); 
+            const psi = Math.acos(cosPsi); 
+            const phasePct = (1 + cosPsi) / 2;
+
+            // Elongation angle (S - E - P)
+            const ESx = -Ex;
+            const ESy = -Ey;
+            const ESz = -Ez;
+            const EPx = -dx;
+            const EPy = -dy;
+            const EPz = -dz;
+            let cosEps = (ESx * EPx + ESy * EPy + ESz * EPz) / (1.0 * d);
+            cosEps = Math.max(-1, Math.min(1, cosEps));
+            const epsilon = Math.acos(cosEps);
+
+            // Elongation side mapping
+            const projSide = -Px * Ey + Py * Ex; 
+            const isLeftLit = projSide > 0;
+
+            // Tilt rotation angle relative to local vertical meridian
+            let tiltAngleRad = phi;
+            while (tiltAngleRad > Math.PI / 2) tiltAngleRad -= Math.PI;
+            while (tiltAngleRad < -Math.PI / 2) tiltAngleRad += Math.PI;
+            const tiltAngleDeg = tiltAngleRad * (180 / Math.PI);
+
+            // Physical orbital velocity coupling
+            const speed_au_per_sec = Math.sqrt(1.0 / state.r);
+
+            // [Physical Angular Diameter Calculation]
+            const angularSizeArcsec = 18.5 / d;
+
+            return {
+                d,
+                psi,
+                phasePct,
+                epsilon,
+                isLeftLit,
+                speed_au_per_sec,
+                tiltAngleRad,
+                tiltAngleDeg,
+                phi,
+                Ex, Ey, Ez,
+                Px, Py, Pz,
+                cosPsi,
+                PSx, PSy, PSz,
+                angularSizeArcsec
+            };
+        }
+
+        // --- 3. CANVAS RENDERING ENGINE ---
+
+        // Draw 2D Perfect Circular Orbits
+        function drawOrbitView(data) {
+            const ctx = orbitCtx;
+            ctx.clearRect(0, 0, sizeOrbit, sizeOrbit);
+
+            const cx = sizeOrbit / 2;
+            const cy = sizeOrbit / 2;
+
+            // Space black sky
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, sizeOrbit, sizeOrbit);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            const starPositions = [[25, 30], [280, 50], [90, 260], [330, 290], [60, 150], [220, 310]];
+            starPositions.forEach(pos => {
+                ctx.beginPath(); ctx.arc(pos[0], pos[1], 1, 0, Math.PI*2); ctx.fill();
+            });
+
+            // Ecliptic Grid Line Mapping
+            ctx.strokeStyle = 'rgba(71, 85, 105, 0.15)';
+            ctx.lineWidth = 1;
+            const gridLimit = 1.4;
+            const step = 0.35;
+            for (let x = -gridLimit; x <= gridLimit; x += step) {
+                ctx.beginPath();
+                ctx.moveTo(cx + x * R_Earth_pixel, cy - gridLimit * R_Earth_pixel);
+                ctx.lineTo(cx + x * R_Earth_pixel, cy + gridLimit * R_Earth_pixel);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(cx - gridLimit * R_Earth_pixel, cy + x * R_Earth_pixel);
+                ctx.lineTo(cx + gridLimit * R_Earth_pixel, cy + x * R_Earth_pixel);
+                ctx.stroke();
+            }
+
+            // Glowing Sun (Center)
+            const sunGrad = ctx.createRadialGradient(cx, cy, 3, cx, cy, 18);
+            sunGrad.addColorStop(0, '#fef08a');
+            sunGrad.addColorStop(0.2, '#f59e0b');
+            sunGrad.addColorStop(0.8, 'rgba(245, 158, 11, 0.1)');
+            sunGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+            ctx.fillStyle = sunGrad;
+            ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill();
+
+            // Earth standard orbit
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, R_Earth_pixel, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Inner Planet circular orbit
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, state.r * R_Earth_pixel, 0, Math.PI*2);
+            ctx.stroke();
+
+            // Nodes (승교점 & 강교점)
+            const node1_x = cx + state.r * R_Earth_pixel;
+            const node2_x = cx - state.r * R_Earth_pixel;
+            ctx.fillStyle = '#22d3ee';
+            ctx.beginPath(); ctx.arc(node1_x, cy, 5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(node2_x, cy, 5, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(node1_x, cy, 5.5, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(node2_x, cy, 5.5, 0, Math.PI*2); ctx.stroke();
+
+            ctx.fillStyle = '#22d3ee';
+            ctx.font = 'bold 8.5px sans-serif';
+            ctx.fillText("승교점", node1_x + 9, cy + 3);
+            ctx.fillText("강교점", node2_x - 42, cy + 3);
+
+            // Vector alignments
+            const ex_pixel = cx + data.Ex * R_Earth_pixel;
+            const ey_pixel = cy + data.Ey * R_Earth_pixel;
+            const px_pixel = cx + data.Px * R_Earth_pixel;
+            const py_pixel = cy + data.Py * R_Earth_pixel;
+
+            // Connective sightline vector
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(ex_pixel, ey_pixel); ctx.lineTo(px_pixel, py_pixel); ctx.stroke();
+
+            // Earth Globe
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+            ctx.beginPath(); ctx.arc(ex_pixel, ey_pixel, 15, 0, Math.PI*2); ctx.fill();
+
+            ctx.save();
+            ctx.translate(ex_pixel, ey_pixel);
+            ctx.rotate(state.earthAngle);
+            ctx.fillStyle = '#1d4ed8'; 
+            ctx.beginPath(); ctx.arc(0, 0, 7, -Math.PI/2, Math.PI/2, true); ctx.fill();
+            ctx.fillStyle = '#1e293b'; 
+            ctx.beginPath(); ctx.arc(0, 0, 7, -Math.PI/2, Math.PI/2, false); ctx.fill();
+            ctx.strokeStyle = '#60a5fa';
+            ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI*2); ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = '#93c5fd';
+            ctx.font = 'bold 9.5px sans-serif';
+            ctx.fillText("지구 (E)", ex_pixel + 11, ey_pixel + 4);
+
+            // Inner Planet Globe
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+            ctx.beginPath(); ctx.arc(px_pixel, py_pixel, 15, 0, Math.PI*2); ctx.fill();
+
+            ctx.save();
+            ctx.translate(px_pixel, py_pixel);
+            ctx.rotate(state.planetAngle);
+            ctx.fillStyle = '#d97706'; 
+            ctx.beginPath(); ctx.arc(0, 0, 6.5, -Math.PI/2, Math.PI/2, true); ctx.fill();
+            ctx.fillStyle = '#1e293b'; 
+            ctx.beginPath(); ctx.arc(0, 0, 6.5, -Math.PI/2, Math.PI/2, false); ctx.fill();
+            ctx.strokeStyle = '#fbbf24';
+            ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, Math.PI*2); ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = '#fcd34d';
+            ctx.font = 'bold 9.5px sans-serif';
+            ctx.fillText("내행성 (P)", px_pixel + 11, py_pixel + 4);
+
+            // Display Elongation angular arc
+            ctx.fillStyle = '#34d399';
+            ctx.font = 'bold 9px sans-serif';
+            const epsDeg = Math.round(data.epsilon * (180/Math.PI));
+            ctx.fillText(`이각 \u03B5 = ${epsDeg}°`, ex_pixel - 24, ey_pixel - 16);
+        }
+
+        // Detailed Perpendicular Division Vector Map (Output C)
+        function drawVectorZoomView(data) {
+            const ctx = zoomCtx;
+            ctx.clearRect(0, 0, sizeZoom, sizeZoom);
+
+            const cx = sizeZoom / 2;
+            const cy = sizeZoom / 2;
+
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, sizeZoom, sizeZoom);
+
+            const R_planet = 36; // Constant size
+
+            // Shaded night body base
+            ctx.fillStyle = '#111827';
+            ctx.beginPath(); ctx.arc(cx, cy, R_planet, 0, Math.PI*2); ctx.fill();
+
+            // Calculate exact relative angular alignments
+            const angleToSun = Math.atan2(data.PSy, data.PSx);
+            const angleToEarth = Math.atan2(-data.PEy, -data.PEx); // Vector from Planet to Earth
+
+            // Illuminated hemisphere (Facing Sun direction)
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angleToSun);
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.28)'; // Yellow solar glow
+            ctx.beginPath(); ctx.arc(0, 0, R_planet, -Math.PI/2, Math.PI/2, false); ctx.fill();
+            ctx.restore();
+
+            // Observed hemisphere (Facing Earth direction)
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angleToEarth);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.16)'; // Blue observer horizon overlay
+            ctx.beginPath(); ctx.arc(0, 0, R_planet, -Math.PI/2, Math.PI/2, false); ctx.fill();
+            ctx.restore();
+
+            // Body boundary
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(cx, cy, R_planet, 0, Math.PI*2); ctx.stroke();
+
+            // Terminator Perpendicular Line (Yellow - Terminator)
+            const perpSunAngle = angleToSun + Math.PI/2;
+            const len = 56;
+            ctx.strokeStyle = '#fbbf24'; 
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(cx - Math.cos(perpSunAngle) * len, cy - Math.sin(perpSunAngle) * len);
+            ctx.lineTo(cx + Math.cos(perpSunAngle) * len, cy + Math.sin(perpSunAngle) * len);
+            ctx.stroke();
+
+            // Observer Horizon Perpendicular Line (Sky Blue)
+            const perpEarthAngle = angleToEarth + Math.PI/2;
+            ctx.strokeStyle = '#38bdf8'; 
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(cx - Math.cos(perpEarthAngle) * len, cy - Math.sin(perpEarthAngle) * len);
+            ctx.lineTo(cx + Math.cos(perpEarthAngle) * len, cy + Math.sin(perpEarthAngle) * len);
+            ctx.stroke();
+
+            // Text tag guides
+            ctx.fillStyle = '#fcd34d'; ctx.font = '8px sans-serif';
+            ctx.fillText("태양 수직선", cx - 48, cy - 46);
+            ctx.fillStyle = '#7dd3fc';
+            ctx.fillText("지구 수직선", cx + 6, cy + 50);
+
+            // Vector components
+            ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angleToSun)*R_planet, cy + Math.sin(angleToSun)*R_planet); ctx.stroke();
+
+            ctx.strokeStyle = '#3b82f6';
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angleToEarth)*R_planet, cy + Math.sin(angleToEarth)*R_planet); ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI*2); ctx.fill();
+        }
+
+        // --- 3D INTERACTIVE ORBIT CAMERA PROJECTOR ---
+        function project3DTo2D_3DView(X, Y, Z, size) {
+            // Apply Camera Yaw (azimuth)
+            const cosYaw = Math.cos(state.yaw3D);
+            const sinYaw = Math.sin(state.yaw3D);
+            const x1 = X * cosYaw - Y * sinYaw;
+            const y1 = X * sinYaw + Y * cosYaw;
+            const z1 = Z;
+
+            // Apply Camera Pitch (elevation)
+            const cosPitch = Math.cos(state.pitch3D);
+            const sinPitch = Math.sin(state.pitch3D);
+
+            const screenX = x1;
+            const screenY = y1 * cosPitch - z1 * sinPitch;
+
+            const R_Scale = 85; // Fit inside 240px canvas bounds
+            return {
+                x: size / 2 + screenX * R_Scale,
+                y: size / 2 + screenY * R_Scale
+            };
+        }
+
+        function drawOrbit3DView(data) {
+            const ctx = orbit3DCtx;
+            ctx.clearRect(0, 0, sizeOrbit3D, sizeOrbit3D);
+
+            // Space Background
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, sizeOrbit3D, sizeOrbit3D);
+
+            // Stars
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            const starPositions = [[20, 25], [220, 40], [40, 180], [190, 200], [110, 15], [80, 210]];
+            starPositions.forEach(pos => {
+                ctx.beginPath(); ctx.arc(pos[0], pos[1], 0.8, 0, Math.PI*2); ctx.fill();
+            });
+
+            const sunProj = project3DTo2D_3DView(0, 0, 0, sizeOrbit3D);
+
+            // 1) Ecliptic Reference Grid Plane (Z = 0)
+            ctx.strokeStyle = 'rgba(71, 85, 105, 0.1)';
+            ctx.lineWidth = 1;
+            const gridRange = 1.2;
+            const gridStep = 0.4;
+            for (let x = -gridRange; x <= gridRange; x += gridStep) {
+                let p1 = project3DTo2D_3DView(x, -gridRange, 0, sizeOrbit3D);
+                let p2 = project3DTo2D_3DView(x, gridRange, 0, sizeOrbit3D);
+                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+
+                let p3 = project3DTo2D_3DView(-gridRange, x, 0, sizeOrbit3D);
+                let p4 = project3DTo2D_3DView(gridRange, x, 0, sizeOrbit3D);
+                ctx.beginPath(); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.stroke();
+            }
+
+            // 2) Glowing Sun (Center)
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath(); ctx.arc(sunProj.x, sunProj.y, 8, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(sunProj.x, sunProj.y, 3.5, 0, Math.PI*2); ctx.fill();
+
+            // 3) Earth's Flat Orbit on Ecliptic plane (Z = 0)
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            for (let angle = 0; angle <= Math.PI * 2 + 0.1; angle += 0.1) {
+                const pt = project3DTo2D_3DView(Math.cos(angle), Math.sin(angle), 0, sizeOrbit3D);
+                if (angle === 0) ctx.moveTo(pt.x, pt.y);
+                else ctx.lineTo(pt.x, pt.y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 4) Tilted Orbit of Planet (Z = Y * sinI)
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            const cosI = Math.cos(state.i * Math.PI / 180);
+            const sinI = Math.sin(state.i * Math.PI / 180);
+            for (let angle = 0; angle <= Math.PI * 2 + 0.1; angle += 0.1) {
+                const px_orb = state.r * Math.cos(angle);
+                const py_orb = state.r * Math.sin(angle);
+                const pt = project3DTo2D_3DView(px_orb, py_orb * cosI, py_orb * sinI, sizeOrbit3D);
+                if (angle === 0) ctx.moveTo(pt.x, pt.y);
+                else ctx.lineTo(pt.x, pt.y);
+            }
+            ctx.stroke();
+
+            // 5) Draw Plane Inclination Angle Indicator Arc at Y-axis max tilt
+            const refH_start = project3DTo2D_3DView(0, 0, 0, sizeOrbit3D);
+            const refH_end = project3DTo2D_3DView(0, state.r * 1.3, 0, sizeOrbit3D); 
+            const refT_end = project3DTo2D_3DView(0, state.r * 1.3 * cosI, state.r * 1.3 * sinI, sizeOrbit3D); 
+
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath(); ctx.moveTo(refH_start.x, refH_start.y); ctx.lineTo(refH_end.x, refH_end.y); ctx.stroke();
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.3)';
+            ctx.beginPath(); ctx.moveTo(refH_start.x, refH_start.y); ctx.lineTo(refT_end.x, refT_end.y); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Colored Arc displaying inclination 'i'
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            const arcR = 0.55 * state.r;
+            for (let a = 0; a <= Math.abs(state.i) * Math.PI / 180 + 0.01; a += 0.02) {
+                const direction = state.i < 0 ? -1 : 1;
+                const px = 0;
+                const py = arcR * Math.cos(a * direction);
+                const pz = arcR * Math.sin(a * direction);
+                const pt = project3DTo2D_3DView(px, py, pz, sizeOrbit3D);
+                if (a === 0) ctx.moveTo(pt.x, pt.y);
+                else ctx.lineTo(pt.x, pt.y);
+            }
+            ctx.stroke();
+
+            // Label text tag 'i'
+            const midA = (state.i * 0.5) * Math.PI / 180;
+            const labelP = project3DTo2D_3DView(0, arcR * 1.45 * Math.cos(midA), arcR * 1.45 * Math.sin(midA), sizeOrbit3D);
+            ctx.fillStyle = '#f87171';
+            ctx.font = 'italic bold 10px sans-serif';
+            ctx.fillText(`i = ${state.i.toFixed(0)}°`, labelP.x - 14, labelP.y + 4);
+
+            // 6) Earth Projection in 3D View
+            const ex = Math.cos(state.earthAngle);
+            const ey = Math.sin(state.earthAngle);
+            const earthProj = project3DTo2D_3DView(ex, ey, 0, sizeOrbit3D);
+
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath(); ctx.arc(earthProj.x, earthProj.y, 5, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(earthProj.x, earthProj.y, 5, 0, Math.PI*2); ctx.stroke();
+
+            // 7) Inner Planet Projection in 3D View
+            const planetProj = project3DTo2D_3DView(data.Px, data.Py, data.Pz, sizeOrbit3D);
+            const shadowProj = project3DTo2D_3DView(data.Px, data.Py, 0, sizeOrbit3D);
+
+            // Height indicator (Z displacement line)
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath(); ctx.moveTo(shadowProj.x, shadowProj.y); ctx.lineTo(planetProj.x, planetProj.y); ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = 'rgba(34, 211, 238, 0.4)';
+            ctx.beginPath(); ctx.arc(shadowProj.x, shadowProj.y, 2, 0, Math.PI*2); ctx.fill();
+
+            // Tilted Planet Globe
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath(); ctx.arc(planetProj.x, planetProj.y, 4.5, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(planetProj.x, planetProj.y, 4.5, 0, Math.PI*2); ctx.stroke();
+
+            // Line of nodes markers
+            const n1 = project3DTo2D_3DView(state.r, 0, 0, sizeOrbit3D);
+            const n2 = project3DTo2D_3DView(-state.r, 0, 0, sizeOrbit3D);
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath(); ctx.arc(n1.x, n1.y, 3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(n2.x, n2.y, 3, 0, Math.PI*2); ctx.fill();
+
+            ctx.fillStyle = '#10b981';
+            ctx.font = '8px sans-serif';
+            ctx.fillText("Node", n1.x + 5, n1.y + 3);
+            ctx.fillText("Node", n2.x - 22, n2.y + 3);
+        }
+
+        // Telescope View Render: Fixed Radius to inspect raw phases
+        function drawTelescopeView(data) {
+            const ctx = telescopeCtx;
+            ctx.clearRect(0, 0, sizeTelescope, sizeTelescope);
+
+            const cx = sizeTelescope / 2;
+            const cy = sizeTelescope / 2;
+
+            // Space black canvas
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, sizeTelescope, sizeTelescope);
+
+            // Celestial grids
+            ctx.strokeStyle = 'rgba(71, 85, 105, 0.2)';
+            ctx.lineWidth = 0.5;
+            for (let i = 30; i < sizeTelescope; i += 30) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, sizeTelescope); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(sizeTelescope, i); ctx.stroke();
+            }
+
+            // Fixed scale for constant phase observation
+            const R_apparent = 58; 
+
+            // Outer boundary circle
+            ctx.strokeStyle = 'rgba(71, 85, 105, 0.3)';
+            ctx.beginPath(); ctx.arc(cx, cy, 90, 0, Math.PI*2); ctx.stroke();
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // --- 1. Draw Ecliptic Perpendicular Reference Axis (황도 수직 기준축 - Cyan) ---
+            ctx.strokeStyle = '#06b6d4'; 
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, -90);
+            ctx.lineTo(0, 90);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // --- 2. Draw Planet's Actual Phase Axis (행성 실제 위상축 - Amber) ---
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            const x_term = 90 * Math.sin(data.tiltAngleRad);
+            const y_term = -90 * Math.cos(data.tiltAngleRad);
+            ctx.moveTo(-x_term, -y_term);
+            ctx.lineTo(x_term, y_term);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // --- 3. Draw misalignment arc ---
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)'; 
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(0, 0, 45, -Math.PI/2, -Math.PI/2 + data.tiltAngleRad, data.tiltAngleRad < 0);
+            ctx.stroke();
+
+            // --- 4. Draw Planet Sphere with Tilted Phase ---
+            ctx.save();
+            ctx.rotate(data.phi); // Rotate relative to Sun's projected light source direction
+
+            // Planet sphere background (Night Side)
+            ctx.fillStyle = '#1e293b'; 
+            ctx.beginPath(); ctx.arc(0, 0, R_apparent, 0, Math.PI * 2); ctx.fill();
+
+            // Bright illuminated portion - 3D Orthographic boundary path
+            ctx.fillStyle = '#fef08a'; // Sunlit color
+            ctx.beginPath();
+            // Outer bright circular limb facing Sun (Right half-circle)
+            ctx.arc(0, 0, R_apparent, -Math.PI/2, Math.PI/2, false);
+            
+            // Real physical terminator (3D projected semi-ellipse, squashes with cosPsi)
+            const radX = R_apparent * Math.abs(data.cosPsi);
+            const ccw = (data.cosPsi < 0);
+            ctx.ellipse(0, 0, radX, R_apparent, 0, Math.PI/2, -Math.PI/2, ccw);
+            ctx.closePath();
+            ctx.fill();
+
+            // Planet shadow glow overlay
+            const glowGrad = ctx.createRadialGradient(0, 0, R_apparent * 0.82, 0, 0, R_apparent);
+            glowGrad.addColorStop(0, 'rgba(254, 240, 138, 0)');
+            glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
+            ctx.fillStyle = glowGrad;
+            ctx.beginPath(); ctx.arc(0, 0, R_apparent, 0, Math.PI*2); ctx.fill();
+
+            // Physical surface boundary
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(0, 0, R_apparent, 0, Math.PI*2); ctx.stroke();
+
+            ctx.restore(); 
+            ctx.restore(); 
+
+            // Apparent text specs directly drawn on Telescope canvas
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText(`축 어긋남 각: ${data.tiltAngleDeg.toFixed(1)}°`, 12, 24);
+            
+            ctx.fillStyle = '#fb7185'; // Rose color for contrast
+            ctx.fillText(`실시간 시지름 (θ): ${data.angularSizeArcsec.toFixed(1)}"`, 12, 38);
+        }
+
+        // --- 4. DATA UPDATE & SYNCHRONIZATION ---
+        function updateDashboard(data) {
+            // Updated left panel variables
+            const elDeg = Math.round(data.epsilon * (180/Math.PI));
+            document.getElementById('data-elongation').innerText = `${elDeg}°`;
+            document.getElementById('data-distance').innerText = `${data.d.toFixed(3)} AU`;
+            document.getElementById('data-height').innerText = `${data.Pz.toFixed(3)} AU`;
+            document.getElementById('data-speed').innerText = `${data.speed_au_per_sec.toFixed(3)} AU/s`;
+
+            // Updated right panel variables
+            const phasePct = Math.round(data.phasePct * 100);
+            let phaseName = "";
+            if (phasePct < 3) {
+                phaseName = "삭 (합 부근 - 보이지 않음)";
+            } else if (phasePct >= 3 && phasePct < 45) {
+                phaseName = data.isLeftLit ? "서방 그믐달" : "동방 초승달";
+            } else if (phasePct >= 45 && phasePct <= 55) {
+                phaseName = data.isLeftLit ? "하현 반달" : "상현 반달";
+            } else if (phasePct > 55 && phasePct < 97) {
+                phaseName = "부풀은 상 (Gibbous)";
+            } else {
+                phaseName = "망 (외합 부근 - 보름달)";
+            }
+            document.getElementById('data-phase-name').innerText = `${phaseName} (${phasePct}%)`;
+
+            document.getElementById('data-tilt').innerText = `${data.tiltAngleDeg.toFixed(1)}°`;
+            if (Math.abs(data.tiltAngleDeg) > 5) {
+                document.getElementById('data-tilt').className = "text-base font-black text-rose-400 mt-1 block";
+            } else {
+                document.getElementById('data-tilt').className = "text-base font-black text-emerald-400 mt-1 block";
+            }
+
+            // Apparent size gauge bar syncing
+            const arcsec = data.angularSizeArcsec;
+            document.getElementById('data-angular-size').innerText = `${arcsec.toFixed(1)}" (각초)`;
+
+            const minSize = 9.5;
+            const maxSize = 64.0;
+            const pct = Math.max(0, Math.min(100, ((arcsec - minSize) / (maxSize - minSize)) * 100));
+            document.getElementById('angular-size-bar').style.width = `${pct}%`;
+        }
+
+        // --- 5. INTERACTION & MANUAL DRAGGING OF EARTH/PLANET ---
+        function getCanvasCoords(e, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left - sizeOrbit / 2,
+                y: clientY - rect.top - sizeOrbit / 2
+            };
+        }
+
+        function handleStart(e, canvas) {
+            const coords = getCanvasCoords(e, canvas);
+            const dist = Math.sqrt(coords.x*coords.x + coords.y*coords.y);
+            
+            const earthPixelRadius = R_Earth_pixel;
+            const planetPixelRadius = state.r * R_Earth_pixel;
+            const tolerance = 18; 
+
+            if (Math.abs(dist - planetPixelRadius) < tolerance) {
+                state.isDraggingPlanet = true;
+                state.isPlaying = false; 
+                updatePlayPauseButton();
+                handleDrag(e, canvas);
+            } else if (Math.abs(dist - earthPixelRadius) < tolerance) {
+                state.isDraggingEarth = true;
+                state.isPlaying = false;
+                updatePlayPauseButton();
+                handleDrag(e, canvas);
+            }
+        }
+
+        function handleDrag(e, canvas) {
+            if (!state.isDraggingPlanet && !state.isDraggingEarth) return;
+            e.preventDefault(); 
+            
+            const coords = getCanvasCoords(e, canvas);
+            const angle = Math.atan2(coords.y, coords.x);
+
+            if (state.isDraggingPlanet) {
+                state.planetAngle = angle;
+            } else if (state.isDraggingEarth) {
+                state.earthAngle = angle;
+            }
+
+            const data = calculateAstronomicalDetails();
+            drawOrbitView(data);
+            drawVectorZoomView(data);
+            drawTelescopeView(data);
+            drawOrbit3DView(data);
+            updateDashboard(data);
+        }
+
+        function handleEnd() {
+            state.isDraggingPlanet = false;
+            state.isDraggingEarth = false;
+        }
+
+        orbitCanvas.addEventListener('mousedown', (e) => handleStart(e, orbitCanvas));
+        window.addEventListener('mousemove', (e) => handleDrag(e, orbitCanvas));
+        window.addEventListener('mouseup', handleEnd);
+
+        orbitCanvas.addEventListener('touchstart', (e) => handleStart(e, orbitCanvas), { passive: false });
+        window.addEventListener('touchmove', (e) => handleDrag(e, orbitCanvas), { passive: false });
+        window.addEventListener('touchend', handleEnd);
+
+        // Interactive 3D Orbit Camera Drag Handlers
+        orbit3DCanvas.addEventListener('mousedown', (e) => {
+            state.isDragging3D = true;
+            state.lastMouseX3D = e.clientX;
+            state.lastMouseY3D = e.clientY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!state.isDragging3D) return;
+            const deltaX = e.clientX - state.lastMouseX3D;
+            const deltaY = e.clientY - state.lastMouseY3D;
+
+            state.yaw3D += deltaX * 0.007;
+            state.pitch3D = Math.max(0.05, Math.min(Math.PI/2 - 0.05, state.pitch3D + deltaY * 0.007));
+
+            state.lastMouseX3D = e.clientX;
+            state.lastMouseY3D = e.clientY;
+
+            if (!state.isPlaying) {
+                const data = calculateAstronomicalDetails();
+                drawOrbit3DView(data);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            state.isDragging3D = false;
+        });
+
+        orbit3DCanvas.addEventListener('touchstart', (e) => {
+            state.isDragging3D = true;
+            state.lastMouseX3D = e.touches[0].clientX;
+            state.lastMouseY3D = e.touches[0].clientY;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!state.isDragging3D) return;
+            const deltaX = e.touches[0].clientX - state.lastMouseX3D;
+            const deltaY = e.touches[0].clientY - state.lastMouseY3D;
+
+            state.yaw3D += deltaX * 0.007;
+            state.pitch3D = Math.max(0.05, Math.min(Math.PI/2 - 0.05, state.pitch3D + deltaY * 0.007));
+
+            state.lastMouseX3D = e.touches[0].clientX;
+            state.lastMouseY3D = e.touches[0].clientY;
+
+            if (!state.isPlaying) {
+                const data = calculateAstronomicalDetails();
+                drawOrbit3DView(data);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            state.isDragging3D = false;
+        });
+
+
+        // --- 6. RUNTIME SIMULATION LOOP ---
+        let lastTime = 0;
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (state.isPlaying) {
+                // Earth uniform motion
+                const earthBaseOmega = 0.15 * state.timeStep;
+                state.earthAngle += earthBaseOmega * dt;
+                
+                // Kepler Third Law Auto-Speed Coupling (omega = r^-1.5)
+                const planetOmega = earthBaseOmega * Math.pow(state.r, -1.5);
+                state.planetAngle += planetOmega * dt;
+
+                state.earthAngle %= 2 * Math.PI;
+                state.planetAngle %= 2 * Math.PI;
+            }
+
+            const data = calculateAstronomicalDetails();
+            drawOrbitView(data);
+            drawVectorZoomView(data);
+            drawTelescopeView(data);
+            drawOrbit3DView(data);
+            updateDashboard(data);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 7. UI EVENT LISTENERS ---
+        const radiusSlider = document.getElementById('param-r');
+        const inclinationSlider = document.getElementById('param-i');
+
+        radiusSlider.addEventListener('input', (e) => {
+            state.r = parseFloat(e.target.value);
+            document.getElementById('radius-val').innerText = `${state.r.toFixed(2)} AU`;
+        });
+
+        inclinationSlider.addEventListener('input', (e) => {
+            state.i = parseFloat(e.target.value);
+            document.getElementById('inclination-val').innerText = `${state.i.toFixed(1)}°`;
+        });
+
+        const playPauseBtn = document.getElementById('btn-play-pause');
+        function updatePlayPauseButton() {
+            if (state.isPlaying) {
+                playPauseBtn.className = "flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md shadow-indigo-600/15";
+                playPauseBtn.innerHTML = `<i class="fa-solid fa-pause"></i> <span>일시정지</span>`;
+            } else {
+                playPauseBtn.className = "flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md shadow-emerald-600/15";
+                playPauseBtn.innerHTML = `<i class="fa-solid fa-play"></i> <span>재개하기</span>`;
+            }
+        }
+
+        playPauseBtn.addEventListener('click', () => {
+            state.isPlaying = !state.isPlaying;
+            updatePlayPauseButton();
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            state.earthAngle = 0;
+            state.planetAngle = 1.2;
+            state.isPlaying = true;
+            updatePlayPauseButton();
+        });
+
+        document.getElementById('time-step').addEventListener('input', (e) => {
+            state.timeStep = parseFloat(e.target.value);
+            document.getElementById('time-step-val').innerText = `${state.timeStep.toFixed(1)}x`;
+        });
+
+        // --- 8. GEMINI AI CALL ---
+        async function fetchGeminiInsight() {
+            const btn = document.getElementById('btn-gemini');
+            const output = document.getElementById('gemini-output');
+            
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> 분석 중...`;
+            output.classList.remove('hidden');
+            output.innerText = "궤도 평면과 관측 좌표계를 변환하여 물리 법칙 분석을 시작합니다...";
+
+            const currentData = calculateAstronomicalDetails();
+            const prompt = `내행성의 공전 궤도 반지름이 ${state.r} AU이고, 황도면 대비 궤도 경사각이 ${state.i}°일 때, 지구 관찰자가 바라보는 방향에서 '황도 수직 기준축'과 '행성의 실제 위상축(terminator axis)' 사이에 약 ${currentData.tiltAngleDeg.toFixed(1)}°의 회전 어긋남(위상 틸트)이 발생하는 기하학적 및 물리학적 메커니즘을 지구과학2 천문학 수준으로 상세히 논리적으로 해설해줘.`;
+
+            let delay = 1000;
+            let success = false;
+            let resultText = "";
+
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }]
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error("API response error");
+                    const data = await response.json();
+                    resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "분석 결과를 생성하지 못했습니다.";
+                    success = true;
+                    break;
+                } catch (err) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; 
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> ✨ 현 궤도 경사각에 대한 AI 정밀 물리 분석`;
+            if (success) {
+                output.innerText = resultText;
+            } else {
+                output.innerText = "Gemini API 서버와의 연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.";
+            }
+        }
+
+        document.getElementById('btn-gemini').addEventListener('click', fetchGeminiInsight);
+
+        // --- 9. STARTUP INITIALIZATION ---
+        window.onload = function() {
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>

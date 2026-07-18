@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급지구과학 수행평가 - 케플러 법칙 & 이체 운동 시뮬레이터</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for Period Visualisation -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- MathJax for Beautiful Equations -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        /* Custom trackbar style */
+        input[type="range"]::-webkit-slider-thumb {
+            background: #3b82f6;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header (상단 헤더) -->
+    <header class="bg-slate-900 border-b border-slate-800 p-4 shadow-lg">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
+                    케플러 법칙 & 이체 운동 정밀 시뮬레이터
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">고급 지구과학 천문학 시뮬레이션 수행평가 산출물 (물리량 상호작용 및 속도 벡터 시각화)</p>
+            </div>
+            <div class="flex gap-2">
+                <span class="px-3 py-1 bg-rose-950/40 border border-rose-800 text-rose-300 rounded-full text-xs font-semibold">면적속도 일정 시각화</span>
+                <span class="px-3 py-1 bg-blue-900/50 border border-blue-700 text-blue-300 rounded-full text-xs font-semibold">항성 대 행성 질량비 적용</span>
+                <span class="px-3 py-1 bg-indigo-900/50 border border-indigo-700 text-indigo-300 rounded-full text-xs font-semibold">동적 컬러 속도 벡터</span>
+                <span class="px-3 py-1 bg-emerald-900/50 border border-emerald-700 text-emerald-300 rounded-full text-xs font-semibold">물리 수식 적용</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-grow container mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Area: Simulation & Theories (8 Columns) - 시각적 결과물 화면 -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Simulation Canvas Window (궤도 및 벡터 시뮬레이션 창) -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-md flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
+                        <h2 class="text-base font-bold text-slate-200">2차원 이체 궤도 & 속도 벡터 가상 실험실</h2>
+                    </div>
+                    <!-- Vector visual toggles -->
+                    <div class="flex flex-wrap gap-3 text-xs bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800">
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-vector" checked class="accent-blue-500">
+                            <span class="text-slate-300">속도 벡터 표시</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-barycenter" checked class="accent-emerald-500">
+                            <span class="text-slate-300">질량중심(B) 표시</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" id="toggle-sweeper" checked class="accent-rose-500">
+                            <span class="text-slate-300">면적 쓸기 시각화(제2법칙)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Simulation Canvas Wrapper -->
+                <div class="relative bg-slate-950 rounded-lg overflow-hidden border border-slate-800 flex justify-center items-center" style="min-height: 460px;">
+                    <canvas id="orbitCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+                    
+                    <!-- Speed Alert/Notice overlay inside canvas -->
+                    <div class="absolute top-4 right-4 bg-slate-900/80 border border-slate-700/50 px-3 py-1 rounded text-xxs text-slate-400 pointer-events-none">
+                        💡 속도 화살표: <span class="text-blue-400">파랑(원일점)</span> ➔ <span class="text-yellow-400">노랑</span> ➔ <span class="text-red-500">빨강(근일점)</span>으로 자동 실시간 매핑됩니다.
+                    </div>
+                </div>
+
+                <!-- 캔버스를 가리지 않고 완벽하게 정렬된 하단 독립형 계기판 대시보드 -->
+                <div class="mt-4 bg-slate-950/90 border border-slate-800/80 p-4 rounded-xl text-xs font-mono shadow-inner">
+                    <div class="text-slate-400 font-bold mb-3 border-b border-slate-800 pb-2 flex items-center gap-1.5">
+                        <span class="text-blue-500">📊</span> 실시간 우주 동역학 계기판
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Column 1: Real-time Dynamics -->
+                        <div class="space-y-2 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/50">
+                            <div class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">실시간 운동 정보</div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">현재 거리 (r):</span> 
+                                <span class="text-blue-400 text-sm font-bold" id="live-r">1.20 AU</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">현재 속도 (v):</span> 
+                                <span class="text-amber-400 text-sm font-bold" id="live-v">24.5 km/s</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Column 2: System Characteristics -->
+                        <div class="space-y-2 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/50">
+                            <div class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">조화 법칙 & 물리량</div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-purple-400 font-semibold">공전 주기 (T):</span> 
+                                <span class="text-purple-300 text-sm font-bold animate-pulse" id="live-period">1.84 년</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">현재 질량비 (M/m):</span> 
+                                <span class="text-emerald-400 text-sm font-bold" id="live-massratio">500.0 배</span>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Extremes -->
+                        <div class="space-y-2 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/50">
+                            <div class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">궤도 고유 한계점</div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">근일점 거리 ($r_p$):</span> 
+                                <span class="text-slate-300 font-bold" id="live-rp">0.90 AU</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">원일점 거리 ($r_a$):</span> 
+                                <span class="text-slate-300 font-bold" id="live-ra">2.10 AU</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 가상 탐구 수행 가이드 패널 (수행평가 고득점 전략용 신설) -->
+            <div class="bg-slate-900/80 border border-indigo-950 rounded-xl p-5 shadow-lg border-l-4 border-l-indigo-500">
+                <h3 class="text-base font-bold text-indigo-300 mb-3 flex items-center gap-2">
+                    <span>🔬</span> 자기주도적 가상 실험 & 탐구 시나리오 (보고서 작성 꿀팁)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300 leading-relaxed">
+                    <div class="bg-slate-950/50 p-3 rounded-lg border border-slate-800">
+                        <strong class="text-amber-400 block mb-1">탐구 미션 1: 면적 속도 일정의 법칙 검증</strong>
+                        <p class="text-slate-400 mb-2">
+                            '면적 쓸기 시각화' 기능을 켜고 시뮬레이션을 작동합니다. 행성이 항성과 가까운 곳(근일점)을 지날 때 쓸고 지나간 부채꼴의 각도폭과, 멀리 떨어진 곳(원일점)을 지날 때의 폭을 비교해 봅니다.
+                        </p>
+                        <span class="text-[11px] text-slate-500">👉 동일한 면적을 스윕하지만, 원거리에서는 호의 길이가 짧고 근거리에서는 깁니다.</span>
+                    </div>
+                    <div class="bg-slate-950/50 p-3 rounded-lg border border-slate-800">
+                        <strong class="text-emerald-400 block mb-1">탐구 미션 2: 질량 중심 섭동 관측</strong>
+                        <p class="text-slate-400 mb-2">
+                            항성 질량을 <span class="text-slate-200">2.0 M☉</span>으로 내리고, 행성 질량을 <span class="text-slate-200">0.080 M☉</span>으로 높인 뒤 '질량중심 표시'를 켭니다. 중심 항성이 한 점에 고정되어 있지 않고 흔들리는 모습을 확인합니다.
+                        </p>
+                        <span class="text-[11px] text-slate-500">👉 실제 외계행성 탐사 방법 중 '미세 요동 관측(시선속도법)'의 기본 원리입니다.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scientific Principles & Limitations Tabs (원리 및 한계점 설명) -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-md">
+                <div class="border-b border-slate-800 flex gap-4 mb-4" id="tabs">
+                    <button class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-blue-500 text-blue-400 transition" onclick="switchTab('theory')">
+                        📚 적용된 과학적 원리 & 수식
+                    </button>
+                    <button class="tab-btn px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 transition" onclick="switchTab('limitation')">
+                        ⚠️ 시뮬레이션의 과학적 한계점 분석
+                    </button>
+                </div>
+
+                <!-- Tab content: Theory -->
+                <div id="tab-theory" class="space-y-6 text-sm text-slate-300 leading-relaxed">
+                    <div>
+                        <h3 class="text-base font-bold text-blue-400 mb-1">1. 케플러 제1법칙 (타원 궤도의 법칙)</h3>
+                        <p>
+                            모든 행성은 태양을 한 초점으로 하는 타원 궤도를 그리며 공전합니다. 본 시뮬레이션은 입력받은 장반경($a$)과 이심률($e$)을 이용해 극좌표계의 타원 공식으로 궤도를 그립니다.
+                        </p>
+                        <div class="my-2 bg-slate-950 p-2 rounded text-center font-mono text-emerald-400">
+                            $r(\theta) = \frac{a(1 - e^2)}{1 + e \cos\theta}$
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-base font-bold text-blue-400 mb-1">2. 케플러 제2법칙 (면적 속도 일정의 법칙)</h3>
+                        <p class="mb-2">
+                            행성과 태양을 연결하는 선분이 같은 시간 동안 쓸고 지나가는 면적은 항상 일정합니다. 이는 고전역학의 핵심인 <strong>각운동량 보존 법칙(Conservation of Angular Momentum)</strong>에 의해 완벽하게 수식적으로 증명됩니다.
+                        </p>
+                        <div class="bg-slate-950 p-4 rounded-lg my-3 space-y-3 border border-slate-800/80 font-sans">
+                            <h4 class="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1">📐 수학적 & 물리적 증명 과정</h4>
+                            <div>
+                                <p class="text-xs text-slate-400">
+                                    1. 미소 시간 $dt$ 동안 행성이 회전한 각도를 $d\theta$라 하면, 행성이 쓸고 지나간 부채꼴 모양의 미소 면적 $dA$는 다음과 같이 정의됩니다.
+                                </p>
+                                <div class="text-center font-mono text-emerald-400 my-1">
+                                    $dA = \frac{1}{2} r^2 d\theta$
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">
+                                    2. 양변을 시간 $dt$로 나누어 시간당 면적 변화율(면적 속도)을 구하면 아래와 같은 미분방정식이 성립합니다. ($\omega$는 각속도 $d\theta/dt$)
+                                </p>
+                                <div class="text-center font-mono text-emerald-400 my-1">
+                                    $\frac{dA}{dt} = \frac{1}{2} r^2 \frac{d\theta}{dt} = \frac{1}{2} r^2 \omega$
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">
+                                    3. 행성의 질량을 $m$이라 하면, 이 계의 각운동량 $L$의 크기는 $L = m r^2 \omega$로 나타낼 수 있습니다. 이를 변형해 면적 속도 식에 대입하면 다음과 같습니다.
+                                </p>
+                                <div class="text-center font-mono text-emerald-400 my-1">
+                                    $r^2 \omega = \frac{L}{m} \quad \Rightarrow \quad \frac{dA}{dt} = \frac{L}{2m}$
+                                </div>
+                            </div>
+                            <div class="border-t border-slate-800 pt-2 text-xs">
+                                <p class="text-slate-300">
+                                    <strong>💡 핵심 결론:</strong> 태양이 행성에 작용하는 만유인력은 행성의 위치 벡터와 방향이 항상 평행하거나 반대인 <strong>중심력(Central Force)</strong>입니다. 중심력 조건에서는 계에 작용하는 돌림힘(Torque, $\vec{\tau} = \vec{r} \times \vec{F}$)이 $0$이 되므로, 행성의 각운동량 $L$은 궤도 상의 어느 위치에서든 완벽하게 일정하게 보존됩니다. 
+                                </p>
+                                <p class="text-amber-400 font-semibold mt-1">
+                                    따라서 행성의 질량 $m$과 각운동량 $L$이 모두 상수이므로, 면적 속도 $\frac{dA}{dt} = \frac{L}{2m}$ 역시 항상 일정한 상수(Constant)가 됩니다.
+                                </p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400">
+                            이 공식에 의거하여 행성이 태양에 가장 밀착하는 <strong>근일점($r_p$)</strong>에서는 거리 $r$이 감소하므로 일정한 면적 속도를 유지하기 위해 선속도 $v$가 기하급수적으로 빨라지고, 가장 멀어지는 <strong>원일점($r_a$)</strong>에서는 선속도가 가장 느려집니다.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-base font-bold text-blue-400 mb-1">3. 케플러 제3법칙 (조화 법칙) & 이체 운동</h3>
+                        <p>
+                            공전 주기의 제곱($T^2$)은 궤도 장반경의 세제곱($a^3$)에 비례합니다. 뉴턴의 만유인력 법칙을 적용하여 두 천체의 질량($M, m$)을 모두 고려한 조화 법칙식은 다음과 같습니다.
+                        </p>
+                        <div class="my-2 bg-slate-950 p-2 rounded text-center font-mono text-emerald-400">
+                            $T^2 = \frac{4\pi^2}{G(M_{star} + m_{planet})} a^3$
+                        </div>
+                        <p>
+                            항성 질량이 행성 질량에 비해 매우 클 경우($M \gg m$), 계의 공통 질량중심은 무거운 항성의 내부 깊숙이 고정되어 단순한 일체 중심력장(One-body problem)처럼 작용합니다. 질량 슬라이더를 통해 질량비를 크게 설정하면 질량중심(B)이 항성 중심으로 수렴하는 우주적 현실성을 시뮬레이션에서 직접 목격할 수 있습니다.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Tab content: Limitations -->
+                <div id="tab-limitation" class="hidden space-y-4 text-sm text-slate-300 leading-relaxed">
+                    <p class="text-amber-400 font-semibold">💡 수행평가 보고서의 [과학적 한계점 분석] 작성 시 아래 항목을 참고하여 서술하세요.</p>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li>
+                            <strong class="text-slate-200">2차원 평면 운동의 가정:</strong> 
+                            실제 태양계 행성 및 쌍성계의 궤도는 완벽히 평면 상에 놓여있지 않고 미세한 공전 궤도 경사각($i$)을 가집니다. 본 시뮬레이션은 가독성을 위해 $z$축 방향의 운동 성분을 무시한 2차원 투영 평면에서 해석되었습니다.
+                        </li>
+                        <li>
+                            <strong class="text-slate-200">다체 문제(N-body problem)의 배제:</strong> 
+                            실제 우주에서는 다른 행성들의 중력적 섭동(Gravitational Perturbations)이 존재합니다. 예를 들어 목성의 중력이 지구의 궤도 요소에 영향을 미치지만, 본 시뮬레이터는 태양과 지구 단 둘만의 독립된 계(이체 운동, Two-body problem)로만 단순화하여 계산했습니다.
+                        </li>
+                        <li>
+                            <strong class="text-slate-200">질량 방출 및 조석력 무시:</strong>
+                            항성은 항성풍이나 진화를 통해 질량을 소실하며, 천체 간 거리가 매우 가까울 경우 조석 변형(Tidal deformation)에 의한 마찰로 궤도가 변화하지만, 본 프로그램에서는 강체 구형 천체 및 질량 보존을 가정했습니다.
+                        </li>
+                        <li>
+                            <strong class="text-slate-200">아인슈타인의 일반상대론 효과 미적용:</strong>
+                            수성과 같이 항성에 극도로 가까운 천체는 뉴턴 역학으로 해석되지 않는 근일점 세차 운동(Perihelion precession)이 발생하지만, 본 프로그램은 뉴턴의 고전 중력 공식만을 사용하므로 타원 궤도가 완벽히 닫혀 있어 영구히 변하지 않는 고리를 형성합니다.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Area: Controls & Live Chart (4 Columns) - 조종 및 분석 계기판 -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- Control Panel (조종판) -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-md backdrop-blur-sm">
+                <h2 class="text-lg font-semibold text-slate-200 border-b border-slate-800 pb-2 mb-4 flex items-center gap-2">
+                    <span class="text-blue-500">⚙️</span> 변인 조절 조종판 (조작변인)
+                </h2>
+                
+                <!-- Parameter 1: Semi-major Axis (장반경) -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-1">
+                            궤도 장반경 ($a$) 
+                        </label>
+                        <span class="text-blue-400 font-mono text-sm" id="val-a">1.50 AU</span>
+                    </div>
+                    <input type="range" id="input-a" min="0.5" max="3.0" step="0.05" value="1.5" 
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                    <p class="text-xxs text-slate-500 mt-1">태양과 행성 사이의 평균 거리입니다. 값이 커질수록 공전 궤도가 넓어집니다.</p>
+                </div>
+
+                <!-- Parameter 2: Eccentricity (이심률) -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm font-medium text-slate-300">
+                            궤도 이심률 ($e$)
+                        </label>
+                        <span class="text-blue-400 font-mono text-sm" id="val-e">0.40</span>
+                    </div>
+                    <input type="range" id="input-e" min="0.0" max="0.9" step="0.02" value="0.4" 
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                    <p class="text-xxs text-slate-500 mt-1">0은 완벽한 원, 1에 가까워질수록 길쭉한 타원 궤도가 됩니다.</p>
+                </div>
+
+                <!-- Parameter 3: Masses (질량 조절 - 항성 대 행성 대질량비 적용) -->
+                <div class="mb-5 border-t border-slate-800/60 pt-4">
+                    <h3 class="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">천체 질량 설정 (우주 실제 비율 반영)</h3>
+                    
+                    <!-- Star Mass (Heavier Range) -->
+                    <div class="mb-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs text-slate-300">중심 항성 질량 ($M_{star}$)</label>
+                            <span class="text-emerald-400 font-mono text-xs" id="val-m1">5.00 M☉</span>
+                        </div>
+                        <input type="range" id="input-m1" min="1.0" max="10.0" step="0.5" value="5.0" 
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    </div>
+
+                    <!-- Planet Mass (Lighter Range to guarantee M >> m) -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs text-slate-300">공전 행성 질량 ($m_{planet}$)</label>
+                            <span class="text-emerald-400 font-mono text-xs" id="val-m2">0.010 M☉</span>
+                        </div>
+                        <input type="range" id="input-m2" min="0.001" max="0.100" step="0.005" value="0.010" 
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    </div>
+                    <p class="text-xxs text-slate-500 mt-2">항성이 행성에 비해 압도적으로 무겁게 설정되어 공통 질량중심(B)이 항성 중심부에 밀착합니다.</p>
+                </div>
+
+                <!-- Parameter 4: Animation Speed Multiplier (시뮬레이션 시간 배율 신설) -->
+                <div class="mb-5 border-t border-slate-800/60 pt-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">시뮬레이션 재생 속도</label>
+                        <span class="text-indigo-400 font-mono text-xs" id="val-speed">1.0x (표준)</span>
+                    </div>
+                    <input type="range" id="input-speed" min="0.25" max="2.0" step="0.25" value="1.0" 
+                        class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <!-- Simulation Controls -->
+                <div class="flex gap-2 pt-2 border-t border-slate-800/60">
+                    <button id="btn-play" class="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 transition rounded-lg text-xs font-bold flex justify-center items-center gap-1">
+                        <span id="play-icon">⏸️</span> <span id="play-text">일시정지</span>
+                    </button>
+                    <button id="btn-reset" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 transition rounded-lg text-xs font-bold text-slate-300">
+                        🔄 초기화
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Output: Period visualization Chart & Values (실시간 분석 및 차트) -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-md flex-grow flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-200 border-b border-slate-800 pb-2 mb-3 flex items-center gap-2">
+                        <span class="text-purple-500">📊</span> 실시간 분석 및 주기 그래프
+                    </h2>
+                    
+                    <!-- Live Numerical Data Display -->
+                    <div class="grid grid-cols-2 gap-2 mb-4 bg-slate-950 p-3 rounded-lg border border-slate-800/50">
+                        <div class="text-center p-2 border-r border-slate-800">
+                            <div class="text-xxs text-slate-400">계산된 공전 주기 ($T$)</div>
+                            <div class="text-lg font-bold text-purple-400 mt-1" id="info-period">1.84 년</div>
+                        </div>
+                        <div class="text-center p-2">
+                            <div class="text-xxs text-slate-400">근일점 / 원일점 속도 비</div>
+                            <div class="text-lg font-bold text-amber-400 mt-1" id="info-vratio">2.33 배</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Chart Container -->
+                <div class="flex-grow h-48 flex items-center justify-center relative">
+                    <canvas id="periodChart"></canvas>
+                </div>
+                <p class="text-xxs text-slate-500 mt-2 text-center">케플러 제3조화 법칙 관계 그래프 ($T^2 \propto a^3$)</p>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-800 p-4 text-center text-xs text-slate-500">
+        <div class="container mx-auto">
+            <p>본 가상 실험 장치는 웹 표준 기술(HTML5 Canvas, Chart.js)로 개발되었으며, 실시간 이체 고전역학 운동 방정식 수치 해석 알고리즘이 내장되어 있습니다.</p>
+            <p class="mt-1">고급지구과학 수행평가 - 바이브코딩 & Gemini Canvas 모드 활용 프로젝트</p>
+        </div>
+    </footer>
+
+    <!-- Scripts: Simulation Engine & Logic -->
+    <script>
+        // --- 1. Global Variables & Physics Constants ---
+        const G = 4 * Math.PI * Math.PI; // Normalized Gravitational Constant so that with a=1 AU, M=1 M_sun, Period T = 1 Year.
+        let animationFrameId;
+        let isRunning = true;
+
+        // Canvas Setup
+        const canvas = document.getElementById('orbitCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Physics States (Default Values: High mass ratio default)
+        let a = 1.5;         // Semi-major axis in AU
+        let e = 0.4;         // Eccentricity
+        let m1 = 5.0;        // Star mass (Solar Mass)
+        let m2 = 0.01;       // Planet mass (Solar Mass) -> ~10 Jupiter masses
+        let timeSpeed = 1.0; // 시뮬레이션 속도 배율
+
+        // Orbital variables for Simulation Loop
+        let theta = 0;       // True anomaly (Angle from periapsis)
+        let trail = [];      // For orbit trail tracing
+        const maxTrailLength = 500;
+
+        // Visual options
+        let showVector = true;
+        let showBarycenter = true;
+        let showSweeper = true; // 면적 쓸기 시각화 토글 상태
+
+        // Area Sweeper Variables (제2법칙 면적 시각화용)
+        let sweepSectors = [];  // 저장된 면적 쓸기 부채꼴 배열
+        let lastSweepTheta = 0; // 마지막 면적 쓸기가 시작된 위치 각도
+        const sweepAngleInterval = Math.PI / 6; // 부채꼴 크기 간격 (30도)
+
+        // UI Element References
+        const inputA = document.getElementById('input-a');
+        const inputE = document.getElementById('input-e');
+        const inputM1 = document.getElementById('input-m1');
+        const inputM2 = document.getElementById('input-m2');
+        const inputSpeed = document.getElementById('input-speed');
+
+        const valA = document.getElementById('val-a');
+        const valE = document.getElementById('val-e');
+        const valM1 = document.getElementById('val-m1');
+        const valM2 = document.getElementById('val-m2');
+        const valSpeed = document.getElementById('val-speed');
+
+        const infoPeriod = document.getElementById('info-period');
+        const infoVRatio = document.getElementById('info-vratio');
+
+        const liveR = document.getElementById('live-r');
+        const liveV = document.getElementById('live-v');
+        const livePeriod = document.getElementById('live-period'); 
+        const liveMassRatio = document.getElementById('live-massratio'); 
+        const liveRp = document.getElementById('live-rp');
+        const liveRa = document.getElementById('live-ra');
+
+        const toggleVector = document.getElementById('toggle-vector');
+        const toggleBarycenter = document.getElementById('toggle-barycenter');
+        const toggleSweeper = document.getElementById('toggle-sweeper');
+
+        const btnPlay = document.getElementById('btn-play');
+        const btnReset = document.getElementById('btn-reset');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
+
+        // --- 2. Chart.js Setup for Period Kepler's 3rd Law Visualization ---
+        const chartCtx = document.getElementById('periodChart').getContext('2d');
+        let periodChart;
+
+        function initChart() {
+            const dataPoints = [];
+            const labels = [];
+            const totalM = m1 + m2;
+            for (let testA = 0.5; testA <= 3.05; testA += 0.2) {
+                const T = Math.sqrt(Math.pow(testA, 3) / totalM);
+                dataPoints.push({ x: testA, y: T });
+            }
+
+            periodChart = new Chart(chartCtx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: '이론적 공전 주기 곡선 (T vs a)',
+                            data: dataPoints,
+                            borderColor: 'rgba(99, 102, 241, 0.6)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.4
+                        },
+                        {
+                            label: '현재 상태 (조작계)',
+                            data: [{ x: a, y: calculatePeriod() }],
+                            backgroundColor: '#ef4444',
+                            borderColor: '#ffffff',
+                            borderWidth: 1.5,
+                            pointRadius: 8,
+                            pointHoverRadius: 10,
+                            showLine: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: { display: true, text: '장반경 a (AU)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#64748b' }
+                        },
+                        y: {
+                            title: { display: true, text: '공전 주기 T (년)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#64748b' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!periodChart) return;
+            const totalM = m1 + m2;
+            const dataPoints = [];
+            for (let testA = 0.5; testA <= 3.05; testA += 0.1) {
+                const T = Math.sqrt(Math.pow(testA, 3) / totalM);
+                dataPoints.push({ x: testA, y: T });
+            }
+            periodChart.data.datasets[0].data = dataPoints;
+            periodChart.data.datasets[1].data = [{ x: a, y: calculatePeriod() }];
+            periodChart.update('none'); 
+        }
+
+        // --- 3. Physics & Math Equations Helpers ---
+        function calculatePeriod() {
+            return Math.sqrt(Math.pow(a, 3) / (m1 + m2));
+        }
+
+        // Keplerian Motion calculations
+        function getOrbitalParameters() {
+            const r_p = a * (1 - e); // Perihelion (근일점)
+            const r_a = a * (1 + e); // Aphelion (원일점)
+            const mu = G * (m1 + m2);
+            const v_p_val = Math.sqrt(mu * (2/r_p - 1/a)); // speed at perihelion (max speed)
+            const v_a_val = Math.sqrt(mu * (2/r_a - 1/a)); // speed at aphelion (min speed)
+            const h = Math.sqrt(mu * a * (1 - e * e));
+
+            return { r_p, r_a, v_p_val, v_a_val, h };
+        }
+
+        // --- 4. Canvas Rendering Logic ---
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+        }
+
+        function drawVectorArrow(fromX, fromY, toX, toY, color) {
+            const headLength = 10; 
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const angle = Math.atan2(dy, dx);
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3.0; 
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            // Arrow head
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI/6), toY - headLength * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI/6), toY - headLength * Math.sin(angle + Math.PI/6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Update trail coordinates using current orbital parameters
+        function updateTrailPositions(cx, cy, scale) {
+            const totalM = m1 + m2;
+            const factor = m1 / totalM;
+            
+            for (let i = 0; i < trail.length; i++) {
+                const tAngle = trail[i].theta;
+                const r_angle = (a * (1 - e * e)) / (1 + e * Math.cos(tAngle));
+                const r2_angle = factor * r_angle;
+                
+                trail[i].x = cx + r2_angle * Math.cos(tAngle) * scale;
+                trail[i].y = cy + r2_angle * Math.sin(tAngle) * scale;
+            }
+        }
+
+        // --- 케플러 제2법칙: 부채꼴(쓸고 지나간 면적) 계산 및 드로잉 함수 ---
+        function drawAreaSectors(cx, cy, scale, totalM) {
+            const factor = m1 / totalM;
+
+            // 저장된 부채꼴들이 있다면 반투명 색상으로 영역을 렌더링
+            sweepSectors.forEach((sector) => {
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.12)'; // 로즈빛 반투명 영역
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                
+                // 중심점은 항성의 실시간 위치(Barycenter 기준 보정)
+                ctx.moveTo(cx, cy);
+
+                const steps = 20;
+                const stepSize = (sector.end - sector.start) / steps;
+                
+                for (let k = 0; k <= steps; k++) {
+                    const currentAngle = sector.start + k * stepSize;
+                    const r_angle = (a * (1 - e * e)) / (1 + e * Math.cos(currentAngle));
+                    const r2_angle = factor * r_angle;
+                    const px = cx + r2_angle * Math.cos(currentAngle) * scale;
+                    const py = cy + r2_angle * Math.sin(currentAngle) * scale;
+                    ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        function drawSpace() {
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+            
+            // Clear Screen
+            ctx.fillStyle = '#05070f';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw Background Stars
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            for (let i = 0; i < 50; i++) {
+                const x = (Math.sin(i * 12345) * 0.5 + 0.5) * width;
+                const y = (Math.cos(i * 54321) * 0.5 + 0.5) * height;
+                ctx.fillRect(x, y, 1.5, 1.5);
+            }
+
+            // Central coordinates (Screen Center)
+            const cx = width / 2;
+            const cy = height / 2;
+
+            // 절대적 공간감 및 확대/축소(Zoom)를 구현하기 위한 고정 스케일 설계
+            const maxSimulationDistance = 3.0 * (1 + 0.9); 
+            const scale = Math.min(width, height) / (2 * maxSimulationDistance * 1.15); 
+
+            // 우주 공간 그리드(Concentric AU Circles) 드로잉
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 6]);
+            
+            const gridCircles = [1.0, 2.0, 3.0];
+            gridCircles.forEach(au => {
+                const radiusPixels = au * scale;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radiusPixels, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 가이드라인 텍스트 라벨
+                ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+                ctx.font = '10px monospace';
+                ctx.fillText(`${au.toFixed(1)} AU`, cx + radiusPixels + 4, cy + 3);
+            });
+            ctx.setLineDash([]); 
+
+            // Physics calculation for current state
+            const params = getOrbitalParameters();
+            const totalM = m1 + m2;
+            const mu = G * totalM;
+
+            // Current Distance r based on Kepler's 1st Law
+            const r = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+            
+            // Two-body system coordinates relative to the barycenter
+            const r1 = (m2 / totalM) * r;
+            const r2 = (m1 / totalM) * r;
+
+            const cosT = Math.cos(theta);
+            const sinT = Math.sin(theta);
+
+            // Relative positions
+            const starX = cx - r1 * cosT * scale;
+            const starY = cy - r1 * sinT * scale;
+
+            const planetX = cx + r2 * cosT * scale;
+            const planetY = cy + r2 * sinT * scale;
+
+            // --- [핵심 기능 1]: 케플러 제2법칙 (면적 속도 일정) 부채꼴 스위퍼 기록 장치 ---
+            if (showSweeper && isRunning) {
+                const angleDiff = Math.abs(theta - lastSweepTheta);
+                
+                if (angleDiff >= sweepAngleInterval && angleDiff < Math.PI) {
+                    sweepSectors.push({
+                        start: lastSweepTheta,
+                        end: theta
+                    });
+                    
+                    if (sweepSectors.length > 6) {
+                        sweepSectors.shift();
+                    }
+                    lastSweepTheta = theta;
+                }
+                
+                if (Math.abs(theta - lastSweepTheta) > Math.PI) {
+                    lastSweepTheta = theta;
+                }
+            }
+
+            // 면적 쓸기(Sweeper) 렌더링
+            if (showSweeper) {
+                drawAreaSectors(cx, cy, scale, totalM);
+            }
+
+            // Save trace points of Planet alongside the angle 'theta'
+            if (isRunning) {
+                trail.push({ x: planetX, y: planetY, theta: theta });
+                if (trail.length > maxTrailLength) {
+                    trail.shift();
+                }
+            }
+
+            // Update trail projection real-time
+            updateTrailPositions(cx, cy, scale);
+
+            // Draw Orbital Path
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            
+            for (let angle = 0; angle < Math.PI * 2; angle += 0.05) {
+                const r_angle = (m1 / totalM) * (a * (1 - e * e)) / (1 + e * Math.cos(angle));
+                const px = cx + r_angle * Math.cos(angle) * scale;
+                const py = cy + r_angle * Math.sin(angle) * scale;
+                if (angle === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.setLineDash([]); 
+
+            // Draw Planet's Motion Trail (Continuous line segment drawing)
+            if (trail.length > 1) {
+                ctx.lineWidth = 2.5;
+                for (let i = 1; i < trail.length; i++) {
+                    const diff = Math.abs(trail[i].theta - trail[i-1].theta);
+                    
+                    if (diff > Math.PI) {
+                        continue; 
+                    }
+                    
+                    const opacity = (i / trail.length) * 0.55;
+                    ctx.strokeStyle = `rgba(59, 130, 246, ${opacity})`;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(trail[i-1].x, trail[i-1].y);
+                    ctx.lineTo(trail[i].x, trail[i].y);
+                    ctx.stroke();
+                }
+            }
+
+            // --- [핵심 기능 2]: 원일점(Aphelion) 및 근일점(Perihelion) 고유 마커 시각화 ---
+            const r2_aphelion = (m1 / totalM) * params.r_a;
+            const r2_perihelion = (m1 / totalM) * params.r_p;
+
+            // 근일점 마크 (Perihelion, theta = 0, 오른쪽 맨 끝 극점)
+            const periX = cx + r2_perihelion * scale;
+            const periY = cy;
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.6)';
+            ctx.beginPath();
+            ctx.arc(periX, periY, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText('근일점 (P)', periX + 8, periY + 3);
+
+            // 원일점 마크 (Aphelion, theta = PI, 왼쪽 맨 끝 극점)
+            const aphX = cx - r2_aphelion * scale;
+            const aphY = cy;
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.6)';
+            ctx.beginPath();
+            ctx.arc(aphX, aphY, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillText('원일점 (A)', aphX - 58, aphY + 3);
+
+            // Draw Common Barycenter (질량중심)
+            if (showBarycenter) {
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#10b981';
+                ctx.font = 'bold 10px monospace';
+                ctx.fillText('B(질량중심)', cx + 8, cy - 8);
+            }
+
+            // Draw Star (m1) - Orange/Yellow Sun
+            const starRadius = 8 + Math.log(m1 + 1) * 6; 
+            const starGradient = ctx.createRadialGradient(starX, starY, 1, starX, starY, starRadius);
+            starGradient.addColorStop(0, '#fffbeb');
+            starGradient.addColorStop(0.3, '#f59e0b');
+            starGradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = starGradient;
+            ctx.beginPath();
+            ctx.arc(starX, starY, starRadius * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw Planet (m2) - Cyan Sphere
+            const planetRadius = 4 + Math.log(m2 + 1) * 5;
+            const planetGradient = ctx.createRadialGradient(planetX, planetY, 1, planetX, planetY, planetRadius);
+            planetGradient.addColorStop(0, '#e0f2fe');
+            planetGradient.addColorStop(0.6, '#3b82f6');
+            planetGradient.addColorStop(1, '#1d4ed8');
+            ctx.fillStyle = planetGradient;
+            ctx.beginPath();
+            ctx.arc(planetX, planetY, planetRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 물리 법칙에 비례하는 비제한(Linear) 속도 벡터 화살표 드로잉
+            const speedFactor = G * totalM / params.h;
+            const vr = speedFactor * e * Math.sin(theta);
+            const vtheta = speedFactor * (1 + e * Math.cos(theta));
+
+            // Cartesian Velocity Components (AU/Year)
+            const factor = m1 / totalM;
+            const dr_dt = factor * vr;
+            const r_dtheta_dt = factor * vtheta;
+
+            const vx = dr_dt * cosT - r_dtheta_dt * sinT;
+            const vy = dr_dt * sinT + r_dtheta_dt * cosT;
+
+            const v_mag = Math.sqrt(mu * (2/r - 1/a)); 
+            const km_s = v_mag * 4.74057; // 1 AU/Year = 4.74057 km/s 로 정밀 상수 보정
+
+            if (showVector) {
+                const arrowLengthScale = 0.085;
+                const arrowEndX = planetX + vx * scale * arrowLengthScale;
+                const arrowEndY = planetY + vy * scale * arrowLengthScale;
+                
+                // 현재 속도 비율 보간 계산
+                let speedRatio = 0;
+                if (params.v_p_val > params.v_a_val) {
+                    speedRatio = (v_mag - params.v_a_val) / (params.v_p_val - params.v_a_val);
+                    speedRatio = Math.max(0, Math.min(1, speedRatio)); 
+                }
+                
+                // 파란색 ➔ 노란색 ➔ 빨간색 보간
+                let rColor, gColor, bColor;
+                if (speedRatio < 0.5) {
+                    const localRatio = speedRatio * 2;
+                    rColor = Math.floor(localRatio * 220);
+                    gColor = Math.floor(localRatio * 220 + (1 - localRatio) * 100);
+                    bColor = Math.floor((1 - localRatio) * 255);
+                } else {
+                    const localRatio = (speedRatio - 0.5) * 2;
+                    rColor = 220 + Math.floor(localRatio * 35);
+                    gColor = Math.floor((1 - localRatio) * 220);
+                    bColor = 0;
+                }
+                const vectorColor = `rgb(${rColor}, ${gColor}, ${bColor})`;
+                
+                // Draw Velocity Vector with Dynamic Color
+                drawVectorArrow(planetX, planetY, arrowEndX, arrowEndY, vectorColor);
+                
+                // Label (실시간 속도 수치값 가이드라인 렌더링)
+                ctx.fillStyle = vectorColor;
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillText(`${km_s.toFixed(2)} km/s`, arrowEndX + 8, arrowEndY + 4); // 정밀한 소수점 둘째 자리 표시
+            }
+
+            // Real-time info on screen & live UI updating
+            const calcPeriodValue = calculatePeriod();
+            const massRatioValue = m1 / m2;
+
+            liveR.innerHTML = `${r.toFixed(3)} AU`; 
+            liveV.innerHTML = `${km_s.toFixed(2)} km/s`;
+            livePeriod.innerHTML = `${calcPeriodValue.toFixed(3)} 년`; 
+            liveMassRatio.innerHTML = `${massRatioValue.toFixed(1)} 배`; 
+            liveRp.innerHTML = `${params.r_p.toFixed(3)} AU`;
+            liveRa.innerHTML = `${params.r_a.toFixed(3)} AU`;
+            infoPeriod.innerHTML = `${calcPeriodValue.toFixed(3)} 년`;
+            infoVRatio.innerHTML = `${(params.v_p_val / params.v_a_val).toFixed(3)} 배`;
+
+            // Kepler's Second Law Integration with Speed multiplier
+            if (isRunning) {
+                const dt = 0.005 * timeSpeed; 
+                const dtheta = (params.h / (r * r)) * dt;
+                theta += dtheta;
+                
+                if (theta > Math.PI * 2) {
+                    theta -= Math.PI * 2;
+                }
+            }
+        }
+
+        // --- 5. Main Animation Loop ---
+        function animate() {
+            drawSpace();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // --- 6. Event Listeners & UI sync ---
+        function updatePhysicsFromSliders() {
+            a = parseFloat(inputA.value);
+            e = parseFloat(inputE.value);
+            m1 = parseFloat(inputM1.value);
+            m2 = parseFloat(inputM2.value);
+            timeSpeed = parseFloat(inputSpeed.value);
+
+            // Print text updates
+            valA.textContent = `${a.toFixed(2)} AU`;
+            valE.textContent = `${e.toFixed(2)}`;
+            valM1.textContent = `${m1.toFixed(2)} M☉`;
+            valM2.textContent = `${m2.toFixed(3)} M☉`;
+            valSpeed.textContent = `${timeSpeed.toFixed(2)}x`;
+
+            updateChart();
+        }
+
+        // Slider listeners
+        inputA.addEventListener('input', () => {
+            updatePhysicsFromSliders();
+            sweepSectors = []; 
+        });
+
+        inputE.addEventListener('input', () => {
+            updatePhysicsFromSliders();
+            sweepSectors = [];
+        });
+
+        inputM1.addEventListener('input', () => {
+            updatePhysicsFromSliders();
+            sweepSectors = [];
+        });
+
+        inputM2.addEventListener('input', () => {
+            updatePhysicsFromSliders();
+            sweepSectors = [];
+        });
+
+        inputSpeed.addEventListener('input', () => {
+            updatePhysicsFromSliders();
+        });
+
+        // Toggle Buttons
+        toggleVector.addEventListener('change', (e) => {
+            showVector = e.target.checked;
+        });
+
+        toggleBarycenter.addEventListener('change', (e) => {
+            showBarycenter = e.target.checked;
+        });
+
+        toggleSweeper.addEventListener('change', (e) => {
+            showSweeper = e.target.checked;
+            sweepSectors = []; 
+            lastSweepTheta = theta;
+        });
+
+        // Play/Pause Controller
+        btnPlay.addEventListener('click', () => {
+            isRunning = !isRunning;
+            if (isRunning) {
+                playIcon.textContent = '⏸️';
+                playText.textContent = '일시정지';
+            } else {
+                playIcon.textContent = '▶️';
+                playText.textContent = '운동시작';
+            }
+        });
+
+        // Reset Controller
+        btnReset.addEventListener('click', () => {
+            inputA.value = 1.5;
+            inputE.value = 0.4;
+            inputM1.value = 5.0;
+            inputM2.value = 0.010;
+            inputSpeed.value = 1.0;
+            theta = 0;
+            trail = [];
+            sweepSectors = [];
+            updatePhysicsFromSliders();
+            if (!isRunning) {
+                isRunning = true;
+                playIcon.textContent = '⏸️';
+                playText.textContent = '일시정지';
+            }
+        });
+
+        // Handle Responsive Canvas
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+
+        // Tab Switching Menu
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const theorySection = document.getElementById('tab-theory');
+            const limitationSection = document.getElementById('tab-limitation');
+
+            tabs.forEach(tab => {
+                tab.classList.remove('border-blue-500', 'text-blue-400');
+                tab.classList.add('text-slate-400');
+            });
+
+            const activeTab = event.currentTarget;
+            activeTab.classList.add('border-blue-500', 'text-blue-400');
+            activeTab.classList.remove('text-slate-400');
+
+            if (tabName === 'theory') {
+                theorySection.classList.remove('hidden');
+                limitationSection.classList.add('hidden');
+            } else {
+                theorySection.classList.add('hidden');
+                limitationSection.classList.remove('hidden');
+            }
+        }
+
+        // --- 7. Initialisation ---
+        window.onload = function() {
+            resizeCanvas();
+            updatePhysicsFromSliders();
+            initChart();
+            animate();
+        };
+    </script>
+</body>
+</html>

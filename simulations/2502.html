@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>별의 표면 온도와 반지름에 따른 흑체 복사 시뮬레이션</title>
+    <!-- Tailwind CSS 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 다크모드 슬라이더 스타일 커스텀 */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            border: none;
+            transition: transform 0.1s ease;
+        }
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="bg-[#0b0f19] text-[#f1f5f9] min-height-screen font-sans antialiased p-4 md:p-8 flex flex-col items-center">
+
+    <!-- 헤더 영역 -->
+    <header class="text-center mb-8 max-w-4xl">
+        <h1 class="text-2xl md:text-3.5xl font-extrabold text-[#38bdf8] tracking-tight mb-2">
+            별의 표면 온도와 반지름에 따른 흑체 복사 시뮬레이션
+        </h1>
+        <p class="text-sm md:text-base text-slate-400">
+            고급 지구과학 탐구 활동 | 빈의 변위 법칙 & 슈테판-볼츠만 법칙의 실시간 시각화
+        </p>
+    </header>
+
+    <!-- 메인 레이아웃 컨테이너 -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- 왼쪽 컨트롤러 및 수치 연산 패널 (4/12 영역) -->
+        <section class="lg:col-span-5 bg-[#161f30] border border-[#233554] p-6 rounded-2xl shadow-2xl flex flex-col gap-6">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                <h2 class="text-lg font-bold text-slate-200">변인 제어 및 물리량 연산</h2>
+                <span class="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">v2.2 PRO</span>
+            </div>
+            
+            <!-- 조작 변인 1: 표면 온도 -->
+            <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-center text-sm font-semibold">
+                    <span class="text-slate-300">조작 변인 1 : 표면 온도 (<i>T</i>)</span>
+                    <span id="temp-val" class="text-[#38bdf8] text-base font-bold">6,000 K</span>
+                </div>
+                <input type="range" id="temp-slider" min="3000" max="12000" step="100" value="6000" 
+                       class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#38bdf8]">
+                <div class="flex justify-between text-xs text-slate-500">
+                    <span>3,000 K (M형 적색왜성)</span>
+                    <span>12,000 K (O/B형 청색성)</span>
+                </div>
+            </div>
+
+            <!-- 조작 변인 2: 상대 반지름 -->
+            <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-center text-sm font-semibold">
+                    <span class="text-slate-300">조작 변인 2 : 상대 반지름 (<i>R</i>)</span>
+                    <span id="radius-val" class="text-[#38bdf8] text-base font-bold">1.0 R<sub>☉</sub></span>
+                </div>
+                <input type="range" id="radius-slider" min="0.5" max="3.0" step="0.1" value="1.0" 
+                       class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#38bdf8]">
+                <div class="flex justify-between text-xs text-slate-500">
+                    <span>0.5 R<sub>☉</sub> (소형 주계열성)</span>
+                    <span>3.0 R<sub>☉</sub> (거성 초기 단계)</span>
+                </div>
+            </div>
+
+            <!-- 그래프 Y축 스케일 변환 옵션 -->
+            <div class="flex flex-col gap-2 border-t border-slate-800 pt-4">
+                <span class="text-sm font-semibold text-slate-300">그래프 Y축 스케일 설정</span>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <button id="btn-scale-auto" class="px-3 py-2 rounded-lg text-xs font-bold bg-[#38bdf8] text-[#0b0f19] transition-all">
+                        자동 맞춤 (개형 관찰)
+                    </button>
+                    <button id="btn-scale-fixed" class="px-3 py-2 rounded-lg text-xs font-bold bg-[#0f172a] text-slate-400 border border-slate-700 hover:border-slate-500 transition-all">
+                        절대 비교 (태양 대조군)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 과학적 근거 데이터 1: 빈의 변위 법칙 -->
+            <div class="bg-[#05070c] border border-slate-800 rounded-xl p-4 flex flex-col gap-1">
+                <span class="text-xs font-semibold text-slate-400 tracking-wider">💡 빈의 변위 법칙 (Wien's Displacement Law)</span>
+                <span class="text-xs text-slate-500 mb-1"><i>λ</i><sub>max</sub> &middot; <i>T</i> = 2,897,772 nm&middot;K</span>
+                <div id="wien-output" class="text-base font-extrabold text-white mt-1">
+                    최대 에너지 방출 파장 (<i>λ</i><sub>max</sub>): <span class="text-[#ef4444]">-</span>
+                </div>
+            </div>
+
+            <!-- 과학적 근거 데이터 2: 슈테판-볼츠만 법칙 -->
+            <div class="bg-[#05070c] border border-slate-800 rounded-xl p-4 flex flex-col gap-1">
+                <span class="text-xs font-semibold text-slate-400 tracking-wider">💡 슈테판-볼츠만 법칙 (Stefan-Boltzmann Law)</span>
+                <span class="text-xs text-slate-500 mb-1"><i>L</i> = 4π<i>R</i><sup>2</sup><i>σT</i><sup>4</sup> ∝ <i>R</i><sup>2</sup><i>T</i><sup>4</sup></span>
+                <div id="stefan-output" class="text-base font-extrabold text-white mt-1">
+                    총 광도 (<i>L</i>): <span class="text-[#f59e0b]">-</span>
+                </div>
+            </div>
+
+            <!-- 법칙 요약 설명 -->
+            <div class="text-xs text-slate-400 leading-relaxed border-t border-slate-800 pt-4">
+                <p class="font-bold text-slate-300 mb-1">💡 물리 법칙 해석 길라잡이:</p>
+                <p>1. 온도가 상승할수록 <b>최대 방출 파장</b>은 짧아져 그래프의 정점이 왼쪽(자외선 방향)으로 이동합니다.</p>
+                <p class="mt-1">2. <b>광도(<i>L</i>)</b>는 반지름의 제곱과 온도의 4제곱에 비례하므로 온도가 높아지면 총 방출 에너지가 극적으로 증가합니다.</p>
+            </div>
+        </section>
+
+        <!-- 오른쪽 실시간 캔버스 시각화 영역 (7/12 영역) -->
+        <section class="lg:col-span-7 flex flex-col gap-6 w-full">
+            
+            <!-- 별의 색상 및 크기 시각화 캔버스 -->
+            <div class="bg-[#05070c] border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-slate-300">실시간 항성 상태 시각화</h3>
+                    <div class="flex gap-2">
+                        <span id="spectral-class-badge" class="text-xs font-bold px-2.5 py-1 bg-amber-500 text-slate-900 rounded-md">분광형 G</span>
+                        <span class="text-xs px-2 py-1 bg-slate-800 text-slate-400 rounded-md">크기 및 분광 광학 색상 반영</span>
+                    </div>
+                </div>
+                <div class="relative w-full overflow-hidden flex justify-center items-center rounded-xl bg-gradient-to-b from-[#020408] to-[#0b1329]" style="height: 220px;">
+                    <canvas id="starCanvas" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <!-- 흑체 복사 곡선(플랑크 곡선) 그래프 캔버스 -->
+            <div class="bg-[#05070c] border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-bold text-slate-300">파장에 따른 에너지 밀도 곡선 (Planck's Curve)</h3>
+                        <span class="text-[10px] text-slate-500 bg-slate-900 border border-slate-800 px-1.5 py-0.2 rounded">마우스 탐침 활성</span>
+                    </div>
+                    <span id="scale-badge" class="text-xs px-2 py-1 bg-[#38bdf8]/10 text-[#38bdf8] border border-[#38bdf8]/20 rounded-md">자동 맞춤 모드</span>
+                </div>
+                <div class="relative w-full overflow-hidden rounded-xl bg-[#030712] cursor-crosshair" style="height: 320px;">
+                    <canvas id="graphCanvas" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <footer class="mt-12 text-center text-xs text-slate-500 max-w-2xl">
+        본 시뮬레이터는 고등학교 고급 지구과학 교과과정의 '별의 물리적 특성' 단원을 직관적으로 탐구할 수 있도록 제작된 교육용 모델입니다.
+    </footer>
+
+    <script>
+        // DOM 원소 매핑
+        const tempSlider = document.getElementById('temp-slider');
+        const radiusSlider = document.getElementById('radius-slider');
+        const tempVal = document.getElementById('temp-val');
+        const radiusVal = document.getElementById('radius-val');
+        const wienOutput = document.getElementById('wien-output');
+        const stefanOutput = document.getElementById('stefan-output');
+        const spectralClassBadge = document.getElementById('spectral-class-badge');
+
+        const btnScaleAuto = document.getElementById('btn-scale-auto');
+        const btnScaleFixed = document.getElementById('btn-scale-fixed');
+        const scaleBadge = document.getElementById('scale-badge');
+
+        const starCanvas = document.getElementById('starCanvas');
+        const starCtx = starCanvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        // 태양 기준 상수
+        const T_SUN = 5778; 
+
+        // Y축 스케일링 설정 상태 (true: 자동 크기 조절, false: 절대 고정 수치 비교)
+        let isAutoScale = true;
+
+        // 마우스 탐침 X 좌표 저장 변수 (그래프 호버 인터랙션) - CSS 픽셀 단위
+        let graphMouseX = -1;
+
+        // 배경 스타필드를 위한 우주 먼지 배열 생성
+        let backgroundStars = [];
+        function generateBackgroundStars(width, height) {
+            backgroundStars = [];
+            for (let i = 0; i < 45; i++) {
+                backgroundStars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 1.5 + 0.3,
+                    alpha: Math.random() * 0.7 + 0.3
+                });
+            }
+        }
+
+        // 버튼 클릭 이벤트 바인딩
+        btnScaleAuto.addEventListener('click', () => {
+            isAutoScale = true;
+            btnScaleAuto.className = "px-3 py-2 rounded-lg text-xs font-bold bg-[#38bdf8] text-[#0b0f19] transition-all";
+            btnScaleFixed.className = "px-3 py-2 rounded-lg text-xs font-bold bg-[#0f172a] text-slate-400 border border-slate-700 hover:border-slate-500 transition-all";
+            scaleBadge.innerText = "자동 맞춤 모드";
+            scaleBadge.className = "text-xs px-2 py-1 bg-[#38bdf8]/10 text-[#38bdf8] border border-[#38bdf8]/20 rounded-md";
+            updateSimulation();
+        });
+
+        btnScaleFixed.addEventListener('click', () => {
+            isAutoScale = false;
+            btnScaleFixed.className = "px-3 py-2 rounded-lg text-xs font-bold bg-[#38bdf8] text-[#0b0f19] transition-all";
+            btnScaleAuto.className = "px-3 py-2 rounded-lg text-xs font-bold bg-[#0f172a] text-slate-400 border border-slate-700 hover:border-slate-500 transition-all";
+            scaleBadge.innerText = "절대 비교 모드 (태양 대조)";
+            scaleBadge.className = "text-xs px-2 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-md";
+            updateSimulation();
+        });
+
+        // 그래프 캔버스 마우스 감지 바인딩 (Retina 디스플레이 오프셋 버그 수정)
+        graphCanvas.addEventListener('mousemove', (e) => {
+            const rect = graphCanvas.getBoundingClientRect();
+            // e.clientX - rect.left 는 CSS 픽셀 단위 좌표를 가져옵니다. 
+            // 그리기 영역(renderGraph)의 내부 수치인 width/height 와도 1:1로 정확하게 부합합니다.
+            graphMouseX = e.clientX - rect.left;
+            updateSimulation(); // 마우스 위치 바뀔 때마다 실시간 툴팁 렌더링
+        });
+
+        graphCanvas.addEventListener('mouseleave', () => {
+            graphMouseX = -1;
+            updateSimulation(); // 마우스 이탈 시 툴팁 지우기
+        });
+
+        // 캔버스 해상도 대응을 위한 크기 조정 및 반응형 설정
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+
+            // 스타 캔버스 크기 맞추기
+            const starRect = starCanvas.parentElement.getBoundingClientRect();
+            starCanvas.width = starRect.width * dpr;
+            starCanvas.height = starRect.height * dpr;
+            starCtx.scale(dpr, dpr);
+
+            // 그래프 캔버스 크기 맞추기
+            const graphRect = graphCanvas.parentElement.getBoundingClientRect();
+            graphCanvas.width = graphRect.width * dpr;
+            graphCanvas.height = graphRect.height * dpr;
+            graphCtx.scale(dpr, dpr);
+
+            // 스타필드 별 재생성
+            generateBackgroundStars(starRect.width, starRect.height);
+        }
+
+        // 항성 천문 분광계(OBAFGKM) 기준 실시간 스펙트럼 색상 매핑 함수
+        function getSpectralTypeAndColor(kelvin) {
+            let type = "M";
+            let color = { r: 255, g: 50, b: 0 };      // 아주 선명한 진적색 (M)
+            let textColor = "text-red-500";
+            let badgeBg = "bg-red-500/20 text-red-400 border-red-500/30";
+
+            if (kelvin >= 10000) {
+                type = "O";
+                color = { r: 60, g: 155, b: 255 };    // 강렬한 네온 청색 (O)
+                textColor = "text-blue-400";
+                badgeBg = "bg-blue-600/30 text-blue-300 border-blue-500/40";
+            } else if (kelvin >= 8000) {
+                type = "B";
+                color = { r: 150, g: 200, b: 255 };   // 에메랄드빛 청백색 (B)
+                textColor = "text-sky-300";
+                badgeBg = "bg-sky-500/20 text-sky-300 border-sky-400/30";
+            } else if (kelvin >= 7000) {
+                type = "A";
+                color = { r: 230, g: 240, b: 255 };   // 영롱한 순백색 (A)
+                textColor = "text-slate-200";
+                badgeBg = "bg-slate-500/20 text-slate-200 border-slate-400/30";
+            } else if (kelvin >= 6000) {
+                type = "F";
+                color = { r: 255, g: 245, b: 200 };   // 연한 황백색 (F)
+                textColor = "text-yellow-100";
+                badgeBg = "bg-yellow-100/20 text-yellow-100 border-yellow-200/20";
+            } else if (kelvin >= 5200) {
+                type = "G";
+                color = { r: 255, g: 215, b: 0 };     // 황금빛 노란색 (G - 태양형)
+                textColor = "text-yellow-400";
+                badgeBg = "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+            } else if (kelvin >= 3700) {
+                type = "K";
+                color = { r: 255, g: 125, b: 0 };     // 선명한 귤색/주황색 (K)
+                textColor = "text-orange-400";
+                badgeBg = "bg-orange-500/20 text-orange-400 border-orange-500/30";
+            }
+
+            return { type, color, textColor, badgeBg };
+        }
+
+        // 플랑크 복사 공식 (온도 T와 파장 lambda 기준의 상대 에너지 밀도 계산)
+        function getPlanckIntensity(wavelength_nm, T) {
+            const h = 6.626e-34; // 플랑크 상수
+            const c = 3e8;       // 광속
+            const k = 1.38e-23;  // 볼츠만 상수
+            const lambda = wavelength_nm * 1e-9;
+
+            // 정밀 계산 공식 구현
+            const c1 = 2 * Math.PI * h * c * c;
+            const c2 = (h * c) / (k * T * lambda);
+            
+            if (c2 > 700) return 0; // 지수 오버플로우 방지
+            
+            return c1 / (Math.pow(lambda, 5) * (Math.exp(c2) - 1));
+        }
+
+        // 1. 별 실시간 렌더링 함수 (스타필드 배경 처리 포함)
+        function renderStar(T, R, width, height) {
+            starCtx.clearRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // 뒷배경 우주 먼지 성운 효과 그리기
+            backgroundStars.forEach(star => {
+                starCtx.fillStyle = `rgba(241, 245, 249, ${star.alpha})`;
+                starCtx.beginPath();
+                starCtx.arc(star.x, star.y, star.radius, 0, 2 * Math.PI);
+                starCtx.fill();
+            });
+            
+            // 기준 반지름 비율 (기본 1.0 R☉ = 35px)
+            const baseRadius = 35;
+            const drawRadius = baseRadius * R;
+
+            const { color } = getSpectralTypeAndColor(T);
+            const rgbStr = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            
+            // 캔버스 이펙트: 네온 백라이트 느낌의 외곽선 빛 확산(Glow) 효과 강화
+            starCtx.shadowBlur = Math.min(25 + (T / 100) * R, 150); 
+            starCtx.shadowColor = rgbStr;
+
+            // 입체 그라데이션 구체 형성 (코어-코로나 그라데이션 기법 사용)
+            const gradient = starCtx.createRadialGradient(centerX, centerY, 0, centerX, centerY, drawRadius);
+            gradient.addColorStop(0, '#ffffff'); // 별의 고온 코어 부분은 순백색
+            gradient.addColorStop(0.2, `rgb(${Math.floor(color.r + (255 - color.r)*0.7)}, ${Math.floor(color.g + (255 - color.g)*0.7)}, ${Math.floor(color.b + (255 - color.b)*0.7)})`);
+            gradient.addColorStop(0.55, rgbStr);  // 대표 색상
+            gradient.addColorStop(0.85, `rgba(${Math.floor(color.r * 0.6)}, ${Math.floor(color.g * 0.6)}, ${Math.floor(color.b * 0.6)}, 0.8)`); // 코로나 어두운 영역의 입체감 확보
+            gradient.addColorStop(1, 'rgba(11, 15, 25, 0)'); // 배경 우주 공간 속으로 페이드아웃
+
+            starCtx.beginPath();
+            starCtx.arc(centerX, centerY, drawRadius * 1.5, 0, 2 * Math.PI); // 이펙트가 자연스럽게 퍼지도록 드로잉 바운더리를 1.5배 설정
+            starCtx.fillStyle = gradient;
+            starCtx.fill();
+
+            // 그림자 초기화
+            starCtx.shadowBlur = 0;
+
+            // 별 중심 텍스트 정보 표시
+            starCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            starCtx.font = 'bold 12px sans-serif';
+            starCtx.textAlign = 'center';
+            starCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            starCtx.shadowBlur = 4;
+            starCtx.fillText(`${T.toLocaleString()}K | ${R.toFixed(1)} R☉`, centerX, centerY + 4);
+            starCtx.shadowBlur = 0; // 초기화
+        }
+
+        // 2. 플랑크 복사 곡선 그래프 렌더링 함수 (탐침 인터랙션 및 태양 레퍼런스 포함)
+        function renderGraph(T, R, width, height) {
+            graphCtx.clearRect(0, 0, width, height);
+
+            const paddingLeft = 60;
+            const paddingRight = 40;
+            const paddingTop = 40;
+            const paddingBottom = 50;
+
+            const plotWidth = width - paddingLeft - paddingRight;
+            const plotHeight = height - paddingTop - paddingBottom;
+
+            // 파장 축 파라미터 (100nm ~ 2000nm 영역 탐색)
+            const minW = 100;
+            const maxW = 2000;
+
+            // 가시광선 영역 범위 지정
+            const visMin = 380;
+            const visMax = 750;
+
+            // 픽셀 X 좌표 변환 헬퍼 (CSS 픽셀 단위)
+            function toX(wave) {
+                return paddingLeft + ((wave - minW) / (maxW - minW)) * plotWidth;
+            }
+            
+            // X 좌표를 다시 파장(nm)으로 변환하는 역함수 (탐침용)
+            function toWavelength(x) {
+                return minW + ((x - paddingLeft) / plotWidth) * (maxW - minW);
+            }
+
+            // 가시광선 스펙트럼 배경 연하게 그리기
+            const visX1 = toX(visMin);
+            const visX2 = toX(visMax);
+            
+            const rainbow = graphCtx.createLinearGradient(visX1, 0, visX2, 0);
+            rainbow.addColorStop(0, 'rgba(139, 92, 246, 0.15)'); // 보라색
+            rainbow.addColorStop(0.2, 'rgba(59, 130, 246, 0.15)'); // 파란색
+            rainbow.addColorStop(0.4, 'rgba(34, 197, 94, 0.15)');  // 초록색
+            rainbow.addColorStop(0.6, 'rgba(234, 179, 8, 0.15)');  // 노란색
+            rainbow.addColorStop(0.8, 'rgba(249, 115, 22, 0.15)'); // 주황색
+            rainbow.addColorStop(1, 'rgba(239, 68, 68, 0.15)');    // 빨간색
+
+            graphCtx.fillStyle = rainbow;
+            graphCtx.fillRect(visX1, paddingTop, visX2 - visX1, plotHeight);
+
+            // 가시광선 왼쪽 자외선(UV), 오른쪽 적외선(IR) 영역 미세 음영 처리 추가
+            graphCtx.fillStyle = 'rgba(168, 85, 247, 0.03)'; // 자외선 흐린 퍼플
+            graphCtx.fillRect(paddingLeft, paddingTop, visX1 - paddingLeft, plotHeight);
+            
+            graphCtx.fillStyle = 'rgba(239, 68, 68, 0.03)'; // 적외선 흐린 레드
+            graphCtx.fillRect(visX2, paddingTop, width - paddingRight - visX2, plotHeight);
+
+            // 스펙트럼 텍스트 라벨 표시
+            graphCtx.fillStyle = '#64748b';
+            graphCtx.font = '9px sans-serif';
+            graphCtx.textAlign = 'center';
+            graphCtx.fillText('자외선 (UV)', paddingLeft + (visX1 - paddingLeft)/2, paddingTop - 10);
+            graphCtx.fillText('적외선 (IR)', visX2 + (width - paddingRight - visX2)/2, paddingTop - 10);
+
+            graphCtx.fillStyle = '#cbd5e1';
+            graphCtx.font = 'bold 11px sans-serif';
+            graphCtx.fillText('가시광선 (380-750nm)', visX1 + (visX2 - visX1)/2, paddingTop - 10);
+
+            // -------------------------------------------------------------
+            // [그리드 배경선 렌더링 추가] 축의 수치 확인을 수월하게 돕기 위함
+            // -------------------------------------------------------------
+            graphCtx.strokeStyle = 'rgba(51, 65, 85, 0.4)'; // 반투명한 세로 보조선
+            graphCtx.lineWidth = 1;
+            // X축 기준 보조 세로선 (200nm 단위)
+            for (let val = 200; val <= maxW; val += 200) {
+                const gridX = toX(val);
+                graphCtx.beginPath();
+                graphCtx.moveTo(gridX, paddingTop);
+                graphCtx.lineTo(gridX, height - paddingBottom);
+                graphCtx.stroke();
+            }
+
+            // Y축 기준 보조 가로선 (4분할)
+            for (let percent = 0.25; percent <= 1.0; percent += 0.25) {
+                const gridY = height - paddingBottom - (plotHeight * percent);
+                graphCtx.beginPath();
+                graphCtx.moveTo(paddingLeft, gridY);
+                graphCtx.lineTo(width - paddingRight, gridY);
+                graphCtx.stroke();
+            }
+
+            // -------------------------------------------------------------
+            // 축 선 그리기 (두께 및 색상 강화 적용)
+            // -------------------------------------------------------------
+            graphCtx.strokeStyle = '#64748b'; // 기존보다 훨씬 밝아지고 선명한 청회색 축 설정
+            graphCtx.lineWidth = 2.5;         // 축 선 두께를 기존 1.5에서 2.5로 대폭 강화하여 가시성 증대
+            graphCtx.beginPath();
+            graphCtx.moveTo(paddingLeft, paddingTop - 5);
+            graphCtx.lineTo(paddingLeft, height - paddingBottom); // Y축 선
+            graphCtx.lineTo(width - paddingRight + 5, height - paddingBottom); // X축 선
+            graphCtx.stroke();
+
+            // Y축 스케일 결정을 위한 기준 피크치 구하기
+            let scaleReference = 1.0;
+            if (isAutoScale) {
+                // [자동 맞춤 모드] 현재 온도의 최대 피크치 기준
+                const currentPeakLambda = 2897772 / T;
+                scaleReference = getPlanckIntensity(currentPeakLambda, T) * Math.pow(R, 2);
+            } else {
+                // [절대 비교 모드] 최고 조건 (12000K, 3.0R) 기준
+                scaleReference = getPlanckIntensity(2897772 / 12000, 12000) * Math.pow(3.0, 2);
+            }
+
+            // -------------------------------------------------------------
+            // [태양 대조 가이드라인] 절대 비교 모드일 때만 연회색 점선으로 태양 곡선 렌더링
+            // -------------------------------------------------------------
+            if (!isAutoScale) {
+                graphCtx.beginPath();
+                let firstSunPoint = true;
+                for (let w = minW; w <= maxW; w += 5) {
+                    // 태양 스펙트럼 에너지 밀도 계산
+                    const sunEnergy = getPlanckIntensity(w, T_SUN) * Math.pow(1.0, 2);
+                    const yRatio = sunEnergy / scaleReference;
+                    let yPos = (height - paddingBottom) - (yRatio * plotHeight * 0.90);
+                    if (yPos < paddingTop) yPos = paddingTop;
+                    const xPos = toX(w);
+
+                    if (firstSunPoint) {
+                        graphCtx.moveTo(xPos, yPos);
+                        firstSunPoint = false;
+                    } else {
+                        graphCtx.lineTo(xPos, yPos);
+                    }
+                }
+                graphCtx.strokeStyle = 'rgba(148, 163, 184, 0.7)'; // 태양 회색 점선 조금 더 밝게 보정
+                graphCtx.lineWidth = 2;
+                graphCtx.setLineDash([4, 4]); // 점선 패턴 적용
+                graphCtx.stroke();
+                graphCtx.setLineDash([]); // 점선 해제
+                
+                // 태양 레퍼런스 범례 라벨
+                graphCtx.fillStyle = '#94a3b8';
+                graphCtx.font = '10px sans-serif';
+                graphCtx.textAlign = 'left';
+                graphCtx.fillText('--- 태양 표준 대조군 (5,778K, 1R☉)', paddingLeft + 15, paddingTop + 20);
+            }
+
+            // -------------------------------------------------------------
+            // 실제 항성의 플랑크 곡선 그리기
+            // -------------------------------------------------------------
+            graphCtx.beginPath();
+            let firstPoint = true;
+            for (let w = minW; w <= maxW; w += 5) {
+                const rawEnergy = getPlanckIntensity(w, T) * Math.pow(R, 2);
+                const yRatio = rawEnergy / scaleReference;
+                const multiplier = isAutoScale ? 0.85 : 0.90;
+                let yPos = (height - paddingBottom) - (yRatio * plotHeight * multiplier);
+
+                if (yPos < paddingTop) yPos = paddingTop; // 한계선 클램핑
+                const xPos = toX(w);
+
+                if (firstPoint) {
+                    graphCtx.moveTo(xPos, yPos);
+                    firstPoint = false;
+                } else {
+                    graphCtx.lineTo(xPos, yPos);
+                }
+            }
+
+            // 항성 분광형 색상 추출
+            const { color } = getSpectralTypeAndColor(T);
+            graphCtx.strokeStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            graphCtx.lineWidth = 3.5;
+            graphCtx.stroke();
+
+            // -------------------------------------------------------------
+            // [실시간 마우스 탐침 인터랙션 구현] (정밀 일치 교정 완료)
+            // -------------------------------------------------------------
+            if (graphMouseX >= paddingLeft && graphMouseX <= (width - paddingRight)) {
+                const hoverW = toWavelength(graphMouseX);
+                const hoverEnergy = getPlanckIntensity(hoverW, T) * Math.pow(R, 2);
+                const yRatio = hoverEnergy / scaleReference;
+                const multiplier = isAutoScale ? 0.85 : 0.90;
+                const hoverY = (height - paddingBottom) - (yRatio * plotHeight * multiplier);
+
+                // 세로 탐침 선 드로잉
+                graphCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                graphCtx.lineWidth = 1.2;
+                graphCtx.setLineDash([2, 2]);
+                graphCtx.beginPath();
+                graphCtx.moveTo(graphMouseX, paddingTop);
+                graphCtx.lineTo(graphMouseX, height - paddingBottom);
+                graphCtx.stroke();
+                graphCtx.setLineDash([]); // 해제
+
+                // 현재 포인트에 유광 원형 서클 렌더링
+                graphCtx.beginPath();
+                graphCtx.arc(graphMouseX, hoverY, 6, 0, 2 * Math.PI);
+                graphCtx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                graphCtx.strokeStyle = '#ffffff';
+                graphCtx.lineWidth = 2;
+                graphCtx.shadowBlur = 10;
+                graphCtx.shadowColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                graphCtx.fill();
+                graphCtx.stroke();
+                graphCtx.shadowBlur = 0; // 초기화
+
+                // 미니 정보 툴팁 말풍선 드로잉
+                const tooltipW = 120;
+                const tooltipH = 45;
+                let tooltipX = graphMouseX + 15;
+                let tooltipY = hoverY - 50;
+
+                // 툴팁 화면 삐침 예외 방지 (우측/상단 한계선 계산)
+                if (tooltipX + tooltipW > width - paddingRight) tooltipX = graphMouseX - tooltipW - 15;
+                if (tooltipY < paddingTop) tooltipY = hoverY + 15;
+
+                // 툴팁 박스 뒷배경
+                graphCtx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+                graphCtx.strokeStyle = '#38bdf8';
+                graphCtx.lineWidth = 1;
+                graphCtx.beginPath();
+                graphCtx.roundRect(tooltipX, tooltipY, tooltipW, tooltipH, 6);
+                graphCtx.fill();
+                graphCtx.stroke();
+
+                // 툴팁 텍스트 정보 입력
+                graphCtx.fillStyle = '#f1f5f9';
+                graphCtx.font = 'bold 10px sans-serif';
+                graphCtx.textAlign = 'left';
+                graphCtx.fillText(`파장: ${Math.round(hoverW)} nm`, tooltipX + 8, tooltipY + 16);
+                
+                // 에너지는 지수형식 혹은 단위 스케일로 표시
+                const formattedEnergy = hoverEnergy.toExponential(2);
+                graphCtx.fillStyle = '#e2e8f0';
+                graphCtx.fillText(`에너지 밀도: ${formattedEnergy}`, tooltipX + 8, tooltipY + 32);
+            }
+
+            // X축 눈금 표시 (200nm 단위) 및 라벨링 선명도 강화
+            graphCtx.fillStyle = '#e2e8f0'; // 눈금 텍스트 색상을 더 선명하게 변경
+            graphCtx.font = 'bold 10px sans-serif';
+            graphCtx.textAlign = 'center';
+            for (let val = 200; val <= maxW; val += 200) {
+                const x = toX(val);
+                graphCtx.fillText(val, x, height - paddingBottom + 16);
+                
+                // 눈금 삐져나온 선 (Ticks)
+                graphCtx.beginPath();
+                graphCtx.moveTo(x, height - paddingBottom);
+                graphCtx.lineTo(x, height - paddingBottom + 5);
+                graphCtx.strokeStyle = '#94a3b8'; // 눈금 꼬리선 색상 강화
+                graphCtx.lineWidth = 1.5;
+                graphCtx.stroke();
+            }
+
+            // 축 명칭 그리기 (가시성 강화)
+            graphCtx.fillStyle = '#f1f5f9';
+            graphCtx.font = 'bold 12px sans-serif';
+            graphCtx.fillText('파장 λ (nm)', paddingLeft + plotWidth / 2, height - 12);
+
+            graphCtx.save();
+            graphCtx.translate(16, paddingTop + plotHeight / 2);
+            graphCtx.rotate(-Math.PI / 2);
+            graphCtx.fillText(isAutoScale ? '상대적 에너지 밀도 E' : '에너지 밀도 E (절대 비교)', 0, 0);
+            graphCtx.restore();
+        }
+
+        // 전체적인 화면 갱신 및 과학적 파라미터 계산 처리
+        function updateSimulation() {
+            const T = parseInt(tempSlider.value);
+            const R = parseFloat(radiusSlider.value);
+
+            // 1. 슬라이더 지시값 반영
+            tempVal.innerHTML = `${T.toLocaleString()} K`;
+            radiusVal.innerHTML = `${R.toFixed(1)} R<sub>☉</sub>`;
+
+            // 2. 분광형 판정 배지 갱신
+            const spectralInfo = getSpectralTypeAndColor(T);
+            spectralClassBadge.innerText = `분광형 ${spectralInfo.type}`;
+            spectralClassBadge.className = `text-xs font-bold px-3 py-1 rounded-md border ${spectralInfo.badgeBg} shadow-sm transition-all duration-300`;
+
+            // 3. 빈의 변위 법칙에 의한 최대 방출 파장 산출
+            const lambdaMax = 2897772 / T;
+            let waveColorClass = 'text-[#38bdf8]';
+            if (lambdaMax < 380) {
+                waveColorClass = 'text-purple-400'; // 자외선
+            } else if (lambdaMax > 750) {
+                waveColorClass = 'text-rose-400'; // 적외선
+            } else {
+                waveColorClass = spectralInfo.textColor; // 가시광선 영역은 실제 별의 색상에 매칭
+            }
+            wienOutput.innerHTML = `최대 에너지 방출 파장 (<i>λ</i><sub>max</sub>): <span class="${waveColorClass} font-black">${lambdaMax.toFixed(1)} nm</span>`;
+
+            // 4. 슈테판-볼츠만 법칙에 따른 상대 광도 계산 ($L \propto R^2 \cdot T^4$)
+            const relativeL = Math.pow(R, 2) * Math.pow(T / T_SUN, 4);
+            let displayL = "";
+            if (relativeL >= 1000) {
+                displayL = relativeL.toExponential(2); // 아주 클 경우 지수 표기법 적용
+            } else {
+                displayL = relativeL.toFixed(3);
+            }
+            stefanOutput.innerHTML = `총 광도 (<i>L</i>): <span class="text-[#f59e0b] font-black">${displayL} L<sub>☉</sub></span>`;
+
+            // 5. 리사이징 정보를 대입하여 더블 캔버스 드로잉 시작
+            const dpr = window.devicePixelRatio || 1;
+            const starW = starCanvas.width / dpr;
+            const starH = starCanvas.height / dpr;
+            const graphW = graphCanvas.width / dpr;
+            const graphH = graphCanvas.height / dpr;
+
+            renderStar(T, R, starW, starH);
+            renderGraph(T, R, graphW, graphH);
+        }
+
+        // 초기 바인딩 및 브라우저 크기 조정 연동
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            updateSimulation();
+        });
+
+        tempSlider.addEventListener('input', updateSimulation);
+        radiusSlider.addEventListener('input', updateSimulation);
+
+        // 최초 실행 프로세스
+        window.onload = function() {
+            resizeCanvas();
+            updateSimulation();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행성 역행 & 다중 시점 3D 상호작용 시뮬레이션</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #05050f;
+            color: #e2e8f0;
+            overflow: hidden; /* Prevent body scrollbars for tight fitting */
+        }
+        
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Neon styling custom utilities */
+        .neon-border-cyan {
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.2), inset 0 0 10px rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+        
+        .neon-border-pink {
+            box-shadow: 0 0 10px rgba(244, 63, 94, 0.2), inset 0 0 10px rgba(244, 63, 94, 0.1);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+        }
+
+        .neon-border-green {
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.2), inset 0 0 10px rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        /* Custom scrollbar for control panel */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0e0e22;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1e1e38;
+            border-radius: 2px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #06b6d4;
+        }
+
+        /* Custom slider styles */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: #1e1e38;
+            height: 4px;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #06b6d4;
+            cursor: pointer;
+            box-shadow: 0 0 6px #06b6d4;
+            transition: transform 0.1s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"].slider-pink::-webkit-slider-thumb {
+            background: #f43f5e;
+            box-shadow: 0 0 6px #f43f5e;
+        }
+
+        input[type="range"].slider-yellow::-webkit-slider-thumb {
+            background: #eab308;
+            box-shadow: 0 0 6px #eab308;
+        }
+
+        /* Custom radio styles for View Mode */
+        .mode-radio:checked + label {
+            border-color: #f43f5e;
+            color: #f43f5e;
+            background-color: rgba(244, 63, 94, 0.1);
+            box-shadow: 0 0 8px rgba(244, 63, 94, 0.4);
+        }
+
+        /* Camera Tracking Options */
+        .cam-btn-active {
+            background-color: #06b6d4 !important;
+            color: #05050f !important;
+            box-shadow: 0 0 8px #06b6d4;
+            border-color: #22d3ee !important;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen p-3 md:p-4 flex flex-col justify-between" oncontextmenu="return false;">
+
+    <!-- Header Section -->
+    <header class="w-full max-w-[1600px] mx-auto mb-2 flex flex-col lg:flex-row items-center justify-between border-b border-slate-800 pb-2 flex-shrink-0">
+        <div class="text-center lg:text-left mb-2 lg:mb-0">
+            <span class="px-2 py-0.5 text-[10px] font-semibold bg-cyan-950 text-cyan-400 border border-cyan-800 rounded-full font-orbitron">EARTH SCIENCE LAB - CELESTIAL ECLIPSE LAB</span>
+            <h1 class="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-400 to-pink-500 tracking-tight mt-0.5">
+                행성 역행 & 다중 시점 3D 시뮬레이션 (식 현상 분석 모드)
+            </h1>
+            <p class="text-[11px] text-slate-400 mt-0.5 font-light">
+                지구·외행성·태양 크기비 연동 조절, 원근 3D 개기 가림 효과 및 실시간 우주 천체 일식(Eclipse) 탐사
+            </p>
+        </div>
+        
+        <!-- HUD Status Info -->
+        <div class="flex items-center space-x-3 bg-[#111126] px-3 py-1 rounded-xl border border-slate-800 text-[10px] lg:text-[11px]">
+            <div class="text-center">
+                <p class="text-[9px] text-slate-500">지구 위상 ($\theta_E$)</p>
+                <p id="hud-earth-deg" class="font-semibold text-cyan-400 font-orbitron">0.0°</p>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-800"></div>
+            <div class="text-center">
+                <p class="text-[9px] text-slate-500">외행성 위상 ($\theta_P$)</p>
+                <p id="hud-planet-deg" class="font-semibold text-pink-400 font-orbitron">0.0°</p>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-800"></div>
+            <div class="text-center">
+                <p class="text-[9px] text-slate-500">행성 간 거리 ($d$)</p>
+                <p id="hud-distance" class="font-semibold text-emerald-400 font-orbitron">1.00 AU</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="w-full max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3.5 flex-grow overflow-hidden items-stretch">
+        
+        <!-- 1. Left Control Panel (3 Cols) -->
+        <section class="lg:col-span-3 flex flex-col space-y-2.5 overflow-hidden h-full">
+            
+            <!-- View Mode Selector -->
+            <div class="bg-[#0e0e22] rounded-xl p-3 border border-slate-800 hover:border-slate-700 transition-colors flex-shrink-0">
+                <h2 class="text-[11px] font-bold text-emerald-400 mb-1.5 flex items-center">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                    관측 모드 선택 (우측 관측창)
+                </h2>
+                <div class="grid grid-cols-1 gap-1.5 text-[10px] font-semibold">
+                    <div class="relative">
+                        <input type="radio" id="mode-earth" name="viewmode" value="earth" class="mode-radio sr-only" checked>
+                        <label for="mode-earth" class="flex items-center justify-between py-1.5 px-2.5 bg-[#161635] text-slate-300 rounded-lg border border-slate-800 cursor-pointer transition-all">
+                            <span>지구 관측자 시점 (지구 $\to$ 외행성)</span>
+                            <span class="text-[8px] font-orbitron bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded-full border border-cyan-800">역행 관측</span>
+                        </label>
+                    </div>
+                    <div class="relative">
+                        <input type="radio" id="mode-planet" name="viewmode" value="planet" class="mode-radio sr-only">
+                        <label for="mode-planet" class="flex items-center justify-between py-1.5 px-2.5 bg-[#161635] text-slate-300 rounded-lg border border-slate-800 cursor-pointer transition-all">
+                            <span>외행성 관측자 시점 (외행성 $\to$ 지구)</span>
+                            <span class="text-[8px] font-orbitron bg-pink-950 text-pink-400 px-1.5 py-0.5 rounded-full border border-pink-800">지구 순행</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orbit Control Sliders Card (Restricted height with internal scroll) -->
+            <div class="bg-[#0e0e22] rounded-xl p-3 border border-slate-800 flex-grow flex flex-col justify-between overflow-hidden">
+                <div class="custom-scrollbar overflow-y-auto pr-1 space-y-3.5 flex-grow max-h-[360px] lg:max-h-full">
+                    
+                    <div>
+                        <h2 class="text-[11px] font-bold text-slate-300 mb-2 flex items-center">
+                            <span class="inline-block w-2 h-2 rounded-full bg-cyan-400 mr-1.5"></span>시뮬레이션 물리값 설정
+                        </h2>
+                        
+                        <!-- Slider 1: Radius -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 font-medium">외행성 궤도 장반경 ($a_P$)</label>
+                                <span id="val-radius" class="text-[10px] font-semibold text-cyan-400 font-orbitron">1.80 AU</span>
+                            </div>
+                            <input type="range" id="slide-radius" min="1.2" max="3.0" step="0.05" value="1.8">
+                        </div>
+
+                        <!-- Slider 2: Speed -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 font-medium">공전 속도 비율 배율</label>
+                                <span id="val-speed" class="text-[10px] font-semibold text-cyan-400 font-orbitron">1.00 x</span>
+                            </div>
+                            <input type="range" id="slide-speed" min="0.2" max="2.0" step="0.05" value="1.0">
+                        </div>
+
+                        <!-- Slider 3: Inclination -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 font-medium">궤도 경사각 ($i$)</label>
+                                <span id="val-inclination" class="text-[10px] font-semibold text-pink-500 font-orbitron">8.00°</span>
+                            </div>
+                            <input type="range" id="slide-inclination" class="slider-pink" min="0" max="30" step="0.5" value="8">
+                        </div>
+
+                        <!-- Slider 4: Earth Eccentricity -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 font-medium">지구 궤도 이심률 ($e_E$)</label>
+                                <span id="val-ecc-earth" class="text-[10px] font-semibold text-cyan-400 font-orbitron">0.00</span>
+                            </div>
+                            <input type="range" id="slide-ecc-earth" min="0" max="0.6" step="0.01" value="0">
+                        </div>
+
+                        <!-- Slider 5: Planet Eccentricity -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 font-medium">외행성 궤도 이심률 ($e_P$)</label>
+                                <span id="val-ecc-planet" class="text-[10px] font-semibold text-pink-500 font-orbitron">0.00</span>
+                            </div>
+                            <input type="range" id="slide-ecc-planet" class="slider-pink" min="0" max="0.6" step="0.01" value="0">
+                        </div>
+
+                        <!-- Slider 6: Phase Offset (RESTORED TO FIX TYPEERROR) -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-400 font-medium">회합 위상 오프셋 ($\phi_0$)</label>
+                                <span id="val-phase" class="text-[10px] font-semibold text-pink-500 font-orbitron">0°</span>
+                            </div>
+                            <input type="range" id="slide-phase" class="slider-pink" min="0" max="360" step="5" value="0">
+                        </div>
+                    </div>
+
+                    <!-- Celestial Body Physical Sizes Control Panel -->
+                    <div class="border-t border-slate-800 pt-2.5">
+                        <h2 class="text-[11px] font-bold text-amber-400 mb-2.5 flex items-center">
+                            <span class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>천체 물리적 크기 조절 (식 변형용)
+                        </h2>
+                        
+                        <!-- Slider: Sun Size -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-300 font-medium">☀️ 태양 원판 물리 반경 ($R_{Sun}$)</label>
+                                <span id="val-size-sun" class="text-[10px] font-semibold text-amber-400 font-orbitron">20.0 px</span>
+                            </div>
+                            <input type="range" id="slide-size-sun" class="slider-yellow" min="5" max="50" step="1" value="20">
+                        </div>
+
+                        <!-- Slider: Earth Size -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-300 font-medium">🌍 지구 물리 반경 ($R_{Earth}$)</label>
+                                <span id="val-size-earth" class="text-[10px] font-semibold text-cyan-400 font-orbitron">6.0 px</span>
+                            </div>
+                            <input type="range" id="slide-size-earth" min="2" max="25" step="0.5" value="6">
+                        </div>
+
+                        <!-- Slider: Planet Size -->
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="text-[10px] text-slate-300 font-medium">🪐 외행성 물리 반경 ($R_{Planet}$)</label>
+                                <span id="val-size-planet" class="text-[10px] font-semibold text-pink-400 font-orbitron">7.5 px</span>
+                            </div>
+                            <input type="range" id="slide-size-planet" class="slider-pink" min="2" max="25" step="0.5" value="7.5">
+                        </div>
+                    </div>
+
+                    <!-- Camera Tracking Lock Panel -->
+                    <div class="border-t border-slate-800 pt-2.5">
+                        <label class="text-[10px] text-slate-300 font-bold block mb-1 flex items-center">
+                            🎥 카메라 중심 추적 대상 고정 (Camera Target)
+                        </label>
+                        <div class="grid grid-cols-4 gap-1 text-[9px] font-bold">
+                            <button id="cam-target-sun" class="py-1 px-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition-all cam-btn-active">태양</button>
+                            <button id="cam-target-earth" class="py-1 px-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition-all">지구</button>
+                            <button id="cam-target-planet" class="py-1 px-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition-all">외행성</button>
+                            <button id="cam-target-free" class="py-1 px-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition-all">자유</button>
+                        </div>
+                        <div class="text-[9px] text-slate-500 mt-2 leading-tight space-y-1 bg-slate-950 p-2 rounded border border-slate-800">
+                            <p class="font-bold text-cyan-400 flex items-center">🗺️ 구글어스 식 키 컨트롤</p>
+                            <p>• <strong>W/A/S/D 또는 방향키</strong>: 수평면 Panning 이동</p>
+                            <p>• <strong>Shift + WASD / 방향키</strong>: Tilt 및 Orbit 회전</p>
+                            <p>• <strong>PageUp / PageDown (또는 +/-)</strong>: 줌 인 / 아웃</p>
+                            <p>• <strong>Q / E</strong>: 수직 상승 / 하강</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scenario Presets -->
+                <div class="border-t border-slate-800 pt-2 mt-2 flex-shrink-0">
+                    <h3 class="text-[9px] font-bold text-slate-400 mb-1">관측 시나리오 프리셋</h3>
+                    <div class="grid grid-cols-2 gap-1.5 text-[9px] font-bold">
+                        <button onclick="applyPreset('mars')" class="py-1 px-2 bg-[#161635] text-slate-300 hover:text-cyan-400 hover:bg-[#1a1a45] rounded border border-slate-800 text-left">🪐 화성 (타원형 자취)</button>
+                        <button onclick="applyPreset('jupiter')" class="py-1.5 px-2 bg-[#161635] text-slate-300 hover:text-cyan-400 hover:bg-[#1a1a45] rounded border border-slate-800 text-left">🪐 목성 (거대외행성)</button>
+                        <button onclick="applyPreset('loop')" class="py-1 px-2 bg-[#161635] text-slate-300 hover:text-pink-400 hover:bg-[#1a1a45] rounded border border-slate-800 text-left">➰ 극단적 고리형</button>
+                        <button onclick="applyPreset('sshape')" class="py-1.5 px-2 bg-[#161635] text-slate-300 hover:text-pink-400 hover:bg-[#1a1a45] rounded border border-slate-800 text-left">〰️ 극단적 S자형</button>
+                    </div>
+                </div>
+
+                <!-- Playback controls -->
+                <div class="border-t border-slate-800 pt-2 mt-2 space-y-2 flex-shrink-0">
+                    <div class="flex justify-between items-center text-[9px]">
+                        <label class="text-slate-400">시뮬레이션 진행 속도</label>
+                        <span id="val-simspeed" class="font-bold font-orbitron text-cyan-400">1.0x</span>
+                    </div>
+                    <input type="range" id="slide-simspeed" min="0.1" max="2.5" step="0.1" value="1.0">
+
+                    <div class="grid grid-cols-2 gap-2 text-[10px] font-bold pt-0.5">
+                        <button id="btn-playpause" class="py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all shadow-md">
+                            <span id="icon-playpause">⏸️ 일시정지</span>
+                        </button>
+                        <button id="btn-reset" class="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-all border border-slate-700">
+                            🔄 초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Center Panel: 3D Solar System View (5 Cols) -->
+        <section class="lg:col-span-5 flex flex-col h-full">
+            <div class="bg-[#0e0e22] rounded-xl p-3 border border-slate-800 flex-grow flex flex-col relative overflow-hidden">
+                <div class="flex justify-between items-center mb-1.5 flex-shrink-0">
+                    <h2 class="text-xs font-bold text-slate-200 flex items-center">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 mr-1.5 animate-pulse"></span>
+                        태양계 궤도 관측창 (3D Orbit View)
+                    </h2>
+                    <span class="text-[9px] bg-slate-900 border border-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
+                        ⌨️ 구글어스 모드 제어 활성화! (이동: 방향키 / 회전: Shift+방향키)
+                    </span>
+                </div>
+                
+                <div class="flex-grow w-full relative bg-[#070714] rounded-lg overflow-hidden neon-border-cyan">
+                    <canvas id="canvas-orbit" class="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                    
+                    <!-- Active Eclipse Status Overlay HUD Box -->
+                    <div id="eclipse-detector-hud" class="absolute top-2.5 left-2.5 right-2.5 bg-[#090916e6] border border-amber-500/50 rounded-lg p-2.5 text-center text-xs text-amber-300 font-bold hidden transition-all shadow-lg animate-bounce">
+                        <span class="inline-block w-2 h-2 rounded-full bg-rose-500 mr-2 animate-ping"></span>
+                        <span id="eclipse-detector-text">감지된 식(Eclipse)이 없습니다.</span>
+                    </div>
+
+                    <!-- Guides / Legends Inside Canvas -->
+                    <div class="absolute bottom-2.5 left-2.5 bg-[#0c0c1ae0] border border-slate-800/80 rounded-lg p-2 text-[9px] space-y-0.5 backdrop-blur-sm select-none pointer-events-none text-slate-300">
+                        <p class="font-semibold text-cyan-400">3D 투영 기하 정보</p>
+                        <p class="flex items-center"><span class="w-2.5 h-2.5 bg-yellow-400 rounded-full mr-1 animate-pulse"></span> 태양 (타원 초점, 물리구체 비례)</p>
+                        <p class="flex items-center"><span class="w-2 h-2 bg-cyan-400 rounded-full mr-1"></span> 지구 공전궤도 및 지구</p>
+                        <p class="flex items-center"><span class="w-2.5 h-2.5 bg-pink-500 rounded-full mr-1"></span> 외행성 공전궤도 및 행성</p>
+                        <p class="flex items-center"><span class="w-2.5 h-0.5 bg-emerald-400 inline-block mr-1"></span> 관측 시선 레이저</p>
+                        <p class="text-[8px] text-slate-500 pt-1 border-t border-slate-800/80 mt-1">* 3D 가림(Occlusion) 정밀 계산 활성화</p>
+                    </div>
+
+                    <!-- Realtime Opposition Alert -->
+                    <div id="overtake-hud" class="absolute top-2.5 right-2.5 hidden">
+                        <span class="flex h-2.5 w-2.5 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                        </span>
+                        <div class="absolute right-4 -top-1 bg-rose-950/90 border border-rose-800 text-rose-400 font-bold text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">
+                            회합 정렬 관측 중
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Right Panel: Sky Chart View (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col h-full">
+            <div class="bg-[#0e0e22] rounded-xl p-3 border border-slate-800 flex-grow flex flex-col justify-between overflow-hidden">
+                <div class="flex flex-col flex-grow overflow-hidden">
+                    <div class="flex justify-between items-center mb-1.5 flex-shrink-0">
+                        <h2 id="sky-title" class="text-xs font-bold text-slate-200 flex items-center">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 mr-1.5"></span>
+                            지구 관측자 밤하늘 시점 (Sky View)
+                        </h2>
+                        <span id="state-badge" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full font-orbitron bg-cyan-950 text-cyan-400 border border-cyan-800">
+                            순행 (PROGRADE)
+                        </span>
+                    </div>
+                    
+                    <!-- Sky View Canvas -->
+                    <div class="flex-grow relative w-full bg-[#070714] rounded-lg overflow-hidden neon-border-pink">
+                        <canvas id="canvas-sky" class="absolute top-0 left-0 w-full h-full"></canvas>
+                        
+                        <!-- Overlay Legend on Sky Graph -->
+                        <div class="absolute bottom-2.5 right-2.5 bg-[#0c0c1ae0] border border-slate-800/80 rounded-lg p-2 text-[9px] space-y-0.5 backdrop-blur-sm pointer-events-none text-slate-300 max-w-[170px]">
+                            <p id="legend-current-target" class="font-semibold text-pink-400">외행성 천구 자취</p>
+                            <p class="flex items-center"><span class="w-2 border-t-2 border-[#06b6d4] inline-block mr-1"></span> 하늘색: 순행 자취</p>
+                            <p class="flex items-center"><span class="w-2 border-t-2 border-[#f43f5e] inline-block mr-1"></span> 분홍색: 역행 자취</p>
+                            <p class="flex items-center"><span class="w-2 border-t-2 border-dashed border-slate-500 inline-block mr-1"></span> 파선: 1회합 주기 예측선</p>
+                            <p id="legend-target-point" class="flex items-center"><span class="w-2 h-2 rounded-full bg-yellow-400 inline-block mr-1 animate-ping"></span> 황색 점: 현재 시선 좌표</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Realtime Astronomical Data Readout -->
+                <div class="mt-2.5 bg-[#14142d] rounded-lg p-2 border border-slate-800 space-y-0.5 flex-shrink-0">
+                    <p id="readout-title" class="text-[9px] font-bold text-slate-400">실시간 지구 기준 상대 천구 좌표계</p>
+                    <div class="grid grid-cols-2 gap-1.5 text-xs font-orbitron mt-1">
+                        <div class="bg-[#0e0e22] p-1.5 rounded border border-slate-800">
+                            <span class="text-slate-500 block text-[8px]">상대 적경 (Rel. R.A. / $\Delta\alpha$)</span>
+                            <span id="readout-ra" class="text-cyan-400 font-bold text-[11px] lg:text-xs">0.00°</span>
+                        </div>
+                        <div class="bg-[#0e0e22] p-1.5 rounded border border-slate-800">
+                            <span class="text-slate-500 block text-[8px]">상대 적위 (Declination / $\delta$)</span>
+                            <span id="readout-dec" class="text-pink-400 font-bold text-[11px] lg:text-xs">0.00°</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Interactive Science Guide Footer -->
+    <footer class="w-full max-w-[1600px] mx-auto mt-3 bg-[#0e0e22] rounded-xl p-3 border border-slate-800 flex-shrink-0">
+        <h3 class="text-[11px] font-bold text-cyan-400 flex items-center border-b border-slate-800 pb-1 mb-2">
+            💡 고급 지구과학 탐구 교실: 물리적 천체 크기와 3D 기하 일식(Eclipse) 제어 원리
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[10px] text-slate-400 leading-relaxed">
+            <div class="bg-[#111126] p-2.5 rounded-lg border border-slate-800">
+                <h4 class="text-cyan-400 font-bold mb-0.5 flex items-center">
+                    📏 천체 크기 조절을 통한 식(Eclipse) 영역의 물리적 변화
+                </h4>
+                <p>
+                    지구($R_{Earth}$)와 태양($R_{Sun}$)의 상대적 크기를 조절하면 천구 투영 영역이 달라집니다. 지구를 극단적으로 키우면 식(일식/엄폐)이 지속되는 회합 각도 영역이 극적으로 넓어지며, 태양과 행성들이 완전히 가려지는 지속 시간이 대폭 길어져 실시간 식의 역학적 변화를 눈으로 확인할 수 있습니다.
+                </p>
+            </div>
+            <div class="bg-[#111126] p-2.5 rounded-lg border border-slate-800">
+                <h4 class="text-emerald-400 font-bold mb-0.5 flex items-center">
+                    🌑 완벽한 3D 가림(Occlusion)과 Transit 탐지
+                </h4>
+                <p>
+                    3D 궤도 창은 화가 알고리즘(Painter's Algorithm)에 기반하여 3D 깊이를 정렬해 앞쪽의 천체가 뒤쪽의 원판을 픽셀 단위로 정확히 가립니다. 가림이 발생하면 상단 HUD 센서가 즉시 작동하여 어떤 천체가 무엇을 가리고 있는지(예: 일식,Transit,엄폐)를 한글 자막으로 띄워줍니다.
+                </p>
+            </div>
+            <div class="bg-[#111126] p-2.5 rounded-lg border border-slate-800">
+                <h4 class="text-pink-400 font-bold mb-0.5 flex items-center">
+                    🎥 지구 타겟 고정 후 일식 관측 가이드
+                </h4>
+                <p>
+                    카메라 대상을 <strong>지구</strong>로 두고 마우스 휠이나 단축키(PageUp/+)로 지구 구체 표면까지 타이트하게 줌인해보세요. 이 상태에서 공전 속도를 느리게 조율하면, 태양이나 외행성이 지구의 거대한 둥근 경계선 뒤로 스르르 빨려 들어가 가려지는 생생한 우주 일식과 엄폐 쇼를 관측할 수 있습니다.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. Global Simulation State Setup ---
+        const orbitCanvas = document.getElementById('canvas-orbit');
+        const skyCanvas = document.getElementById('canvas-sky');
+        const orbitCtx = orbitCanvas.getContext('2d');
+        const skyCtx = skyCanvas.getContext('2d');
+
+        // Physics parameters
+        let outerRadiusScale = 1.8;   
+        let speedMultiplier = 1.0;    
+        let inclinationDeg = 8.0;     
+        let phaseOffsetDeg = 0.0;     
+        let eccEarth = 0.0;           
+        let eccPlanet = 0.0;          
+        let simSpeed = 1.0;           
+        let isPlaying = true;
+        let activeViewMode = 'earth'; 
+
+        // Adjustable Planet Scale Variables
+        let sunBaseRad = 20;     
+        let earthBaseRad = 6;    
+        let planetBaseRad = 7.5; 
+
+        // Interactive Camera Settings - INITIAL VIEW (45-degree angle aligned)
+        let camYaw = -0.65;           
+        let camPitch = 0.65;          
+        let camZoom = 1.0;            
+        let userZoom = 1.1;           
+        const baseEarthRadius = 70;   
+
+        // Camera target center coordinates (Look-At Point in 3D Space)
+        let camTargetX = 0;
+        let camTargetY = 0;
+        let camTargetZ = 0;
+        let camLockTarget = 'sun'; // 'sun', 'earth', 'planet', 'free'
+
+        // Simulation clock
+        let t = 0;                    
+        let prevTime = 0;             
+
+        // Realtime trails data storage
+        let activeTrail = [];         
+        let maxActiveTrailPoints = 1500;
+        let lastRaValue = 0;          
+
+        // Starfield
+        const backgroundStars = [];
+        for (let i = 0; i < 180; i++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(Math.random() * 2 - 1);
+            const r = 400 + Math.random() * 120; 
+            backgroundStars.push({
+                x: r * Math.sin(phi) * Math.cos(theta),
+                y: r * Math.sin(phi) * Math.sin(theta),
+                z: r * Math.cos(phi),
+                brightness: 0.2 + Math.random() * 0.8
+            });
+        }
+
+        // Keyboard Flight Controls State Mapping
+        const activeKeys = {};
+        window.addEventListener('keydown', (e) => {
+            activeKeys[e.key.toLowerCase()] = true;
+            activeKeys[e.code] = true;
+            activeKeys[e.keyCode] = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            activeKeys[e.key.toLowerCase()] = false;
+            activeKeys[e.code] = false;
+            activeKeys[e.keyCode] = false;
+        });
+
+        // Google Earth-Style Flight Controls Logic
+        function handleKeyboardFlight() {
+            const moveSpeed = 2.4 / (camZoom || 1);
+            const rotateSpeed = 0.022;
+            const zoomSpeed = 0.04;
+
+            const fX = -Math.sin(camYaw);
+            const fY = Math.cos(camYaw);
+            const rX = Math.cos(camYaw);
+            const rY = Math.sin(camYaw);
+
+            let moved = false;
+
+            const isShiftPressed = activeKeys['shift'] || activeKeys['shiftleft'] || activeKeys['shiftright'];
+
+            if (isShiftPressed) {
+                // Orbit Angle Tilt & Rotate (Shift + Keys)
+                if (activeKeys['arrowup'] || activeKeys['w']) {
+                    camPitch = Math.max(-Math.PI / 2 + 0.05, camPitch - rotateSpeed);
+                    moved = true;
+                }
+                if (activeKeys['arrowdown'] || activeKeys['s']) {
+                    camPitch = Math.min(Math.PI / 2 - 0.05, camPitch + rotateSpeed);
+                    moved = true;
+                }
+                if (activeKeys['arrowleft'] || activeKeys['a']) {
+                    camYaw -= rotateSpeed;
+                    moved = true;
+                }
+                if (activeKeys['arrowright'] || activeKeys['d']) {
+                    camYaw += rotateSpeed;
+                    moved = true;
+                }
+            } else {
+                // Horizontal Panning (Keys alone)
+                if (activeKeys['arrowup'] || activeKeys['w']) {
+                    if (camLockTarget !== 'free') setCameraTrackingMode('free');
+                    camTargetX += fX * moveSpeed;
+                    camTargetY += fY * moveSpeed;
+                    moved = true;
+                }
+                if (activeKeys['arrowdown'] || activeKeys['s']) {
+                    if (camLockTarget !== 'free') setCameraTrackingMode('free');
+                    camTargetX -= fX * moveSpeed;
+                    camTargetY -= fY * moveSpeed;
+                    moved = true;
+                }
+                if (activeKeys['arrowleft'] || activeKeys['a']) {
+                    if (camLockTarget !== 'free') setCameraTrackingMode('free');
+                    camTargetX -= rX * moveSpeed;
+                    camTargetY -= rY * moveSpeed;
+                    moved = true;
+                }
+                if (activeKeys['arrowright'] || activeKeys['d']) {
+                    if (camLockTarget !== 'free') setCameraTrackingMode('free');
+                    camTargetX += rX * moveSpeed;
+                    camTargetY += rY * moveSpeed;
+                    moved = true;
+                }
+            }
+
+            // Elevation (Q / E)
+            if (activeKeys['q'] || activeKeys['controlleft'] || activeKeys['control']) {
+                if (camLockTarget !== 'free') setCameraTrackingMode('free');
+                camTargetZ -= moveSpeed * 0.7;
+                moved = true;
+            }
+            if (activeKeys['e'] || activeKeys['space']) {
+                if (camLockTarget !== 'free') setCameraTrackingMode('free');
+                camTargetZ += moveSpeed * 0.7;
+                moved = true;
+            }
+
+            // Zoom (PageUp / PageDown)
+            if (activeKeys['pageup'] || activeKeys['+'] || activeKeys['equal']) {
+                userZoom = Math.min(5.0, userZoom + zoomSpeed);
+                moved = true;
+            }
+            if (activeKeys['pagedown'] || activeKeys['-'] || activeKeys['minus']) {
+                userZoom = Math.max(0.3, userZoom - zoomSpeed);
+                moved = true;
+            }
+        }
+
+        // --- 2. Sliders and Control UI Wiring ---
+        const sRadius = document.getElementById('slide-radius');
+        const sSpeed = document.getElementById('slide-speed');
+        const sInclination = document.getElementById('slide-inclination');
+        const sEccEarth = document.getElementById('slide-ecc-earth');
+        const sEccPlanet = document.getElementById('slide-ecc-planet');
+        const sPhase = document.getElementById('slide-phase');
+        const sSimSpeed = document.getElementById('slide-simspeed');
+        const vModes = document.querySelectorAll('input[name="viewmode"]');
+
+        const vRadius = document.getElementById('val-radius');
+        const vSpeed = document.getElementById('val-speed');
+        const vInclination = document.getElementById('val-inclination');
+        const vEccEarth = document.getElementById('val-ecc-earth');
+        const vEccPlanet = document.getElementById('val-ecc-planet');
+        const vPhase = document.getElementById('val-phase');
+        const vSimSpeed = document.getElementById('val-simspeed');
+
+        // Sliders for physical size adjustments
+        const sSizeSun = document.getElementById('slide-size-sun');
+        const sSizeEarth = document.getElementById('slide-size-earth');
+        const sSizePlanet = document.getElementById('slide-size-planet');
+        const vSizeSun = document.getElementById('val-size-sun');
+        const vSizeEarth = document.getElementById('val-size-earth');
+        const vSizePlanet = document.getElementById('val-size-planet');
+
+        const btnPlayPause = document.getElementById('btn-playpause');
+        const btnReset = document.getElementById('btn-reset');
+        const iconPlayPause = document.getElementById('icon-playpause');
+        const overtakeHud = document.getElementById('overtake-hud');
+        const eclipseDetectorHud = document.getElementById('eclipse-detector-hud');
+        const eclipseDetectorText = document.getElementById('eclipse-detector-text');
+
+        function updateUIValues() {
+            outerRadiusScale = parseFloat(sRadius.value);
+            speedMultiplier = parseFloat(sSpeed.value);
+            inclinationDeg = parseFloat(sInclination.value);
+            eccEarth = parseFloat(sEccEarth.value);
+            eccPlanet = parseFloat(sEccPlanet.value);
+            phaseOffsetDeg = parseFloat(sPhase.value);
+            simSpeed = parseFloat(sSimSpeed.value);
+
+            // Retrieve values from size sliders
+            sunBaseRad = parseFloat(sSizeSun.value);
+            earthBaseRad = parseFloat(sSizeEarth.value);
+            planetBaseRad = parseFloat(sSizePlanet.value);
+
+            vRadius.innerText = `${outerRadiusScale.toFixed(2)} AU`;
+            vSpeed.innerText = `${speedMultiplier.toFixed(2)} x`;
+            vInclination.innerText = `${inclinationDeg.toFixed(2)}°`;
+            vEccEarth.innerText = eccEarth.toFixed(2);
+            vEccPlanet.innerText = eccPlanet.toFixed(2);
+            vPhase.innerText = `${phaseOffsetDeg.toFixed(0)}°`;
+            vSimSpeed.innerText = `${simSpeed.toFixed(1)}x`;
+
+            // Display numerical sizes
+            vSizeSun.innerText = `${sunBaseRad.toFixed(1)} px`;
+            vSizeEarth.innerText = `${earthBaseRad.toFixed(1)} px`;
+            vSizePlanet.innerText = `${planetBaseRad.toFixed(1)} px`;
+        }
+
+        function updateSkyUILabels() {
+            const skyTitle = document.getElementById('sky-title');
+            const readoutTitle = document.getElementById('readout-title');
+            const legendTarget = document.getElementById('legend-current-target');
+            const legendPoint = document.getElementById('legend-target-point');
+
+            if (activeViewMode === 'earth') {
+                skyTitle.innerText = '지구 관측자 밤하늘 시점 (Sky View)';
+                skyTitle.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 mr-1.5"></span>' + skyTitle.innerText;
+                readoutTitle.innerText = '실시간 지구 기준 상대 천구 좌표계';
+                legendTarget.innerText = '외행성 자취 범례';
+                legendTarget.className = 'font-semibold text-pink-400';
+                legendPoint.innerText = '황색 점: 외행성 천구 위치';
+            } else {
+                skyTitle.innerText = '외행성 관측자 태양계 시점 (Inverse View)';
+                skyTitle.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-pink-500 mr-1.5"></span>' + skyTitle.innerText;
+                readoutTitle.innerText = '실시간 외행성 기준 상대 지구 좌표계';
+                legendTarget.innerText = '지구 자취 범례';
+                legendTarget.className = 'font-semibold text-cyan-400';
+                legendPoint.innerText = '황색 점: 지구 천구 위치';
+            }
+        }
+
+        // Camera Target Tracking Selectors Wiring
+        const camBtnSun = document.getElementById('cam-target-sun');
+        const camBtnEarth = document.getElementById('cam-target-earth');
+        const camBtnPlanet = document.getElementById('cam-target-planet');
+        const camBtnFree = document.getElementById('cam-target-free');
+
+        function setCameraTrackingMode(mode) {
+            camLockTarget = mode;
+            [camBtnSun, camBtnEarth, camBtnPlanet, camBtnFree].forEach(btn => btn.classList.remove('cam-btn-active'));
+            if (mode === 'sun') {
+                camBtnSun.classList.add('cam-btn-active');
+            } else if (mode === 'earth') {
+                camBtnEarth.classList.add('cam-btn-active');
+            } else if (mode === 'planet') {
+                camBtnPlanet.classList.add('cam-btn-active');
+            } else if (mode === 'free') {
+                camBtnFree.classList.add('cam-btn-active');
+            }
+        }
+
+        camBtnSun.addEventListener('click', () => setCameraTrackingMode('sun'));
+        camBtnEarth.addEventListener('click', () => setCameraTrackingMode('earth'));
+        camBtnPlanet.addEventListener('click', () => setCameraTrackingMode('planet'));
+        camBtnFree.addEventListener('click', () => {
+            setCameraTrackingMode('free');
+            camTargetX = 0; camTargetY = 0; camTargetZ = 0;
+        });
+
+        // Event Listeners
+        [sRadius, sSpeed, sInclination, sEccEarth, sEccPlanet, sPhase, sSimSpeed, sSizeSun, sSizeEarth, sSizePlanet].forEach(slider => {
+            slider.addEventListener('input', () => {
+                updateUIValues();
+                activeTrail = [];
+                lastRaValue = 0; 
+            });
+        });
+
+        vModes.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                activeViewMode = e.target.value;
+                activeTrail = []; 
+                lastRaValue = 0; 
+                updateSkyUILabels();
+            });
+        });
+
+        btnPlayPause.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                iconPlayPause.innerText = '⏸️ 일시정지';
+                btnPlayPause.classList.remove('bg-amber-600', 'hover:bg-amber-50');
+                btnPlayPause.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+            } else {
+                iconPlayPause.innerText = '▶️ 계속재생';
+                btnPlayPause.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                btnPlayPause.classList.add('bg-amber-600', 'hover:bg-amber-500');
+            }
+        });
+
+        btnReset.addEventListener('click', () => {
+            t = 0;
+            activeTrail = [];
+            lastRaValue = 0;
+            
+            camYaw = -0.65;           
+            camPitch = 0.65;          
+            userZoom = 1.1; 
+            setCameraTrackingMode('sun');
+            camTargetX = 0; camTargetY = 0; camTargetZ = 0;
+            
+            sRadius.value = 1.8;
+            sSpeed.value = 1.0;
+            sInclination.value = 8.0;
+            sEccEarth.value = 0.0;
+            sEccPlanet.value = 0.0;
+            sPhase.value = 0;
+            sSimSpeed.value = 1.0;
+
+            // Reset planet size sliders
+            sSizeSun.value = 20;
+            sSizeEarth.value = 6;
+            sSizePlanet.value = 7.5;
+
+            document.getElementById('mode-earth').checked = true;
+            activeViewMode = 'earth';
+            updateSkyUILabels();
+            updateUIValues();
+            if (!isPlaying) {
+                btnPlayPause.click(); 
+            }
+        });
+
+        function applyPreset(type) {
+            activeTrail = [];
+            t = 0; 
+            lastRaValue = 0;
+            userZoom = 1.1; 
+            setCameraTrackingMode('sun');
+            camTargetX = 0; camTargetY = 0; camTargetZ = 0;
+            
+            if (type === 'mars') {
+                sRadius.value = 1.52;
+                sSpeed.value = 1.0;
+                sInclination.value = 1.85;
+                sEccEarth.value = 0.02;   
+                sEccPlanet.value = 0.09;  
+                sPhase.value = 45; 
+                sSizeSun.value = 20;
+                sSizeEarth.value = 6;
+                sSizePlanet.value = 4.5; 
+            } else if (type === 'jupiter') {
+                sRadius.value = 2.50; 
+                sSpeed.value = 1.0;
+                sInclination.value = 1.30;
+                sEccEarth.value = 0.02;
+                sEccPlanet.value = 0.05;  
+                sPhase.value = 180; 
+                sSizeSun.value = 22;
+                sSizeEarth.value = 5;
+                sSizePlanet.value = 13.0; 
+            } else if (type === 'loop') {
+                sRadius.value = 1.80;
+                sSpeed.value = 1.0;
+                sInclination.value = 15.0; 
+                sEccEarth.value = 0.0;
+                sEccPlanet.value = 0.0;
+                sPhase.value = 90;  
+                sSizeSun.value = 20;
+                sSizeEarth.value = 6;
+                sSizePlanet.value = 7.5;
+            } else if (type === 'sshape') {
+                sRadius.value = 1.80;
+                sSpeed.value = 1.0;
+                sInclination.value = 12.0;
+                sEccEarth.value = 0.0;
+                sEccPlanet.value = 0.0;
+                sPhase.value = 0;   
+                sSizeSun.value = 20;
+                sSizeEarth.value = 6;
+                sSizePlanet.value = 7.5;
+            }
+            updateUIValues();
+            if (!isPlaying) btnPlayPause.click();
+        }
+
+        // --- 3. Mathematical Core (Keplerian Orbit & Sky Mapping) ---
+        
+        // 3D Projector supporting dynamic CamTarget look-at panning
+        function project3D(x, y, z, centerX, centerY) {
+            let tx = x - camTargetX;
+            let ty = y - camTargetY;
+            let tz = z - camTargetZ;
+
+            const cosY = Math.cos(camYaw);
+            const sinY = Math.sin(camYaw);
+            let x1 = tx * cosY - ty * sinY;
+            let y1 = tx * sinY + ty * cosY;
+            let z1 = tz;
+
+            const cosP = Math.cos(camPitch);
+            const sinP = Math.sin(camPitch);
+            let x2 = x1;
+            let y2 = y1 * cosP - z1 * sinP;
+            let z2 = y1 * sinP + z1 * cosP;
+
+            const viewDistance = 500;
+            const factor = camZoom * (viewDistance / (viewDistance + y2));
+
+            return {
+                x: centerX + x2 * factor,
+                y: centerY - z2 * factor, 
+                depth: y2 
+            };
+        }
+
+        // Computes Keplerian elliptical orbital coordinates at time value 'u'
+        function getOrbitalCoordinates(u) {
+            const baseEarthSpeed = 0.007; 
+            const omegaE = baseEarthSpeed;
+            const omegaP_kepler = baseEarthSpeed * Math.pow(outerRadiusScale, -1.5);
+            const omegaP = omegaP_kepler * speedMultiplier;
+
+            const incRad = (inclinationDeg * Math.PI) / 180;
+            const phi0Rad = (phaseOffsetDeg * Math.PI) / 180;
+
+            // 1. Earth Elliptical Orbit
+            const ME = omegaE * u;
+            const thetaE = ME + 2 * eccEarth * Math.sin(ME) + 1.25 * eccEarth * eccEarth * Math.sin(2 * ME);
+            const rE = baseEarthRadius * (1 - eccEarth * eccEarth) / (1 + eccEarth * Math.cos(thetaE));
+            
+            const xE = rE * Math.cos(thetaE);
+            const yE = rE * Math.sin(thetaE);
+            const zE = 0;
+
+            // 2. Outer Planet Elliptical Orbit
+            const MP = omegaP * u + phi0Rad;
+            const thetaP = MP + 2 * eccPlanet * Math.sin(MP) + 1.25 * eccPlanet * eccPlanet * Math.sin(2 * MP);
+            const rP = baseEarthRadius * outerRadiusScale * (1 - eccPlanet * eccPlanet) / (1 + eccPlanet * Math.cos(thetaP));
+
+            const xP_flat = rP * Math.cos(thetaP);
+            const yP_flat = rP * Math.sin(thetaP);
+            
+            const xP = xP_flat;
+            const yP = yP_flat * Math.cos(incRad);
+            const zP = yP_flat * Math.sin(incRad);
+
+            return { xE, yE, zE, thetaE, xP, yP, zP, thetaP, rE, rP };
+        }
+
+        function calculateSkyCoords(orbitData) {
+            let dx, dy, dz, thetaRot, dPrime, ra, dec, distanceAU;
+
+            if (activeViewMode === 'earth') {
+                dx = orbitData.xP - orbitData.xE;
+                dy = orbitData.yP - orbitData.yE;
+                dz = orbitData.zP - orbitData.zE;
+
+                thetaRot = orbitData.thetaP;
+                distanceAU = Math.sqrt(dx*dx + dy*dy + dz*dz) / baseEarthRadius;
+            } else {
+                dx = orbitData.xE - orbitData.xP;
+                dy = orbitData.yE - orbitData.yP;
+                dz = orbitData.zE - orbitData.zP;
+
+                thetaRot = Math.atan2(-orbitData.yP, -orbitData.xP);
+                distanceAU = Math.sqrt(orbitData.xE*orbitData.xE + orbitData.yE*orbitData.yE + orbitData.zE*orbitData.zE) / baseEarthRadius;
+            }
+
+            const cosTR = Math.cos(thetaRot);
+            const sinTR = Math.sin(thetaRot);
+            
+            const rx = dx * cosTR + dy * sinTR;
+            const ry = -dx * sinTR + dy * cosTR;
+            const rz = dz;
+
+            dPrime = Math.sqrt(rx * rx + ry * ry + rz * rz);
+            ra = Math.atan2(ry, rx); 
+            dec = Math.asin(rz / dPrime); 
+
+            return {
+                raDeg: (ra * 180) / Math.PI,
+                decDeg: (dec * 180) / Math.PI,
+                distanceAU: distanceAU
+            };
+        }
+
+        function precalculatePathPoints(currentTime, outerRadiusScale, speedMultiplier, inclinationDeg, phaseOffsetDeg, eccEarth, eccPlanet) {
+            const baseEarthSpeed = 0.007;
+            const omegaE = baseEarthSpeed;
+            const omegaP = baseEarthSpeed * Math.pow(outerRadiusScale, -1.5) * speedMultiplier;
+            const omegaSyn = Math.abs(omegaE - omegaP);
+            const synodicPeriod = (2 * Math.PI) / omegaSyn;
+
+            const steps = 300;
+            const predPoints = [];
+            for (let i = 0; i <= steps; i++) {
+                const u = currentTime - synodicPeriod / 2 + (i / steps) * synodicPeriod;
+                
+                const incRad = (inclinationDeg * Math.PI) / 180;
+                const phi0Rad = (phaseOffsetDeg * Math.PI) / 180;
+                
+                // Earth
+                const ME = omegaE * u;
+                const theta_E = ME + 2 * eccEarth * Math.sin(ME) + 1.25 * eccEarth * eccEarth * Math.sin(2 * ME);
+                const r_E = baseEarthRadius * (1 - eccEarth * eccEarth) / (1 + eccEarth * Math.cos(theta_E));
+                const x_E = r_E * Math.cos(theta_E);
+                const y_E = r_E * Math.sin(theta_E);
+
+                // Planet
+                const MP = omegaP * u + phi0Rad;
+                const theta_P = MP + 2 * eccPlanet * Math.sin(MP) + 1.25 * eccPlanet * eccPlanet * Math.sin(2 * MP);
+                const r_P = baseEarthRadius * outerRadiusScale * (1 - eccPlanet * eccPlanet) / (1 + eccPlanet * Math.cos(theta_P));
+                const xFlatP = r_P * Math.cos(theta_P);
+                const yFlatP = r_P * Math.sin(theta_P);
+                const x_P = xFlatP;
+                const y_P = yFlatP * Math.cos(incRad);
+                const z_P = yFlatP * Math.sin(incRad);
+
+                const pathOrbit = {xE: x_E, yE: y_E, zE: 0, thetaE: theta_E, xP: x_P, yP: y_P, zP: z_P, thetaP: theta_P};
+                const pathSky = calculateSkyCoords(pathOrbit);
+                predPoints.push({
+                    ra: pathSky.raDeg,
+                    dec: pathSky.decDeg,
+                    isRetrograde: false 
+                });
+            }
+
+            for (let i = 0; i <= steps; i++) {
+                let diff = 0;
+                if (i < steps) { diff = predPoints[i+1].ra - predPoints[i].ra; } 
+                else { diff = predPoints[i].ra - predPoints[i-1].ra; }
+                if (diff > 180) diff -= 360;
+                if (diff < -180) diff += 360;
+
+                if (activeViewMode === 'earth') {
+                   predPoints[i].isRetrograde = (diff > 0.0);
+                } else {
+                   predPoints[i].isRetrograde = false;
+                }
+            }
+            return predPoints;
+        }
+
+        // --- 4. Interactivity ---
+        let isDragging = false;
+        let dragMode = 'rotate'; 
+        let lastMousePos = { x: 0, y: 0 };
+
+        function initInteractivity() {
+            const startDrag = (x, y, button, shiftKey) => {
+                isDragging = true;
+                lastMousePos = { x, y };
+                if (button === 2 || shiftKey) {
+                    dragMode = 'pan';
+                    setCameraTrackingMode('free'); 
+                } else {
+                    dragMode = 'rotate';
+                }
+            };
+
+            const moveDrag = (x, y) => {
+                if (!isDragging) return;
+                const dx = x - lastMousePos.x;
+                const dy = y - lastMousePos.y;
+
+                if (dragMode === 'rotate') {
+                    camYaw += dx * 0.007;
+                    camPitch += dy * 0.007;
+                    camPitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, camPitch));
+                } else if (dragMode === 'pan') {
+                    const cosY = Math.cos(camYaw);
+                    const sinY = Math.sin(camYaw);
+                    const panFactor = 1.5 / camZoom;
+                    camTargetX -= (dx * cosY + dy * sinY) * panFactor * 0.1;
+                    camTargetY -= (-dx * sinY + dy * cosY) * panFactor * 0.1;
+                }
+
+                lastMousePos = { x, y };
+            };
+
+            const endDrag = () => { isDragging = false; };
+
+            // Mouse Events
+            orbitCanvas.addEventListener('mousedown', (e) => {
+                const rect = orbitCanvas.getBoundingClientRect();
+                startDrag(e.clientX - rect.left, e.clientY - rect.top, e.button, e.shiftKey);
+            });
+            window.addEventListener('mousemove', (e) => {
+                const rect = orbitCanvas.getBoundingClientRect();
+                moveDrag(e.clientX - rect.left, e.clientY - rect.top);
+            });
+            window.addEventListener('mouseup', endDrag);
+
+            // Wheel zoom
+            orbitCanvas.addEventListener('wheel', (e) => {
+                e.preventDefault(); 
+                const zoomIntensity = 0.08;
+                if (e.deltaY < 0) {
+                    userZoom = Math.min(5.0, userZoom + zoomIntensity);
+                } else {
+                    userZoom = Math.max(0.3, userZoom - zoomIntensity);
+                }
+            }, { passive: false });
+
+            // Touch support for Panning & Rotating
+            orbitCanvas.addEventListener('touchstart', (e) => {
+                const rect = orbitCanvas.getBoundingClientRect();
+                if (e.touches.length === 1) {
+                    startDrag(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top, 0, false);
+                } else if (e.touches.length === 2) {
+                    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    startDrag(midX - rect.left, midY - rect.top, 2, false);
+                }
+            });
+            orbitCanvas.addEventListener('touchmove', (e) => {
+                const rect = orbitCanvas.getBoundingClientRect();
+                if (e.touches.length === 1) {
+                    moveDrag(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+                } else if (e.touches.length === 2) {
+                    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    moveDrag(midX - rect.left, midY - rect.top);
+                }
+                e.preventDefault(); 
+            }, { passive: false });
+            orbitCanvas.addEventListener('touchend', endDrag);
+        }
+
+        // --- 5. High-DPI Scaling ---
+        function resizeCanvas(canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+        }
+
+        function handleResize() { resizeCanvas(orbitCanvas); resizeCanvas(skyCanvas); }
+        window.addEventListener('resize', handleResize);
+
+        // --- 6. Active Rendering Engine ---
+
+        function drawOrbitView() {
+            const dpr = window.devicePixelRatio || 1;
+            const w = orbitCanvas.width / dpr;
+            const h = orbitCanvas.height / dpr;
+            const cx = w / 2;
+            const cy = h / 2;
+
+            orbitCtx.fillStyle = '#050510';
+            orbitCtx.fillRect(0, 0, w, h);
+
+            // Handle Key Flying movements
+            handleKeyboardFlight();
+
+            // Dynamically lock target position if selected
+            const data = getOrbitalCoordinates(t);
+            if (camLockTarget === 'sun') {
+                camTargetX = 0; camTargetY = 0; camTargetZ = 0;
+            } else if (camLockTarget === 'earth') {
+                camTargetX = data.xE; camTargetY = data.yE; camTargetZ = data.zE;
+            } else if (camLockTarget === 'planet') {
+                camTargetX = data.xP; camTargetY = data.yP; camTargetZ = data.zP;
+            }
+
+            const baseZoom = 155 / (baseEarthRadius * outerRadiusScale * 1.15);
+            camZoom = baseZoom * userZoom;
+
+            // 1. Starfield
+            backgroundStars.forEach(star => {
+                const proj = project3D(star.x, star.y, star.z, cx, cy);
+                if (proj.x >= 0 && proj.x <= w && proj.y >= 0 && proj.y <= h && proj.depth > -100) {
+                    const alpha = star.brightness * (1.0 - Math.min(1.0, (proj.depth + 100) / 600));
+                    orbitCtx.fillStyle = `rgba(226, 232, 240, ${alpha})`;
+                    orbitCtx.beginPath();
+                    orbitCtx.arc(proj.x, proj.y, 0.5 + star.brightness * 1.0, 0, Math.PI * 2);
+                    orbitCtx.fill();
+                }
+            });
+
+            // 2. Coordinate grid circles (Z = 0)
+            orbitCtx.strokeStyle = 'rgba(6, 182, 212, 0.08)';
+            orbitCtx.lineWidth = 1;
+            for (let r = 50; r <= 250; r += 50) {
+                orbitCtx.beginPath();
+                for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.1) {
+                    const proj = project3D(r * Math.cos(a), r * Math.sin(a), 0, cx, cy);
+                    if (a === 0) orbitCtx.moveTo(proj.x, proj.y);
+                    else orbitCtx.lineTo(proj.x, proj.y);
+                }
+                orbitCtx.stroke();
+            }
+
+            // 3. Line of Nodes
+            const nodeLimit = baseEarthRadius * outerRadiusScale * 1.2;
+            const projNodeA = project3D(-nodeLimit, 0, 0, cx, cy);
+            const projNodeB = project3D(nodeLimit, 0, 0, cx, cy);
+            orbitCtx.strokeStyle = 'rgba(244, 63, 94, 0.15)';
+            orbitCtx.setLineDash([5, 5]);
+            orbitCtx.beginPath();
+            orbitCtx.moveTo(projNodeA.x, projNodeA.y);
+            orbitCtx.lineTo(projNodeB.x, projNodeB.y);
+            orbitCtx.stroke();
+            orbitCtx.setLineDash([]); 
+            
+            const projLabelAsc = project3D(nodeLimit * 1.02, 0, 0, cx, cy);
+            orbitCtx.fillStyle = 'rgba(244, 63, 94, 0.6)';
+            orbitCtx.font = '9px Noto Sans KR';
+            orbitCtx.fillText('승교점 (Asc. Node)', projLabelAsc.x, projLabelAsc.y);
+
+            // 4. Draw Earth Elliptical Orbit Path
+            orbitCtx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
+            orbitCtx.lineWidth = 1.5;
+            orbitCtx.beginPath();
+            for (let a = 0; a <= Math.PI * 2 + 0.05; a += 0.05) {
+                const r = baseEarthRadius * (1 - eccEarth * eccEarth) / (1 + eccEarth * Math.cos(a));
+                const proj = project3D(r * Math.cos(a), r * Math.sin(a), 0, cx, cy);
+                if (a === 0) orbitCtx.moveTo(proj.x, proj.y);
+                else orbitCtx.lineTo(proj.x, proj.y);
+            }
+            orbitCtx.stroke();
+
+            // 5. Draw Outer Planet Elliptical Orbit Path
+            orbitCtx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+            orbitCtx.lineWidth = 1.5;
+            const incRad = (inclinationDeg * Math.PI) / 180;
+            orbitCtx.beginPath();
+            for (let a = 0; a <= Math.PI * 2 + 0.05; a += 0.05) {
+                const r = baseEarthRadius * outerRadiusScale * (1 - eccPlanet * eccPlanet) / (1 + eccPlanet * Math.cos(a));
+                const xFlat = r * Math.cos(a);
+                const yFlat = r * Math.sin(a);
+                const pX = xFlat;
+                const pY = yFlat * Math.cos(incRad);
+                const pZ = yFlat * Math.sin(incRad);
+
+                const proj = project3D(pX, pY, pZ, cx, cy);
+                if (a === 0) orbitCtx.moveTo(proj.x, proj.y);
+                else orbitCtx.lineTo(proj.x, proj.y);
+            }
+            orbitCtx.stroke();
+
+            // 6. Draw drop lines showing elliptical inclination depth
+            orbitCtx.strokeStyle = 'rgba(244, 63, 94, 0.08)';
+            orbitCtx.lineWidth = 1;
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 12) {
+                const r = baseEarthRadius * outerRadiusScale * (1 - eccPlanet * eccPlanet) / (1 + eccPlanet * Math.cos(a));
+                const xFlat = r * Math.cos(a);
+                const yFlat = r * Math.sin(a);
+                const pX = xFlat;
+                const pY = yFlat * Math.cos(incRad);
+                const pZ = yFlat * Math.sin(incRad);
+                const projTop = project3D(pX, pY, pZ, cx, cy);
+                const projBottom = project3D(pX, pY, 0, cx, cy);
+                orbitCtx.beginPath();
+                orbitCtx.moveTo(projTop.x, projTop.y);
+                orbitCtx.lineTo(projBottom.x, projBottom.y);
+                orbitCtx.stroke();
+            }
+
+            // 7. Line of Sight Laser Vector Calculation
+            const vx = data.xP - data.xE;
+            const vy = data.yP - data.yE;
+            const vz = data.zP - data.zE;
+            const R_sph = baseEarthRadius * 3.8;
+            const lenV2 = vx*vx + vy*vy + vz*vz;
+            const E_dot_V = data.xE*vx + data.yE*vy + data.zE*vz;
+            const lenE2 = data.xE*data.xE + data.yE*data.yE + data.zE*data.zE;
+            const quadA = lenV2;
+            const quadB = 2 * E_dot_V;
+            const quadC = lenE2 - R_sph * R_sph;
+            const discriminant = quadB*quadB - 4*quadA*quadC;
+            let k = 1.8; 
+            if (discriminant >= 0) { k = (-quadB + Math.sqrt(discriminant)) / (2 * quadA); }
+
+            const projSun = project3D(0, 0, 0, cx, cy);
+            const projEarth = project3D(data.xE, data.yE, data.zE, cx, cy);
+            const projPlanet = project3D(data.xP, data.yP, data.zP, cx, cy);
+
+            let diff = (data.thetaE - data.thetaP) % (Math.PI * 2);
+            if (diff > Math.PI) diff -= Math.PI * 2; if (diff < -Math.PI) diff += Math.PI * 2;
+            const angularSeparation = Math.abs(diff);
+            const isHotZone = angularSeparation < 0.4; 
+
+            let laserOrigin, laserTargetX, laserTargetY, laserTargetZ;
+            if (activeViewMode === 'earth') {
+                laserOrigin = projEarth;
+                laserTargetX = data.xE + k * vx; laserTargetY = data.yE + k * vy; laserTargetZ = data.zE + k * vz;
+                orbitCtx.strokeStyle = isHotZone ? 'rgba(34, 197, 94, 0.85)' : 'rgba(52, 211, 153, 0.3)';
+                orbitCtx.shadowBlur = isHotZone ? 10 : 0; orbitCtx.shadowColor = '#22c55e';
+                if(isHotZone) overtakeHud.classList.remove('hidden'); else overtakeHud.classList.add('hidden');
+            } else {
+                laserOrigin = projPlanet;
+                const dx_sun = -data.xP; const dy_sun = -data.yP; const dz_sun = -data.zP;
+                const lenVS2 = dx_sun*dx_sun + dy_sun*dy_sun + dz_sun*dz_sun;
+                const P_dot_VS = data.xP*dx_sun + data.yP*dy_sun + data.zP*dz_sun;
+                const lenP2 = data.xP*data.xP + data.yP*data.yP + data.zP*data.zP;
+                const quadA_s = lenVS2; const quadB_s = 2 * P_dot_VS; const quadC_s = lenP2 - R_sph * R_sph;
+                const discriminant_s = quadB_s*quadB_s - 4*quadA_s*quadC_s;
+                let k_sun = 1.0; if (discriminant_s >= 0) { k_sun = (-quadB_s + Math.sqrt(discriminant_s)) / (2 * quadA_s); }
+                laserTargetX = data.xP + k_sun * dx_sun; laserTargetY = data.yP + k_sun * dy_sun; laserTargetZ = data.zP + k_sun * dz_sun;
+                
+                orbitCtx.strokeStyle = isHotZone ? 'rgba(244, 63, 94, 0.85)' : 'rgba(244, 63, 94, 0.3)';
+                orbitCtx.shadowBlur = isHotZone ? 10 : 0; orbitCtx.shadowColor = '#f43f5e';
+                if(isHotZone) overtakeHud.classList.remove('hidden'); else overtakeHud.classList.add('hidden');
+            }
+
+            const projLaserEnd = project3D(laserTargetX, laserTargetY, laserTargetZ, cx, cy);
+            orbitCtx.lineWidth = isHotZone ? 2.5 : 1.0;
+            orbitCtx.beginPath(); orbitCtx.moveTo(laserOrigin.x, laserOrigin.y); orbitCtx.lineTo(projLaserEnd.x, projLaserEnd.y); orbitCtx.stroke();
+            orbitCtx.shadowBlur = 0; 
+
+            // Planet drop line
+            orbitCtx.strokeStyle = 'rgba(244, 63, 94, 0.4)'; orbitCtx.lineWidth = 1;
+            const projPlanetBase = project3D(data.xP, data.yP, 0, cx, cy);
+            orbitCtx.beginPath(); orbitCtx.moveTo(projPlanet.x, projPlanet.y); orbitCtx.lineTo(projPlanetBase.x, projPlanetBase.y); orbitCtx.stroke();
+
+
+            // --- Painter's Occlusion Sorting & Rendering Engine ---
+            const viewDistance = 500;
+            
+            // Calculate size based on distance zoom scale factor (perspective depth)
+            function getPerspectiveRadius(baseRad, depth) {
+                const dFactor = viewDistance / (viewDistance + depth);
+                return Math.max(1, Math.min(220, baseRad * dFactor * userZoom * baseZoom));
+            }
+
+            const renderQueue = [];
+
+            const sunRad = getPerspectiveRadius(sunBaseRad, projSun.depth);
+            const earthRad = getPerspectiveRadius(earthBaseRad, projEarth.depth);
+            const planetRad = getPerspectiveRadius(planetBaseRad, projPlanet.depth);
+
+            if (projSun.depth > -viewDistance) {
+                renderQueue.push({
+                    type: 'sun',
+                    depth: projSun.depth,
+                    draw: () => {
+                        const sunGradient = orbitCtx.createRadialGradient(projSun.x, projSun.y, 0, projSun.x, projSun.y, sunRad);
+                        sunGradient.addColorStop(0, '#fffbf0'); 
+                        sunGradient.addColorStop(0.2, '#fff176');
+                        sunGradient.addColorStop(0.5, '#facc15'); 
+                        sunGradient.addColorStop(0.8, '#eab308'); 
+                        sunGradient.addColorStop(1, 'rgba(234, 179, 8, 0)');
+                        orbitCtx.fillStyle = sunGradient; 
+                        orbitCtx.beginPath(); 
+                        orbitCtx.arc(projSun.x, projSun.y, sunRad, 0, Math.PI * 2); 
+                        orbitCtx.fill();
+                    }
+                });
+            }
+
+            if (projEarth.depth > -viewDistance) {
+                renderQueue.push({
+                    type: 'earth',
+                    depth: projEarth.depth,
+                    draw: () => {
+                        const earthGradient = orbitCtx.createRadialGradient(projEarth.x, projEarth.y, 0, projEarth.x, projEarth.y, earthRad);
+                        earthGradient.addColorStop(0, '#ffffff'); 
+                        earthGradient.addColorStop(0.4, '#22d3ee'); 
+                        earthGradient.addColorStop(1, '#0891b2');
+                        orbitCtx.fillStyle = earthGradient; 
+                        orbitCtx.shadowBlur = Math.min(20, earthRad * 0.8); 
+                        orbitCtx.shadowColor = '#06b6d4';
+                        orbitCtx.beginPath(); 
+                        orbitCtx.arc(projEarth.x, projEarth.y, earthRad, 0, Math.PI * 2); 
+                        orbitCtx.fill(); 
+                        orbitCtx.shadowBlur = 0;
+
+                        // Earth Tag text
+                        orbitCtx.fillStyle = '#e2e8f0'; orbitCtx.font = '10px Noto Sans KR';
+                        orbitCtx.fillText('지구 (Earth)', projEarth.x + earthRad + 4, projEarth.y - 2);
+                    }
+                });
+            }
+
+            if (projPlanet.depth > -viewDistance) {
+                renderQueue.push({
+                    type: 'planet',
+                    depth: projPlanet.depth,
+                    draw: () => {
+                        const planetGradient = orbitCtx.createRadialGradient(projPlanet.x, projPlanet.y, 0, projPlanet.x, projPlanet.y, planetRad);
+                        planetGradient.addColorStop(0, '#ffffff'); 
+                        planetGradient.addColorStop(0.4, '#fb7185'); 
+                        planetGradient.addColorStop(1, '#e11d48');
+                        orbitCtx.fillStyle = planetGradient; 
+                        orbitCtx.shadowBlur = Math.min(20, planetRad * 0.8); 
+                        orbitCtx.shadowColor = '#f43f5e';
+                        orbitCtx.beginPath(); 
+                        orbitCtx.arc(projPlanet.x, projPlanet.y, planetRad, 0, Math.PI * 2); 
+                        orbitCtx.fill(); 
+                        orbitCtx.shadowBlur = 0;
+
+                        // Planet Tag text
+                        orbitCtx.fillStyle = '#e2e8f0'; orbitCtx.font = '10px Noto Sans KR';
+                        orbitCtx.fillText('외행성 (Planet)', projPlanet.x + planetRad + 4, projPlanet.y - 2);
+                    }
+                });
+            }
+
+            if (projLaserEnd.depth > -viewDistance) {
+                renderQueue.push({
+                    type: 'laserEnd',
+                    depth: projLaserEnd.depth,
+                    draw: () => {
+                        orbitCtx.fillStyle = isHotZone ? '#facc15' : 'rgba(250, 204, 21, 0.6)';
+                        orbitCtx.beginPath(); 
+                        orbitCtx.arc(projLaserEnd.x, projLaserEnd.y, isHotZone ? 5 : 3.5, 0, Math.PI * 2); 
+                        orbitCtx.fill();
+                        orbitCtx.fillStyle = '#facc15'; 
+                        orbitCtx.font = 'bold 9px Noto Sans KR'; 
+                        orbitCtx.fillText('천구 매핑 점', projLaserEnd.x + 8, projLaserEnd.y - 4);
+                    }
+                });
+            }
+
+            // Sort depth values in descending order (Furthest element drawn first)
+            renderQueue.sort((a, b) => b.depth - a.depth);
+
+            // Execute draw methods in prioritized occlusion order
+            renderQueue.forEach(item => item.draw());
+
+            // --- Real-time 2D Collision-Based Eclipse Detector ---
+            let eclipseText = "";
+            const dist2D = (p1, p2) => Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+
+            if (projEarth.depth > -viewDistance && projSun.depth > -viewDistance) {
+                const dES = dist2D(projEarth, projSun);
+                // Check if Earth physically overlaps with Sun on-screen
+                if (dES < (sunRad + earthRad)) {
+                    if (projEarth.depth < projSun.depth) {
+                        eclipseText = "🌞 개기일식(Solar Eclipse) 발생: 지구가 태양 원판을 가림!";
+                    } else {
+                        eclipseText = "🔆 지구 엄폐: 태양이 지구 원판을 완전히 가림!";
+                    }
+                }
+            }
+
+            if (projEarth.depth > -viewDistance && projPlanet.depth > -viewDistance) {
+                const dEP = dist2D(projEarth, projPlanet);
+                // Check Earth & Planet overlap
+                if (dEP < (earthRad + planetRad)) {
+                    if (projEarth.depth < projPlanet.depth) {
+                        eclipseText = "🪐 외행성식 발생: 지구가 외행성 구체를 가림 (Occultation)!";
+                    } else {
+                        eclipseText = "🌍 지구 Transit 발생: 외행성이 지구 구체 위를 통과 중!";
+                    }
+                }
+            }
+
+            if (projPlanet.depth > -viewDistance && projSun.depth > -viewDistance) {
+                const dPS = dist2D(projPlanet, projSun);
+                // Check Planet & Sun overlap
+                if (dPS < (sunRad + planetRad)) {
+                    if (projPlanet.depth < projSun.depth) {
+                        eclipseText = "🪐 외행성 Transit 발생: 행성이 태양 면을 가려 지나가는 중!";
+                    } else {
+                        eclipseText = "🔆 행성 엄폐: 외행성이 태양 뒤편으로 완전히 가려짐!";
+                    }
+                }
+            }
+
+            // Render HUD Alerts based on Eclipse Detection
+            if (eclipseText !== "") {
+                eclipseDetectorText.innerText = eclipseText;
+                eclipseDetectorHud.classList.remove('hidden');
+            } else {
+                eclipseDetectorHud.classList.add('hidden');
+            }
+
+            document.getElementById('hud-earth-deg').innerText = `${((data.thetaE * 180 / Math.PI) % 360).toFixed(1)}°`;
+            document.getElementById('hud-planet-deg').innerText = `${((data.thetaP * 180 / Math.PI) % 360).toFixed(1)}°`;
+            
+            const skyCoords = calculateSkyCoords(data);
+            document.getElementById('hud-distance').innerText = `${skyCoords.distanceAU.toFixed(2)} AU`;
+        }
+
+        // Draw Earth Observer's Night Sky RA-Dec Chart
+        function drawSkyGraph() {
+            const dpr = window.devicePixelRatio || 1;
+            const w = skyCanvas.width / dpr;
+            const h = skyCanvas.height / dpr;
+
+            skyCtx.fillStyle = '#050510'; skyCtx.fillRect(0, 0, w, h);
+
+            const marginX = 35; const marginY = 30;
+            const gw = w - 2 * marginX; const gh = h - 2 * marginY;
+
+            const maxRA = 60; const minRA = -60;
+            const maxDec = 30; const minDec = -30;
+
+            function mapRAtoX(raDeg) { const pct = (maxRA - raDeg) / (maxRA - minRA); return marginX + pct * gw; }
+            function mapDectoY(decDeg) { const pct = (maxDec - decDeg) / (maxDec - minDec); return marginY + pct * gh; }
+
+            // 1. Stars
+            skyCtx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            for (let i = 0; i < 40; i++) {
+                const sx = marginX + (Math.sin(i * 1234.5) * 0.5 + 0.5) * gw;
+                const sy = marginY + (Math.cos(i * 5678.9) * 0.5 + 0.5) * gh;
+                skyCtx.beginPath(); skyCtx.arc(sx, sy, 0.6 + (i % 3) * 0.4, 0, Math.PI * 2); skyCtx.fill();
+            }
+
+            // 2. Grids and Labels
+            skyCtx.strokeStyle = 'rgba(148, 163, 184, 0.08)'; skyCtx.lineWidth = 1;
+            
+            skyCtx.fillStyle = 'rgba(148, 163, 184, 0.5)'; skyCtx.font = '8px Orbitron'; skyCtx.textAlign = 'center';
+            for (let ra = minRA; ra <= maxRA; ra += 15) {
+                const gx = mapRAtoX(ra);
+                skyCtx.beginPath(); skyCtx.moveTo(gx, marginY); skyCtx.lineTo(gx, h - marginY); skyCtx.stroke();
+                const labelText = (ra > 0 ? `+${ra}` : `${ra}`) + '°'; skyCtx.fillText(labelText, gx, h - marginY + 12);
+            }
+
+            skyCtx.textAlign = 'right';
+            for (let dec = minDec; dec <= maxDec; dec += 10) {
+                const gy = mapDectoY(dec);
+                skyCtx.beginPath(); skyCtx.moveTo(marginX, gy); skyCtx.lineTo(w - marginX, gy); skyCtx.stroke();
+                const labelText = (dec > 0 ? `+${dec}` : `${dec}`) + '°'; skyCtx.fillText(labelText, marginX - 5, gy + 3);
+            }
+
+            skyCtx.strokeStyle = 'rgba(6, 182, 212, 0.18)'; skyCtx.lineWidth = 1.5;
+            const yEcliptic = mapDectoY(0);
+            skyCtx.beginPath(); skyCtx.moveTo(marginX, yEcliptic); skyCtx.lineTo(w - marginX, yEcliptic); skyCtx.stroke();
+            skyCtx.fillStyle = 'rgba(6, 182, 212, 0.4)'; skyCtx.font = '8px Noto Sans KR'; skyCtx.fillText('황도 (Ecliptic Plane)', w - marginX - 4, yEcliptic - 4);
+
+            // Coords
+            const currentOrbit = getOrbitalCoordinates(t);
+            const currentSkyCoords = calculateSkyCoords(currentOrbit);
+
+            if (lastRaValue === 0) { lastRaValue = currentSkyCoords.raDeg; }
+
+            let dRA = currentSkyCoords.raDeg - lastRaValue;
+            if (dRA > 180) dRA -= 360; if (dRA < -180) dRA += 360;
+
+            const speedThreshold = 0.001 * simSpeed;
+            const stateBadge = document.getElementById('state-badge');
+            let isCurrentRetrograde = false;
+
+            if (isPlaying) {
+                if (dRA > speedThreshold) {
+                    stateBadge.innerText = '역행 (RETROGRADE)';
+                    stateBadge.className = 'text-[9px] font-extrabold px-1.5 py-0.5 rounded-full font-orbitron bg-rose-950 text-rose-400 border border-rose-800 animate-pulse';
+                    isCurrentRetrograde = true;
+                } else if (dRA < -speedThreshold) {
+                    stateBadge.innerText = '순행 (PROGRADE)';
+                    stateBadge.className = 'text-[9px] font-extrabold px-1.5 py-0.5 rounded-full font-orbitron bg-cyan-950 text-cyan-400 border border-cyan-800';
+                    isCurrentRetrograde = false;
+                } else {
+                    stateBadge.innerText = '유 (STATIONARY)';
+                    stateBadge.className = 'text-[9px] font-extrabold px-1.5 py-0.5 rounded-full font-orbitron bg-amber-950 text-amber-400 border border-amber-800';
+                    isCurrentRetrograde = dRA > 0;
+                }
+                lastRaValue = currentSkyCoords.raDeg;
+            }
+
+            // 3. Predictive Path
+            const predPoints = precalculatePathPoints(t, outerRadiusScale, speedMultiplier, inclinationDeg, phaseOffsetDeg, eccEarth, eccPlanet);
+            
+            skyCtx.save(); skyCtx.beginPath(); skyCtx.rect(marginX, marginY, gw, gh); skyCtx.clip(); 
+            if (predPoints.length > 1) {
+                let currentBatchState = predPoints[0].isRetrograde;
+                skyCtx.beginPath(); skyCtx.moveTo(mapRAtoX(predPoints[0].ra), mapDectoY(predPoints[0].dec));
+                skyCtx.setLineDash([4, 4]);
+
+                for (let i = 1; i < predPoints.length; i++) {
+                    const pt = predPoints[i]; skyCtx.lineTo(mapRAtoX(pt.ra), mapDectoY(pt.dec));
+                    if (pt.isRetrograde !== currentBatchState || i === predPoints.length - 1) {
+                        skyCtx.strokeStyle = currentBatchState ? 'rgba(244, 63, 94, 0.7)' : 'rgba(6, 182, 212, 0.35)';
+                        skyCtx.lineWidth = currentBatchState ? 2.5 : 1.5; skyCtx.stroke();
+                        if (i < predPoints.length - 1) {
+                            skyCtx.beginPath(); skyCtx.moveTo(mapRAtoX(pt.ra), mapDectoY(pt.dec)); currentBatchState = pt.isRetrograde;
+                        }
+                    }
+                }
+            }
+            skyCtx.setLineDash([]); skyCtx.restore();
+
+            // 4. Trail
+            if (isPlaying) {
+                activeTrail.push({ ra: currentSkyCoords.raDeg, dec: currentSkyCoords.decDeg, isRetrograde: isCurrentRetrograde });
+                if (activeTrail.length > maxActiveTrailPoints) { activeTrail.shift(); }
+            }
+
+            skyCtx.save(); skyCtx.beginPath(); skyCtx.rect(marginX, marginY, gw, gh); skyCtx.clip();
+            if (activeTrail.length > 1) {
+                let currentBatchState = activeTrail[0].isRetrograde;
+                skyCtx.beginPath(); skyCtx.moveTo(mapRAtoX(activeTrail[0].ra), mapDectoY(activeTrail[0].dec));
+
+                for (let i = 1; i < activeTrail.length; i++) {
+                    const pt = activeTrail[i]; skyCtx.lineTo(mapRAtoX(pt.ra), mapDectoY(pt.dec));
+                    if (pt.isRetrograde !== currentBatchState || i === activeTrail.length - 1) {
+                        skyCtx.strokeStyle = currentBatchState ? '#f43f5e' : '#06b6d4'; 
+                        skyCtx.shadowColor = currentBatchState ? '#f43f5e' : '#06b6d4';
+                        skyCtx.shadowBlur = currentBatchState ? 8 : 4; skyCtx.lineWidth = currentBatchState ? 3.5 : 2.0;
+                        skyCtx.stroke();
+                        if (i < activeTrail.length - 1) {
+                            skyCtx.beginPath(); skyCtx.moveTo(mapRAtoX(pt.ra), mapDectoY(pt.dec)); currentBatchState = pt.isRetrograde;
+                        }
+                    }
+                }
+            }
+            skyCtx.shadowBlur = 0; skyCtx.restore();
+
+            // 5. Pinpoint dot
+            const curX = mapRAtoX(currentSkyCoords.raDeg); const curY = mapDectoY(currentSkyCoords.decDeg);
+            skyCtx.strokeStyle = 'rgba(250, 204, 21, 0.5)'; skyCtx.lineWidth = 1;
+            skyCtx.beginPath(); skyCtx.arc(curX, curY, 8 + Math.sin(t * 0.1) * 2, 0, Math.PI * 2); skyCtx.stroke();
+            skyCtx.fillStyle = '#facc15'; skyCtx.beginPath(); skyCtx.arc(curX, curY, 4, 0, Math.PI * 2); skyCtx.fill();
+
+            document.getElementById('readout-ra').innerText = `${currentSkyCoords.raDeg > 0 ? '+' : ''}${currentSkyCoords.raDeg.toFixed(2)}°`;
+            document.getElementById('readout-dec').innerText = `${currentSkyCoords.decDeg > 0 ? '+' : ''}${currentSkyCoords.decDeg.toFixed(2)}°`;
+
+            skyCtx.strokeStyle = '#1e293b'; skyCtx.lineWidth = 1.5; skyCtx.strokeRect(marginX, marginY, gw, gh);
+            skyCtx.fillStyle = 'rgba(148, 163, 184, 0.7)'; skyCtx.font = 'bold 9px Noto Sans KR'; skyCtx.textAlign = 'center';
+            skyCtx.fillText('적경 편차 (Relative Right Ascension Δα)', w / 2, h - 5);
+            skyCtx.save(); skyCtx.translate(10, h / 2); skyCtx.rotate(-Math.PI / 2); skyCtx.fillText('적위 (Declination δ)', 0, 0); skyCtx.restore();
+        }
+
+        function tick(timestamp) {
+            if (!prevTime) prevTime = timestamp;
+            const dt = timestamp - prevTime;
+            prevTime = timestamp;
+            if (isPlaying) { t += 0.45 * simSpeed; } 
+            drawOrbitView();
+            drawSkyGraph();
+            requestAnimationFrame(tick);
+        }
+
+        window.onload = function() {
+            handleResize(); 
+            initInteractivity(); 
+            updateUIValues(); 
+            updateSkyUILabels();
+            requestAnimationFrame(tick); 
+        }
+    </script>
+</body>
+</html>

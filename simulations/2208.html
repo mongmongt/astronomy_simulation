@@ -1,0 +1,690 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px '.AppleSystemUIFontMonospaced'; color: #000000; color: rgba(0, 0, 0, 0.85)}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px '.AppleSystemUIFontMonospaced'; color: #000000; color: rgba(0, 0, 0, 0.85); min-height: 17.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="ko"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;title&gt;전산천체물리학 가상 실험실: 항성 물리량 및 광도·분광 특성 분석기&lt;/title&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>body {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-family: 'Noto Sans KR', sans-serif;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background-color: #040712;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>/* 항성 광학 글로우 필터 연동 변수 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.glow-star {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>filter: drop-shadow(0 0 35px var(--star-color));</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>/* 고급 전산실 아크릴 글래스모피즘 플레이트 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.glass-card {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background: rgba(9, 15, 30, 0.88);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>backdrop-filter: blur(20px);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid rgba(255, 255, 255, 0.07);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>/* 인풋 커스텀 슬라이더 스타일 트랙킹 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>input[type="range"]::-webkit-slider-thumb {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background: #ffffff;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border: 2px solid #6366f1;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>width: 18px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>height: 18px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border-radius: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>cursor: pointer;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body class="text-slate-100 min-h-screen flex flex-col pb-12"&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;header class="w-full py-5 px-6 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="flex items-center gap-3"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-2.5 rounded-xl shadow-xl shadow-indigo-500/10"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;i class="fa-solid fa-atom text-xl text-white"&gt;&lt;/i&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;h1 class="text-lg md:text-xl font-black tracking-tight text-white flex items-center gap-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>항성 물리 가상 실험실 (Stellar Physics Simulation Lab)</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="text-[10px] bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider"&gt;Research Model&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;p class="text-xs text-indigo-300 font-medium"&gt;고급 지구과학 전산 시뮬레이터 — 다변수 데이터 통합 모델링 및 수리 칼리브레이션 완성본&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="flex items-center gap-4 text-[11px] text-slate-400 bg-slate-900/90 px-4 py-2 rounded-xl border border-slate-800 font-mono"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;span class="flex items-center gap-1.5"&gt;&lt;strong class="text-indigo-400"&gt;Stefan-Boltzmann:&lt;/strong&gt; L = 4πR²σT⁴&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;span class="h-3 w-[1px] bg-slate-800"&gt;&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;span class="flex items-center gap-1.5"&gt;&lt;strong class="text-amber-400"&gt;Wien's Displacement:&lt;/strong&gt; λ_max ∝ 1/T&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/header&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;main class="flex-grow max-w-7xl w-full mx-auto px-4 md:px-6 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6"&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;section class="lg:col-span-7 flex flex-col gap-6"&gt;</p>
+<p class="p2"><span class="Apple-converted-space">      </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="glass-card rounded-2xl p-6 relative overflow-hidden flex flex-col items-center justify-center min-h-[440px] shadow-2xl border border-slate-800/60"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="absolute top-4 left-4 z-10 flex items-center gap-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;span class="bg-slate-950/90 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 flex items-center gap-1.5 font-medium"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_#6366f1]"&gt;&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>Computational Photosphere Matrix</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="absolute top-4 right-4 z-10 bg-slate-950/90 border border-slate-800 rounded-lg p-1 flex gap-1 shadow-lg"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button id="btnScaleSqrt" onclick="setScalingMode('sqrt')" class="px-2.5 py-1 text-xs font-black rounded transition-all bg-indigo-600 text-white shadow"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>제곱근 축척 보정</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button id="btnScaleDirect" onclick="setScalingMode('direct')" class="px-2.5 py-1 text-xs font-black rounded transition-all text-slate-500 hover:text-white"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>1:1 기하 정비례</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="w-full flex items-center justify-center py-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;canvas id="starCanvas" width="360" height="360" class="max-w-full rounded-full bg-slate-950/20 border border-slate-900/60 shadow-inner"&gt;&lt;/canvas&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="w-full grid grid-cols-4 gap-2 bg-slate-950/70 p-4 rounded-xl border border-slate-800 text-center text-xs font-mono"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p class="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5"&gt;분광 등급 (Harvard)&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p id="infoSpectralType" class="font-black text-base text-indigo-400"&gt;-&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="border-l border-slate-800/80"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p class="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5"&gt;광도 계급 (Yerkes)&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p id="infoLumClass" class="font-black text-base text-teal-400"&gt;-&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="border-l border-slate-800/80"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p class="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5"&gt;에너지 barycenter&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p id="infoWavelength" class="font-black text-base text-amber-400"&gt;-&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="border-l border-slate-800/80"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p class="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5"&gt;복사 플럭스 광도&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p id="infoLuminosity" class="font-black text-base text-rose-400"&gt;-&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="glass-card rounded-2xl p-5 shadow-xl border border-slate-800/50"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h3 class="font-bold text-xs text-indigo-400 uppercase tracking-wider flex items-center gap-2 mb-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;i class="fa-solid fa-code-branch"&gt;&lt;/i&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>전산물리학적 축척 제어(Scale Invariance Method) 매커니즘</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/h3&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p class="text-xs text-slate-400 leading-relaxed font-normal"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>본 가상 계성(System)은 초거성과 왜성의 수백 배에 달하는 극단적인 기하학적 격차를 단일 해상도 경계 내에 수용하기 위해 &lt;strong&gt;제곱근 스케일링($R_{\text{visual}} \propto \sqrt{R}$)&lt;/strong&gt;을 기본 제어 모델로 채택하고 있습니다. 우측 상단의 &lt;strong&gt;1:1 기하 정비례&lt;/strong&gt; 스위치를 활성화하면 보정이 완전히 제거되어 거성 진화 시 항성의 외층 부피가 우주 공간 내에 점하는 절대적 면적비 팽창도를 날것 그대로 증명 및 정량 분석할 수 있습니다.</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/section&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;section class="lg:col-span-5 flex flex-col gap-6"&gt;</p>
+<p class="p2"><span class="Apple-converted-space">      </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="glass-card rounded-2xl p-6 shadow-2xl border-t-4 border-indigo-500"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="flex items-center justify-between mb-6"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;h2 class="font-black text-sm text-white uppercase tracking-wider flex items-center gap-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;i class="fa-solid fa-gears text-indigo-500"&gt;&lt;/i&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>실험 통제 변인 설정 (Parameter Input)</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onclick="resetToSolar()" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-500 text-[10px] font-mono font-bold text-slate-400 hover:text-white rounded-lg transition-all flex items-center gap-1.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;i class="fa-solid fa-arrow-rotate-left"&gt;&lt;/i&gt;Solar Reset</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="mb-5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="flex justify-between items-center mb-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;label for="radiusSlider" class="text-xs font-bold text-slate-300 flex items-center gap-1.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span class="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"&gt;&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>항성 상대 반경 제어 파라미터 ($R / R_\odot$)</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="text-[11px] font-mono text-indigo-400 bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-900/60 font-black"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span id="radiusValue" class="text-xs"&gt;1.0&lt;/span&gt; R☉</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;input type="range" id="radiusSlider" min="0.1" max="50.0" step="0.1" value="1.0"<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="flex justify-between text-[9px] font-mono text-slate-500 mt-1 px-0.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span&gt;0.1 R☉ (왜성 하한)&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span&gt;25.0 R☉&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span&gt;50.0 R☉ (초거성 상한)&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="mb-6"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="flex justify-between items-center mb-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;label for="tempSlider" class="text-xs font-bold text-slate-300 flex items-center gap-1.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"&gt;&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>항성 표면 유효 온도 파라미터 ($T_{\text{eff}}$)</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="text-[11px] font-mono text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-900/60 font-black"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span id="tempValue" class="text-xs"&gt;5,778&lt;/span&gt; K</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;input type="range" id="tempSlider" min="2000" max="40000" step="100" value="5778"<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="flex justify-between text-[9px] font-mono text-slate-500 mt-1 px-0.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="text-red-400/90"&gt;2,000 K (M-Class 하한)&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="text-yellow-200/90"&gt;5,778 K (G-Class 태양)&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="text-sky-400/90"&gt;40,000 K (O-Class 상한)&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="border-t border-slate-800/80 pt-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;p class="text-[10px] font-mono font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-1.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;i class="fa-solid fa-database text-indigo-400"&gt;&lt;/i&gt;ESA Gaia 및 카탈로그 기반 실존 항성 데이터셋</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="grid grid-cols-3 gap-2 text-xs"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onclick="setPreset(0.15, 3040, '프록시마 센타우리', '적색왜성 (M5 V)')" class="bg-slate-900/40 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition rounded-xl p-2 text-left"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[10px] font-black text-red-400"&gt;프록시마&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[9px] font-mono text-slate-500 mt-0.5"&gt;0.15 R / 3,040 K&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onclick="setPreset(1.0, 5778, '태양', '주계열성 (G2 V)')" class="bg-slate-900/40 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition rounded-xl p-2 text-left"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[10px] font-black text-yellow-400"&gt;태양 (G2V)&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[9px] font-mono text-slate-500 mt-0.5"&gt;1.0 R / 5,778 K&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onclick="setPreset(1.71, 9940, '시리우스 A', '주계열성 (A1 V)')" class="bg-slate-900/40 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition rounded-xl p-2 text-left"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[10px] font-black text-blue-300"&gt;시리우스 A&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[9px] font-mono text-slate-500 mt-0.5"&gt;1.71 R / 9,940 K&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onclick="setPreset(25.4, 4280, '아크투르스', '적색거성 (K1 III)')" class="bg-slate-900/40 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition rounded-xl p-2 text-left"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[10px] font-black text-orange-400"&gt;아크투르스&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[9px] font-mono text-slate-500 mt-0.5"&gt;25.4 R / 4,280 K&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onclick="setPreset(50.0, 12100, '리겔', '청색초거성 (B8 Ia 보정치)')" class="bg-slate-900/40 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition rounded-xl p-2 text-left"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[10px] font-black text-sky-300"&gt;리겔 (Rigel)&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[9px] font-mono text-slate-500 mt-0.5"&gt;※50.0 R / 12,100 K&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onclick="setPreset(50.0, 3500, '베텔게우스', '적색초거성 (M1 Iab 보정치)')" class="bg-slate-900/40 hover:bg-slate-800 border border-slate-800/80 hover:border-slate-700 transition rounded-xl p-2 text-left"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[10px] font-black text-red-500"&gt;베텔게우스&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="text-[9px] font-mono text-slate-500 mt-0.5"&gt;※50.0 R / 3,500 K&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div id="presetNotice" class="text-[10px] text-indigo-300 mt-3 hidden animate-pulse bg-indigo-950/40 p-2.5 rounded-xl border border-indigo-900/40"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;i class="fa-solid fa-circle-nodes mr-1 text-indigo-400"&gt;&lt;/i&gt; 프리셋 활성화 파이프라인: &lt;strong id="presetName"&gt;&lt;/strong&gt; [&lt;span id="presetType"&gt;&lt;/span&gt;]</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;br&gt;&lt;span class="text-slate-400 font-sans block mt-0.5"&gt;*※표기된 초거성의 실제 반경은 본 범용 시뮬레이터 최대 한계 장벽인 50 R☉을 상회하므로, 스크린 한계 경계 내 최대 비율 임계값(50 R☉)으로 자동 스케일링 세팅 처리됩니다.&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="glass-card rounded-2xl p-6 shadow-xl flex flex-col gap-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;h3 class="font-bold text-xs text-slate-300 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 font-sans"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;i class="fa-solid fa-chart-bar text-rose-500"&gt;&lt;/i&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>로그 압축 동적 변환 광도 분석 게이지 ($\log_{10}(L / L_\odot)$)</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/h3&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="bg-slate-950/90 rounded-xl p-4 border border-slate-800/80"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="flex justify-between items-center mb-1.5 text-xs font-mono text-slate-400"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;Integral Luminosity ($L$)&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span class="text-rose-400 font-black text-sm" id="rawLuminosityText"&gt;-&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="h-6 w-full bg-slate-900 rounded-lg overflow-hidden relative border border-slate-800/80 flex items-center"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="absolute left-[12.5%] h-full w-[1px] bg-slate-800/60"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="absolute left-[25%] h-full w-[1px] bg-slate-800/60"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="absolute left-[37.5%] h-full w-[1px] bg-slate-800/60"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="absolute left-[50%] h-full w-[1px] bg-slate-800/60"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="absolute left-[62.5%] h-full w-[1px] bg-slate-800/60"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="absolute left-[75%] h-full w-[1px] bg-slate-800/60"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div class="absolute left-[87.5%] h-full w-[1px] bg-slate-800/60"&gt;&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">              </span></p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div id="logLuminosityBar" class="h-full bg-gradient-to-r from-red-500 via-amber-400 via-yellow-100 to-sky-400 opacity-90 transition-all duration-300 ease-out" style="width: 50%;"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="flex justify-between text-[8px] font-mono text-slate-500 mt-1.5 px-0.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;10⁻⁵&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;10⁻³&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;10⁻¹&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;10¹&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;10³&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;10⁵&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;10⁷&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;span&gt;10⁹&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="flex justify-between items-center text-xs mb-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="text-slate-300 font-bold flex items-center gap-1.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;i class="fa-solid fa-wave-square text-indigo-400"&gt;&lt;/i&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>에너지 밀도 중심 도메인 추적 (Spectral Wave Band)</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span class="text-indigo-400 font-mono font-black" id="spectralLabel"&gt;-&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div class="bg-slate-950/90 rounded-xl p-4 border border-slate-800/80 flex items-center gap-3"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="h-2 flex-grow rounded-full bg-gradient-to-r from-purple-700 via-blue-500 via-emerald-400 via-yellow-400 to-red-600 relative overflow-hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div id="wavelengthMarker" class="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_#ffffff] transition-all duration-300" style="left: 50%;"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span id="spectralTypeBadge" class="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400"&gt;-&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="safetyWarningBox" class="p-4 bg-rose-950/20 border border-rose-900/40 rounded-xl text-xs text-rose-300 flex items-start gap-3 hidden animate-pulse"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;i class="fa-solid fa-circle-exclamation text-rose-500 text-base mt-0.5"&gt;&lt;/i&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;strong class="font-bold text-white block mb-0.5 uppercase font-sans tracking-wide text-[11px]"&gt;Radiative Hydrodynamics Alert (Eddington Limit)&lt;/strong&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span id="safetyWarningText" class="leading-relaxed text-slate-300 font-normal"&gt;&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/section&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/main&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;section class="max-w-7xl w-full mx-auto px-4 md:px-6 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6"&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="glass-card rounded-2xl p-6 shadow-lg"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;h3 class="font-bold text-xs text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;i class="fa-solid fa-square-root-variable text-indigo-400"&gt;&lt;/i&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>전산물리학 내장 수리 분류 파이프라인</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/h3&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="space-y-4 text-xs text-slate-400 leading-relaxed font-sans"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;h4 class="font-bold text-slate-200 mb-1"&gt;1. CIE 표준 색도 근사 좌표계 매핑 알고리즘&lt;/h4&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>단순 빨강-파랑 선형 매핑을 탈피하여, 플랭크의 복사 함수($E(\lambda, T)$)를 가시광 파장 대역에 대해 수치 적분(Numerical Integration)한 상대 화소 밀도를 유도합니다. 이를 통해 절대 온도 변화에 따른 항성의 실제 유효 표면 복사색을 sRGB 좌표계의 세 화소 비율로 실시간 변환 연산하여 모니터 상에 완벽히 캘리브레이션합니다.</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="border-t border-slate-800/80 pt-3"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;h4 class="font-bold text-slate-200 mb-1"&gt;2. 여키스 2차원 다변수 역추적 분류 모델&lt;/h4&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>오직 표면 온도 변인만을 판정하는 하버드 분류식에서 나아가, 유효 표면 중력($g \propto M/R^2$) 및 항성 광도 등급과 비선형적 인과성을 가지는 반지름($R$)과 온도($T$) 데이터를 조합하는 2차원 위상 평면을 생성합니다. 조건문을 통해 항성의 진화 평면을 역추적하여 초거성($\text{I}$), 거성($\text{III}$), 주계열성($\text{V}$), 백색왜성($\text{VII}$)으로 라벨링합니다.</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="glass-card rounded-2xl p-6 shadow-lg"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;h3 class="font-bold text-xs text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;i class="fa-solid fa-triangle-exclamation text-amber-500"&gt;&lt;/i&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>모델링 축소 가정이 자아내는 학술적 격차 분석 (수행평가 분석용)</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/h3&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="space-y-3.5 text-xs text-slate-400 leading-relaxed font-sans"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p&gt;현실의 항성 진화계를 브라우저 연산계 내에 복제하기 위해 하단과 같은 한계 가정이 수반되었습니다.&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;ul class="list-disc pl-5 space-y-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;li&gt;&lt;strong&gt;완벽한 등방성 구형 흑체 가정:&lt;/strong&gt; 실제 항성은 빠른 자전축 중심 원심력 분포로 인해 가스 껍질이 평평해지는 편평 타원체를 띠지만, 본 시뮬레이터는 형태 왜곡을 배제하기 위해 완벽한 기하학적 구형으로 제한했습니다.&lt;/li&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;li&gt;&lt;strong&gt;주변연 암화(Limb Darkening) 현상 생략:&lt;/strong&gt; 실제 입체구형 구도의 별은 주변부로 갈수록 광학적 깊이가 감소하여 가장자리가 어둡게 감쇄되는 감광 대칭성을 띠나, 색도 분석의 가독성을 보존하기 위해 표면 플럭스 밀도를 균일화 모델로 처리했습니다.&lt;/li&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;li&gt;&lt;strong&gt;물리적 변인 간 독립성 가정의 맹점:&lt;/strong&gt; 실제 자연계 속 주계열성은 질량에 의해 반경과 온도가 상호 예속되어 진화 경로를 가지나, 조작 편의성을 위한 독립 변인 가정으로 인해 우주에 존재 불가능한 가상 조합의 렌더링이 성립되는 구조적 한계를 안고 있습니다.&lt;/li&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/ul&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/section&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const canvas = document.getElementById('starCanvas');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const ctx = canvas.getContext('2d');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const radiusSlider = document.getElementById('radiusSlider');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const tempSlider = document.getElementById('tempSlider');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const radiusValue = document.getElementById('radiusValue');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const tempValue = document.getElementById('tempValue');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const infoSpectralType = document.getElementById('infoSpectralType');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const infoLumClass = document.getElementById('infoLumClass');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const infoWavelength = document.getElementById('infoWavelength');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const infoLuminosity = document.getElementById('infoLuminosity');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const rawLuminosityText = document.getElementById('rawLuminosityText');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const logLuminosityBar = document.getElementById('logLuminosityBar');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const spectralLabel = document.getElementById('spectralLabel');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const spectralTypeBadge = document.getElementById('spectralTypeBadge');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const wavelengthMarker = document.getElementById('wavelengthMarker');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const presetNotice = document.getElementById('presetNotice');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const presetName = document.getElementById('presetName');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const presetType = document.getElementById('presetType');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const safetyWarningBox = document.getElementById('safetyWarningBox');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const safetyWarningText = document.getElementById('safetyWarningText');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const TSUN = 5778; // 태양 상용 표준 유효온도 기준치</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let animationId;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let wavePulseAngle = 0; // 코로나 브리딩 위상 매개변수</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let activeScalingMode = 'sqrt'; // 디폴트: 차원 축소 제곱근 보정 모드</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 플랭크 곡선 플럭스 적분식 기반 sRGB 변환 수학 근사 모듈</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function computeBlackbodyColorMatrix(temp) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let calcT = temp / 100;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let r, g, b;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// Red 화소 축 환산</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (calcT &lt;= 66) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>r = 255;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>r = calcT - 60;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>r = 329.698727446 * Math.pow(r, -0.1332047592);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>r = Math.min(255, Math.max(0, r));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// Green 화소 축 환산</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (calcT &lt;= 66) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>g = calcT;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>g = 99.4708025861 * Math.log(g) - 161.1195681661;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>g = Math.min(255, Math.max(0, g));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>g = calcT - 60;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>g = 288.1221695283 * Math.pow(g, -0.0755148492);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>g = Math.min(255, Math.max(0, g));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// Blue 화소 축 환산</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (calcT &gt;= 66) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>b = 255;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (calcT &lt;= 19) {</p>
+<p class="p1"><span class="Apple-converted-space">          </span>b = 0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">          </span>b = calcT - 10;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>b = 138.5177312231 * Math.log(b) - 305.0447927307;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>b = Math.min(255, Math.max(0, b));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>return {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>r: Math.round(r),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>g: Math.round(g),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>b: Math.round(b),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>hex: `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`</p>
+<p class="p1"><span class="Apple-converted-space">      </span>};</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 하버드 분광형 등급(Harvard Spectral Type) 연속 정량 연산식</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function evaluateHarvardType(temp) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let alphaClass = "G";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let subDigit = 0;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (temp &gt;= 30000) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>alphaClass = "O";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subDigit = Math.floor(9 - ((temp - 30000) / 1111));<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (temp &gt;= 10000) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>alphaClass = "B";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subDigit = Math.floor(9 - ((temp - 10000) / 2222));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (temp &gt;= 7500) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>alphaClass = "A";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subDigit = Math.floor(9 - ((temp - 7500) / 277));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (temp &gt;= 6000) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>alphaClass = "F";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subDigit = Math.floor(9 - ((temp - 6000) / 166));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (temp &gt;= 5200) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>alphaClass = "G";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subDigit = Math.floor(9 - ((temp - 5200) / 88));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (temp &gt;= 3700) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>alphaClass = "K";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subDigit = Math.floor(9 - ((temp - 3700) / 166));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>alphaClass = "M";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subDigit = Math.floor(9 - ((temp - 2000) / 188));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>subDigit = Math.min(9, Math.max(0, subDigit));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return `${alphaClass}${subDigit}`;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 여키스 2차원 다변수 데이터 역추적 분류 파이프라인</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function evaluateYerkesClass(radius, temp) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (radius &gt;= 20) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return "I (초거성)";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (radius &gt;= 3 &amp;&amp; radius &lt; 20) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return "III (거성)";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (radius &lt; 0.25) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (temp &gt;= 9000) {</p>
+<p class="p1"><span class="Apple-converted-space">          </span>return "VII (백색왜성)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">          </span>return "V (적색왜성)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return "V (주계열성)";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 기하학적 축척 가변 제어 모드 셀렉터</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function setScalingMode(mode) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>activeScalingMode = mode;</p>
+<p class="p2"><span class="Apple-converted-space">      </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const btnSqrt = document.getElementById('btnScaleSqrt');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const btnDirect = document.getElementById('btnScaleDirect');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (mode === 'sqrt') {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>btnSqrt.className = "px-2.5 py-1 text-xs font-black rounded transition-all bg-indigo-600 text-white shadow";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>btnDirect.className = "px-2.5 py-1 text-xs font-black rounded transition-all text-slate-500 hover:text-white";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>btnDirect.className = "px-2.5 py-1 text-xs font-black rounded transition-all bg-indigo-600 text-white shadow";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>btnSqrt.className = "px-2.5 py-1 text-xs font-black rounded transition-all text-slate-500 hover:text-white";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><span class="Apple-converted-space">      </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>updateCalculations();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 실시간 다변수 데이터 정량 동기화 엔진</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function updateCalculations() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const radValue = parseFloat(radiusSlider.value);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const tmpValue = parseFloat(tempSlider.value);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 1. 슈테판-볼츠만 법칙 규격화: L/L_sun = (R/R_sun)^2 * (T/T_sun)^4</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const ratioT = tmpValue / TSUN;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const finalLuminosity = Math.pow(radValue, 2) * Math.pow(ratioT, 4);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 슬라이더 지시부 라벨 갱신</p>
+<p class="p1"><span class="Apple-converted-space">      </span>radiusValue.innerText = radValue.toFixed(1);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>tempValue.innerText = tmpValue.toLocaleString();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 천문학 분류 체계 연동 결과 주입</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const computedSpectral = evaluateHarvardType(tmpValue);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const computedYerkes = evaluateYerkesClass(radValue, tmpValue);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>infoSpectralType.innerText = computedSpectral;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>infoLumClass.innerText = computedYerkes;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 광도 동적 범위 데이터 지수식 가독성 보정 출력</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let luminosityLabel = "";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (finalLuminosity &gt;= 1000000) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>luminosityLabel = finalLuminosity.toExponential(3) + " L☉";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (finalLuminosity &gt;= 10) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>luminosityLabel = finalLuminosity.toLocaleString(undefined, {maximumFractionDigits: 1}) + " L☉";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>luminosityLabel = finalLuminosity.toFixed(4) + " L☉";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>infoLuminosity.innerText = luminosityLabel;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>rawLuminosityText.innerText = luminosityLabel;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 2. 빈의 변위 법칙 기반 피크 파장 연산</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const finalLambda = 2897768 / tmpValue;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>infoWavelength.innerText = `${Math.round(finalLambda)} nm`;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 전자기파 밴드 매핑 및 좌표 동기화</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let waveBandText = "";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let pointerPct = 50;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (finalLambda &lt; 380) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>waveBandText = "자외선 (Ultraviolet Band)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pointerPct = 8;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (finalLambda &gt;= 380 &amp;&amp; finalLambda &lt; 430) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>waveBandText = "가시광선 (Violet Domain)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pointerPct = 25;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (finalLambda &gt;= 430 &amp;&amp; finalLambda &lt; 480) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>waveBandText = "가시광선 (Blue Domain)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pointerPct = 42;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (finalLambda &gt;= 480 &amp;&amp; finalLambda &lt; 560) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>waveBandText = "가시광선 (Green Domain)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pointerPct = 58;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (finalLambda &gt;= 560 &amp;&amp; finalLambda &lt; 590) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>waveBandText = "가시광선 (Yellow Domain)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pointerPct = 70;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (finalLambda &gt;= 590 &amp;&amp; finalLambda &lt; 640) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>waveBandText = "가시광선 (Orange Domain)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pointerPct = 82;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (finalLambda &gt;= 640 &amp;&amp; finalLambda &lt; 750) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>waveBandText = "가시광선 (Red Domain)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pointerPct = 90;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>waveBandText = "적외선 (Infrared Band)";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pointerPct = 95;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>spectralLabel.innerText = waveBandText;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>spectralTypeBadge.innerText = `${Math.round(finalLambda)}nm`;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>wavelengthMarker.style.left = `${pointerPct}%`;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 3. 로그 변환 동적 범위 가시화 압축식 (10^-5 ~ 10^9 총 14 오더 제어)</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const logLowerBound = -5;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const logUpperBound = 9;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const currentLogVal = Math.log10(finalLuminosity);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const computedPct = ((currentLogVal - logLowerBound) / (logUpperBound - logLowerBound)) * 100;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>logLuminosityBar.style.width = `${Math.min(100, Math.max(0, computedPct))}%`;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 4. 에딩턴 한계 기반 복사유체역학적 예외 가드레일 시스템</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (finalLuminosity &gt; 100000) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>safetyWarningBox.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>safetyWarningText.innerText = "초거성 역학적 한계계 도달. 누적 방출 광도가 에딩턴 한계(Eddington Limit)의 임계 국면에 근접하여, 외부 가스 외층에 작용하는 복사압 플럭스가 고유 중력을 완전히 능가합니다. 대규모 질량 손실(Mass loss)과 항성풍 불안정성이 야기되는 상태이며, 장기적으로 초신성 폭발(Supernova Event) 시나리오로 이어지는 불안정한 물리 영역입니다.";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (finalLuminosity &lt; 0.0001) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>safetyWarningBox.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>safetyWarningText.innerText = "극소 주계열 에너지 준위 감지. 광학 플럭스가 태양 방출량의 1만 분의 1 하한선에 도달했습니다. 수소 핵융합 반응이 극도로 저조한 적색왜성 말단 부근이며, 표면 유효 중력 밀도에 대비해 전도 및 복사 수송이 극도로 완만히 진행되는 영속적 왜성 진화 단계입니다.";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>safetyWarningBox.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 전산 광구 매트릭스 이중 렌더링 엔진 루프</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function renderStellarPhotosphere() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const currentR = parseFloat(radiusSlider.value);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const currentT = parseFloat(tempSlider.value);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.clearRect(0, 0, canvas.width, canvas.height);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const xCenter = canvas.width / 2;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const yCenter = canvas.height / 2;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 1. 위상 공간 크기 가드레일 제어 연산</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let targetPixelRadius = 25;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (activeScalingMode === 'sqrt') {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 비선형 제곱근 차원 압축 축척 보정</p>
+<p class="p1"><span class="Apple-converted-space">        </span>targetPixelRadius = 15 + (Math.sqrt(currentR / 50.0) * 125);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 절대 기하 1:1 정비례 축척 매핑</p>
+<p class="p1"><span class="Apple-converted-space">        </span>targetPixelRadius = Math.max(1, currentR * 3);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 복사 온도 컬러 데이터 도출</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const computedRGB = computeBlackbodyColorMatrix(currentT);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const rgbString = `${computedRGB.r}, ${computedRGB.g}, ${computedRGB.b}`;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>canvas.style.setProperty('--star-color', computedRGB.hex);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 2. 이중 렌더링 이펙트 - 파동 코로나 브리딩 애니메이션 필터</p>
+<p class="p1"><span class="Apple-converted-space">      </span>wavePulseAngle += 0.03;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const wavePulseOffset = Math.sin(wavePulseAngle) * 4.5;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const dynamicCoronaRadius = targetPixelRadius + 52 + wavePulseOffset;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 외곽 소프트 코로나 플럭스 그라데이션</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const outerGlowFilter = ctx.createRadialGradient(xCenter, yCenter, targetPixelRadius * 0.25, xCenter, yCenter, dynamicCoronaRadius);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>outerGlowFilter.addColorStop(0, `rgba(${rgbString}, 0.58)`);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>outerGlowFilter.addColorStop(0.25, `rgba(${rgbString}, 0.33)`);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>outerGlowFilter.addColorStop(0.65, `rgba(${rgbString}, 0.06)`);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>outerGlowFilter.addColorStop(1, 'rgba(0, 0, 0, 0)');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.beginPath();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.arc(xCenter, yCenter, dynamicCoronaRadius, 0, Math.PI * 2);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.fillStyle = outerGlowFilter;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.fill();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 내부 인텐스 가스 광구 필터</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const innerGlowFilter = ctx.createRadialGradient(xCenter, yCenter, targetPixelRadius * 0.55, xCenter, yCenter, targetPixelRadius + 16);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>innerGlowFilter.addColorStop(0, `rgba(${rgbString}, 1.0)`);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>innerGlowFilter.addColorStop(0.55, `rgba(${rgbString}, 0.45)`);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>innerGlowFilter.addColorStop(1, 'rgba(0, 0, 0, 0)');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.beginPath();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.arc(xCenter, yCenter, targetPixelRadius + 16, 0, Math.PI * 2);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.fillStyle = innerGlowFilter;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.fill();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 3. 주 항성 본체 광구(Photosphere) 코어 라인 구동</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.beginPath();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.arc(xCenter, yCenter, targetPixelRadius, 0, Math.PI * 2);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.fillStyle = computedRGB.hex;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.fill();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 4. 이중 렌더링 이펙트 - 초고온 열역학 화이트 코어 포화 그라데이션 필터</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const centralWhiteCore = ctx.createRadialGradient(xCenter, yCenter, 0, xCenter, yCenter, targetPixelRadius * 0.78);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>centralWhiteCore.addColorStop(0, '#ffffff'); // 중심부 열역학적 포화 고광도 화이트 아웃 백색화</p>
+<p class="p1"><span class="Apple-converted-space">      </span>centralWhiteCore.addColorStop(0.35, `rgba(${rgbString}, 0.96)`);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>centralWhiteCore.addColorStop(1, computedRGB.hex);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.beginPath();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.arc(xCenter, yCenter, targetPixelRadius, 0, Math.PI * 2);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.fillStyle = centralWhiteCore;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>ctx.fill();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 애니메이션 프레임 루프 순환 연동</p>
+<p class="p1"><span class="Apple-converted-space">      </span>animationId = requestAnimationFrame(renderStellarPhotosphere);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 카탈로그 데이터 주입 파이프라인 및 제어 스위치</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// -------------------------------------------------------------</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function setPreset(r, t, name, type) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>// 슬라이더 한계가 50배이므로 리겔/베텔게우스 등 극단적 거성은 50배 최대 임계치 경계로 포화 보정 주입</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let injectRadius = r;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (r &gt; 50) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>injectRadius = 50.0;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><span class="Apple-converted-space">      </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>radiusSlider.value = injectRadius;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>tempSlider.value = t;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>presetNotice.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>presetName.innerText = name;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>presetType.innerText = type;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>updateCalculations();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function resetToSolar() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>radiusSlider.value = 1.0;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>tempSlider.value = 5778;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>presetNotice.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>updateCalculations();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function handleUserInputPipeline() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>presetNotice.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>updateCalculations();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>radiusSlider.addEventListener('input', handleUserInputPipeline);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>tempSlider.addEventListener('input', handleUserInputPipeline);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 구동 개시 시그널 연동</p>
+<p class="p1"><span class="Apple-converted-space">    </span>window.onload = function() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>updateCalculations();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>renderStellarPhotosphere();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>

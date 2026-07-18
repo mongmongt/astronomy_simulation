@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>항성 진화 및 H-R도 시뮬레이터</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+KR:wght@300;500;700&display=swap');
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            background-color: #030712; 
+        }
+        .digital-font { 
+            font-family: 'Orbitron', sans-serif; 
+        }
+        /* 우주 분위기 애니메이션 배경 */
+        .stars-bg {
+            background-image: 
+                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
+                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
+                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px);
+            background-size: 550px 550px, 350px 350px, 250px 250px;
+            background-position: 0 0, 40px 60px, 130px 270px;
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen p-4 md:p-6 flex flex-col justify-between stars-bg">
+
+    <!-- 상단 헤더 영역 -->
+    <header class="border-b border-gray-800 pb-4 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-red-400">
+                항성 진화 및 H-R도 천문학 시뮬레이터
+            </h1>
+            <p class="text-xs md:text-sm text-gray-400 mt-1">교과서 기준 배경 스펙트럼 영역, 불안정띠 변광성 세부 분류 완벽 시각화</p>
+        </div>
+        <!-- 사전 설정 프리셋 버튼 그룹 (그림 III-43 기준 질량 분배) -->
+        <div class="flex flex-wrap gap-2">
+            <button onclick="setPreset(1.0)" class="px-3 py-1.5 bg-yellow-900/40 hover:bg-yellow-900/60 text-yellow-300 rounded-xl text-xs transition duration-200 border border-yellow-500/30 font-bold shadow-lg">태양 질량성 (1.0 M☉)</button>
+            <button onclick="setPreset(5.0)" class="px-3 py-1.5 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 rounded-xl text-xs transition duration-200 border border-indigo-500/30 font-bold shadow-lg">중질량성 (5.0 M☉)</button>
+            <button onclick="setPreset(10.0)" class="px-3 py-1.5 bg-blue-950/40 hover:bg-blue-900/60 text-blue-300 rounded-xl text-xs transition duration-200 border border-blue-500/30 font-bold shadow-lg">고질량 초거성 (10.0 M☉)</button>
+            <button onclick="setPreset(20.0)" class="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 rounded-xl text-xs transition duration-200 border border-red-500/30 font-bold shadow-lg">극대질량성 (20.0 M☉)</button>
+        </div>
+    </header>
+
+    <!-- 메인 대시보드 구조 -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch flex-grow">
+        
+        <!-- 왼쪽: H-R도 추적 캔버스 -->
+        <div class="lg:col-span-6 bg-gray-900/40 border border-gray-800 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-md shadow-2xl">
+            <div class="mb-2">
+                <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">H-R Diagram</span>
+                <h2 class="text-lg font-bold text-gray-100">교과서 정밀 재현 H-R도 및 배경 분포 영역</h2>
+            </div>
+            
+            <div class="relative flex justify-center items-center bg-gray-950/90 rounded-xl p-3 border border-gray-900 aspect-square w-full overflow-hidden">
+                <canvas id="hrCanvas" width="650" height="650" class="w-full h-full"></canvas>
+            </div>
+            
+            <div class="text-[11px] text-gray-400 mt-2 bg-gray-950/40 p-2 rounded-lg border border-gray-800/50">
+                <span class="text-yellow-400 font-bold">💡 세부 변광성 안내:</span> 별이 <span class="text-amber-300 font-bold">불안정띠</span>를 통과할 때 광도에 따라 <strong>RR Lyrae(거문고자리 RR형)</strong>, <strong>W Virginis(처녀자리 W형)</strong>, <strong>Classical Cepheid(고전적 세페이드)</strong>로 세부 분류되어 실시간 맥동합니다.
+            </div>
+        </div>
+
+        <!-- 중앙: 극적인 항성 모습 시각화 시뮬레이터 -->
+        <div class="lg:col-span-3 bg-gray-900/40 border border-gray-800 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-md shadow-2xl relative overflow-hidden">
+            <div>
+                <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Stellar Visualization</span>
+                <h2 class="text-lg font-bold text-gray-100">현재 항성 외형 및 구조</h2>
+            </div>
+            
+            <!-- 항성 구체 가시성 가시 구역 (스케일 극대화) -->
+            <div class="flex-grow flex items-center justify-center min-h-[300px] relative">
+                <!-- 거성 확장 시 광범위 가스 분출 및 성운 효과 시뮬레이션 -->
+                <div id="nebulaCloud" class="absolute w-72 h-72 rounded-full opacity-0 blur-[60px] transition-all duration-1000"></div>
+                <div id="spaceBg" class="absolute w-48 h-48 rounded-full bg-blue-500/5 blur-[80px] transition-all duration-1000"></div>
+                
+                <!-- 실제 항성 물리 모델 구체 -->
+                <div id="stellarBody" class="rounded-full shadow-2xl transition-all duration-300 ease-out flex items-center justify-center relative border border-white/5">
+                    <!-- 왜성 중심핵 단계 렌더링용 내부 잔존 핵 -->
+                    <div id="stellarCore" class="rounded-full w-2 h-2 bg-white/95 shadow-[0_0_12px_#fff] opacity-0 transition-all duration-500"></div>
+                    <!-- 맥동 변광 중 수축/팽창 경계 가이드 링 (불안정대 전용) -->
+                    <div id="pulsationRing" class="absolute rounded-full border-2 border-dashed border-amber-400/50 w-full h-full scale-[1.1] opacity-0 transition-opacity duration-300"></div>
+                </div>
+            </div>
+
+            <!-- 하단 반경 실시간 스케일 게이지 -->
+            <div class="bg-gray-950/80 p-3 rounded-xl border border-gray-800/60">
+                <div class="flex justify-between text-xs mb-1.5">
+                    <span class="text-gray-400">항성 상대 반지름 크기 비율</span>
+                    <span id="radiusBarLabel" class="text-emerald-400 font-mono font-bold">1.00 R☉</span>
+                </div>
+                <div class="w-full bg-gray-850 h-3 rounded-full overflow-hidden p-[1px] border border-gray-800">
+                    <div id="radiusBar" class="bg-gradient-to-r from-emerald-500 via-teal-400 to-red-500 h-full transition-all duration-300 rounded-full" style="width: 50%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 인터랙티브 조작계 및 물리량 대시보드 -->
+        <div class="lg:col-span-3 bg-gray-900/40 border border-gray-800 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-md shadow-2xl gap-4">
+            
+            <!-- 1. 제어 컨트롤러 -->
+            <div class="space-y-4">
+                <div>
+                    <span class="text-xs font-semibold text-purple-400 uppercase tracking-wider">Control Panel</span>
+                    <h2 class="text-lg font-bold text-gray-100 mb-2">실시간 변인 조작</h2>
+                </div>
+
+                <!-- 질량 설정 슬라이더 -->
+                <div class="bg-gray-950/70 p-3.5 rounded-xl border border-gray-900">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs text-gray-400 font-medium">초기 질량 ($M_\odot$)</label>
+                        <span id="massValue" class="digital-font text-sm text-purple-400 font-bold bg-purple-950/40 px-2 py-0.5 rounded">1.0 M☉</span>
+                    </div>
+                    <input id="massSlider" type="range" min="0.5" max="20" step="0.1" value="1.0" class="w-full accent-purple-500 cursor-pointer h-1.5 bg-gray-800 rounded-lg">
+                    <div class="flex justify-between text-[10px] text-gray-500 mt-1.5">
+                        <span>0.5 M☉ (적색왜성)</span>
+                        <span>20.0 M☉ (극대거성)</span>
+                    </div>
+                </div>
+
+                <!-- 비선형 시간 조작 슬라이더 -->
+                <div class="bg-gray-950/70 p-3.5 rounded-xl border border-gray-900">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs text-gray-400 font-medium">비선형 진화 흐름</label>
+                        <span id="ageSliderLabel" class="text-xs text-amber-400 font-bold px-2 py-0.5 bg-amber-950/30 rounded">주계열성 정밀 관측 구간</span>
+                    </div>
+                    <input id="ageSlider" type="range" min="0" max="100" step="0.05" value="0" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-gray-800 rounded-lg">
+                    <div class="flex justify-between text-[10px] text-gray-500 mt-1.5">
+                        <span>탄생 (0%)</span>
+                        <span class="text-indigo-400 font-bold">주계열성 (0~75%)</span>
+                        <span>거성 및 종말 (100%)</span>
+                    </div>
+                </div>
+
+                <!-- 타임 재생 버튼 및 속도 조절 -->
+                <div class="flex gap-2">
+                    <button id="playBtn" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition duration-200 shadow-lg flex justify-center items-center gap-1.5">
+                        ▶ 재생
+                    </button>
+                    <select id="speedSelect" class="bg-gray-800 border border-gray-700 rounded-xl text-xs px-3 text-gray-200 focus:outline-none cursor-pointer">
+                        <option value="0.05">0.05x 미세속도</option>
+                        <option value="0.2" selected>0.2x 관측속도</option>
+                        <option value="0.5">0.5x 일반속도</option>
+                        <option value="1.0">1.0x 배속</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 2. 실시간 물리 계기판 -->
+            <div class="space-y-2 flex-grow flex flex-col justify-end">
+                <span class="text-xs font-semibold text-amber-400 uppercase tracking-wider block">Stellar Telemetry</span>
+                
+                <div class="grid grid-cols-1 gap-1.5">
+                    <div class="bg-gray-950/80 p-2 rounded-lg border border-gray-900/60 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500">진화 단계</span>
+                        <span id="statusDisplay" class="text-xs font-bold text-white truncate">-</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2 rounded-lg border border-gray-900/60 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500">핵 연소 원소</span>
+                        <span id="burningDisplay" class="text-xs font-bold text-amber-400">-</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2 rounded-lg border border-gray-900/60 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500">총 수명 ($\tau$)</span>
+                        <span id="totalLifetimeDisplay" class="digital-font text-xs text-gray-300 font-bold">-</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2 rounded-lg border border-gray-900/60 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500">경과 나이</span>
+                        <span id="currentAgeDisplay" class="digital-font text-xs text-amber-400 font-bold">-</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2 rounded-lg border border-gray-900/60 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500">표면 온도 ($T$)</span>
+                        <span id="tempDisplay" class="digital-font text-xs text-blue-300 font-bold">-</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2 rounded-lg border border-gray-900/60 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500">실시간 광도 ($L$)</span>
+                        <span id="lumDisplay" class="digital-font text-xs text-yellow-300 font-bold">-</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2 rounded-lg border border-gray-900/60 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500">실시간 반경 ($R$)</span>
+                        <span id="radiusDisplay" class="digital-font text-xs text-emerald-400 font-bold">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="mt-6 pt-4 border-t border-gray-800 text-[11px] text-gray-500 leading-relaxed grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <span class="font-bold text-gray-400">💡 실제 교과 데이터 적용:</span> 본 프로그램은 고등학교 지구과학 II 및 대학 천문학 교재의 항성 물리 진화 곡선을 완벽히 재현하기 위하여 질량에 따른 불연속적인 단계별(주계열성 -> 준거성 -> RGB -> He섬광 -> 수평가지 -> 점근거성 -> 행성상 성운 -> 백색왜성 냉각과정) 진화 물리 곡선 수식을 직접 수학 모델링화 하였습니다.
+        </div>
+        <div>
+            <span class="font-bold text-gray-400">⚠️ 탐구보고서 보정 기술 팁:</span> 불안정대를 통과할 때 항성은 외곽층의 He 이온화 균형 붕괴로 인해 에너지가 갇혀 수축과 팽창을 일으킵니다. 이때 광도 범위에 따라 RR Lyrae(수평가지 부근), W Virginis(II형 세페이드), Classical Cepheid(초거성 영역)으로 세부 변광 특성이 나뉩니다.
+        </div>
+    </footer>
+
+    <!-- 시뮬레이터 구동 스크립트 -->
+    <script>
+        // DOM 엘리먼트 획득
+        const massSlider = document.getElementById('massSlider');
+        const massValue = document.getElementById('massValue');
+        const ageSlider = document.getElementById('ageSlider');
+        const ageSliderLabel = document.getElementById('ageSliderLabel');
+        const playBtn = document.getElementById('playBtn');
+        const speedSelect = document.getElementById('speedSelect');
+
+        const statusDisplay = document.getElementById('statusDisplay');
+        const burningDisplay = document.getElementById('burningDisplay');
+        const totalLifetimeDisplay = document.getElementById('totalLifetimeDisplay');
+        const currentAgeDisplay = document.getElementById('currentAgeDisplay');
+        const tempDisplay = document.getElementById('tempDisplay');
+        const lumDisplay = document.getElementById('lumDisplay');
+        const radiusDisplay = document.getElementById('radiusDisplay');
+
+        const stellarBody = document.getElementById('stellarBody');
+        const stellarCore = document.getElementById('stellarCore');
+        const pulsationRing = document.getElementById('pulsationRing');
+        const nebulaCloud = document.getElementById('nebulaCloud');
+        const spaceBg = document.getElementById('spaceBg');
+        const radiusBar = document.getElementById('radiusBar');
+        const radiusBarLabel = document.getElementById('radiusBarLabel');
+
+        const canvas = document.getElementById('hrCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 상태 변수 정의
+        let isPlaying = false;
+        let animationFrameId = null;
+        let M = parseFloat(massSlider.value); // 초기 태양 질량 단위 (M☉)
+        let sliderVal = parseFloat(ageSlider.value); // 0 ~ 100 사이의 슬라이더 스텝
+        let pulsationTime = 0; // 맥동용 전역 타이머
+
+        // 1. 질량 기준 주계열 단계 기본값 계산
+        function getStellarBasics(mass) {
+            // 수명: τ ∝ M^-2.5 관계식 (태양 1M☉ 기준 10,000 Myr)
+            const totalLifetime = 10000 * Math.pow(mass, -2.5);
+            // 영년 주계열(ZAMS) 기본 위치 공식 유도
+            const zamsLum = Math.pow(mass, 3.6); 
+            const zamsRadius = Math.pow(mass, 0.7);
+            const zamsTemp = 5778 * Math.pow(zamsLum / Math.pow(zamsRadius, 2), 0.25);
+
+            return { totalLifetime, zamsLum, zamsRadius, zamsTemp };
+        }
+
+        // 2. 시간 슬라이더 왜곡 변환 (주계열기 0~75%는 실질 진화 0~90% / 거성 진화 및 종말 75~100%는 후반 90~100% 탐색)
+        function convertSliderToProgress(sVal) {
+            if (sVal <= 75) {
+                return (sVal / 75) * 0.90;
+            } else {
+                const extraFraction = (sVal - 75) / 25; // 0 ~ 1
+                return 0.90 + extraFraction * 0.10;
+            }
+        }
+
+        // 3. 교과서 진화 경로(Track) 데이터 정밀 수치 보간 함수 (그림 III-42, III-43 및 제공된 신규 이미지 정합)
+        function calculateStellarEvolution(mass, sVal) {
+            const basics = getStellarBasics(mass);
+            const progress = convertSliderToProgress(sVal); // 0.0 ~ 1.0 범위
+            const currentAge = basics.totalLifetime * progress;
+
+            let stage = "주계열성";
+            let burning = "수소연소 (H → He)";
+            let statusColor = "#38bdf8"; // 네온 하늘색
+            let L = basics.zamsLum;
+            let T = basics.zamsTemp;
+
+            // 질량 분류에 따른 후주계열 분기점 설정
+            const isHighMass = mass >= 8.0;   // 고질량 거성 트랙 (초신성 폭발 대상)
+            const isMidMass = mass >= 2.0 && mass < 8.0; // 중질량성 트랙 (5M☉급)
+            const isLowMass = mass < 0.8;     // 가벼운 저질량성 (수평거성 미발생)
+
+            let isPulsating = false;
+
+            if (progress <= 0.90) {
+                // =============== [ 1단계 : 주계열성 (ZAMS에서 약간 성장) ] ===============
+                stage = "주계열성";
+                burning = "수소핵융합 (H → He)";
+                statusColor = "#38bdf8";
+                const pRatio = progress / 0.90; // 0 ~ 1
+                
+                // 주계열 기간 동안 중심 온도 상승으로 서서히 온도 하락, 광도/반경 미세 증가
+                L = basics.zamsLum * (1.0 + pRatio * 0.4);
+                T = basics.zamsTemp * (1.0 - pRatio * 0.05);
+            } 
+            else if (progress <= 0.94) {
+                // =============== [ 2단계 : 준거성 단계 및 적색거성 상승기 (RGB) ] ===============
+                const pRatio = (progress - 0.90) / 0.04; // 0 ~ 1
+                
+                if (isHighMass) {
+                    // 고질량 초거성: 거의 일정한 광도로 급격히 냉각 (우측 수평 이동)
+                    stage = "적색초거성 진입기";
+                    burning = "헬륨각 수축 및 수소 연소";
+                    statusColor = "#f43f5e";
+                    L = basics.zamsLum * 1.5;
+                    T = basics.zamsTemp * (1.0 - pRatio * 0.55); // 표면 온도 급락
+                } else if (isLowMass) {
+                    stage = "적색왜성 (점진적 냉각)";
+                    burning = "외곽부 대류 순환";
+                    statusColor = "#f97316";
+                    L = basics.zamsLum * (1.0 - pRatio * 0.2);
+                    T = basics.zamsTemp * (1.0 - pRatio * 0.15);
+                } else {
+                    // 태양 및 중질량성: 준거성을 거쳐 적색거성가지(RGB)로 우측 이동 후 수직 광도 상승
+                    stage = "적색거성가지 (RGB)";
+                    burning = "수소각 연소";
+                    statusColor = "#fb923c"; // 주황
+                    
+                    // 온도 강하 후 광도 수직 상승
+                    const tempDrop = basics.zamsTemp * 0.5;
+                    T = basics.zamsTemp - (pRatio * tempDrop);
+                    if (T < 3500) T = 3500; // 최저 한계 온도
+                    L = basics.zamsLum * (1.0 + Math.pow(pRatio, 3) * 35.0); // 교과서 급상승 반영
+                }
+            } 
+            else if (progress <= 0.965) {
+                // =============== [ 3단계 : 헬륨섬광 및 수평가지(HB) 혹은 맥동 불안정대 진입 ] ===============
+                const pRatio = (progress - 0.94) / 0.025; // 0 ~ 1
+                
+                if (isHighMass) {
+                    stage = "초거성 단계";
+                    burning = "헬륨핵융합 (He → C + O)";
+                    statusColor = "#f43f5e";
+                    L = basics.zamsLum * (2.0 + pRatio * 1.5);
+                    T = 3800 + pRatio * 800;
+                } else if (isLowMass) {
+                    stage = "저질량 헬륨 연소";
+                    burning = "중심부 헬륨 반응 불가";
+                    statusColor = "#ea580c";
+                    L = basics.zamsLum * 0.6;
+                    T = basics.zamsTemp * 0.8;
+                } else {
+                    // 태양 및 중질량성: He 섬광(★) 후 수평가지로 이동 (온도 상승, 광도 약간 감소)
+                    stage = "수평가지 (HB)";
+                    burning = "헬륨핵융합 (He → C + O)";
+                    statusColor = "#facc15"; // 노란색
+                    
+                    // 1M☉ 기준, 최고 거성 끝점(Peak)에서 급격히 아래 및 좌측(고온부)으로 전이
+                    const peakL = basics.zamsLum * 36.0;
+                    const hbL = basics.zamsLum * 6.0;
+                    const hbT = basics.zamsTemp * 0.9; // 주계열 보다는 다소 낮지만 거성보다는 고온
+                    
+                    L = peakL - pRatio * (peakL - hbL);
+                    T = 3500 + pRatio * (hbT - 3500);
+                }
+            } 
+            else if (progress <= 0.985) {
+                // =============== [ 4단계 : 점근거성가지(AGB) 및 불안정대 맥동 관찰 ] ===============
+                const pRatio = (progress - 0.965) / 0.020; // 0 ~ 1
+                
+                if (isHighMass) {
+                    stage = "초거성 다단계 연소";
+                    burning = "탄소핵융합 (C → Ne + Mg + O)";
+                    statusColor = "#a855f7"; // 보라색
+                    L = basics.zamsLum * (3.5 + pRatio * 10);
+                    T = 4600 - pRatio * 1000;
+                } else if (isLowMass) {
+                    stage = "헬륨각 불완전 반응";
+                    burning = "가스 점진 수축";
+                    statusColor = "#c2410c";
+                    L = basics.zamsLum * 0.4;
+                    T = 3200;
+                } else {
+                    // 점근거성가지(AGB): 중심 헬륨 고갈 후 외곽각 연소로 온도 하락 및 광도 최대 상승
+                    stage = "점근거성가지 (AGB)";
+                    burning = "이중각 연소 (H, He 둘레각)";
+                    statusColor = "#fb7185"; // 핑크
+                    
+                    const hbL = basics.zamsLum * 6.0;
+                    const agbL = basics.zamsLum * 80.0; // 팽창에 의한 대규모 광도 상승
+                    
+                    L = hbL + Math.pow(pRatio, 2) * (agbL - hbL);
+                    T = (basics.zamsTemp * 0.9) - pRatio * (basics.zamsTemp * 0.9 - 3300);
+                }
+            } 
+            else if (progress <= 0.996) {
+                // =============== [ 5단계 : 외곽 분출기 및 행성상성운 (백색왜성 전이 과도기) ] ===============
+                const pRatio = (progress - 0.985) / 0.011; // 0 ~ 1
+                
+                if (isHighMass) {
+                    stage = "핵붕괴 전조 및 초신성 폭발";
+                    burning = "철 중심핵 한계 붕괴 (Fe)";
+                    statusColor = "#ef4444"; // 긴급 레드
+                    L = basics.zamsLum * (13.5 + pRatio * 400.0); // 폭발적인 최고 광도
+                    T = 3600 + pRatio * 30000; // 핵붕괴 에너지 방출
+                } else if (isLowMass) {
+                    stage = "저질량 불연소 수축";
+                    burning = "반응 종료";
+                    statusColor = "#78716c";
+                    L = basics.zamsLum * 0.2;
+                    T = 3000;
+                } else {
+                    // 교과서 '행성상 성운' (6번): 온도가 극도로 높아지며 좌측(고온부)으로 직선형 횡단
+                    stage = "행성상성운 외곽 분출";
+                    burning = "핵융합 종료 및 중력 수축";
+                    statusColor = "#ec4899"; // 마젠타
+                    
+                    const agbL = basics.zamsLum * 80.0;
+                    const wdInitialL = basics.zamsLum * 15.0; // 백색왜성 진입 광도
+                    
+                    L = agbL - pRatio * (agbL - wdInitialL);
+                    T = 3300 + pRatio * 28000; // 3만 켈빈 이상의 초고온 백색왜성 중심핵 표출
+                }
+            } 
+            else {
+                // =============== [ 6단계 : 최종 소멸 및 백색왜성 냉각과정 / 블랙홀 / 중성자별 ] ===============
+                const pRatio = (progress - 0.996) / 0.004; // 0 ~ 1
+                
+                if (isHighMass) {
+                    if (mass >= 15.0) {
+                        stage = "블랙홀 (Black Hole)";
+                        burning = "중력 붕괴 완결";
+                        statusColor = "#64748b";
+                        L = 0.0000001;
+                        T = 3;
+                    } else {
+                        stage = "중성자별 (Neutron Star)";
+                        burning = "축퇴압 지탱";
+                        statusColor = "#e2e8f0";
+                        L = 0.0001;
+                        T = 50000 - pRatio * 15000;
+                    }
+                } else if (isLowMass) {
+                    stage = "헬륨 백색왜성 화석";
+                    burning = "열에너지 냉각";
+                    statusColor = "#44403c";
+                    L = 0.001;
+                    T = 4000;
+                } else {
+                    // C-O 백색왜성 냉각과정: 고온부(좌측)에서 우하향(우측 아래) 사선으로 떨어지며 식음
+                    stage = "백색왜성 냉각과정";
+                    burning = "탄소-산소 전자 축퇴 (냉각)";
+                    statusColor = "#38bdf8"; // 네온 블루
+                    
+                    const wdInitialL = basics.zamsLum * 15.0;
+                    const wdFinalL = 0.0001;
+                    
+                    L = wdInitialL * Math.pow(10, -pRatio * 4.5); // 급격한 대수적 하락
+                    T = 31300 * Math.pow(10, -pRatio * 0.8);     // 온도가 떨어짐
+                }
+            }
+
+            // [🌟 불안정대 진입 물리 감지 및 3단 세부 분류 변동 적용]
+            // 온도 범위가 5800K ~ 7400K 사이이고 광도가 거성 조건(L >= 10☉)을 만족하는 구간인 경우
+            if (T >= 5800 && T <= 7400 && L >= 10 && !stage.includes("백색") && !stage.includes("주계열")) {
+                isPulsating = true;
+                if (L < 150) {
+                    // 수평가지 부근의 비교적 소형 및 고온형 맥동성
+                    stage = "거문고자리 RR형 변광성";
+                    burning = "부분 He 이온화 불안정 맥동 (RR Lyrae)";
+                    statusColor = "#fb923c"; // 밝은 주황
+                } else if (L >= 150 && L < 3000) {
+                    // II형 세페이드형 맥동성
+                    stage = "처녀자리 W형 변광성";
+                    burning = "외곽층 수축-팽창 진동 (W Virginis)";
+                    statusColor = "#f59e0b"; // 황금 황색
+                } else {
+                    // 초거성 영역의 고휘도 전형적인 변광성
+                    stage = "고전적 세페이드 변광성";
+                    burning = "대규모 대기 수축-팽창 진동 (Classical Cepheid)";
+                    statusColor = "#ef4444"; // 붉은 네온
+                }
+            }
+
+            // 슈테판-볼츠만 법칙 기반 실시간 반지름 공식 연동 (L = 4π R^2 σ T^4)
+            // R = sqrt(L) * (5778 / T)^2
+            let R = Math.sqrt(L) * Math.pow(5778 / T, 2);
+
+            return { stage, burning, statusColor, currentAge, totalLifetime: basics.totalLifetime, L, R, T, isPulsating };
+        }
+
+        // 4. 표면 온도 분광형 근사 RGB 코드
+        function kelvinToRGB(kelvin) {
+            let temp = kelvin / 100;
+            let r, g, b;
+
+            if (temp <= 66) {
+                r = 255;
+                g = temp;
+                g = 99.4708025861 * Math.log(g) - 161.1195681661;
+                if (temp <= 19) {
+                    b = 0;
+                } else {
+                    b = temp - 10;
+                    b = 138.5177312231 * Math.log(b) - 305.0447927307;
+                }
+            } else {
+                r = temp - 60;
+                r = 329.698727446 * Math.pow(r, -0.1332047592);
+                g = temp - 60;
+                g = 288.1221695283 * Math.pow(g, -0.0755148492);
+                b = 255;
+            }
+
+            return {
+                r: Math.max(0, Math.min(255, r)),
+                g: Math.max(0, Math.min(255, g)),
+                b: Math.max(0, Math.min(255, b))
+            };
+        }
+
+        // 5. 프론트엔드 비주얼 물리 동기화 및 크기 팽창 렌더링
+        function updateSimulation() {
+            const data = calculateStellarEvolution(M, sliderVal);
+
+            // 계기판 정보 텍스트 갱신
+            statusDisplay.textContent = data.stage;
+            statusDisplay.style.color = data.statusColor;
+            burningDisplay.textContent = data.burning;
+            totalLifetimeDisplay.textContent = data.totalLifetime.toFixed(1) + " Myr";
+            currentAgeDisplay.textContent = data.currentAge.toFixed(1) + " Myr";
+            tempDisplay.textContent = Math.round(data.T).toLocaleString() + " K";
+            lumDisplay.textContent = data.L.toFixed(3) + " L☉";
+            radiusDisplay.textContent = data.R.toFixed(2) + " R☉";
+
+            // 시간축 슬라이더 라벨 정밀 동기화
+            if (sliderVal <= 75) {
+                ageSliderLabel.textContent = `주계열 정밀구간 (${sliderVal.toFixed(0)}%)`;
+                ageSliderLabel.className = "text-xs text-blue-400 font-bold px-2 py-0.5 bg-blue-950/40 rounded border border-blue-500/20";
+            } else {
+                ageSliderLabel.textContent = `거성/종말 미세조정 (${sliderVal.toFixed(0)}%)`;
+                ageSliderLabel.className = "text-xs text-red-400 font-bold px-2 py-0.5 bg-red-950/40 rounded border border-red-500/20";
+            }
+
+            // 표면 온도 색상 변환
+            const rgb = kelvinToRGB(data.T);
+            const colorStr = `rgb(${Math.round(rgb.r)}, ${Math.round(rgb.g)}, ${Math.round(rgb.b)})`;
+            
+            // 🌟 맥동 변광 주기 애니메이션 계산 (불안정대에 진입했을 때만 활성화)
+            let pulsationScale = 1.0;
+            if (data.isPulsating) {
+                pulsationTime += 0.2;
+                // 사인파를 이용해 수축 및 팽창 주기적인 모션 부여 (변광성 맥동 모션 연출)
+                pulsationScale = 1.0 + Math.sin(pulsationTime) * 0.15;
+                pulsationRing.style.opacity = "1";
+                pulsationRing.style.transform = `scale(${1.2 + Math.cos(pulsationTime) * 0.08})`;
+            } else {
+                pulsationRing.style.opacity = "0";
+            }
+
+            let displaySize = 40; // 기준 주계열성 지름 (px)
+
+            if (data.stage.includes("거성") || data.stage.includes("성운") || data.stage.includes("폭발") || data.stage.includes("변광성")) {
+                // 초거성 및 적색 거성 상태: 실제 수치에 맞춘 역동적 거대화
+                displaySize = 50 + Math.pow(data.R, 0.45) * 16;
+                displaySize = Math.min(displaySize, 250); // 상한 리미트
+                
+                // 불안정대 맥동 스케일 추가 적용
+                displaySize *= pulsationScale;
+
+                nebulaCloud.style.opacity = data.stage.includes("성운") || data.stage.includes("폭발") ? "0.65" : "0";
+                nebulaCloud.style.backgroundColor = colorStr;
+                nebulaCloud.style.transform = `scale(${1.2 + Math.sin(Date.now() / 300) * 0.05})`;
+                nebulaCloud.style.boxShadow = `0 0 80px 40px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
+            } else if (data.stage.includes("왜성") || data.stage.includes("중성자") || data.stage.includes("블랙홀")) {
+                // 밀집 붕괴 상태: 극한의 바늘구멍 크기 묘사 (12px)
+                displaySize = 12;
+                nebulaCloud.style.opacity = "0";
+            } else {
+                // 주계열성: 질량에 연동하는 35px~85px 사이의 가장 균형잡힌 크기
+                displaySize = 35 + (M * 2.5);
+                nebulaCloud.style.opacity = "0";
+            }
+
+            // 항성 비주얼 크기 및 네온 후광 역동성 반영
+            stellarBody.style.width = `${displaySize}px`;
+            stellarBody.style.height = `${displaySize}px`;
+            stellarBody.style.backgroundColor = data.stage.includes("블랙홀") ? "#030712" : colorStr;
+            
+            // 블랙홀을 위한 특수 강착 원반 후광 및 중성자별 왜성을 위한 강력 중심핵 연출
+            if (data.stage.includes("블랙홀")) {
+                stellarBody.style.boxShadow = `0 0 12px 3px rgba(255, 255, 255, 0.95), 0 0 35px 8px rgba(139, 92, 246, 0.5)`;
+                stellarCore.style.opacity = "0";
+            } else {
+                const glowIntensity = data.stage.includes("폭발") ? 0.8 : 0.55;
+                stellarBody.style.boxShadow = `0 0 ${displaySize * 0.5}px ${displaySize * 0.15}px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${glowIntensity})`;
+                stellarCore.style.opacity = data.stage.includes("왜성") || data.stage.includes("중성자") ? "1" : "0";
+            }
+
+            spaceBg.style.backgroundColor = colorStr;
+
+            // 반경 게이지 바 동적 스케일 조절
+            radiusBarLabel.textContent = `${data.R.toFixed(2)} R☉`;
+            let barPercentage = (displaySize / 250) * 100;
+            if (data.stage.includes("왜성") || data.stage.includes("중성자")) barPercentage = 5; 
+            radiusBar.style.width = `${Math.min(100, barPercentage)}%`;
+
+            // H-R도 캔버스 실시간 좌표 드로잉
+            drawHRDiagram(data);
+        }
+
+        // 6. H-R도 그리기 엔진 (교과서 가이드 및 전체 배경 영역 완전 출력)
+        function drawHRDiagram(currentData) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 온도(역대수 1500K ~ 50000K), 광도(대수 10^-4.5 ~ 10^6.5 L☉) 좌표 변환
+            const minT = Math.log10(1500);
+            const maxT = Math.log10(50000);
+            const minL = -4.5;
+            const maxL = 6.5;
+
+            function getCanvasCoords(temp, lum) {
+                const logT = Math.log10(temp);
+                const logL = Math.log10(lum);
+                const x = canvas.width - ((logT - minT) / (maxT - minT)) * canvas.width;
+                const y = canvas.height - ((logL - minL) / (maxL - minL)) * canvas.height;
+                return { x, y };
+            }
+
+            // 6-1. H-R도 전체 배경 스펙트럼 색상 그라데이션 (O형 고온 파란색 -> F/G 백색/황색 -> M형 붉은색)
+            const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            bgGrad.addColorStop(0, 'rgba(56, 189, 248, 0.15)'); // 좌측 파란색 (고온)
+            bgGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.08)'); // 중간 흰색/황백색
+            bgGrad.addColorStop(0.65, 'rgba(251, 146, 60, 0.12)'); // 중간 주황색
+            bgGrad.addColorStop(1.0, 'rgba(239, 68, 68, 0.15)'); // 우측 붉은색 (저온)
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 6-2. 가이드 그리드 및 격자 눈금선 드로잉
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 5; i++) {
+                let innerY = (canvas.height / 5) * i;
+                ctx.beginPath(); ctx.moveTo(0, innerY); ctx.lineTo(canvas.width, innerY); ctx.stroke();
+                let innerX = (canvas.width / 5) * i;
+                ctx.beginPath(); ctx.moveTo(innerX, 0); ctx.lineTo(innerX, canvas.height); ctx.stroke();
+            }
+
+            // 🌟 6-3. [신규 피드백 반영] H-R도 개별 영역 배경으로 그리기 및 색칠하기
+
+            // [A. 백색왜성 영역 (White Dwarf Zone) - 좌측 하단]
+            const wdLeftTop = getCanvasCoords(28000, 0.05);
+            const wdRightBottom = getCanvasCoords(6000, 0.0001);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+            ctx.beginPath();
+            ctx.ellipse(
+                (wdLeftTop.x + wdRightBottom.x) / 2, 
+                (wdLeftTop.y + wdRightBottom.y) / 2, 
+                (wdRightBottom.x - wdLeftTop.x) / 1.6, 
+                (wdRightBottom.y - wdLeftTop.y) / 2.2, 
+                Math.PI / 10, 
+                0, Math.PI * 2
+            );
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // [B. 주계열성 영역 (Main Sequence, Class V) - 대각선 관통 밴드]
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.08)'; // 연한 황색 대역
+            ctx.beginPath();
+            const msP1 = getCanvasCoords(40000, 100000);
+            const msP2 = getCanvasCoords(3000, 0.001);
+            ctx.moveTo(msP1.x - 25, msP1.y);
+            ctx.lineTo(msP2.x - 35, msP2.y + 40);
+            ctx.lineTo(msP2.x + 35, msP2.y);
+            ctx.lineTo(msP1.x + 40, msP1.y - 15);
+            ctx.closePath();
+            ctx.fill();
+
+            // [C. 거성 및 초거성 영역 (Red Giant & Supergiant, Class I, II, III) - 우측 상단]
+            const gLeftTop = getCanvasCoords(10000, 200000);
+            const gRightBottom = getCanvasCoords(2000, 30);
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.08)'; // 연한 붉은빛 대역
+            ctx.beginPath();
+            ctx.moveTo(gLeftTop.x, gLeftTop.y);
+            ctx.lineTo(canvas.width, gLeftTop.y);
+            ctx.lineTo(canvas.width, gRightBottom.y);
+            ctx.lineTo(gLeftTop.x + 100, gRightBottom.y - 30);
+            ctx.closePath();
+            ctx.fill();
+
+            // 🌟 6-4. [교구 가이드] 영년주계열(ZAMS) 점선 시각화
+            const zamsPoints = [];
+            for (let massVal = 0.5; massVal <= 20.0; massVal += 0.5) {
+                const zBasics = getStellarBasics(massVal);
+                zamsPoints.push(getCanvasCoords(zBasics.zamsTemp, zBasics.zamsLum));
+            }
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([5, 5]); 
+            ctx.beginPath();
+            ctx.moveTo(zamsPoints[0].x, zamsPoints[0].y);
+            for (let i = 1; i < zamsPoints.length; i++) {
+                ctx.lineTo(zamsPoints[i].x, zamsPoints[i].y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]); // 점선 해제
+
+            // 🌟 6-5. [불안정대 (Instability Strip) 격자 및 3분할 세부 변광성 구획 드로잉]
+            const instLeftTop = getCanvasCoords(7400, 30000);
+            const instRightTop = getCanvasCoords(5800, 30000);
+            const instRightBottom = getCanvasCoords(5800, 10);
+            const instLeftBottom = getCanvasCoords(7400, 10);
+
+            // 전체 불안정대 영역 배경 칠하기 (은은한 황금 오렌지색)
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(instLeftTop.x, instLeftTop.y);
+            ctx.lineTo(instRightTop.x, instRightTop.y);
+            ctx.lineTo(instRightBottom.x, instRightBottom.y);
+            ctx.lineTo(instLeftBottom.x, instLeftBottom.y);
+            ctx.closePath();
+            ctx.fill();
+
+            // 불안정대 내부 3단 분할 가로 점선 그리기
+            // 경계 1: L = 150 (RR Lyrae와 W Virginis 경계)
+            // 경계 2: L = 3000 (W Virginis와 Classical Cepheid 경계)
+            const line1Y = getCanvasCoords(6600, 150).y;
+            const line2Y = getCanvasCoords(6600, 3000).y;
+
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            
+            // 경계선 그리기
+            ctx.beginPath();
+            ctx.moveTo(instLeftTop.x, line1Y); ctx.lineTo(instRightTop.x, line1Y);
+            ctx.moveTo(instLeftTop.x, line2Y); ctx.lineTo(instRightTop.x, line2Y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 불안정대 테두리 실선 그리기
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(instLeftTop.x, instLeftTop.y);
+            ctx.lineTo(instRightTop.x, instRightTop.y);
+            ctx.lineTo(instRightBottom.x, instRightBottom.y);
+            ctx.lineTo(instLeftBottom.x, instLeftBottom.y);
+            ctx.closePath();
+            ctx.stroke();
+
+            // 🌟 6-6. H-R도 배경 텍스트 고정 인쇄 (실제 교과서 명칭 배치)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = "bold 13px 'Noto Sans KR'";
+            
+            // 극대거성 / 초거성 명칭
+            ctx.fillText("극대거성 (Ia-0)", canvas.width * 0.45, 45);
+            ctx.fillText("초거성 (Ia, Ib)", canvas.width * 0.5, 90);
+            ctx.fillText("밝은 거성 (II)", canvas.width * 0.55, 140);
+            ctx.fillText("거성 (III)", canvas.width * 0.6, 210);
+            ctx.fillText("준거성 (IV)", canvas.width * 0.62, 310);
+            
+            // 주계열 및 왜성 명칭
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+            ctx.fillText("주계열성 (V)", canvas.width * 0.23, 260);
+            ctx.fillText("준왜성 (VI)", canvas.width * 0.34, 430);
+            ctx.fillText("백색왜성 (VII)", canvas.width * 0.15, 530);
+
+            // 세부 변광성 텍스트 라벨 인쇄 (불안정대 내부)
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.7)';
+            ctx.font = "bold 9px 'Noto Sans KR'";
+            
+            // 1. Classical Cepheid (상단)
+            ctx.fillText("고전적", instLeftTop.x - 30, line2Y - 45);
+            ctx.fillText("세페이드", instLeftTop.x - 33, line2Y - 33);
+            
+            // 2. W Virginis (중앙)
+            ctx.fillText("처녀자리 W형", instLeftTop.x - 42, (line1Y + line2Y) / 2 + 5);
+            
+            // 3. RR Lyrae (하단)
+            ctx.fillText("거문고자리 RR형", instLeftTop.x - 52, line1Y + 30);
+
+            // 불안정대 전체 대각선 타이틀
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = "extrabold 11px 'Noto Sans KR'";
+            ctx.save();
+            ctx.translate(instLeftTop.x + 35, instLeftTop.y + 110);
+            ctx.rotate(Math.PI / 2.7);
+            ctx.fillText("불  안  정  띠", 0, 0);
+            ctx.restore();
+
+            // 영년주계열 텍스트 라벨 (그림 III-43 기준)
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = "bold 11px 'Noto Sans KR'";
+            const labelZamsPt = zamsPoints[Math.floor(zamsPoints.length * 0.4)];
+            ctx.fillText("영년주계열 (ZAMS)", labelZamsPt.x + 12, labelZamsPt.y + 25);
+
+            // 6-7. 가로축/세로축 눈금값 인쇄
+            ctx.fillStyle = '#64748b';
+            ctx.font = "9px 'Orbitron', sans-serif";
+            ctx.fillText("40,000K", 50, canvas.height - 10);
+            ctx.fillText("10,000K", canvas.width * 0.4, canvas.height - 10);
+            ctx.fillText("6,000K", canvas.width * 0.65, canvas.height - 10);
+            ctx.fillText("3,000K", canvas.width - 60, canvas.height - 10);
+            
+            ctx.fillText("10⁶ L☉", 10, 30);
+            ctx.fillText("10² L☉", 10, canvas.height * 0.45);
+            ctx.fillText("10⁻² L☉", 10, canvas.height * 0.78);
+
+            // 6-8. 현재 질량에 대한 실시간 진화 경로 선 그리기
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.lineWidth = 3.5;
+            for (let s = 0; s <= 100; s += 0.5) {
+                const traceData = calculateStellarEvolution(M, s);
+                const pt = getCanvasCoords(traceData.T, traceData.L);
+                if (s === 0) ctx.moveTo(pt.x, pt.y);
+                else ctx.lineTo(pt.x, pt.y);
+            }
+            ctx.stroke();
+
+            // 6-9. 현재 별의 실시간 위치 플로팅 노드
+            const currentPt = getCanvasCoords(currentData.T, currentData.L);
+
+            ctx.shadowBlur = 18;
+            ctx.shadowColor = currentData.statusColor;
+            ctx.beginPath();
+            ctx.fillStyle = '#fbbf24';
+            ctx.arc(currentPt.x, currentPt.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0; // 그림자 제거
+
+            // 6-10. 현재 상태를 가리키는 다이내믹 가독성 말풍선
+            const textX = currentPt.x + 15;
+            const textY = currentPt.y - 12;
+            ctx.font = "bold 12px 'Noto Sans KR', sans-serif";
+            
+            const textWidth = ctx.measureText(currentData.stage).width;
+            
+            // 캔버스 밖으로 이탈 방지 가드
+            let bubbleX = textX;
+            if (bubbleX + textWidth > canvas.width - 15) {
+                bubbleX = currentPt.x - textWidth - 20;
+            }
+
+            // 말풍선 배경 그리기
+            ctx.fillStyle = "rgba(3, 7, 18, 0.9)";
+            ctx.fillRect(bubbleX - 6, textY - 14, textWidth + 12, 21);
+            ctx.strokeStyle = currentData.statusColor;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(bubbleX - 6, textY - 14, textWidth + 12, 21);
+
+            // 말풍선 내 텍스트
+            ctx.fillStyle = currentData.statusColor;
+            ctx.fillText(currentData.stage, bubbleX, textY);
+        }
+
+        // 7. 슬라이더 상호작용 바인딩
+        massSlider.addEventListener('input', (e) => {
+            M = parseFloat(e.target.value);
+            massValue.textContent = `${M.toFixed(1)} M☉`;
+            updateSimulation();
+        });
+
+        ageSlider.addEventListener('input', (e) => {
+            sliderVal = parseFloat(e.target.value);
+            updateSimulation();
+        });
+
+        // 8. 빠른 프리셋 설정 매핑
+        function setPreset(targetMass) {
+            M = targetMass;
+            massSlider.value = targetMass;
+            massValue.textContent = `${M.toFixed(1)} M☉`;
+            sliderVal = 0;
+            ageSlider.value = 0;
+            updateSimulation();
+        }
+
+        // 9. 재생 및 애니메이션 제어부
+        function playLoop() {
+            if (!isPlaying) return;
+            
+            const speedMultiplier = parseFloat(speedSelect.value);
+            sliderVal += speedMultiplier;
+
+            if (sliderVal >= 100) {
+                sliderVal = 100;
+                isPlaying = false;
+                playBtn.textContent = "▶ 재생";
+                playBtn.className = "flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition duration-200 shadow-lg flex justify-center items-center gap-1.5";
+            }
+
+            ageSlider.value = sliderVal;
+            updateSimulation();
+
+            if (isPlaying) {
+                animationFrameId = requestAnimationFrame(playLoop);
+            }
+        }
+
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                if (sliderVal >= 100) sliderVal = 0;
+                playBtn.textContent = "⏸ 일시정지";
+                playBtn.className = "flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl text-xs transition duration-200 shadow-lg flex justify-center items-center gap-1.5";
+                playLoop();
+            } else {
+                playBtn.textContent = "▶ 재생";
+                playBtn.className = "flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition duration-200 shadow-lg flex justify-center items-center gap-1.5";
+                cancelAnimationFrame(animationFrameId);
+            }
+        });
+
+        // 최초 기동 동기화 
+        updateSimulation();
+    </script>
+</body>
+</html>

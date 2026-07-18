@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>은하 회전 곡선 & 암흑 물질 시뮬레이터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* SF 우주 선박 제어반 콘셉트의 어두운 스크롤바 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e1b4b;
+            border-radius: 99px;
+            border: 1px solid #312e81;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4338ca;
+        }
+
+        /* 세련된 다크 모드 네온 슬라이더 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            height: 8px;
+            border-radius: 99px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -5px;
+            background-color: #38bdf8;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+            border: 2px solid #ffffff;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background-color: #ffffff;
+            border-color: #38bdf8;
+            transform: scale(1.2);
+            box-shadow: 0 0 16px rgba(56, 189, 248, 1);
+        }
+        
+        /* 암흑 물질 헤일로 전용 슬라이더 */
+        #darkMatterSlider::-webkit-slider-thumb {
+            background-color: #a78bfa;
+            box-shadow: 0 0 12px rgba(167, 139, 250, 0.8);
+        }
+        #darkMatterSlider::-webkit-slider-thumb:hover {
+            background-color: #ffffff;
+            border-color: #a78bfa;
+            box-shadow: 0 0 16px rgba(167, 139, 250, 1);
+        }
+
+        /* 우주 백그라운드 미세 발광 */
+        .cosmic-glow {
+            box-shadow: 0 0 45px rgba(99, 102, 241, 0.05) inset;
+        }
+    </style>
+</head>
+<body class="bg-[#03030c] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500/30 overflow-x-hidden cosmic-glow">
+
+    <header class="border-b border-indigo-950/40 bg-slate-950/60 backdrop-blur-xl sticky top-0 z-50 px-6 py-4 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="p-2.5 bg-indigo-950/60 border border-indigo-500/30 rounded-2xl text-sky-400 shadow-lg shadow-indigo-500/10">
+                    <svg class="w-6 h-6 animate-spin-slow text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-200 to-purple-400 flex items-center gap-2">
+                        GALAXY ROTATION LAB <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-sky-400 border border-slate-700 font-bold">다크 텔레메트리</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium">암흑 물질의 중력 작용과 밀도파 이론 기반 영구형 나선 은하 시뮬레이터</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+                    <span class="w-2 h-2 mr-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    은하 전구역 신성 순환계 작동 중
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <section class="lg:col-span-3 flex flex-col gap-5 bg-slate-950/60 border border-indigo-950/50 rounded-3xl p-5 backdrop-blur-xl shadow-2xl shadow-indigo-950/20 self-start">
+            <div class="border-b border-indigo-950 pb-3">
+                <h2 class="text-sm font-bold tracking-widest text-indigo-300 uppercase flex items-center gap-2">
+                    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    질량 성분 매개변수
+                </h2>
+                <p class="text-[11px] text-slate-400 mt-1">보통 물질과 암흑 물질의 중력을 조절해 보세요.</p>
+            </div>
+
+            <div class="space-y-2 bg-slate-900/40 p-4 rounded-2xl border border-indigo-950/40">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-amber-400 flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></span>
+                        보통 물질 질량 (Mb)
+                    </span>
+                    <span id="normalMatterValue" class="font-mono bg-amber-950/40 text-amber-300 px-2.5 py-0.5 rounded-lg border border-amber-500/20 text-[11px] font-bold">45%</span>
+                </div>
+                <input id="normalMatterSlider" type="range" min="0" max="100" value="45" class="w-full">
+                <div class="text-[10px] text-slate-400 leading-relaxed">
+                    관측 가능한 성간물질과 별들의 질량입니다. 은하 중심부 팽대부에 과밀해 원반 내부 공전 속도를 결정합니다.
+                </div>
+            </div>
+
+            <div class="space-y-2 bg-slate-900/40 p-4 rounded-2xl border border-indigo-950/40">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-purple-400 flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]"></span>
+                        암흑 물질 밀도 (ρd)
+                    </span>
+                    <span id="darkMatterValue" class="font-mono bg-purple-950/40 text-purple-300 px-2.5 py-0.5 rounded-lg border border-purple-500/20 text-[11px] font-bold">55%</span>
+                </div>
+                <input id="darkMatterSlider" type="range" min="0" max="100" value="55" class="w-full">
+                <div class="text-[10px] text-slate-400 leading-relaxed">
+                    은하 외곽까지 폭넓게 감싸는 보이지 않는 미지 질량입니다. 바깥쪽 별들이 궤도 속도를 평탄하게 유지하도록 보조합니다.
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <h3 class="text-xs font-bold text-slate-300 tracking-wider">주요 은하계 조건 대조</h3>
+                <div class="grid grid-cols-1 gap-2">
+                    <button onclick="applyPreset(100, 0)" class="w-full text-left text-xs p-3.5 rounded-2xl border border-indigo-950/60 hover:border-amber-500/40 hover:bg-amber-950/10 bg-slate-900/20 transition-all duration-300 group shadow-sm">
+                        <div class="font-bold text-amber-300 flex items-center justify-between">
+                            <span>암흑 물질이 없을 때</span>
+                            <span class="text-amber-500 group-hover:translate-x-1 transition-transform">&rarr;</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1.5 leading-relaxed">바깥쪽 항성들을 원반 내에 구속할 중력이 모자라 외곽의 회전 공전 속도가 크게 저하됩니다.</p>
+                    </button>
+                    <button onclick="applyPreset(40, 75)" class="w-full text-left text-xs p-3.5 rounded-2xl border border-indigo-950/60 hover:border-sky-500/40 hover:bg-sky-950/10 bg-slate-900/20 transition-all duration-300 group shadow-sm">
+                        <div class="font-bold text-sky-300 flex items-center justify-between">
+                            <span>실제 나선 은하 (암흑 물질 충분)</span>
+                            <span class="text-sky-500 group-hover:translate-x-1 transition-transform">&rarr;</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1.5 leading-relaxed">암흑 물질 헤일로 덕분에 전 구역의 별들이 안정적으로 고속 회전하며 평탄화 곡선을 이룹니다.</p>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-2 pt-3 border-t border-indigo-950/80">
+                <h3 class="text-xs font-bold text-slate-300 tracking-wider">계측 장비 옵션</h3>
+                
+                <label class="flex items-center gap-3 cursor-pointer text-xs select-none py-1 group">
+                    <input type="checkbox" id="showHaloToggle" class="rounded bg-slate-950 border-slate-800 text-purple-500 focus:ring-0 focus:ring-offset-0 w-4.5 h-4.5 transition-all">
+                    <span class="text-slate-300 group-hover:text-white transition-colors">암흑 물질 헤일로 영역 가시화</span>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer text-xs select-none py-1 group">
+                    <input type="checkbox" id="showVectorsToggle" class="rounded bg-slate-950 border-slate-800 text-sky-500 focus:ring-0 focus:ring-offset-0 w-4.5 h-4.5 transition-all" checked>
+                    <span class="text-slate-300 group-hover:text-white transition-colors">항성별 개별 속도 벡터 표시</span>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer text-xs select-none py-1 group">
+                    <input type="checkbox" id="showArmSpinesToggle" class="rounded bg-slate-950 border-slate-800 text-rose-500 focus:ring-0 focus:ring-offset-0 w-4.5 h-4.5 transition-all" checked>
+                    <span class="text-slate-300 group-hover:text-white transition-colors">나선팔 중력 수축 대역(Spine) 가시화</span>
+                </label>
+            </div>
+        </section>
+
+        <section class="lg:col-span-5 flex flex-col gap-4 bg-slate-950/60 border border-indigo-950/50 rounded-3xl p-5 shadow-sm backdrop-blur-xl">
+            <div class="flex justify-between items-center flex-wrap gap-2 border-b border-indigo-950 pb-3">
+                <div>
+                    <h2 class="text-sm font-bold tracking-wider text-indigo-300 uppercase flex items-center gap-2">
+                        <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        천체 관측 고해상도 맵
+                    </h2>
+                    <p class="text-[11px] text-slate-400 mt-1">시간이 흘러도 원반 내각과 외각 전반에 거쳐 고르게 별들이 순환하여 형태를 완벽하게 유지합니다.</p>
+                </div>
+                <button onclick="rebuildGalaxy()" class="px-3 py-1.5 text-[11px] bg-slate-900 hover:bg-slate-800 text-slate-200 border border-indigo-950/80 hover:border-indigo-500/50 rounded-xl transition-all duration-300 flex items-center gap-1.5 shadow-md">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 3v5h-5"></path></svg>
+                    입자 초기 정렬 (리셋)
+                </button>
+            </div>
+
+            <div class="relative w-full aspect-square bg-[#02020a] border border-indigo-950/60 rounded-2xl overflow-hidden flex items-center justify-center shadow-[0_0_35px_rgba(30,27,75,0.4)]">
+                <div class="absolute inset-0 pointer-events-none opacity-[0.03]" style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"></div>
+                <canvas id="galaxyCanvas" width="500" height="500" class="w-full h-full cursor-crosshair z-10"></canvas>
+                
+                <div class="absolute top-4 left-4 bg-slate-950/80 backdrop-blur-xl border border-indigo-950/80 px-3.5 py-2 rounded-xl pointer-events-none text-[10px] space-y-0.5 shadow-lg z-20">
+                    <div class="text-indigo-400 uppercase tracking-widest font-bold">은하 순환 연령</div>
+                    <div class="font-mono text-xs text-sky-400 font-extrabold" id="galaxyAgeText">0.00 억 년</div>
+                </div>
+
+                <div class="absolute bottom-4 left-4 right-4 bg-slate-950/90 backdrop-blur-md border border-indigo-950/80 px-4 py-2 rounded-xl pointer-events-none text-[10px] text-slate-400 text-center shadow-lg z-20">
+                    💡 늙은 별 소멸 시, <span class="text-teal-400 font-bold">60%는 은하 중심</span>에서, <span class="text-indigo-400 font-bold">40%는 외곽 나선팔</span>에서 새 항성으로 피드백 순환됩니다.
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-slate-900/30 p-3 rounded-2xl border border-indigo-950/40">
+                <div class="sm:col-span-4">
+                    <button id="playPauseBtn" class="px-4 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all w-full flex justify-center items-center gap-1.5 shadow-md shadow-sky-950/40">
+                        <span id="pauseIcon">⏸ 일시정지</span>
+                        <span id="playIcon" class="hidden">▶ 재생</span>
+                    </button>
+                </div>
+                <div class="sm:col-span-8 flex items-center justify-between gap-3 bg-slate-950/40 px-3 py-1 rounded-xl border border-indigo-950/40">
+                    <span class="text-xs text-indigo-300 font-bold whitespace-nowrap">항성 공전 속도 배속:</span>
+                    <input id="timeScaleSlider" type="range" min="0.05" max="1.5" step="0.05" value="0.25" class="w-full">
+                    <span id="timeScaleValue" class="text-xs font-mono text-sky-400 font-extrabold w-10 text-right">0.25x</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="lg:col-span-4 flex flex-col gap-4 bg-slate-950/60 border border-indigo-950/50 rounded-3xl p-5 shadow-sm backdrop-blur-xl justify-between">
+            <div class="space-y-4">
+                <div class="border-b border-indigo-950 pb-3">
+                    <h2 class="text-sm font-bold tracking-wider text-indigo-300 uppercase flex items-center gap-2">
+                        <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        실시간 물리 계측 센터
+                    </h2>
+                    <p class="text-[11px] text-slate-400 mt-1">반경(R)에 정렬되는 중력가속 선형 그래프를 비교합니다.</p>
+                </div>
+
+                <div class="w-full aspect-[4/3] bg-[#02020a] border border-indigo-950/60 rounded-2xl overflow-hidden relative shadow-[0_0_25px_rgba(0,0,0,0.5)]">
+                    <canvas id="graphCanvas" width="400" height="300" class="w-full h-full"></canvas>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3.5">
+                    <div class="p-3 bg-slate-900/40 border border-indigo-950/40 rounded-2xl text-center space-y-1">
+                        <span class="text-[9px] uppercase tracking-wider font-bold text-slate-400 block">나선 원반 입자 균등도</span>
+                        <span id="spiralCohesionText" class="text-md font-mono font-extrabold text-teal-400">완벽함 (100%)</span>
+                    </div>
+                    <div class="p-3 bg-slate-900/40 border border-indigo-950/40 rounded-2xl text-center space-y-1">
+                        <span class="text-[9px] uppercase tracking-wider font-bold text-slate-400 block">실시간 신성 탄생률</span>
+                        <span id="starBirthText" class="text-md font-mono font-extrabold text-sky-400">안정적 (24개/초)</span>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-b from-slate-950 to-slate-900/90 border border-indigo-950/60 p-4 rounded-2xl space-y-3 shadow-md">
+                    <div class="flex justify-between items-center border-b border-indigo-950/50 pb-2">
+                        <h3 class="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
+                            타겟 프로브 실시간 추적
+                        </h3>
+                        <span class="text-[9px] text-slate-500 font-mono tracking-widest">LIVE DATA</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-slate-400 block">프로브 궤도 반경 (R)</span>
+                            <span id="probeRadius" class="text-sm font-mono text-slate-200 font-extrabold">145.0 ly</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-[10px] text-slate-400 block">합성 궤도 속도 (V)</span>
+                            <span id="probeVelocity" class="text-sm font-mono text-sky-400 font-extrabold">224.2 km/s</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-2.5 border-t border-indigo-950/50 text-xs">
+                        <div class="flex justify-between items-center text-[10px]">
+                            <span class="text-amber-400 font-semibold flex items-center gap-1">보통 물질 중력 인력 (Vb)</span>
+                            <span id="probeNormalV" class="font-mono text-slate-300 font-bold">112.5 km/s</span>
+                        </div>
+                        <div class="w-full bg-[#050510] h-2 rounded-full overflow-hidden border border-indigo-950/40 p-[1px]">
+                            <div id="probeNormalBar" class="bg-amber-400 h-full rounded-full transition-all duration-200" style="width: 50%"></div>
+                        </div>
+
+                        <div class="flex justify-between items-center text-[10px] pt-1">
+                            <span class="text-purple-400 font-semibold flex items-center gap-1">암흑 물질 중력 인력 (Vd)</span>
+                            <span id="probeDarkV" class="font-mono text-slate-300 font-bold">194.0 km/s</span>
+                        </div>
+                        <div class="w-full bg-[#050510] h-2 rounded-full overflow-hidden border border-indigo-950/40 p-[1px]">
+                            <div id="probeDarkBar" class="bg-purple-400 h-full rounded-full transition-all duration-200" style="width: 50%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-[11px] text-slate-400 leading-relaxed bg-slate-900/20 p-4 rounded-2xl border border-indigo-950/40">
+                <span class="font-bold text-slate-200 block mb-1">🔬 해결된 외곽 공동화 현상:</span>
+                외곽 경계선 근처에서 광량을 소실하고 소멸한 항성을 **중심핵 영역과 외곽 나선팔 수축 대역에 균등 분배(6:4 비율)하여 리사이클 재생성**합니다. 중심부에만 별들이 쏠리지 않고 은하 전체의 나선팔 구조가 고밀도의 풍부한 볼륨을 유지하도록 보완되었습니다.
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-950 border-t border-indigo-950/80 py-6 px-6 mt-6 shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-xs text-slate-400">
+            <div class="space-y-1.5">
+                <h4 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> 보통 물질 기여 (벌지 중력)
+                </h4>
+                <p class="leading-relaxed">
+                    은하 중심의 가시물질(항성 및 팽대부)이 형성하는 중력 궤도 속도입니다. 이 중력은 중심부에서 거리가 멀어질수록 역제곱 법칙에 의해 속도가 극도로 감소하는 케플러적 성격을 띱니다.
+                </p>
+            </div>
+            <div class="space-y-1.5">
+                <h4 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></span> 암흑 물질 기여 (헤일로 중력)
+                </h4>
+                <p class="leading-relaxed">
+                    은하 원반 외곽을 에워싸는 광활한 암흑 물질 중력입니다. 은하 외곽으로 나아가더라도 질량이 공간 구조상 점증적으로 무한 수렴하듯 보존되어 외곽 별들의 궤도 선속도를 지탱합니다.
+                </p>
+            </div>
+            <div class="space-y-1.5">
+                <h4 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> 타원형 밀도파 이론 (Density Waves)
+                </h4>
+                <p class="leading-relaxed">
+                    본 모델은 회전하는 각 타원 궤도들의 기하학적 중첩(Nested Precessing Ellipses)을 정밀 묘사합니다. 별들은 이 타원 궤도 상에서 가속과 감속을 거치며 아름다운 패턴을 영구히 지킵니다.
+                </p>
+            </div>
+        </div>
+        <div class="text-center text-[10px] text-slate-600 mt-6 border-t border-indigo-950/60 pt-4 tracking-widest uppercase font-bold">
+            GALAXY ROTATION LAB FRAMEWORK &copy; 2026. PRESENTED BY EMULATOR NETWORK.
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. Canvas 하드웨어 참조 설정 ---
+        const gCanvas = document.getElementById('galaxyCanvas');
+        const gCtx = gCanvas ? gCanvas.getContext('2d') : null;
+        const graphCanvas = document.getElementById('graphCanvas');
+        const graphCtx = graphCanvas ? graphCanvas.getContext('2d') : null;
+
+        // 엘리먼트 노드 연결
+        const normalMatterSlider = document.getElementById('normalMatterSlider');
+        const darkMatterSlider = document.getElementById('darkMatterSlider');
+        const normalMatterValue = document.getElementById('normalMatterValue');
+        const darkMatterValue = document.getElementById('darkMatterValue');
+        const showHaloToggle = document.getElementById('showHaloToggle');
+        const showVectorsToggle = document.getElementById('showVectorsToggle');
+        const showArmSpinesToggle = document.getElementById('showArmSpinesToggle');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const timeScaleSlider = document.getElementById('timeScaleSlider');
+        const timeScaleValue = document.getElementById('timeScaleValue');
+        const galaxyAgeText = document.getElementById('galaxyAgeText');
+
+        // 상태 인디케이터 엘리먼트
+        const spiralCohesionText = document.getElementById('spiralCohesionText');
+        const starBirthText = document.getElementById('starBirthText');
+
+        // 텔레메트리 수치 보드 참조
+        const probeRadiusEl = document.getElementById('probeRadius');
+        const probeVelocityEl = document.getElementById('probeVelocity');
+        const probeNormalVEl = document.getElementById('probeNormalV');
+        const probeDarkVEl = document.getElementById('probeDarkV');
+        const probeNormalBar = document.getElementById('probeNormalBar');
+        const probeDarkBar = document.getElementById('probeDarkBar');
+
+        // --- 2. 우주 스케일 기하학 상수 ---
+        const G_CONST = 1.0;
+        const coreScale_a = 28; // 보통 물질 코어 반지름 수치
+        const haloScale_b = 85; // 암흑 물질 스케일 반지름 수치
+
+        let isPlaying = true;
+        let timeScale = 0.25; // 눈으로 쉽게 관찰 가능하도록 설계된 평화롭고 정밀한 속도축
+
+        // 안전한 변수 초기화
+        let normalMass = normalMatterSlider ? parseFloat(normalMatterSlider.value) : 45;
+        let darkDensity = darkMatterSlider ? parseFloat(darkMatterSlider.value) : 55;
+
+        // 경과 시간 변수
+        let galaxyAge = 0;
+
+        // 테스트 프로브 디폴트 거리
+        let probeR = 140;
+
+        // 입자(항성) 및 가이드 골격 컬렉션
+        let stars = [];
+        const numStars = 1600;
+
+        let armSpines = []; // 밀도파 가이드 중심선
+        const numArms = 2;
+        const nodesPerArm = 90;
+
+        // 밀도파 자체의 일정하고 거시적인 고유 회전 속도 (차등 회전하지 않음!)
+        const patternSpeed = 0.0035;
+        let currentPatternAngle = 0;
+
+        // 실시간 아기별 생성수 트래킹 변수
+        let recentBirthsCount = 0;
+        let lastBirthTrackTime = performance.now();
+
+        // --- 3. 항성 입자(Star) 모델 설계 ---
+        class Star {
+            constructor(isInitial = false) {
+                this.reset(isInitial);
+            }
+
+            reset(isInitial = false) {
+                const maxRadius = 240;
+                
+                if (isInitial) {
+                    // 초기 시작 시 은하 원반 전체 구역에 균등하면서도 나선형으로 수축 배치
+                    this.r = Math.pow(Math.random(), 1.45) * maxRadius;
+                    if (this.r < 6) this.r = 6 + Math.random() * 4;
+                } else {
+                    // [60% 중심부 스폰 / 40% 외곽부 스폰 시스템]
+                    // 시간이 지나도 외곽 나선팔 영역에 일정량 이상의 별이 계속 유지되도록 배치합니다.
+                    if (Math.random() < 0.6) {
+                        this.r = 5 + Math.random() * 35; // 중심 대역
+                    } else {
+                        // 35ly에서 최대 235ly 범위 사이에 고르게 분포되도록 타겟 재생성 반경 할당
+                        this.r = 35 + Math.pow(Math.random(), 1.25) * (maxRadius - 55); 
+                    }
+                    recentBirthsCount++;
+                }
+
+                // 이 항성이 속할 나선팔 인덱스 결정
+                const armIndex = Math.floor(Math.random() * numArms);
+                const armAngle = (armIndex * 2 * Math.PI) / numArms;
+
+                // 나선팔 두께 및 무작위 밀도 흐트러짐 정의 (외곽으로 갈수록 조금 더 부드럽게 퍼짐)
+                const dispersion = 0.18 + (this.r / maxRadius) * 0.11;
+                
+                // 거리에 따른 완벽한 정합 나선 위상각 계산
+                const spiralTightness = 0.012;
+                const baseAngle = armAngle + this.r * spiralTightness + currentPatternAngle;
+                this.theta = baseAngle + (Math.random() - 0.5) * dispersion;
+
+                // 항성의 크기 분배
+                this.size = Math.random() * 1.2 + 0.35;
+                if (Math.random() > 0.985) this.size = Math.random() * 1.5 + 1.2;
+
+                // 수명 시스템 구현 (중심 및 외곽에서 부드럽게 이동하는 주기 유지)
+                this.maxAge = 400 + Math.random() * 500;
+                this.age = 0;
+                
+                // 처음 생성된 별은 즉시 출력, 중간에 스폰되는 별들은 페이드인 성단 묘사
+                this.opacity = isInitial ? 1.0 : 0.0;
+                this.isDying = false;
+
+                // 궤도 색상 지정
+                this.setColor();
+            }
+
+            setColor() {
+                const maxRadius = 240;
+                const tempRatio = this.r / maxRadius;
+                if (tempRatio < 0.2) {
+                    this.colorHue = 25 + Math.random() * 15; // 벌지 구역 황백/황색 적색거성 이미지
+                    this.colorSaturation = 100;
+                    this.colorLightness = 65 + Math.random() * 10;
+                } else if (tempRatio < 0.6) {
+                    this.colorHue = 185 + Math.random() * 20; // 원반 가스 수축 구역 다크시안
+                    this.colorSaturation = 90;
+                    this.colorLightness = 55 + Math.random() * 10;
+                } else {
+                    this.colorHue = 245 + Math.random() * 25; // 외곽부 남보라/마젠타
+                    this.colorSaturation = 95;
+                    this.colorLightness = 60 + Math.random() * 15;
+                }
+            }
+
+            // 밀도파(Compression Wave) 교통 정체 연산 + 외곽 확장 및 리사이클링 제어
+            update(dt, vFunc) {
+                if (!isPlaying) return;
+
+                this.age += dt;
+
+                // 성단이 점진적으로 외곽을 향해 표류 확장해나가는 효과
+                const driftSpeed = 0.15; 
+                this.r += driftSpeed * dt;
+
+                // 표류함에 따라 항성 궤도 색상 자동 보정
+                this.setColor();
+
+                const baseVelocity = vFunc(this.r);
+                const baseOmega = baseVelocity / this.r;
+
+                // --- [밀도파 이론 코어 수식] ---
+                const armPositionAtRadius = currentPatternAngle + 0.012 * this.r;
+                const relativePhase = this.theta - armPositionAtRadius;
+
+                // 나선팔 수축 정체 구간(Traffic Jam)을 관통할 때 속도가 미세 감속하여 구조를 이룹니다.
+                const speedModulation = 1.0 - 0.46 * Math.cos(2 * relativePhase);
+
+                // 최종 누적 위치 운동
+                this.theta += (baseOmega * speedModulation) * dt * 0.12;
+
+                // 소멸 조건 (반경 제한 경계에 도달하거나 수명이 다하면 자연스러운 페이드아웃 적용)
+                if (this.r > 238 || this.age > this.maxAge) {
+                    this.isDying = true;
+                }
+
+                if (this.isDying) {
+                    this.opacity -= 0.03 * dt;
+                    if (this.opacity <= 0) {
+                        this.reset(false); // 완벽하게 소멸하면 수명과 궤도 속성에 맞추어 중앙 및 나선팔에서 자동 부화!
+                    }
+                } else if (this.opacity < 1.0) {
+                    // 탄생 시 부드럽게 밝아지는 페이드인
+                    this.opacity += 0.04 * dt;
+                    if (this.opacity > 1.0) this.opacity = 1.0;
+                }
+            }
+
+            draw(ctx) {
+                const x = 250 + this.r * Math.cos(this.theta);
+                const y = 250 + this.r * Math.sin(this.theta);
+
+                // 어두운 테마 환경에 맞추어 별들의 발광 가시성을 보존하기 위해 알파와 발광도 가중
+                ctx.fillStyle = `hsla(${this.colorHue}, ${this.colorSaturation}%, ${this.colorLightness}%, ${this.opacity * 0.9})`;
+                ctx.beginPath();
+                ctx.arc(x, y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 중심부 고온 항성 플레어 연출
+                if (this.size > 1.8 && Math.random() > 0.95 && this.opacity > 0.5) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity * 0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, this.size * 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // --- 4. 영구 보존 나선팔 가이드 뼈대선(Arm Spines) 빌더 ---
+        function initArmSpines() {
+            armSpines = [];
+            for (let arm = 0; arm < numArms; arm++) {
+                const baseArmAngle = (arm * Math.PI);
+                const nodes = [];
+                for (let i = 0; i < nodesPerArm; i++) {
+                    const r = 10 + (i / nodesPerArm) * 235;
+                    const startTheta = baseArmAngle + r * 0.012;
+                    nodes.push({ r, theta: startTheta });
+                }
+                armSpines.push(nodes);
+            }
+        }
+
+        // 밀도파 고정 속도 주기에 정렬되어 영원히 꼬이지 않는 등속 회전 구조
+        function updateArmSpines(dt) {
+            if (!isPlaying) return;
+            armSpines.forEach(nodes => {
+                nodes.forEach(node => {
+                    node.theta += patternSpeed * dt * 0.12;
+                });
+            });
+        }
+
+        // 은하 재구축
+        function rebuildGalaxy() {
+            stars = [];
+            for (let i = 0; i < numStars; i++) {
+                stars.push(new Star(true)); // 초기 시작 상태에서 완벽하게 대칭 정렬 스폰
+            }
+            initArmSpines();
+            galaxyAge = 0;
+            currentPatternAngle = 0;
+
+            if (gCtx) {
+                gCtx.fillStyle = '#02020a';
+                gCtx.fillRect(0, 0, 500, 500);
+            }
+        }
+
+        // --- 5. 수식화 연산 모듈 ---
+        // 5a. 보통 물질 속도 Vb 산출
+        function calcNormalVelocity(r) {
+            if (r === 0) return 0;
+            const scaledMass = normalMass * 135;
+            const numerator = G_CONST * scaledMass * r * r;
+            const denominator = Math.pow(r * r + coreScale_a * coreScale_a, 1.5);
+            return Math.sqrt(numerator / denominator);
+        }
+
+        // 5b. 암흑 물질 속도 Vd 산출
+        function calcDarkVelocity(r) {
+            if (r === 0) return 0;
+            const scaledDensity = darkDensity * 62;
+            const numerator = G_CONST * scaledDensity * r * r;
+            const denominator = r * r + haloScale_b * haloScale_b;
+            return Math.sqrt(numerator / denominator);
+        }
+
+        // 5c. 실시간 합성 전체 가속 속도
+        function calcTotalVelocity(r) {
+            const vN = calcNormalVelocity(r);
+            const vD = calcDarkVelocity(r);
+            return Math.sqrt(vN * vN + vD * vD);
+        }
+
+        // --- 6. 실시간 은하 분석 데이터 연산 지표 갱신 ---
+        function calculateGalaxyStability() {
+            const darkRatio = darkDensity / (normalMass + darkDensity || 1);
+            
+            let cohesionVal = Math.min(100, Math.floor(65 + darkRatio * 35));
+            if (normalMass === 0 && darkDensity === 0) cohesionVal = 0;
+
+            if (spiralCohesionText) {
+                if (cohesionVal > 85) {
+                    spiralCohesionText.textContent = `최상 수축 (${cohesionVal}%)`;
+                    spiralCohesionText.className = "text-md font-mono font-extrabold text-teal-400";
+                } else if (cohesionVal > 50) {
+                    spiralCohesionText.textContent = `패턴 희미 (${cohesionVal}%)`;
+                    spiralCohesionText.className = "text-md font-mono font-extrabold text-amber-400";
+                } else {
+                    spiralCohesionText.textContent = `완전 흐려짐 (${cohesionVal}%)`;
+                    spiralCohesionText.className = "text-md font-mono font-extrabold text-rose-400";
+                }
+            }
+        }
+
+        // 실시간 중심 신성 탄생율 계측 로직
+        function updateBirthRateTracker() {
+            const now = performance.now();
+            if (now - lastBirthTrackTime > 1000) {
+                const birthsPerSecond = Math.round(recentBirthsCount * (1000 / (now - lastBirthTrackTime)));
+                if (starBirthText) {
+                    if (isPlaying) {
+                        starBirthText.textContent = `안정적 (${birthsPerSecond}개/초)`;
+                        starBirthText.className = "text-md font-mono font-extrabold text-sky-400";
+                    } else {
+                        starBirthText.textContent = `대기 (0개/초)`;
+                        starBirthText.className = "text-md font-mono font-extrabold text-slate-500";
+                    }
+                }
+                recentBirthsCount = 0;
+                lastBirthTrackTime = now;
+            }
+        }
+
+        // --- 7. 안전한 이벤트 핸들러 바인딩 ---
+        if (normalMatterSlider) {
+            normalMatterSlider.oninput = function() {
+                normalMass = parseFloat(this.value);
+                if (normalMatterValue) normalMatterValue.textContent = normalMass + '%';
+                calculateGalaxyStability();
+            };
+        }
+
+        if (darkMatterSlider) {
+            darkMatterSlider.oninput = function() {
+                darkDensity = parseFloat(this.value);
+                if (darkMatterValue) darkMatterValue.textContent = darkDensity + '%';
+                calculateGalaxyStability();
+            };
+        }
+
+        if (timeScaleSlider) {
+            timeScaleSlider.oninput = function() {
+                timeScale = parseFloat(this.value);
+                if (timeScaleValue) timeScaleValue.textContent = timeScale.toFixed(2) + 'x';
+            };
+        }
+
+        if (playPauseBtn) {
+            playPauseBtn.onclick = function() {
+                isPlaying = !isPlaying;
+                if (isPlaying) {
+                    if (playIcon) playIcon.classList.add('hidden');
+                    if (pauseIcon) pauseIcon.classList.remove('hidden');
+                    playPauseBtn.classList.replace('bg-amber-600', 'bg-sky-600');
+                } else {
+                    if (playIcon) playIcon.classList.remove('hidden');
+                    if (pauseIcon) pauseIcon.classList.add('hidden');
+                    playPauseBtn.classList.replace('bg-sky-600', 'bg-amber-600');
+                }
+            };
+        }
+
+        function applyPreset(normalVal, darkVal) {
+            normalMass = normalVal;
+            darkDensity = darkVal;
+            if (normalMatterSlider) normalMatterSlider.value = normalVal;
+            if (darkMatterSlider) darkMatterSlider.value = darkVal;
+            if (normalMatterValue) normalMatterValue.textContent = normalVal + '%';
+            if (darkMatterValue) darkMatterValue.textContent = darkVal + '%';
+            rebuildGalaxy();
+            calculateGalaxyStability();
+        }
+
+        if (gCanvas) {
+            gCanvas.addEventListener('mousedown', updateProbe);
+            gCanvas.addEventListener('mousemove', (e) => { if (e.buttons === 1) updateProbe(e); });
+        }
+
+        function updateProbe(e) {
+            if (!gCanvas) return;
+            const rect = gCanvas.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 500;
+            const y = ((e.clientY - rect.top) / rect.height) * 500;
+            const dx = x - 250;
+            const dy = y - 250;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > 6 && dist <= 245) {
+                probeR = dist;
+            }
+        }
+
+        // --- 8. 메인 실시간 루프 제어 ---
+        let lastTime = performance.now();
+
+        function mainLoop(now) {
+            const dt = ((now - lastTime) / 1000) * 60 * timeScale;
+            lastTime = now;
+
+            if (isPlaying) {
+                galaxyAge += 0.02 * dt;
+                currentPatternAngle += patternSpeed * dt * 0.12;
+            }
+            if (galaxyAgeText) {
+                galaxyAgeText.textContent = (galaxyAge).toFixed(2) + " 억 년";
+            }
+
+            updatePhysics(dt);
+            drawGalaxy();
+            drawGraph();
+            updateProbeDisplay();
+            updateBirthRateTracker();
+
+            requestAnimationFrame(mainLoop);
+        }
+
+        function updatePhysics(dt) {
+            stars.forEach(star => {
+                star.update(dt, calcTotalVelocity);
+            });
+            updateArmSpines(dt);
+        }
+
+        // --- 9. 은하 그래픽 캔버스 렌더링 ---
+        function drawGalaxy() {
+            if (!gCtx) return;
+
+            // 다크 모드 맞춤형 미세 잔상 효과
+            gCtx.fillStyle = 'rgba(2, 2, 10, 0.22)';
+            gCtx.fillRect(0, 0, 500, 500);
+
+            // 가이드 그리드 동심원 (다크모드용 소프트 그리드)
+            gCtx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            gCtx.lineWidth = 1.2;
+            for (let r = 50; r <= 230; r += 60) {
+                gCtx.beginPath();
+                gCtx.arc(250, 250, r, 0, Math.PI * 2);
+                gCtx.stroke();
+            }
+
+            // 가스 성운 광휘 시각화 (다크 모드에서 한층 극적으로 빛나도록 레이어 조정)
+            gCtx.save();
+            gCtx.globalCompositeOperation = 'screen';
+            const numNebulaGlows = 4;
+            for (let i = 0; i < numNebulaGlows; i++) {
+                const angle = currentPatternAngle + (i * Math.PI / 2);
+                const x = 250 + 60 * Math.cos(angle);
+                const y = 250 + 60 * Math.sin(angle);
+                
+                const cloudGradient = gCtx.createRadialGradient(x, y, 0, x, y, 140);
+                cloudGradient.addColorStop(0, 'rgba(56, 189, 248, 0.08)');  
+                cloudGradient.addColorStop(0.5, 'rgba(124, 58, 237, 0.04)'); 
+                cloudGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                gCtx.fillStyle = cloudGradient;
+                gCtx.beginPath();
+                gCtx.arc(x, y, 140, 0, Math.PI * 2);
+                gCtx.fill();
+            }
+            gCtx.restore();
+
+            // 1. 구형 암흑물질 입자 헤일로 (보랏빛 광채)
+            if (showHaloToggle && showHaloToggle.checked) {
+                const haloGlow = gCtx.createRadialGradient(250, 250, 5, 250, 250, 240);
+                const alpha = (darkDensity / 100) * 0.14;
+                haloGlow.addColorStop(0, `rgba(139, 92, 246, ${alpha})`);
+                haloGlow.addColorStop(0.6, `rgba(139, 92, 246, ${alpha * 0.4})`);
+                haloGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                gCtx.fillStyle = haloGlow;
+                gCtx.beginPath();
+                gCtx.arc(250, 250, 245, 0, Math.PI * 2);
+                gCtx.fill();
+
+                gCtx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
+                gCtx.lineWidth = 1;
+                gCtx.setLineDash([5, 8]);
+                gCtx.beginPath();
+                gCtx.arc(250, 250, 240, 0, Math.PI * 2);
+                gCtx.stroke();
+                gCtx.setLineDash([]);
+            }
+
+            // 2. 고온 항성 밀집지 은하 벌지(Bulge)
+            if (normalMass > 0) {
+                const bulgeGlow = gCtx.createRadialGradient(250, 250, 0, 250, 250, coreScale_a * 1.8);
+                const alpha = Math.min(0.85, (normalMass / 100) * 0.75 + 0.15);
+                bulgeGlow.addColorStop(0, `rgba(251, 191, 36, ${alpha})`); 
+                bulgeGlow.addColorStop(0.5, `rgba(245, 158, 11, ${alpha * 0.3})`);
+                bulgeGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                gCtx.fillStyle = bulgeGlow;
+                gCtx.beginPath();
+                gCtx.arc(250, 250, coreScale_a * 2.2, 0, Math.PI * 2);
+                gCtx.fill();
+            }
+
+            // 3. 은하 항성 렌더링
+            stars.forEach(star => {
+                star.draw(gCtx);
+            });
+
+            // 4. 나선팔 골격 가이드(Spine) 가시화
+            if (showArmSpinesToggle && showArmSpinesToggle.checked) {
+                drawArmSpines();
+            }
+
+            // 5. 실시간 가상 프로브 추적링 투과
+            drawProbeOnGalaxy();
+        }
+
+        // 나선팔 뼈대선 렌더링
+        function drawArmSpines() {
+            if (!gCtx) return;
+            gCtx.save();
+            armSpines.forEach((nodes, idx) => {
+                gCtx.beginPath();
+                gCtx.lineWidth = 2.0;
+                if (idx === 0) {
+                    gCtx.strokeStyle = 'rgba(56, 189, 248, 0.75)'; // 라이트 블루 수축선
+                } else {
+                    gCtx.strokeStyle = 'rgba(244, 63, 94, 0.75)'; // 장미빛 수축선
+                }
+
+                nodes.forEach((node, i) => {
+                    const x = 250 + node.r * Math.cos(node.theta);
+                    const y = 250 + node.r * Math.sin(node.theta);
+                    if (i === 0) {
+                        gCtx.moveTo(x, y);
+                    } else {
+                        gCtx.lineTo(x, y);
+                    }
+                });
+                gCtx.stroke();
+            });
+            gCtx.restore();
+        }
+
+        // 프로브 서클 및 속도 벡터
+        function drawProbeOnGalaxy() {
+            if (!gCtx) return;
+            gCtx.strokeStyle = 'rgba(244, 63, 94, 0.5)';
+            gCtx.lineWidth = 1.0;
+            gCtx.setLineDash([5, 5]);
+            gCtx.beginPath();
+            gCtx.arc(250, 250, probeR, 0, Math.PI * 2);
+            gCtx.stroke();
+            gCtx.setLineDash([]);
+
+            const timePhase = performance.now() * 0.001;
+            const velocity = calcTotalVelocity(probeR);
+            const rotationAngle = (timePhase * velocity * 0.04) % (Math.PI * 2);
+            const px = 250 + probeR * Math.cos(rotationAngle);
+            const py = 250 + probeR * Math.sin(rotationAngle);
+
+            const pulseSize = 5 + Math.sin(performance.now() * 0.008) * 1.5;
+            gCtx.fillStyle = 'rgba(244, 63, 94, 0.3)';
+            gCtx.beginPath();
+            gCtx.arc(px, py, pulseSize, 0, Math.PI * 2);
+            gCtx.fill();
+
+            gCtx.fillStyle = '#f43f5e';
+            gCtx.beginPath();
+            gCtx.arc(px, py, 4, 0, Math.PI * 2);
+            gCtx.fill();
+
+            gCtx.fillStyle = '#ffffff';
+            gCtx.beginPath();
+            gCtx.arc(px, py, 1.5, 0, Math.PI * 2);
+            gCtx.fill();
+
+            if (showVectorsToggle && showVectorsToggle.checked) {
+                const tangentAngle = rotationAngle + Math.PI / 2;
+                const vectorLen = Math.min(45, velocity * 0.7);
+                const vx = px + vectorLen * Math.cos(tangentAngle);
+                const vy = py + vectorLen * Math.sin(tangentAngle);
+
+                gCtx.strokeStyle = '#38bdf8';
+                gCtx.lineWidth = 2.2;
+                gCtx.beginPath();
+                gCtx.moveTo(px, py);
+                gCtx.lineTo(vx, vy);
+                gCtx.stroke();
+
+                const head = 5;
+                gCtx.fillStyle = '#38bdf8';
+                gCtx.beginPath();
+                gCtx.moveTo(vx, vy);
+                gCtx.lineTo(vx - head * Math.cos(tangentAngle - Math.PI / 6), vy - head * Math.sin(tangentAngle - Math.PI / 6));
+                gCtx.lineTo(vx - head * Math.cos(tangentAngle + Math.PI / 6), vy - head * Math.sin(tangentAngle + Math.PI / 6));
+                gCtx.fill();
+            }
+        }
+
+        // --- 10. 계측 그래프 플로팅 ---
+        function drawGraph() {
+            if (!graphCtx) return;
+            graphCtx.clearRect(0, 0, 400, 300);
+
+            const paddingLeft = 45;
+            const paddingRight = 15;
+            const paddingTop = 25;
+            const paddingBottom = 40;
+
+            const graphWidth = 400 - paddingLeft - paddingRight;
+            const graphHeight = 300 - paddingTop - paddingBottom;
+
+            // 다크모드용 다크 블루 그리드 라인
+            graphCtx.strokeStyle = '#0f172a';
+            graphCtx.lineWidth = 1;
+            
+            const numTicks = 5;
+            for (let i = 1; i < numTicks; i++) {
+                const yVal = paddingTop + (graphHeight / numTicks) * i;
+                graphCtx.beginPath();
+                graphCtx.moveTo(paddingLeft, yVal);
+                graphCtx.lineTo(paddingLeft + graphWidth, yVal);
+                graphCtx.stroke();
+
+                const xVal = paddingLeft + (graphWidth / numTicks) * i;
+                graphCtx.beginPath();
+                graphCtx.moveTo(xVal, paddingTop);
+                graphCtx.lineTo(xVal, paddingTop + graphHeight);
+                graphCtx.stroke();
+            }
+
+            // 축선 테두리 (인디고 그레이)
+            graphCtx.strokeStyle = '#1e1b4b';
+            graphCtx.lineWidth = 1.5;
+            graphCtx.beginPath();
+            graphCtx.moveTo(paddingLeft, paddingTop);
+            graphCtx.lineTo(paddingLeft, paddingTop + graphHeight);
+            graphCtx.lineTo(paddingLeft + graphWidth, paddingTop + graphHeight);
+            graphCtx.stroke();
+
+            // 라벨링 (소프트 블루-슬레이트)
+            graphCtx.fillStyle = '#6366f1';
+            graphCtx.font = 'bold 9px sans-serif';
+            graphCtx.textAlign = 'center';
+            graphCtx.fillText("은하 반경 (R)", paddingLeft + graphWidth / 2, 300 - 10);
+            
+            graphCtx.save();
+            graphCtx.translate(12, paddingTop + graphHeight / 2);
+            graphCtx.rotate(-Math.PI / 2);
+            graphCtx.fillText("회전 속도 (V_rot)", 0, 0);
+            graphCtx.restore();
+
+            // 눈금 수치 기입
+            graphCtx.fillStyle = '#475569';
+            graphCtx.font = '9px monospace';
+            graphCtx.textAlign = 'right';
+            graphCtx.textBaseline = 'middle';
+            graphCtx.fillText("0", paddingLeft - 6, paddingTop + graphHeight);
+            graphCtx.fillText("150", paddingLeft - 6, paddingTop + graphHeight * 0.5);
+            graphCtx.fillText("300", paddingLeft - 6, paddingTop);
+
+            graphCtx.textAlign = 'center';
+            graphCtx.textBaseline = 'top';
+            graphCtx.fillText("0", paddingLeft, paddingTop + graphHeight + 6);
+            graphCtx.fillText("120", paddingLeft + graphWidth * 0.5, paddingTop + graphHeight + 6);
+            graphCtx.fillText("240", paddingLeft + graphWidth, paddingTop + graphHeight + 6);
+
+            // 물리 데이터 변환 매퍼
+            function mapCoords(r, v) {
+                const x = paddingLeft + (r / 240) * graphWidth;
+                const y = paddingTop + graphHeight - (v / 300) * graphHeight;
+                return { x, y };
+            }
+
+            function plotCurve(vFunc, color, lineWidth) {
+                graphCtx.strokeStyle = color;
+                graphCtx.lineWidth = lineWidth;
+                graphCtx.beginPath();
+
+                for (let r = 0; r <= 240; r += 2) {
+                    const v = vFunc(r);
+                    const pt = mapCoords(r, v);
+                    if (isNaN(pt.x) || isNaN(pt.y)) continue;
+                    if (r === 0) graphCtx.moveTo(pt.x, pt.y);
+                    else graphCtx.lineTo(pt.x, pt.y);
+                }
+                graphCtx.stroke();
+            }
+
+            // 개별 곡선 그리기 (다크모드 환경에서 선명히 빛나는 네온 배합)
+            plotCurve(calcNormalVelocity, '#f59e0b', 1.5); // 보통물질 감쇠 (네온 오렌지)
+            plotCurve(calcDarkVelocity, '#a78bfa', 1.5); // 암흑물질 누적 (네온 바이올렛)
+            plotCurve(calcTotalVelocity, '#38bdf8', 3.0); // 관측 총합 궤적 (진네온 사이언)
+
+            // 프로브 교차점 렌더링
+            const currentTotalV = calcTotalVelocity(probeR);
+            const probePt = mapCoords(probeR, currentTotalV);
+
+            if (!isNaN(probePt.x) && !isNaN(probePt.y)) {
+                graphCtx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+                graphCtx.lineWidth = 1;
+                graphCtx.setLineDash([4, 4]);
+                
+                graphCtx.beginPath();
+                graphCtx.moveTo(probePt.x, paddingTop + graphHeight);
+                graphCtx.lineTo(probePt.x, probePt.y);
+                graphCtx.stroke();
+
+                graphCtx.beginPath();
+                graphCtx.moveTo(paddingLeft, probePt.y);
+                graphCtx.lineTo(probePt.x, probePt.y);
+                graphCtx.stroke();
+                graphCtx.setLineDash([]);
+
+                const ptNormal = mapCoords(probeR, calcNormalVelocity(probeR));
+                const ptDark = mapCoords(probeR, calcDarkVelocity(probeR));
+
+                if (!isNaN(ptNormal.x) && !isNaN(ptNormal.y)) {
+                    graphCtx.fillStyle = '#f59e0b';
+                    graphCtx.beginPath();
+                    graphCtx.arc(ptNormal.x, ptNormal.y, 4, 0, Math.PI * 2);
+                    graphCtx.fill();
+                }
+
+                if (!isNaN(ptDark.x) && !isNaN(ptDark.y)) {
+                    graphCtx.fillStyle = '#a78bfa';
+                    graphCtx.beginPath();
+                    graphCtx.arc(ptDark.x, ptDark.y, 4, 0, Math.PI * 2);
+                    graphCtx.fill();
+                }
+
+                const pulse = 5 + Math.sin(performance.now() * 0.015) * 1.5;
+                graphCtx.fillStyle = 'rgba(244, 63, 94, 0.3)';
+                graphCtx.beginPath();
+                graphCtx.arc(probePt.x, probePt.y, pulse, 0, Math.PI * 2);
+                graphCtx.fill();
+
+                graphCtx.fillStyle = '#f43f5e';
+                graphCtx.strokeStyle = '#ffffff';
+                graphCtx.lineWidth = 1.5;
+                graphCtx.beginPath();
+                graphCtx.arc(probePt.x, probePt.y, 4.5, 0, Math.PI * 2);
+                graphCtx.fill();
+                graphCtx.stroke();
+            }
+
+            // 범례 표시
+            const legendX = paddingLeft + 15;
+            const legendY = paddingTop + 10;
+            const spacing = 14;
+
+            graphCtx.font = 'bold 9px sans-serif';
+            graphCtx.textBaseline = 'middle';
+            graphCtx.textAlign = 'left';
+
+            graphCtx.fillStyle = '#38bdf8';
+            graphCtx.fillRect(legendX, legendY, 8, 8);
+            graphCtx.fillStyle = '#94a3b8';
+            graphCtx.fillText("실제 관측 합성 속도 (V_total)", legendX + 13, legendY + 4);
+
+            graphCtx.fillStyle = '#f59e0b';
+            graphCtx.fillRect(legendX, legendY + spacing, 8, 8);
+            graphCtx.fillStyle = '#94a3b8';
+            graphCtx.fillText("보통 물질에 의한 기여 (V_b)", legendX + 13, legendY + spacing + 4);
+
+            graphCtx.fillStyle = '#a78bfa';
+            graphCtx.fillRect(legendX, legendY + spacing * 2, 8, 8);
+            graphCtx.fillStyle = '#94a3b8';
+            graphCtx.fillText("암흑 물질 헤일로 기여 (V_d)", legendX + 13, legendY + spacing * 2 + 4);
+        }
+
+        // --- 11. 프로브 정보 디스플레이 패널 갱신 ---
+        function updateProbeDisplay() {
+            if (!probeRadiusEl || !probeVelocityEl || !probeNormalVEl || !probeDarkVEl || !probeNormalBar || !probeDarkBar) return;
+
+            const realRadiusLy = (probeR * 1.25).toFixed(1);
+            
+            const vN = calcNormalVelocity(probeR);
+            const vD = calcDarkVelocity(probeR);
+            const vTotal = calcTotalVelocity(probeR);
+
+            const displayVN = (vN * 1.55).toFixed(1);
+            const displayVD = (vD * 1.55).toFixed(1);
+            const displayVTotal = (vTotal * 1.55).toFixed(1);
+
+            probeRadiusEl.textContent = realRadiusLy + " ly";
+            probeVelocityEl.textContent = displayVTotal + " km/s";
+            probeNormalVEl.textContent = displayVN + " km/s";
+            probeDarkVEl.textContent = displayVD + " km/s";
+
+            const totalSum = (vN + vD) || 1;
+            const normalBarPct = (vN / totalSum) * 100;
+            const darkBarPct = (vD / totalSum) * 100;
+
+            probeNormalBar.style.width = normalBarPct + '%';
+            probeDarkBar.style.width = darkBarPct + '%';
+        }
+
+        // --- 12. 시뮬레이터 시스템 스타트업 ---
+        rebuildGalaxy();
+        calculateGalaxyStability();
+        requestAnimationFrame(mainLoop);
+    </script>
+</body>
+</html>

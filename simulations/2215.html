@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이체계 행성 공전 및 자전 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* 커스텀 스크롤바 디자인 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-hidden font-sans">
+
+    <!-- 상단 헤더 영역 -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                <i data-lucide="orbit" class="w-6 h-6 animate-spin" style="animation-duration: 10s;"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-none tracking-wide text-indigo-400">정밀 이체계(Two-Body) 역학 시뮬레이터</h1>
+                <p class="text-xs text-slate-400 mt-1">순수 뉴턴 중력 법칙 및 질량 중심 공식을 구현한 정밀 물리 엔진</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2 text-xs bg-slate-850 px-3 py-1.5 rounded-full border border-slate-800 text-slate-400">
+            <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+            <span>SI 단위계 기반 물리 엔진 정상 구동 중</span>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <div class="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden p-4 gap-4">
+        
+        <!-- [좌측 패널] 조작 변인 설정 -->
+        <aside class="w-full lg:w-80 bg-slate-900 rounded-xl border border-slate-800 p-4 flex flex-col overflow-y-auto shrink-0">
+            <div class="flex items-center space-x-2 pb-3 mb-4 border-b border-slate-800">
+                <i data-lucide="sliders" class="w-5 h-5 text-indigo-400"></i>
+                <h2 class="font-bold text-slate-200">조작 변인 설정</h2>
+            </div>
+
+            <div class="space-y-4 flex-1">
+                <!-- 그룹 1: 공전 및 항성 변인 -->
+                <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
+                    <h3 class="text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> 천체 1 (중심별) 설정
+                    </h3>
+                    
+                    <!-- 중심별 질량 -->
+                    <div class="space-y-1.5 mb-3">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">중심별 질량 ($M_c$)</span>
+                            <span class="text-indigo-400 font-mono font-semibold" id="val-starMass">1.0 M☉</span>
+                        </div>
+                        <input type="range" id="input-starMass" min="0.1" max="10.0" step="0.1" value="1.0" 
+                               class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                        <div class="flex justify-between text-[10px] text-slate-500"><span>0.1 M☉</span><span>10.0 M☉</span></div>
+                    </div>
+
+                    <!-- 중심별 자전 모드 -->
+                    <div class="space-y-1.5">
+                        <label class="block text-[11px] text-slate-400">중심별 자전 메커니즘</label>
+                        <select id="input-starRotMode" class="w-full bg-slate-900 border border-slate-800 text-xs rounded-lg p-2 text-slate-300 focus:outline-none focus:border-indigo-500">
+                            <option value="locked" selected>공전과 조석 고정 (Tidally Locked)</option>
+                            <option value="free">독립 자전 (주기: 25일)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 그룹 2: 궤도 기하학 설정 -->
+                <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
+                    <h3 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i data-lucide="route" class="w-3.5 h-3.5"></i> 공전 궤도 기하학
+                    </h3>
+
+                    <!-- 공전궤도 장반경 -->
+                    <div class="space-y-1.5 mb-3">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">공전궤도 장반경 ($a$)</span>
+                            <span class="text-sky-400 font-mono font-semibold" id="val-semiMajor">1.0 AU</span>
+                        </div>
+                        <input type="range" id="input-semiMajor" min="0.1" max="10.0" step="0.1" value="1.0" 
+                               class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        <div class="flex justify-between text-[10px] text-slate-500"><span>0.1 AU</span><span>10.0 AU</span></div>
+                    </div>
+
+                    <!-- 이심률 -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">궤도 이심률 ($e$)</span>
+                            <span class="text-sky-400 font-mono font-semibold" id="val-eccentricity">0.30</span>
+                        </div>
+                        <input type="range" id="input-eccentricity" min="0.0" max="0.95" step="0.01" value="0.30" 
+                               class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                    </div>
+                </div>
+
+                <!-- 그룹 3: 행성 특징 및 관성모멘트 변인 -->
+                <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
+                    <h3 class="text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i data-lucide="globe" class="w-3.5 h-3.5"></i> 천체 2 (행성/동반성) 설정
+                    </h3>
+
+                    <!-- 행성 질량 단위 선택 -->
+                    <div class="space-y-1.5 mb-3">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">행성 질량 단위</span>
+                            <div class="flex gap-2">
+                                <label class="inline-flex items-center text-[11px] text-slate-300 cursor-pointer">
+                                    <input type="radio" name="massUnit" value="earth" checked class="mr-1 accent-emerald-500">지구질량
+                                </label>
+                                <label class="inline-flex items-center text-[11px] text-slate-300 cursor-pointer">
+                                    <input type="radio" name="massUnit" value="solar" class="mr-1 accent-emerald-500">태양질량
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 행성 질량 슬라이더 -->
+                    <div class="space-y-1.5 mb-3">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">행성 질량 ($m_p$)</span>
+                            <span class="text-emerald-400 font-mono font-semibold" id="val-planetMass">1.0 M⊕</span>
+                        </div>
+                        <input type="range" id="input-planetMass" min="0.1" max="100.0" step="0.1" value="1.0" 
+                               class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    </div>
+
+                    <!-- 행성 반지름 -->
+                    <div class="space-y-1.5 mb-3">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">행성 반지름 ($R_p$)</span>
+                            <span class="text-emerald-400 font-mono font-semibold" id="val-planetRadius">1.0 R⊕</span>
+                        </div>
+                        <input type="range" id="input-planetRadius" min="0.1" max="10.0" step="0.1" value="1.0" 
+                               class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    </div>
+
+                    <!-- 관성모멘트 계수 k 선택 -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs text-slate-400">행성 내부 밀도 분포 ($I = k m_p R_p^2$)</label>
+                        <select id="input-inertia" class="w-full bg-slate-900 border border-slate-800 text-xs rounded-lg p-2 text-slate-300 focus:outline-none focus:border-emerald-500">
+                            <option value="0.4" selected>속이 찬 균일 구형 (Solid Sphere, k = 0.40)</option>
+                            <option value="0.25">중심부 집중형 (Gas Giant, k = 0.25)</option>
+                            <option value="0.67">구형 껍질형 (Thin Hollow Shell, k = 0.67)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 하단 물리 고립계 안내 판 -->
+            <div class="mt-4 bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                <div class="font-semibold text-slate-300 flex items-center gap-1">
+                    <i data-lucide="info" class="w-3.5 h-3.5 text-emerald-400"></i> 물리 고립계 전제조건
+                </div>
+                <p>• 질량 중심(Barycenter)을 캔버스 정중앙 고정점(0,0)으로 삼습니다.</p>
+                <p>• 두 천체는 서로 마주 보며 질량비에 반비례하는 궤도를 그리며 공전합니다.</p>
+            </div>
+        </aside>
+
+        <!-- [중앙 패널] 실시간 Canvas 애니메이션 공간 -->
+        <main class="flex-1 bg-slate-900 rounded-xl border border-slate-800 overflow-hidden relative flex flex-col">
+            <!-- 캔버스 정보창 표시 헤더 -->
+            <div class="absolute top-3 left-3 right-3 z-10 flex justify-between items-center pointer-events-none">
+                <span class="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-xs flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+                    <span class="text-slate-300 font-medium">Barycentric Two-Body Simulation (실제 축척 궤도)</span>
+                </span>
+                <span class="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono text-indigo-400">
+                    물리적 왜곡율 0% (True Scale Orbit)
+                </span>
+            </div>
+
+            <!-- 실시간 시각화 캔버스 컨테이너 -->
+            <div class="flex-1 w-full h-full relative" id="canvas-container">
+                <canvas id="orbitCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- 중력 엔진 수동 조종 단추 -->
+            <div class="absolute bottom-3 left-3 right-3 z-10 flex gap-2 justify-center">
+                <button id="btn-pause" class="bg-slate-950/90 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+                    <i data-lucide="pause" class="w-4 h-4 text-amber-400" id="icon-pause"></i>
+                    <span id="txt-pause">일시 정지</span>
+                </button>
+                <button id="btn-trace" class="bg-slate-950/90 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+                    <i data-lucide="history" class="w-4 h-4 text-sky-400"></i>
+                    <span>공전 궤적 초기화</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- [우측 패널] 도출 연산 대시보드 -->
+        <aside class="w-full lg:w-96 bg-slate-900 rounded-xl border border-slate-800 p-4 flex flex-col justify-between shrink-0 overflow-y-auto">
+            <div class="space-y-4">
+                <div class="flex items-center space-x-2 pb-3 border-b border-slate-800">
+                    <i data-lucide="gauge" class="w-5 h-5 text-indigo-400"></i>
+                    <h2 class="font-bold text-slate-200">정밀 물리 연산 대시보드</h2>
+                </div>
+
+                <!-- 1단계: 상호 공전 역학 도출 결과 -->
+                <div class="space-y-2.5">
+                    <div class="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                        <span class="bg-indigo-950 text-indigo-400 px-1.5 py-0.5 rounded text-[10px]">1단계</span>
+                        상호 작용에 의한 공전속도 (Barycentric Velocity)
+                    </div>
+
+                    <!-- 실시간 궤도 상 속도 분배 -->
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+                        <div>
+                            <div class="text-[10px] text-slate-400 mb-0.5">행성 실시간 공전속도 ($v_p$)</div>
+                            <div class="flex items-baseline justify-between mb-1">
+                                <span class="text-xl font-black font-mono tracking-tight text-emerald-400" id="res-planetOrbitSpeed">0.00</span>
+                                <span class="text-xs text-slate-500 font-semibold">km/s</span>
+                            </div>
+                            <!-- 실시간 공전속도 가이드 비주얼 프로그레스 바 -->
+                            <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-1.5 rounded-full transition-all duration-75" id="bar-liveSpeed" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="border-t border-slate-900 pt-1">
+                            <div class="text-[10px] text-slate-400 mb-0.5">중심별 실시간 공전속도 ($v_c$)</div>
+                            <div class="flex items-baseline justify-between">
+                                <span class="text-xl font-black font-mono tracking-tight text-amber-500" id="res-starOrbitSpeed">0.00</span>
+                                <span class="text-xs text-slate-500 font-semibold">km/s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 평균 및 극점 속도 대조표 -->
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="bg-slate-950/60 p-2 rounded border border-slate-855">
+                            <span class="text-[10px] text-rose-400 font-medium block">상대 최대 공전속도</span>
+                            <span class="font-mono font-bold text-rose-300 text-sm" id="res-maxRelSpeed">0.00 km/s</span>
+                        </div>
+                        <div class="bg-slate-950/60 p-2 rounded border border-slate-855">
+                            <span class="text-[10px] text-sky-400 font-medium block">상대 최소 공전속도</span>
+                            <span class="font-mono font-bold text-sky-300 text-sm" id="res-minRelSpeed">0.00 km/s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2단계: 자전 역학 도출 결과 -->
+                <div class="space-y-2.5">
+                    <div class="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                        <span class="bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded text-[10px]">2단계</span>
+                        상호 자전 물리 분석
+                    </div>
+
+                    <!-- 행성 및 중심별 자전 속도 -->
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+                        <div>
+                            <div class="text-[10px] text-slate-400 mb-0.5">행성 적도 자전 선속도</div>
+                            <div class="flex items-baseline justify-between">
+                                <span class="text-xl font-black font-mono tracking-tight text-emerald-400" id="res-planetRotSpeed">0.000</span>
+                                <span class="text-xs text-slate-500 font-semibold">km/s</span>
+                            </div>
+                        </div>
+                        <div class="border-t border-slate-900 pt-1">
+                            <div class="text-[10px] text-slate-400 mb-0.5">중심별 적도 자전 선속도</div>
+                            <div class="flex items-baseline justify-between">
+                                <span class="text-xl font-black font-mono tracking-tight text-amber-500" id="res-starRotSpeed">0.000</span>
+                                <span class="text-xs text-slate-500 font-semibold">km/s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 실시간 수식 대입 풀이 과정 패널 -->
+                <div class="space-y-2.5 pt-1">
+                    <div class="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                        <i data-lucide="binary" class="w-4 h-4 text-amber-400"></i>
+                        정밀 중력 수식 추적기 (SI 단위계 산출)
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] font-mono space-y-2 text-slate-300">
+                        <!-- 공전속도 풀이 -->
+                        <div class="border-b border-slate-900 pb-2 space-y-1">
+                            <div class="text-indigo-400 font-semibold">질량 중심 공전 공식:</div>
+                            <div class="text-[10px] text-slate-400">v_rel = √[G(Mc + mp) × (2/r - 1/a)]</div>
+                            <div class="text-[10px] text-slate-400">v_planet = v_rel × [Mc / (Mc + mp)]</div>
+                            <div class="text-[10px] text-slate-400">v_star = v_rel × [mp / (Mc + mp)]</div>
+                            <div class="text-slate-200 mt-1">
+                                r = <span class="text-sky-400" id="calc-r">1.00</span> AU, v_rel = <span class="text-indigo-400" id="calc-vrel">0.00</span> km/s
+                            </div>
+                        </div>
+                        <!-- 자전속도 풀이 -->
+                        <div class="space-y-1">
+                            <div class="text-emerald-400 font-semibold">동역학적 자전 속도 공식:</div>
+                            <div class="text-[10px] text-slate-400">행성: v_rot = 0.4651 × mp^(2/3) / Rp × (0.4 / k)</div>
+                            <div class="text-[10px] text-slate-400">중심별: v_rot = ω_star × R_star</div>
+                            <div class="text-slate-200 mt-1">
+                                R_star = <span class="text-amber-400" id="calc-rstar">1.00</span> R☉, 
+                                ω_star = <span class="text-amber-400" id="calc-wstar">7.29e-5</span> rad/s
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 정밀 주기적 부가 정보 -->
+                <div class="bg-slate-950/40 p-2.5 rounded-lg border border-slate-855 space-y-1 text-xs text-slate-400">
+                    <div class="flex justify-between">
+                        <span>계의 공전 주기 ($T$)</span>
+                        <span class="font-mono text-slate-200" id="res-period">1.00 년</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>질량 중심 편차 ($r_{\text{offset}}$)</span>
+                        <span class="font-mono text-slate-200" id="res-offset">0.00 km</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- 하단 설정 제어 푸터 -->
+    <footer class="bg-slate-900 border-t border-slate-800 px-6 py-4 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
+        <div class="flex items-center space-x-2 text-xs text-slate-400">
+            <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i>
+            <span>지구와 동일한 암석/가스 재질 조건에 맞춰, 관성모멘트 계수 $k$와 상호 작용하는 자전·공전 관계를 관찰할 수 있습니다.</span>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-reset" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>표준 모델 초기화</span>
+            </button>
+            <button id="btn-calculate" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-indigo-950/50">
+                <i data-lucide="calculator" class="w-4 h-4"></i>
+                <span>변인 데이터 반영</span>
+            </button>
+        </div>
+    </footer>
+
+    <!-- 물리 엔진 및 렌더러 스크립트 -->
+    <script>
+        // Lucide 아이콘 적용
+        lucide.createIcons();
+
+        // 캔버스 엘리먼트 수집
+        const canvas = document.getElementById('orbitCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        // 슬라이더 및 입력 상자 수집
+        const inStarMass = document.getElementById('input-starMass');
+        const inSemiMajor = document.getElementById('input-semiMajor');
+        const inEccentricity = document.getElementById('input-eccentricity');
+        const inPlanetMass = document.getElementById('input-planetMass');
+        const inPlanetRadius = document.getElementById('input-planetRadius');
+        const inInertia = document.getElementById('input-inertia');
+        const inStarRotMode = document.getElementById('input-starRotMode');
+
+        // 변인 라벨 태그 수집
+        const valStarMass = document.getElementById('val-starMass');
+        const valSemiMajor = document.getElementById('val-semiMajor');
+        const valEccentricity = document.getElementById('val-eccentricity');
+        const valPlanetMass = document.getElementById('val-planetMass');
+        const valPlanetRadius = document.getElementById('val-planetRadius');
+
+        // 계산 결과값 출력 필드 수집
+        const resPlanetOrbitSpeed = document.getElementById('res-planetOrbitSpeed');
+        const resStarOrbitSpeed = document.getElementById('res-starOrbitSpeed');
+        const resMaxRelSpeed = document.getElementById('res-maxRelSpeed');
+        const resMinRelSpeed = document.getElementById('res-minRelSpeed');
+        const resPlanetRotSpeed = document.getElementById('res-planetRotSpeed');
+        const resStarRotSpeed = document.getElementById('res-starRotSpeed');
+        const resPeriod = document.getElementById('res-period');
+        const resOffset = document.getElementById('res-offset');
+        const barLiveSpeed = document.getElementById('bar-liveSpeed');
+
+        // 실시간 수식 추적용 필드 수집
+        const calcR = document.getElementById('calc-r');
+        const calcVrel = document.getElementById('calc-vrel');
+        const calcRstar = document.getElementById('calc-rstar');
+        const calcWstar = document.getElementById('calc-wstar');
+
+        // 하단 컨트롤 제어부 수집
+        const btnPause = document.getElementById('btn-pause');
+        const btnTrace = document.getElementById('btn-trace');
+        const btnReset = document.getElementById('btn-reset');
+        const btnCalculate = document.getElementById('btn-calculate');
+        const txtPause = document.getElementById('txt-pause');
+        const iconPause = document.getElementById('icon-pause');
+
+        // 정밀 물리 상수 (SI 단위계 기준)
+        const G = 6.67430e-11;          // m^3 kg^-1 s^-2
+        const M_SUN = 1.98847e30;       // kg (1 Solar Mass)
+        const M_EARTH = 5.9722e24;      // kg (1 Earth Mass)
+        const R_EARTH = 6.371e6;        // m (1 Earth Radius)
+        const R_SUN = 6.96340e8;        // m (1 Solar Radius)
+        const AU = 1.495978707e11;      // m (1 Astronomical Unit)
+        const YEAR_SECONDS = 31557600;  // s (1 Julian Year)
+
+        // 물리 시뮬레이션 기본 연산 구조체
+        let sim = {
+            starMass: 1.0,      // M☉
+            semiMajor: 1.0,     // AU
+            eccentricity: 0.30, // e
+            planetMass: 1.0,    // M⊕ or M☉ depending on mode
+            planetRadius: 1.0,  // R⊕
+            k: 0.4,             // 관성모멘트 계수
+            starRotMode: 'locked', // locked or free
+            massUnit: 'earth',   // earth or solar
+            isPaused: false,
+            theta: 0.0,         // 공전 진근점각
+            planetRotTheta: 0.0,// 행성 자전 변위각
+            starRotTheta: 0.0,  // 항성 자전 변위각
+            traceHistory: [],   // 행성 공전 자취 궤적
+            starTraceHistory: []// 항성 공전 자취 궤적
+        };
+
+        const DEFAULT_SIM = {
+            starMass: 1.0,
+            semiMajor: 1.0,
+            eccentricity: 0.30,
+            planetMass: 1.0,
+            planetRadius: 1.0,
+            k: 0.4,
+            starRotMode: 'locked',
+            massUnit: 'earth'
+        };
+
+        // 캔버스 크기 재산출
+        function updateCanvasBounds() {
+            canvas.width = canvasContainer.clientWidth;
+            canvas.height = canvasContainer.clientHeight;
+        }
+        window.addEventListener('resize', updateCanvasBounds);
+        updateCanvasBounds();
+
+        // 입력창 슬라이더 값 동적 문자열 바인딩
+        function renderLabels() {
+            valStarMass.innerText = parseFloat(inStarMass.value).toFixed(1) + " M☉";
+            valSemiMajor.innerText = parseFloat(inSemiMajor.value).toFixed(1) + " AU";
+            valEccentricity.innerText = parseFloat(inEccentricity.value).toFixed(2);
+            
+            const unit = document.querySelector('input[name="massUnit"]:checked').value;
+            if (unit === 'earth') {
+                valPlanetMass.innerText = parseFloat(inPlanetMass.value).toFixed(1) + " M⊕";
+            } else {
+                valPlanetMass.innerText = (parseFloat(inPlanetMass.value) / 10).toFixed(2) + " M☉";
+            }
+            valPlanetRadius.innerText = parseFloat(inPlanetRadius.value).toFixed(1) + " R⊕";
+        }
+
+        // 행성 질량 단위 라디오 버튼 조작 시 슬라이더 범위 동적 튜닝
+        document.querySelectorAll('input[name="massUnit"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const unit = e.target.value;
+                sim.massUnit = unit;
+                if (unit === 'earth') {
+                    inPlanetMass.min = "0.1";
+                    inPlanetMass.max = "300.0";
+                    inPlanetMass.step = "0.5";
+                    inPlanetMass.value = "1.0";
+                } else {
+                    inPlanetMass.min = "1";
+                    inPlanetMass.max = "20"; // 0.1M☉ ~ 2.0M☉
+                    inPlanetMass.step = "1";
+                    inPlanetMass.value = "1"; // 0.1 M☉
+                }
+                renderLabels();
+                syncAndEvaluate();
+                sim.traceHistory = [];
+                sim.starTraceHistory = [];
+            });
+        });
+
+        // 입력받은 조작 변인 데이터 상태 동기화 및 물리 연산 반영
+        function syncAndEvaluate() {
+            sim.starMass = parseFloat(inStarMass.value);
+            sim.semiMajor = parseFloat(inSemiMajor.value);
+            sim.eccentricity = parseFloat(inEccentricity.value);
+            
+            const unit = document.querySelector('input[name="massUnit"]:checked').value;
+            if (unit === 'earth') {
+                sim.planetMass = parseFloat(inPlanetMass.value);
+            } else {
+                sim.planetMass = (parseFloat(inPlanetMass.value) / 10) * 332900; // 지구질량 단위로 환산
+            }
+
+            sim.planetRadius = parseFloat(inPlanetRadius.value);
+            sim.k = parseFloat(inInertia.value);
+            sim.starRotMode = inStarRotMode.value;
+
+            processPhysicsEquations();
+        }
+
+        // 정밀 물리 수학 공식 적용 대입
+        let cachedPhysics = {}; 
+
+        function processPhysicsEquations() {
+            const m1 = sim.starMass * M_SUN;
+            const m2 = sim.planetMass * M_EARTH;
+            const totalMass = m1 + m2;
+            const a = sim.semiMajor * AU;
+            const e = sim.eccentricity;
+
+            // [1] 상호 공전 주기
+            const periodSec = 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / (G * totalMass));
+            const periodYear = periodSec / YEAR_SECONDS;
+            resPeriod.innerText = periodYear.toFixed(2) + " 년";
+
+            // [2] 질량 중심(Barycenter) 분배 반경
+            const a1 = a * (m2 / totalMass); 
+            const a2 = a * (m1 / totalMass); 
+
+            resOffset.innerText = (a1 / 1000).toLocaleString(undefined, {maximumFractionDigits: 0}) + " km";
+
+            // [3] 상대 공전 속도 극값
+            const v_rel_factor = Math.sqrt((G * totalMass) / a);
+            const v_rel_perihelion = v_rel_factor * Math.sqrt((1 + e) / (1 - e));
+            const v_rel_aphelion = v_rel_factor * Math.sqrt((1 - e) / (1 + e));
+
+            resMaxRelSpeed.innerText = (v_rel_perihelion / 1000).toFixed(2) + " km/s";
+            resMinRelSpeed.innerText = (v_rel_aphelion / 1000).toFixed(2) + " km/s";
+
+            // [4] 행성의 독자 자전 선속도 (우주 자전 각운동량 축척 법칙 적용)
+            // L_rot ∝ M^(5/3) 관계와 관성모멘트 계수 k에 따른 물리적 선속도 계산
+            const baseRotSpeed = 0.4651; 
+            // planetMass는 지구 질량 기준(Earth Masses) 단위값으로 환산하여 연산
+            const pMassEarthEquivalent = sim.massUnit === 'earth' ? sim.planetMass : (sim.planetMass / 332900);
+            const planetRotationSpeed = baseRotSpeed * (Math.pow(pMassEarthEquivalent, 2/3) / sim.planetRadius) * (0.4 / sim.k);
+            resPlanetRotSpeed.innerText = planetRotationSpeed.toFixed(3) + " km/s";
+
+            // [5] 중심별의 반경 결정
+            const starRadiusM = R_SUN * Math.pow(sim.starMass, 0.8);
+            const starRadiusSolar = starRadiusM / R_SUN;
+            calcRstar.innerText = starRadiusSolar.toFixed(2);
+
+            // [6] 중심별의 자전 속도 결정
+            let starOmega = 0;
+            if (sim.starRotMode === 'locked') {
+                starOmega = (2 * Math.PI) / periodSec;
+            } else {
+                const starPeriodSec = 25 * 24 * 3600;
+                starOmega = (2 * Math.PI) / starPeriodSec;
+            }
+            const starRotSpeedKms = (starOmega * starRadiusM) / 1000;
+            resStarRotSpeed.innerText = starRotSpeedKms.toFixed(3) + " km/s";
+            calcWstar.innerText = starOmega.toExponential(3);
+
+            cachedPhysics = {
+                m1, m2, totalMass, a, e, periodSec, a1, a2, starRadiusM, starRadiusSolar, starOmega, planetRotationSpeed, starRotSpeedKms, v_rel_perihelion
+            };
+        }
+
+        // 실시간 Canvas 드로잉 및 중력학적 애니메이션 루프
+        function runSimulation() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+
+            // 배경 우주 공간 렌더링
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, w, h);
+
+            // 그리드 렌더링
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1;
+            const grid = 45;
+            for (let x = 0; x < w; x += grid) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            }
+            for (let y = 0; y < h; y += grid) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            const cp = cachedPhysics;
+            if (!cp || !cp.totalMass) {
+                requestAnimationFrame(runSimulation);
+                return;
+            }
+
+            // 시각적 스케일 조절
+            const aphelion_dist = sim.semiMajor * (1 + sim.eccentricity);
+            const viewRadius = Math.min(w, h);
+            const zoomFactor = (viewRadius / 2) * 0.75 / aphelion_dist; 
+
+            // 1. 실시간 궤도 역학 수치 계산
+            const r_sim = sim.semiMajor * (1 - sim.eccentricity * sim.eccentricity) / (1 + sim.eccentricity * Math.cos(sim.theta));
+            const r_meters = r_sim * AU;
+
+            // 실시간 상대 속도(Vis-viva)
+            const v_rel = Math.sqrt(G * cp.totalMass * (2 / r_meters - 1 / cp.a));
+            
+            // 각 천체의 질량 기준 실시간 궤도 속도 분배 (Barycentric Velocity)
+            const v_planet_live = v_rel * (cp.m1 / cp.totalMass);
+            const v_star_live = v_rel * (cp.m2 / cp.totalMass);
+
+            // 화면 표시 갱신
+            resPlanetOrbitSpeed.innerText = (v_planet_live / 1000).toFixed(2);
+            resStarOrbitSpeed.innerText = (v_star_live / 1000).toFixed(2);
+
+            // 수식 추적기 실시간 업데이트
+            calcR.innerText = r_sim.toFixed(2);
+            calcVrel.innerText = (v_rel / 1000).toFixed(2);
+
+            // 실시간 속도 가이드 바 갱신
+            const v_planet_perihelion = (cp.v_rel_perihelion / 1000) * (cp.m1 / cp.totalMass);
+            const ratioPercentage = Math.min(100, Math.max(0, ((v_planet_live / 1000) / v_planet_perihelion) * 100));
+            if (barLiveSpeed) {
+                barLiveSpeed.style.width = ratioPercentage + "%";
+            }
+
+            // 애니메이션 궤도 갱신 (시간 스케일 보정법 도입!)
+            if (!sim.isPaused) {
+                const dTheta = (2 * Math.PI * Math.sqrt(1 - sim.eccentricity * sim.eccentricity) / 600) * Math.pow(sim.semiMajor / r_sim, 2);
+                sim.theta += dTheta;
+
+                // 천체들 자전축 회전 적분
+                const planetRotPeriodSec = (2 * Math.PI * (sim.planetRadius * R_EARTH)) / (cp.planetRotationSpeed * 1000);
+                sim.planetRotTheta += (0.05 * 2 * Math.PI) / (planetRotPeriodSec / (YEAR_SECONDS / 200));
+
+                sim.starRotTheta += cp.starOmega * (YEAR_SECONDS / 100000);
+            }
+
+            // 질량 중심에서 각 천체까지의 실시간 축척 거리 계산
+            const r_star_px = (r_sim * (cp.m2 / cp.totalMass)) * zoomFactor;
+            const r_planet_px = (r_sim * (cp.m1 / cp.totalMass)) * zoomFactor;
+
+            // 기하학적 궤도 중심 오프셋 피팅
+            const ellipseCenterOffset = (sim.semiMajor * sim.eccentricity) * zoomFactor;
+
+            // 두 천체의 좌표 계산
+            const starX = cx - r_star_px * Math.cos(sim.theta) - (ellipseCenterOffset * (cp.m2 / cp.totalMass));
+            const starY = cy - r_star_px * Math.sin(sim.theta);
+
+            const planetX = cx + r_planet_px * Math.cos(sim.theta) + (ellipseCenterOffset * (cp.m1 / cp.totalMass));
+            const planetY = cy + r_planet_px * Math.sin(sim.theta);
+
+            // 2. 물리 궤도선 드로잉
+            // 행성 공전 타원 궤도선 (Barycenter 기준)
+            ctx.beginPath();
+            const p_a_px = cp.a2 * (zoomFactor / AU);
+            const p_b_px = p_a_px * Math.sqrt(1 - sim.eccentricity * sim.eccentricity);
+            const p_focus_px = p_a_px * sim.eccentricity;
+            ctx.ellipse(cx + p_focus_px, cy, p_a_px, p_b_px, 0, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.15)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 중심별 공전 타원 궤도선
+            ctx.beginPath();
+            const s_a_px = cp.a1 * (zoomFactor / AU);
+            const s_b_px = s_a_px * Math.sqrt(1 - sim.eccentricity * sim.eccentricity);
+            const s_focus_px = s_a_px * sim.eccentricity;
+            ctx.ellipse(cx - s_focus_px, cy, s_a_px, s_b_px, 0, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(249, 115, 22, 0.25)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // 3. 질량 중심 붉은 크로스라인 표식 (+)
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+            ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+            ctx.font = '9px monospace';
+            ctx.fillText("Barycenter (0, 0)", cx + 10, cy - 4);
+
+            // 4. 자취 궤적 자욱 드로잉
+            if (!sim.isPaused) {
+                sim.traceHistory.push({ x: planetX, y: planetY });
+                if (sim.traceHistory.length > 300) sim.traceHistory.shift();
+
+                sim.starTraceHistory.push({ x: starX, y: starY });
+                if (sim.starTraceHistory.length > 300) sim.starTraceHistory.shift();
+            }
+
+            // 행성 궤적
+            if (sim.traceHistory.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(sim.traceHistory[0].x, sim.traceHistory[0].y);
+                for (let i = 1; i < sim.traceHistory.length; i++) {
+                    ctx.lineTo(sim.traceHistory[i].x, sim.traceHistory[i].y);
+                }
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // 중심별 궤적
+            if (sim.starTraceHistory.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(sim.starTraceHistory[0].x, sim.starTraceHistory[0].y);
+                for (let i = 1; i < sim.starTraceHistory.length; i++) {
+                    ctx.lineTo(sim.starTraceHistory[i].x, sim.starTraceHistory[i].y);
+                }
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // 5. 회전하는 중심별 렌더링
+            const starVisualRadius = Math.max(5, Math.min(45, 10 * cp.starRadiusSolar));
+            ctx.beginPath();
+            ctx.arc(starX, starY, starVisualRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = '#f97316';
+            ctx.shadowBlur = 15 + (sim.starMass * 1.5);
+            ctx.shadowColor = '#f97316';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 항성 자전 지표선
+            ctx.beginPath();
+            ctx.moveTo(
+                starX - starVisualRadius * Math.cos(sim.starRotTheta),
+                starY - starVisualRadius * Math.sin(sim.starRotTheta)
+            );
+            ctx.lineTo(
+                starX + starVisualRadius * Math.cos(sim.starRotTheta),
+                starY + starVisualRadius * Math.sin(sim.starRotTheta)
+            );
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // 6. 회전하는 행성 본체 렌더링
+            const planetVisualRadius = Math.max(3, Math.min(30, 4 + (sim.planetRadius * 2.0)));
+            ctx.beginPath();
+            ctx.arc(planetX, planetY, planetVisualRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = '#10b981';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#10b981';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 행성 자전 지표선
+            ctx.beginPath();
+            ctx.moveTo(
+                planetX - planetVisualRadius * Math.cos(sim.planetRotTheta),
+                planetY - planetVisualRadius * Math.sin(sim.planetRotTheta)
+            );
+            ctx.lineTo(
+                planetX + planetVisualRadius * Math.cos(sim.planetRotTheta),
+                planetY + planetVisualRadius * Math.sin(sim.planetRotTheta)
+            );
+            ctx.strokeStyle = '#020617';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 7. 실시간 정보 텍스트 오버레이
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px monospace';
+            ctx.fillText(`${(v_planet_live / 1000).toFixed(1)} km/s`, planetX + planetVisualRadius + 6, planetY + 4);
+            ctx.fillText(`${(v_star_live / 1000).toFixed(2)} km/s`, starX + starVisualRadius + 6, starY + 4);
+
+            requestAnimationFrame(runSimulation);
+        }
+
+        // 실시간 입력 변형 리스너 장착
+        const inputs = [inStarMass, inSemiMajor, inEccentricity, inPlanetMass, inPlanetRadius, inInertia, inStarRotMode];
+        inputs.forEach(element => {
+            element.addEventListener('input', () => {
+                renderLabels();
+                syncAndEvaluate();
+            });
+        });
+
+        // '역학 변인 데이터 적용' 작동 트리거
+        btnCalculate.addEventListener('click', () => {
+            syncAndEvaluate();
+            sim.traceHistory = []; 
+            sim.starTraceHistory = [];
+        });
+
+        // '표준계 초기화' 작동 트리거
+        btnReset.addEventListener('click', () => {
+            inStarMass.value = DEFAULT_SIM.starMass;
+            inSemiMajor.value = DEFAULT_SIM.semiMajor;
+            inEccentricity.value = DEFAULT_SIM.eccentricity;
+            
+            // 라디오버튼 초기화
+            document.querySelector('input[name="massUnit"][value="earth"]').checked = true;
+            sim.massUnit = 'earth';
+            
+            // 지구질량 복원
+            inPlanetMass.min = "0.1";
+            inPlanetMass.max = "300.0";
+            inPlanetMass.step = "0.5";
+            inPlanetMass.value = DEFAULT_SIM.planetMass;
+
+            inPlanetRadius.value = DEFAULT_SIM.planetRadius;
+            inInertia.value = "0.4";
+            inStarRotMode.value = DEFAULT_SIM.starRotMode;
+
+            renderLabels();
+            syncAndEvaluate();
+            sim.theta = 0;
+            sim.traceHistory = [];
+            sim.starTraceHistory = [];
+        });
+
+        // '일시정지 / 재생' 작동 트리거
+        btnPause.addEventListener('click', () => {
+            sim.isPaused = !sim.isPaused;
+            if (sim.isPaused) {
+                txtPause.innerText = "다시 재생";
+                iconPause.setAttribute('data-lucide', 'play');
+                iconPause.classList.remove('text-amber-400');
+                iconPause.classList.add('text-emerald-400');
+            } else {
+                txtPause.innerText = "일시 정지";
+                iconPause.setAttribute('data-lucide', 'pause');
+                iconPause.classList.remove('text-emerald-400');
+                iconPause.classList.add('text-amber-400');
+            }
+            lucide.createIcons();
+        });
+
+        // '공전 궤적 초기화' 단추
+        btnTrace.addEventListener('click', () => {
+            sim.traceHistory = [];
+            sim.starTraceHistory = [];
+        });
+
+        // 최초 기동 설정 로드
+        window.onload = function() {
+            updateCanvasBounds();
+            renderLabels();
+            syncAndEvaluate();
+            runSimulation();
+        };
+    </script>
+</body>
+</html>

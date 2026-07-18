@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>은하 회전과 도플러 효과 시뮬레이션</title>
+    <!-- Tailwind CSS 사용 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons 사용 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col">
+
+    <!-- 헤더 -->
+    <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-indigo-600 rounded-lg text-white">
+                <i data-lucide="orbit" class="w-6 h-6 animate-spin-slow"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    은하 회전 & 도플러 편이 시뮬레이터
+                </h1>
+                <p class="text-xs text-gray-400">Doppler Shift & Galaxy Rotation Kinematics</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2 text-xs bg-gray-800 px-3 py-1.5 rounded-full text-gray-300">
+            <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span>실시간 물리 엔진 구동 중</span>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- 좌측 영역: 시각화 및 계측기 (60% 너비) -->
+        <div class="w-3/5 p-4 flex flex-col space-y-4 overflow-y-auto h-full">
+            
+            <!-- 좌측 상단: 은하 운동 모습 (시각화 캔버스) -->
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col flex-1 min-h-[380px] relative">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="eye" class="text-indigo-400 w-5 h-5"></i>
+                        <h2 class="text-sm font-semibold text-gray-200">은하의 운동 및 관측 시선 방향 (3D 투영)</h2>
+                    </div>
+                    <div class="flex space-x-2 text-xs">
+                        <span class="px-2 py-0.5 bg-blue-900/40 text-blue-300 border border-blue-800 rounded">
+                            파란색: 청색편이 (접근)
+                        </span>
+                        <span class="px-2 py-0.5 bg-red-900/40 text-red-300 border border-red-800 rounded">
+                            빨간색: 적색편이 (후퇴)
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- 메인 캔버스 영역 -->
+                <div class="flex-1 relative bg-black rounded-xl overflow-hidden border border-gray-950 flex items-center justify-center">
+                    <canvas id="galaxyCanvas" class="w-full h-full block cursor-pointer"></canvas>
+                    
+                    <!-- 캔버스 위 오버레이 정보 -->
+                    <div class="absolute top-3 left-3 bg-gray-900/80 backdrop-blur-md px-3 py-2 rounded-lg text-xs border border-gray-800 space-y-1">
+                        <div><span class="text-gray-400">관측 각도 i (기울기):</span> <span id="overlayInclination" class="font-bold text-white">45°</span></div>
+                        <div><span class="text-gray-400">관측 지점 (r, θ):</span> <span id="overlayObsPoint" class="font-bold text-indigo-300">r=120, θ=45°</span></div>
+                    </div>
+
+                    <div class="absolute bottom-3 right-3 bg-gray-900/80 backdrop-blur-md px-3 py-2 rounded-lg text-xs border border-gray-800">
+                        <span class="text-gray-400">지구(관측자) 방향: </span>
+                        <span class="font-bold text-yellow-400">↓ 화면 아래쪽 (S)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 좌측 하단: 재생 버튼, 편이량 및 후퇴속도 계측기 -->
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+                
+                <!-- 컨트롤 & 상태 -->
+                <div class="flex flex-col justify-between space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <button id="playPauseBtn" class="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg shadow-indigo-900/40 animate-pulse-slow">
+                                <i data-lucide="pause" id="playIcon" class="w-6 h-6"></i>
+                            </button>
+                            <div>
+                                <p class="text-xs text-gray-400">시뮬레이션 시간</p>
+                                <p class="text-sm font-semibold text-gray-200" id="simTime">0.0s</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 배속 조절 기능 -->
+                    <div class="flex flex-col space-y-1">
+                        <span class="text-[10px] text-gray-400 font-semibold tracking-wide">시뮬레이션 배속 (물리 속도 대비)</span>
+                        <div class="flex bg-gray-950 p-0.5 rounded-lg border border-gray-800" id="speedGroup">
+                            <button type="button" data-speed="0.5" class="flex-1 py-1 text-[10px] rounded text-gray-400 hover:text-white transition">0.5x</button>
+                            <button type="button" data-speed="1" class="flex-1 py-1 text-[10px] rounded bg-indigo-600 text-white font-bold transition">1.0x</button>
+                            <button type="button" data-speed="2" class="flex-1 py-1 text-[10px] rounded text-gray-400 hover:text-white transition">2.0x</button>
+                            <button type="button" data-speed="5" class="flex-1 py-1 text-[10px] rounded text-gray-400 hover:text-white transition">5.0x</button>
+                            <button type="button" data-speed="10" class="flex-1 py-1 text-[10px] rounded text-gray-400 hover:text-white transition">10x</button>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-2 border-t border-gray-800 flex justify-between text-xs">
+                        <button id="resetBtn" class="text-gray-400 hover:text-white flex items-center space-x-1 transition">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                            <span>다시 시작</span>
+                        </button>
+                        <span class="text-gray-500">광속 c ≈ 300,000 km/s</span>
+                    </div>
+                </div>
+
+                <!-- 후퇴 속도 계측기 -->
+                <div class="bg-gray-950 rounded-xl p-4 border border-gray-800 flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-gray-400 tracking-wider uppercase">관측 지점 후퇴속도 (v_obs)</span>
+                        <i data-lucide="activity" class="text-emerald-500 w-4 h-4"></i>
+                    </div>
+                    
+                    <div class="my-2">
+                        <span id="recessionVelocityVal" class="text-3xl font-extrabold tracking-tight text-white">-</span>
+                        <span class="text-sm font-semibold text-gray-400 ml-1">km/s</span>
+                    </div>
+
+                    <div class="text-xs text-gray-400 flex items-center space-x-1">
+                        <span>성분: </span>
+                        <span class="text-indigo-300 font-semibold" id="velocityComponents">v_sys + v_rot</span>
+                    </div>
+                    <div class="absolute right-0 bottom-0 w-24 h-1 bg-emerald-500" id="velocityIndicator"></div>
+                </div>
+
+                <!-- 편이량 계측기 및 스펙트럼 뷰 -->
+                <div class="bg-gray-950 rounded-xl p-4 border border-gray-800 flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-gray-400 tracking-wider uppercase">도플러 편이량 (Δλ)</span>
+                        <i data-lucide="arrow-left-right" class="text-indigo-400 w-4 h-4"></i>
+                    </div>
+
+                    <div class="my-2 flex flex-col">
+                        <div class="flex items-baseline">
+                            <span id="shiftVal" class="text-3xl font-extrabold tracking-tight text-white">-</span>
+                            <span class="text-sm font-semibold text-gray-400 ml-1">nm</span>
+                        </div>
+                        <span class="text-[10px] text-gray-500" id="shiftedWavelength">관측 파장: - nm</span>
+                    </div>
+
+                    <!-- 동적 스펙트럼 디스플레이 -->
+                    <div id="spectrumBar" class="h-6 w-full rounded relative overflow-hidden border border-gray-800 transition-colors duration-300">
+                        <!-- 원래 위치 가이드선 (중앙 기준선) -->
+                        <div class="absolute top-0 bottom-0 w-0.5 bg-white opacity-60 left-1/2 z-10" title="기준 파장"></div>
+                        <!-- 편이된 관측선 -->
+                        <div id="spectrumLine" class="absolute top-0 bottom-0 w-1 bg-black shadow-[0_0_8px_rgba(255,255,255,0.9)] left-1/2 z-20 transition-all duration-100"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 우측 영역: 컨트롤 패널 (40% 너비) -->
+        <div class="w-2/5 bg-gray-900 border-l border-gray-800 p-6 overflow-y-auto h-full flex flex-col justify-between">
+            <div class="space-y-6">
+                <div class="border-b border-gray-800 pb-4">
+                    <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                        <i data-lucide="sliders" class="text-indigo-400 w-5 h-5"></i>
+                        <span>시뮬레이션 변인 설정</span>
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-1">은하의 역학적 모델 및 관측기하학 변수들을 실시간 조절합니다.</p>
+                </div>
+
+                <!-- 0. 회전 방식 선택 -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-gray-300">관측 지점 고정 옵션</label>
+                    <div class="flex items-center justify-between p-3 bg-gray-950 rounded-xl border border-gray-800">
+                        <span class="text-xs text-gray-400">은하 회전과 관측 지점 동기화</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="syncRotation" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 1. 은하 기본 운동 속도 -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-gray-300 flex items-center space-x-1.5">
+                            <span>은하 중심 후퇴/접근 속도 (v_sys)</span>
+                            <span class="text-[10px] text-gray-500">(음수: 우리에게 접근, 양수: 멀어짐)</span>
+                        </label>
+                        <span class="text-sm font-mono font-bold text-indigo-400" id="v_sys_val">3000 km/s</span>
+                    </div>
+                    <input type="range" id="v_sys" min="-15000" max="15000" step="100" value="3000" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <!-- 2. 은하의 회전 각속도 -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-gray-300 flex items-center space-x-1.5">
+                            <span>은하 회전 각속도 (ω)</span>
+                            <span class="text-[10px] text-gray-500">(회전 중심 기준)</span>
+                        </label>
+                        <span class="text-sm font-mono font-bold text-indigo-400" id="omega_val">2.5 deg/s</span>
+                    </div>
+                    <input type="range" id="omega" min="0.5" max="8.0" step="0.1" value="2.5" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <!-- 3. 관측 지점 거리 r -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-gray-300 flex items-center space-x-1.5">
+                            <span>관측 지점 반경 (r)</span>
+                            <span class="text-[10px] text-gray-500">(은하 중심으로부터 거리)</span>
+                        </label>
+                        <span class="text-sm font-mono font-bold text-indigo-400" id="obs_r_val">100 px</span>
+                    </div>
+                    <input type="range" id="obs_r" min="0" max="150" step="1" value="100" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <!-- 4. 관측 지점 각도 theta -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-gray-300 flex items-center space-x-1.5">
+                            <span>관측 지점 회전각 (θ)</span>
+                            <span class="text-[10px] text-gray-500">(은하 주축 기준각)</span>
+                        </label>
+                        <span class="text-sm font-mono font-bold text-indigo-400" id="obs_theta_val">45°</span>
+                    </div>
+                    <input type="range" id="obs_theta" min="0" max="360" step="0.1" value="45" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <!-- 5. 경사각 (시선 방향과 은하 회전축의 기울기) -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-gray-300 flex items-center space-x-1.5">
+                            <span>은하 회전축 경사각 (i)</span>
+                            <span class="text-[10px] text-gray-500">(0°: 정면(Face-on), 90°: 측면(Edge-on))</span>
+                        </label>
+                        <span class="text-sm font-mono font-bold text-indigo-400" id="inclination_val">45°</span>
+                    </div>
+                    <input type="range" id="inclination" min="0" max="90" step="1" value="45" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <!-- 6. 관측하고자 하는 방출/흡수선 기준 파장 -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-gray-300 flex items-center space-x-1.5">
+                            <span>관측 고유 기준파장 (λ0)</span>
+                            <span class="text-[10px] text-gray-500">(예: 수소 H-alpha선 등)</span>
+                        </label>
+                        <span class="text-sm font-mono font-bold text-indigo-400" id="lambda_0_val">656.3 nm</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 mb-1">
+                        <button type="button" onclick="setPresetWavelength(396.8, 'Ca-H')" class="py-1 px-1.5 bg-gray-800 hover:bg-gray-700 text-[10px] text-gray-300 rounded transition font-semibold">Ca-H (396.8)</button>
+                        <button type="button" onclick="setPresetWavelength(486.1, 'H-β')" class="py-1 px-1.5 bg-gray-800 hover:bg-gray-700 text-[10px] text-gray-300 rounded transition font-semibold">H-β (486.1)</button>
+                        <button type="button" onclick="setPresetWavelength(589.0, 'Na-D')" class="py-1 px-1.5 bg-gray-800 hover:bg-gray-700 text-[10px] text-gray-300 rounded transition font-semibold">Na-D (589.0)</button>
+                        <button type="button" onclick="setPresetWavelength(656.3, 'H-α')" class="py-1 px-1.5 bg-gray-800 hover:bg-gray-700 text-[10px] text-gray-300 rounded transition font-semibold">H-α (656.3)</button>
+                    </div>
+                    <input type="range" id="lambda_0" min="350.0" max="800.0" step="0.1" value="656.3" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+            </div>
+
+            <!-- 하단 팁 및 안내 수식 -->
+            <div class="mt-6 pt-4 border-t border-gray-800 text-[11px] text-gray-400 space-y-2 bg-gray-950 p-3 rounded-lg">
+                <p class="font-semibold text-indigo-300">💡 물리 공식 정보</p>
+                <p>• 관측 후퇴속도: v_obs = v_sys - v_rot × sin(i) × cos(θ)</p>
+                <p>• 편이량 공식: Δλ = λ0 × (v_obs / c)  (c = 300,000 km/s)</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 스크립트 영역 -->
+    <script>
+        // Lucide 아이콘 로드
+        lucide.createIcons();
+
+        // Canvas 설정
+        const canvas = document.getElementById('galaxyCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = 0;
+        let height = 0;
+
+        // 시뮬레이션 상태 변수들
+        let isRunning = true;
+        let lastTime = 0;
+        let accumulatedTime = 0; // 초 단위
+        let galaxyRotationAngle = 0; // 은하 평면의 누적 회전 각도 (라디안)
+        let speedMultiplier = 1.0; // 시뮬레이션 배속 설정 변수 (기본 1.0x)
+
+        // 슬라이더 요소 바인딩
+        const vSysSlider = document.getElementById('v_sys');
+        const omegaSlider = document.getElementById('omega');
+        const obsRSlider = document.getElementById('obs_r');
+        const obsThetaSlider = document.getElementById('obs_theta');
+        const inclinationSlider = document.getElementById('inclination');
+        const lambda0Slider = document.getElementById('lambda_0');
+        const syncRotationCheckbox = document.getElementById('syncRotation');
+
+        // 값 표시 레이블 바인딩
+        const vSysVal = document.getElementById('v_sys_val');
+        const omegaVal = document.getElementById('omega_val');
+        const obsRVal = document.getElementById('obs_r_val');
+        const obsThetaVal = document.getElementById('obs_theta_val');
+        const inclinationVal = document.getElementById('inclination_val');
+        const lambda0Val = document.getElementById('lambda_0_val');
+
+        const overlayInclination = document.getElementById('overlayInclination');
+        const overlayObsPoint = document.getElementById('overlayObsPoint');
+
+        // 결과 계측기 바인딩
+        const simTimeLabel = document.getElementById('simTime');
+        const recessionVelocityVal = document.getElementById('recessionVelocityVal');
+        const shiftVal = document.getElementById('shiftVal');
+        const shiftedWavelength = document.getElementById('shiftedWavelength');
+        const velocityComponents = document.getElementById('velocityComponents');
+        const velocityIndicator = document.getElementById('velocityIndicator');
+        const spectrumBar = document.getElementById('spectrumBar');
+        const spectrumLine = document.getElementById('spectrumLine');
+
+        // 재생/정지 및 리셋 버튼 제어
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // 은하 파티클(별) 객체 저장을 위한 배열
+        const numParticles = 400;
+        const particles = [];
+
+        // 상수 정의
+        const C = 300000; // 광속 c (km/s)
+        
+        // 사용자가 슬라이더나 화면 조작 중인지 감지하는 플래그
+        let isSliderDragging = false;
+        
+        // 관측 지점의 '은하 기준 초기 각도'(은하와 함께 회전하기 시작할 때의 상대 각도)
+        let obsBaseThetaOffset = 45 * Math.PI / 180;
+
+        // 은하 파티클 초기화 (나선형 분포)
+        function initParticles() {
+            particles.length = 0;
+            const arms = 2;
+            for (let i = 0; i < numParticles; i++) {
+                const r = Math.pow(Math.random(), 1.5) * 160 + 5;
+                const armIndex = i % arms;
+                const baseAngle = (armIndex * 2 * Math.PI) / arms;
+                const spiralFactor = r * 0.03;
+                const theta = baseAngle + spiralFactor + (Math.random() - 0.5) * 0.4;
+                
+                const size = Math.random() * 1.5 + 0.5;
+                const brightness = Math.random() * 0.5 + 0.5;
+
+                particles.push({ r, baseTheta: theta, size, brightness });
+            }
+        }
+
+        // 반응형 Canvas 크기 조정
+        function resizeCanvas() {
+            const rect = canvas.parentNode.getBoundingClientRect();
+            width = rect.width;
+            height = rect.height;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        // 특정 예외 파장 프리셋 함수
+        function setPresetWavelength(wl, name) {
+            lambda0Slider.value = wl;
+            updatePhysics();
+        }
+
+        // 빛의 파장(nm)을 실제 RGB 문자열로 변환하는 물리식 알고리즘
+        function wavelengthToRGB(wavelength) {
+            let r = 0, g = 0, b = 0, factor = 0;
+
+            if (wavelength >= 380 && wavelength < 440) {
+                r = -(wavelength - 440) / (440 - 380);
+                g = 0.0;
+                b = 1.0;
+            } else if (wavelength >= 440 && wavelength < 490) {
+                r = 0.0;
+                g = (wavelength - 440) / (490 - 440);
+                b = 1.0;
+            } else if (wavelength >= 490 && wavelength < 510) {
+                r = 0.0;
+                g = 1.0;
+                b = -(wavelength - 510) / (510 - 490);
+            } else if (wavelength >= 510 && wavelength < 580) {
+                r = (wavelength - 510) / (580 - 510);
+                g = 1.0;
+                b = 0.0;
+            } else if (wavelength >= 580 && wavelength < 645) {
+                r = 1.0;
+                g = -(wavelength - 645) / (645 - 580);
+                b = 0.0;
+            } else if (wavelength >= 645 && wavelength <= 780) {
+                r = 1.0;
+                g = 0.0;
+                b = 0.0;
+            } else {
+                // 가시광선 영역 밖 (자외선/적외선 대체 표현을 위한 짙은 자색/적색 스케일링)
+                if (wavelength < 380) {
+                    r = 0.3 * (wavelength / 380);
+                    g = 0.0;
+                    b = 0.5 * (wavelength / 380);
+                } else {
+                    r = 0.4 * (1.0 - (wavelength - 780) / 200);
+                    g = 0.0;
+                    b = 0.0;
+                }
+            }
+
+            // 안구 감도 저하 영역(경계선 부분) 보정 계수
+            if (wavelength >= 380 && wavelength < 420) {
+                factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+            } else if (wavelength >= 420 && wavelength < 701) {
+                factor = 1.0;
+            } else if (wavelength >= 701 && wavelength <= 780) {
+                factor = 0.3 + 0.7 * (780 - wavelength) / (780 - 701);
+            } else {
+                factor = 0.3;
+            }
+
+            const rByte = Math.max(0, Math.min(255, Math.round(r * factor * 255)));
+            const gByte = Math.max(0, Math.min(255, Math.round(g * factor * 255)));
+            const bByte = Math.max(0, Math.min(255, Math.round(b * factor * 255)));
+
+            return `rgb(${rByte}, ${gByte}, ${bByte})`;
+        }
+
+        // 수치 실시간 업데이트 및 물리 계산
+        function updatePhysics() {
+            const v_sys = parseFloat(vSysSlider.value); // km/s
+            const omega_deg = parseFloat(omegaSlider.value); // deg/s
+            const r = parseFloat(obsRSlider.value); // px
+            const theta_deg = parseFloat(obsThetaSlider.value); // deg
+            const theta = theta_deg * Math.PI / 180; // rad
+            const i_deg = parseFloat(inclinationSlider.value); // deg
+            const i = i_deg * Math.PI / 180; // rad
+            const lambda_0 = parseFloat(lambda0Slider.value); // nm
+
+            // 텍스트 업데이트 (후퇴/접근 속도의 상태가 부호로 직관적으로 드러남)
+            const vSysSign = v_sys > 0 ? '+' : '';
+            vSysVal.innerText = `${vSysSign}${v_sys.toLocaleString()} km/s`;
+            omegaVal.innerText = `${omega_deg.toFixed(1)} deg/s`;
+            obsRVal.innerText = `${Math.round(r)} px`;
+            obsThetaVal.innerText = `${theta_deg.toFixed(1)}°`;
+            inclinationVal.innerText = `${Math.round(i_deg)}°`;
+            lambda0Val.innerText = `${lambda_0.toFixed(1)} nm`;
+
+            overlayInclination.innerText = `${Math.round(i_deg)}° (${i_deg === 0 ? 'Face-on' : i_deg === 90 ? 'Edge-on' : 'Inclined'})`;
+            overlayObsPoint.innerText = `r=${Math.round(r)}px, θ=${theta_deg.toFixed(1)}°`;
+
+            // 회전 속도 환산 인자
+            const scaleFactor = 1.5; 
+            const v_rot = r * omega_deg * scaleFactor;
+
+            // 지구 관측자가 화면 아래쪽(South)에 있으므로,
+            // x > 0(우측) 영역은 다가오며(- 속도 기여 = 청색편이), x < 0(좌측) 영역은 멀어집니다(+ 속도 기여 = 적색편이).
+            const rotationProjection = -v_rot * Math.sin(i) * Math.cos(theta);
+            const v_obs = v_sys + rotationProjection;
+
+            // 편이량 계산 (Delta Lambda = Lambda_0 * v_obs / c)
+            const delta_lambda = lambda_0 * (v_obs / C);
+            const observed_wl = lambda_0 + delta_lambda;
+
+            // 계측기 UI 반영
+            const vObsSign = v_obs > 0 ? '+' : '';
+            recessionVelocityVal.innerText = `${vObsSign}${v_obs.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+            velocityComponents.innerHTML = `v_sys(${v_sys >= 0 ? '+' : ''}${Math.round(v_sys)}) + v_rot_proj(${rotationProjection >= 0 ? '+' : ''}${Math.round(rotationProjection)})`;
+
+            // 전체 관측 후퇴속도 v_obs가 양수(적색편이)인지 음수(청색편이)인지에 따라 텍스트 및 UI 색상 갱신
+            if (v_obs > 50) {
+                // 전체적으로 후퇴하는 상태 (적색편이)
+                recessionVelocityVal.className = "text-3xl font-extrabold tracking-tight text-red-400";
+                velocityIndicator.className = "absolute right-0 bottom-0 h-1 bg-red-500 transition-all duration-300";
+                velocityIndicator.style.width = `${Math.min(100, (v_obs / 18000) * 100)}%`;
+            } else if (v_obs < -50) {
+                // 전체적으로 접근하는 상태 (청색편이)
+                recessionVelocityVal.className = "text-3xl font-extrabold tracking-tight text-blue-400";
+                velocityIndicator.className = "absolute right-0 bottom-0 h-1 bg-blue-500 transition-all duration-300";
+                velocityIndicator.style.width = `${Math.min(100, (Math.abs(v_obs) / 18000) * 100)}%`;
+            } else {
+                // 거의 정지 상태
+                recessionVelocityVal.className = "text-3xl font-extrabold tracking-tight text-emerald-400";
+                velocityIndicator.className = "absolute right-0 bottom-0 h-1 bg-emerald-500 transition-all duration-300";
+                velocityIndicator.style.width = `${Math.min(100, (Math.abs(v_obs) / 18000) * 100)}%`;
+            }
+
+            const sign = delta_lambda >= 0 ? "+" : "";
+            shiftVal.innerText = `${sign}${delta_lambda.toFixed(3)}`;
+            if (delta_lambda >= 0) {
+                shiftVal.className = "text-3xl font-extrabold tracking-tight text-red-400";
+            } else {
+                shiftVal.className = "text-3xl font-extrabold tracking-tight text-blue-400";
+            }
+            shiftedWavelength.innerText = `관측 파장 λ = ${observed_wl.toFixed(3)} nm`;
+
+            // 관측하고자 하는 파장(lambda_0)에 맞춰 스펙트럼 배경 그라디언트를 동적으로 변경
+            const maxShiftRange = 40; // 스펙트럼 디스플레이가 표현할 +- 파장 범위 (nm)
+            const minWl = lambda_0 - maxShiftRange;
+            const maxWl = lambda_0 + maxShiftRange;
+
+            // 스펙트럼 바의 구간별 실제 물리 색상을 채워 그라디언트 문자열 생성
+            const stops = 10;
+            const colorStops = [];
+            for (let k = 0; k <= stops; k++) {
+                const ratio = k / stops;
+                const currentWl = minWl + ratio * (maxShiftRange * 2);
+                const color = wavelengthToRGB(currentWl);
+                colorStops.push(`${color} ${ratio * 100}%`);
+            }
+            spectrumBar.style.background = `linear-gradient(to right, ${colorStops.join(', ')})`;
+
+            // / 스펙트럼 바 내에서 실제 도플러 편이된 파장(observed_wl)이 위치할 비율값 환산 및 슬라이더 선 정렬
+            const percentageShift = 50 + (delta_lambda / maxShiftRange) * 50;
+            const clampedPercentage = Math.max(2, Math.min(98, percentageShift));
+            spectrumLine.style.left = `${clampedPercentage}%`;
+        }
+
+        // 이벤트 리스너 설정
+        const inputs = [vSysSlider, omegaSlider, obsRSlider, obsThetaSlider, inclinationSlider, lambda0Slider];
+        inputs.forEach(input => {
+            input.addEventListener('input', updatePhysics);
+        });
+
+        // 사용자가 슬라이더를 통해 각도를 바꿀 때의 이벤트 처리
+        obsThetaSlider.addEventListener('input', () => {
+            if (syncRotationCheckbox.checked) {
+                const theta_deg = parseFloat(obsThetaSlider.value);
+                obsBaseThetaOffset = (theta_deg * Math.PI / 180) - galaxyRotationAngle;
+            }
+        });
+
+        obsThetaSlider.addEventListener('mousedown', () => { isSliderDragging = true; });
+        obsThetaSlider.addEventListener('touchstart', () => { isSliderDragging = true; });
+        window.addEventListener('mouseup', () => { isSliderDragging = false; });
+        window.addEventListener('touchend', () => { isSliderDragging = false; });
+
+        // 배속 조절 버튼 선택 로직 추가
+        const speedButtons = document.querySelectorAll('#speedGroup button');
+        speedButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                speedMultiplier = parseFloat(btn.getAttribute('data-speed'));
+                speedButtons.forEach(b => {
+                    b.classList.remove('bg-indigo-600', 'text-white', 'font-bold');
+                    b.classList.add('text-gray-400');
+                });
+                btn.classList.remove('text-gray-400');
+                btn.classList.add('bg-indigo-600', 'text-white', 'font-bold');
+            });
+        });
+
+        // 재생/정지 및 리셋 버튼 제어
+        playPauseBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            if (isRunning) {
+                playIcon.setAttribute('data-lucide', 'pause');
+                lastTime = performance.now();
+                requestAnimationFrame(animate);
+            } else {
+                playIcon.setAttribute('data-lucide', 'play');
+            }
+            lucide.createIcons();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            accumulatedTime = 0;
+            galaxyRotationAngle = 0;
+            simTimeLabel.innerText = "0.0s";
+            obsThetaSlider.value = 45;
+            obsBaseThetaOffset = 45 * Math.PI / 180;
+            initParticles();
+            updatePhysics();
+        });
+
+        // 캔버스 인터랙션 지원 (클릭/드래그로 편하게 타겟 선정)
+        function handleCanvasInteraction(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            const i_deg = parseFloat(inclinationSlider.value);
+            const i = i_deg * Math.PI / 180;
+            const cos_i = Math.cos(i);
+
+            const dx = mouseX - centerX;
+            const dy = (mouseY - centerY) / (cos_i > 0.1 ? cos_i : 0.1); 
+
+            let r = Math.sqrt(dx * dx + dy * dy);
+            let theta = Math.atan2(dy, dx); 
+
+            r = Math.min(150, Math.max(0, r));
+            
+            let theta_deg = theta * 180 / Math.PI;
+            if (theta_deg < 0) theta_deg += 360;
+
+            obsRSlider.value = Math.round(r);
+            obsThetaSlider.value = theta_deg.toFixed(1);
+
+            if (syncRotationCheckbox.checked) {
+                obsBaseThetaOffset = theta - galaxyRotationAngle;
+            }
+
+            updatePhysics();
+        }
+
+        let isDrawing = false;
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            handleCanvasInteraction(e);
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) handleCanvasInteraction(e);
+        });
+        window.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            isDrawing = true;
+            if (e.touches.length > 0) handleCanvasInteraction(e.touches[0]);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDrawing && e.touches.length > 0) handleCanvasInteraction(e.touches[0]);
+        });
+        window.addEventListener('touchend', () => {
+            isDrawing = false;
+        });
+
+        // 그리기 및 시뮬레이션 메인 루프
+        function animate(timestamp) {
+            if (!isRunning) return;
+
+            if (!lastTime) lastTime = timestamp;
+            // 프레임 경과 시간(dt)에 사용자가 선택한 배속(speedMultiplier)을 가중하여 적용
+            const dt = ((timestamp - lastTime) / 1000) * speedMultiplier;
+            lastTime = timestamp;
+
+            accumulatedTime += dt;
+            simTimeLabel.innerText = `${accumulatedTime.toFixed(1)}s`;
+
+            const omega_deg = parseFloat(omegaSlider.value);
+            const omega = omega_deg * Math.PI / 180; // rad/s
+
+            // 실제 물리 각도 동기화
+            galaxyRotationAngle += omega * dt;
+
+            if (syncRotationCheckbox.checked && !isSliderDragging) {
+                let currentThetaRad = obsBaseThetaOffset + galaxyRotationAngle;
+                let currentThetaDeg = (currentThetaRad * 180 / Math.PI) % 360;
+                if (currentThetaDeg < 0) currentThetaDeg += 360;
+                obsThetaSlider.value = currentThetaDeg.toFixed(1);
+            } else if (!syncRotationCheckbox.checked) {
+                const theta_deg = parseFloat(obsThetaSlider.value);
+                obsBaseThetaOffset = (theta_deg * Math.PI / 180) - galaxyRotationAngle;
+            }
+
+            updatePhysics();
+            draw();
+
+            requestAnimationFrame(animate);
+        }
+
+        // 시각화 그리기 함수
+        function draw() {
+            ctx.fillStyle = '#05070c';
+            ctx.fillRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            const i_deg = parseFloat(inclinationSlider.value);
+            const i = i_deg * Math.PI / 180;
+            const cos_i = Math.cos(i);
+
+            // 배경 가이드라인
+            ctx.strokeStyle = 'rgba(31, 41, 55, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+
+            // 은하 회전 가이드 라인
+            ctx.strokeStyle = 'rgba(75, 85, 99, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, 150, 150 * cos_i, 0, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            // 1. 은하 파티클(별) 그리기
+            particles.forEach(p => {
+                const currentAngle = p.baseTheta + galaxyRotationAngle;
+                
+                const rx = p.r * Math.cos(currentAngle);
+                const ry = p.r * Math.sin(currentAngle);
+
+                const projectedX = centerX + rx;
+                const projectedY = centerY + ry * cos_i;
+
+                // 회전에 따른 지구(아래쪽) 방향으로의 투영 속도 판정
+                const tangentY = rx; 
+                const projV = tangentY * Math.sin(i); 
+
+                let color = 'rgba(255, 255, 255, ';
+                if (projV > 20) {
+                    const blueIntensity = Math.min(255, Math.floor(projV * 2));
+                    color = `rgba(${200 - blueIntensity/2}, ${220 + blueIntensity/4}, 255, `;
+                } else if (projV < -20) {
+                    const redIntensity = Math.min(255, Math.floor(Math.abs(projV) * 2));
+                    color = `rgba(255, ${200 - redIntensity/2}, ${200 - redIntensity/2}, `;
+                }
+
+                ctx.fillStyle = color + p.brightness + ')';
+                ctx.beginPath();
+                ctx.arc(projectedX, projectedY, p.size, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+
+            // 2. 은하 중심 핵(Core) 그리기
+            const gradient = ctx.createRadialGradient(centerX, centerY, 2, centerX, centerY, 25);
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.3, 'rgba(236, 72, 153, 0.4)');
+            gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 25, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // 3. 관측 지점 정보 계산 및 그리기
+            const obs_r = parseFloat(obsRSlider.value);
+            const obs_theta_deg = parseFloat(obsThetaSlider.value);
+            const obs_theta = obs_theta_deg * Math.PI / 180;
+
+            const obsX = obs_r * Math.cos(obs_theta);
+            const obsY = obs_r * Math.sin(obs_theta);
+
+            const projObsX = centerX + obsX;
+            const projObsY = centerY + obsY * cos_i;
+
+            // 은하 중심과 관측 지점 P를 이어주는 "반경 스포크선"
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 4]);
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(projObsX, projObsY);
+            ctx.stroke();
+
+            // 관측점 가이드 라인 동경(r) 반경 원형 궤도
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.25)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, obs_r, obs_r * cos_i, 0, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.setLineDash([]); // 대시 상태 복구
+
+            // 관측자 방향 가이드 라인 화살표 (관측 지점 -> 화면 아래)
+            ctx.strokeStyle = 'rgba(234, 179, 8, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(projObsX, projObsY);
+            ctx.lineTo(projObsX, projObsY + 45);
+            ctx.stroke();
+            
+            // 화살표 머리
+            ctx.fillStyle = 'rgba(234, 179, 8, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(projObsX, projObsY + 45);
+            ctx.lineTo(projObsX - 4, projObsY + 39);
+            ctx.lineTo(projObsX + 4, projObsY + 39);
+            ctx.closePath();
+            ctx.fill();
+
+            // 관측자 접선 속도 벡터 표시 (회전 속도 v_rot = r * omega * scaleFactor 에 비례하여 길이 가변 적용)
+            const omega_deg = parseFloat(omegaSlider.value);
+            const scaleFactor = 1.5;
+            const v_rot = obs_r * omega_deg * scaleFactor;
+            const vectorLength = v_rot * 0.1; // 속도 값을 화면상의 픽셀 길이로 변환 (예: 350 km/s -> 35px)
+
+            if (vectorLength > 1) {
+                const tangentX = -Math.sin(obs_theta) * vectorLength;
+                const tangentY = Math.cos(obs_theta) * vectorLength;
+                
+                ctx.strokeStyle = 'rgba(168, 85, 247, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(projObsX, projObsY);
+                ctx.lineTo(projObsX + tangentX, projObsY + tangentY * cos_i);
+                ctx.stroke();
+                
+                // 접선 화살표 머리 (벡터의 길이에 따라 화살표 머리 크기도 최소 3px에서 최대 8px까지 동적으로 스케일링)
+                const headlen = Math.max(3, Math.min(8, vectorLength * 0.2)); 
+                const angle = Math.atan2(tangentY * cos_i, tangentX);
+                ctx.fillStyle = 'rgba(168, 85, 247, 0.9)';
+                ctx.beginPath();
+                ctx.moveTo(projObsX + tangentX, projObsY + tangentY * cos_i);
+                ctx.lineTo(projObsX + tangentX - headlen * Math.cos(angle - Math.PI / 6), projObsY + tangentY * cos_i - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(projObsX + tangentX - headlen * Math.cos(angle + Math.PI / 6), projObsY + tangentY * cos_i - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // 실제 관측 조준경 마크 그리기
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(projObsX, projObsY, 8, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            ctx.fillStyle = '#6366f1';
+            ctx.beginPath();
+            ctx.arc(projObsX, projObsY, 3, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px Pretendard';
+            ctx.fillText('관측 타겟 P', projObsX + 12, projObsY - 4);
+        }
+
+        // 초기화 시점 구동
+        window.onload = function() {
+            resizeCanvas();
+            initParticles();
+            
+            // 초기 로딩 시의 오프셋 동기화 설정
+            const initialTheta = parseFloat(obsThetaSlider.value);
+            obsBaseThetaOffset = initialTheta * Math.PI / 180;
+            
+            updatePhysics();
+            
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                draw();
+            });
+
+            lastTime = performance.now();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>

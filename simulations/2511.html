@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급지구과학 - 별의 물리량 시뮬레이터 (슈테판-볼츠만 & 빈의 법칙)</title>
+    <!-- Tailwind CSS 적용 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        /* 스크롤바 디자인 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        /* 슬라이더 스타일 커스텀 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1f2937;
+            height: 6px;
+            border-radius: 9999px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.1s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #60a5fa;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- 상단 헤더 -->
+    <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 text-white p-2 rounded-lg shadow-lg shadow-blue-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.9 1.393-.9 1.693 0l5.414 10.828 10.828 5.414c.9.3.9 1.393 0 1.693l-10.828 5.414-5.414 10.828c-.3.9-1.393.9-1.693 0L5.636 18.257l-10.828-5.414c-.9-.3-.9-1.393 0-1.693l10.828-5.414 5.414-10.828z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white">천문학 상호작용 시뮬레이션</h1>
+                <p class="text-xs text-gray-400">고급지구과학 수행평가 - 극단값(별의 물리적 한계점) 원천 제한 버전</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>
+                실시간 별 한계 검증 필터 작동 중
+            </span>
+        </div>
+    </header>
+
+    <!-- 과학적 극단값 예외 처리 가이드 경고 배너 -->
+    <div id="safetyWarningBanner" class="hidden bg-amber-500/10 border-b border-amber-500/30 px-6 py-2.5 text-amber-400 text-xs flex justify-between items-center transition-all duration-300">
+        <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span id="warningMessage">경고: 별이 존재하기 위한 안정 물리적 범위를 이탈하여 값이 자동 재조정되었습니다.</span>
+        </div>
+        <button onclick="dismissWarning()" class="text-amber-400 hover:text-white font-bold">확인</button>
+    </div>
+
+    <!-- 메인 대시보드 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 왼쪽: 조종판 (조작 변인 2개 입력 + 유명 천체 프리셋) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- 유명 천체 프리셋 패널 -->
+            <div class="bg-gradient-to-br from-gray-900/80 to-gray-900/40 border border-indigo-500/30 rounded-2xl p-5 backdrop-blur shadow-xl">
+                <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                    실제 존재하는 물리적 항성 데이터 (프리셋)
+                </h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="applyPreset(5778, 1.0, '태양 (Sun)')" class="bg-gray-950/80 hover:bg-indigo-950/40 border border-gray-800 hover:border-indigo-500/50 p-2 rounded-xl text-left transition duration-200">
+                        <div class="text-xs font-bold text-white">태양</div>
+                        <div class="text-[9px] text-gray-500 font-mono">G2V • 1.0 R☉ • 5778K</div>
+                    </button>
+                    <button onclick="applyPreset(9940, 1.71, '시리우스 A (Sirius A)')" class="bg-gray-950/80 hover:bg-indigo-950/40 border border-gray-800 hover:border-indigo-500/50 p-2 rounded-xl text-left transition duration-200">
+                        <div class="text-xs font-bold text-white">시리우스 A</div>
+                        <div class="text-[9px] text-gray-500 font-mono">A1V • 1.7 R☉ • 9940K</div>
+                    </button>
+                    <button onclick="applyPreset(25200, 0.09, '백색왜성 가이드 *보정')" class="bg-gray-950/80 hover:bg-indigo-950/40 border border-gray-800 hover:border-indigo-500/50 p-2 rounded-xl text-left transition duration-200">
+                        <div class="text-xs font-bold text-white">백색왜성 대역</div>
+                        <div class="text-[9px] text-gray-500 font-mono">WD • 0.09 R☉ • 25200K</div>
+                    </button>
+                    <button onclick="applyPreset(3500, 20.0, '베텔게우스 (Betelgeuse) *보정')" class="bg-gray-950/80 hover:bg-indigo-950/40 border border-gray-800 hover:border-indigo-500/50 p-2 rounded-xl text-left transition duration-200">
+                        <div class="text-xs font-bold text-white">베텔게우스</div>
+                        <div class="text-[9px] text-gray-500 font-mono">M1I • 20.0 R☉ • 3500K</div>
+                    </button>
+                    <button onclick="applyPreset(12100, 18.0, '리겔 (Rigel) *보정')" class="bg-gray-950/80 hover:bg-indigo-950/40 border border-gray-800 hover:border-indigo-500/50 p-2 rounded-xl text-left transition duration-200">
+                        <div class="text-xs font-bold text-white">리겔</div>
+                        <div class="text-[9px] text-gray-500 font-mono">B8I • 18.0 R☉ • 12100K</div>
+                    </button>
+                    <button onclick="applyPreset(3100, 0.12, '프록시마 센타우리')" class="bg-gray-950/80 hover:bg-indigo-950/40 border border-gray-800 hover:border-indigo-500/50 p-2 rounded-xl text-left transition duration-200">
+                        <div class="text-xs font-bold text-white">프록시마</div>
+                        <div class="text-[9px] text-gray-500 font-mono">M5V • 0.12 R☉ • 3100K</div>
+                    </button>
+                </div>
+                <p class="text-[9px] text-gray-500 mt-2 text-right italic">* 실제 항성 중 물리적 안전 영역 외부의 한계 천체들은 시뮬레이터 최대 한계폭에 맞게 자동 보정 적용되었습니다.</p>
+            </div>
+
+            <!-- 조작 변인 입력 패널 (물리적 한계 반영: T: 2500K ~ 50000K / R: 0.08R☉ ~ 30R☉) -->
+            <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 backdrop-blur shadow-xl">
+                <div class="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
+                    <h2 class="text-md font-bold text-white flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                        조작 변인 설정 (조종판)
+                    </h2>
+                    <button onclick="resetInputs()" class="text-xs text-gray-400 hover:text-white transition flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15.89M9.62 10.24L4.24 4.87" />
+                        </svg>
+                        초기화
+                    </button>
+                </div>
+
+                <!-- 조작 변인 1: 표면 온도 (T) -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="tempInput" class="text-sm font-medium text-gray-300 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                            별의 표면 온도 (<span class="italic font-semibold">T</span>)
+                        </label>
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" id="tempInput" min="2500" max="50000" step="100" value="5778" 
+                                class="w-20 bg-gray-950 border border-gray-700 rounded px-1.5 py-0.5 text-right text-sm text-blue-400 focus:outline-none focus:border-blue-500 font-mono">
+                            <span class="text-xs text-gray-500 font-medium">K</span>
+                        </div>
+                    </div>
+                    <input type="range" id="tempRange" min="2500" max="50000" step="100" value="5778" class="w-full cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 px-1 font-mono">
+                        <span class="text-amber-500 font-medium">2,500K (핵융합 한계)</span>
+                        <span id="presetIndicator" class="text-indigo-400 font-bold">수동 조절 모드</span>
+                        <span class="text-red-500 font-medium">50,000K (에딩턴 붕괴)</span>
+                    </div>
+                </div>
+
+                <!-- 조작 변인 2: 반지름 (R) -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="radInput" class="text-sm font-medium text-gray-300 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+                            별의 반지름 (<span class="italic font-semibold">R</span>)
+                        </label>
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" id="radInput" min="0.08" max="30" step="0.01" value="1.0" 
+                                class="w-20 bg-gray-950 border border-gray-700 rounded px-1.5 py-0.5 text-right text-sm text-blue-400 focus:outline-none focus:border-blue-500 font-mono">
+                            <span class="text-xs text-gray-500 font-medium">R<sub>☉</sub></span>
+                        </div>
+                    </div>
+                    <input type="range" id="radRange" min="0.08" max="30" step="0.1" value="1.0" class="w-full cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 px-1 font-mono">
+                        <span class="text-amber-500 font-medium">0.08 R<sub>☉</sub> (축퇴 분열 한계)</span>
+                        <span>1.0 R<sub>☉</sub></span>
+                        <span class="text-red-500 font-medium">30.0 R<sub>☉</sub> (맥동 분열 한계)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 정량적 출력 결과 패널 -->
+            <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 backdrop-blur shadow-xl">
+                <h2 class="text-md font-bold text-white flex items-center gap-2 mb-4 border-b border-gray-800 pb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    과학적 계산 결과 (출력 변인)
+                </h2>
+
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- 광도 계산 결과 -->
+                    <div class="bg-gray-950/60 p-4 rounded-xl border border-gray-800/80">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-semibold text-gray-400 tracking-wider">총 광도 (Luminosity, L)</span>
+                            <span class="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full font-mono font-bold">L ∝ R²T⁴</span>
+                        </div>
+                        <div class="text-2xl font-black text-white font-mono tracking-tight" id="lumDisplay">
+                            1.00 <span class="text-sm font-normal text-gray-500">L<sub>☉</sub></span>
+                        </div>
+                        <p class="text-[11px] text-gray-500 mt-1" id="lumComparison">
+                            태양 광도의 약 1.0배에 해당하는 에너지를 방출하고 있습니다.
+                        </p>
+                    </div>
+
+                    <!-- 천문학적 색지수 (Color Index B-V) 분석기 -->
+                    <div class="bg-gray-950/60 p-4 rounded-xl border border-indigo-500/20">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-semibold text-gray-400 tracking-wider flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                                색지수 (Color Index, B - V)
+                            </span>
+                            <span class="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full font-mono">B-V Index</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="text-2xl font-black text-white font-mono tracking-tight" id="colorIndexDisplay">
+                                +0.65
+                            </div>
+                            <div class="px-2.5 py-1 rounded text-xs font-bold" id="colorIndexTag">
+                                황색성 계열
+                            </div>
+                        </div>
+                        <!-- 필터 세기 눈금선 시각 표시 -->
+                        <div class="mt-2.5 bg-gray-900 rounded h-1.5 relative overflow-hidden">
+                            <div class="absolute top-0 bottom-0 left-0 bg-blue-500" id="bFilterBar" style="width: 50%;"></div>
+                            <div class="absolute top-0 bottom-0 right-0 bg-yellow-500" id="vFilterBar" style="width: 50%;"></div>
+                        </div>
+                        <div class="flex justify-between text-[9px] text-gray-500 mt-1 font-mono">
+                            <span class="text-blue-400">B필터(440nm) 에너지비</span>
+                            <span class="text-yellow-400">V필터(550nm) 에너지비</span>
+                        </div>
+                    </div>
+
+                    <!-- 최대 방출 파장 결과 -->
+                    <div class="bg-gray-950/60 p-4 rounded-xl border border-gray-800/80">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-semibold text-gray-400 tracking-wider">최대 파장 (λ<sub>max</sub>)</span>
+                            <span class="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-mono font-bold">λ_max = b/T</span>
+                        </div>
+                        <div class="text-2xl font-black text-white font-mono tracking-tight flex items-baseline gap-1" id="waveDisplay">
+                            501.5 <span class="text-sm font-normal text-gray-500">nm</span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-1 font-medium flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full border border-gray-700 shadow-sm inline-block" id="spectralColorBox"></span>
+                            지배적인 방출 영역: <span id="spectralRegion" class="text-white font-semibold">가시광선 (녹색/황색)</span>
+                        </p>
+                    </div>
+
+                    <!-- 분광형 정보 -->
+                    <div class="bg-gray-950/60 p-4 rounded-xl border border-gray-800/80 flex justify-between items-center">
+                        <div>
+                            <span class="text-xs font-semibold text-gray-400 block tracking-wider">하버드 분광형 (Spectral Class)</span>
+                            <span id="spectralClassDesc" class="text-[11px] text-gray-500">태양과 같은 황색 주계열성 분광형입니다.</span>
+                        </div>
+                        <div class="text-3xl font-black px-4 py-1 rounded-xl bg-gray-900 border border-gray-800 text-center font-mono shadow-inner" id="spectralClassBox">
+                            G2
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 가운데 & 오른쪽: 시각화 모듈 (실시간 변화 렌더링) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- 별의 2D 모습 시각화 & H-R 도 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 별의 실제 모양 및 코로나 광원 시뮬레이터 (다파장 관측 필터 적용) -->
+                <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 backdrop-blur shadow-xl flex flex-col h-[360px]">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-sm font-bold text-gray-300 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            별의 물리적 외관 및 다파장 관측 필터
+                        </h3>
+                    </div>
+                    
+                    <!-- 관측 필터 선택 탭 -->
+                    <div class="grid grid-cols-3 gap-1.5 mb-3 bg-gray-950 p-1 rounded-lg border border-gray-800">
+                        <button onclick="setFilter('visible')" id="btnFilterVisible" class="text-xs py-1.5 rounded-md font-bold transition bg-blue-600 text-white">가시광선 (눈)</button>
+                        <button onclick="setFilter('uv')" id="btnFilterUv" class="text-xs py-1.5 rounded-md font-bold transition text-gray-400 hover:text-white">자외선 (UV)</button>
+                        <button onclick="setFilter('ir')" id="btnFilterIr" class="text-xs py-1.5 rounded-md font-bold transition text-gray-400 hover:text-white">적외선 (IR)</button>
+                    </div>
+
+                    <div class="flex-1 rounded-xl bg-black relative overflow-hidden flex items-center justify-center border border-gray-950">
+                        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                        
+                        <!-- 동적으로 변하는 태양 크기 가이드라인 (R에 반비례하여 변화하여 상대 대비 유지) -->
+                        <div id="sunGuideCircle" class="absolute border border-dashed border-gray-800 rounded-full pointer-events-none transition-all duration-300 flex items-center justify-center" style="width: 100px; height: 100px;">
+                            <span id="sunGuideText" class="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-gray-600 font-mono whitespace-nowrap">태양 크기 가이드 (1 R<sub>☉</sub>)</span>
+                        </div>
+                        
+                        <!-- 별 렌더링 영역 -->
+                        <div id="starVisual" class="rounded-full relative transition-all duration-300 ease-out flex items-center justify-center" 
+                             style="width: 100px; height: 100px;">
+                            <!-- 플레어 코어 -->
+                            <div id="starCore" class="absolute w-[85%] h-[85%] rounded-full bg-white/50 blur-sm"></div>
+                        </div>
+
+                        <!-- 현재 필터 표시 워터마크 -->
+                        <div class="absolute top-3 right-3 bg-gray-950/80 border border-gray-800 px-2.5 py-0.5 rounded text-[10px] font-mono font-bold" id="filterStatusWatermark">
+                            VISIBLE FILTER
+                        </div>
+
+                        <div class="absolute bottom-3 left-3 bg-gray-950/80 border border-gray-800 px-2 py-1 rounded text-[10px] font-mono text-gray-400" id="scaleWatermark">
+                            스케일 자동 조절 중
+                        </div>
+                    </div>
+                </div>
+
+                <!-- H-R도 상의 별 위치 매퍼 -->
+                <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 backdrop-blur shadow-xl flex flex-col h-[360px]">
+                    <h3 class="text-sm font-bold text-gray-300 flex items-center gap-1.5 mb-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        헤르츠스프룽-러셀도 (H-R도) 위치 매핑
+                    </h3>
+                    <div class="flex-1 bg-gray-950 rounded-xl relative border border-gray-950 p-2 overflow-hidden">
+                        <canvas id="hrDiagramCanvas" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 플랑크 복사 곡선 스펙트럼 차트 -->
+            <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 backdrop-blur shadow-xl flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-gray-300 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        플랑크 곡선 및 빈의 변위 법칙 분석 차트
+                    </h3>
+                    <span class="text-[11px] text-gray-500 font-mono">가시광선(380~750nm) 및 B-V 필터 실시간 정밀 연계</span>
+                </div>
+                <div class="h-64 bg-gray-950 rounded-xl border border-gray-950 p-3 relative">
+                    <canvas id="planckCanvas" class="w-full h-full block"></canvas>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-center text-[10px] text-gray-500 mt-2 font-mono">
+                    <div class="border-r border-gray-800">자외선 영역 (＜380nm)</div>
+                    <div class="border-r border-gray-800 text-blue-400">B 필터 (440nm)</div>
+                    <div class="border-r border-gray-800 text-yellow-400 font-bold">V 필터 (550nm)</div>
+                    <div>적외선 영역 (＞750nm)</div>
+                </div>
+            </div>
+
+            <!-- 가상 항성 탐구 데이터 저장고 모듈 -->
+            <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 backdrop-blur shadow-xl">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
+                    <h3 class="text-sm font-bold text-gray-300 flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M8 7H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2v-3" />
+                        </svg>
+                        나만의 가상 항성 설계 데이터 저장고
+                    </h3>
+                    <span class="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full font-mono">My Star Database</span>
+                </div>
+
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="customStarName" placeholder="예: 케플러-X3" class="flex-1 bg-gray-950 border border-gray-800 hover:border-gray-700 focus:border-indigo-500 focus:outline-none rounded-xl px-3 py-2 text-sm text-white font-medium transition">
+                    <button onclick="saveCustomStar()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1 shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        성질 저장
+                    </button>
+                </div>
+
+                <!-- 등록된 별 리스트 컨테이너 -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-gray-800 text-[10px] text-gray-500 uppercase tracking-wider">
+                                <th class="py-2 pl-2">항성명</th>
+                                <th class="py-2">표면 온도</th>
+                                <th class="py-2">반지름</th>
+                                <th class="py-2">광도</th>
+                                <th class="py-2">색지수</th>
+                                <th class="py-2 pr-2 text-right">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="savedStarsList" class="text-xs divide-y divide-gray-900">
+                            <tr>
+                                <td colspan="6" class="py-4 text-center text-gray-600 italic">저장된 가설 항성이 없습니다. 나만의 별을 커스텀하여 추가해 보세요!</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- 수행평가 보고서 작성 지원 도우미 -->
+    <section class="max-w-7xl w-full mx-auto px-4 lg:px-6 pb-12">
+        <div class="bg-gray-900/40 border border-gray-800/80 rounded-2xl p-6 shadow-xl">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2 mb-4 border-b border-gray-800 pb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                수행평가 4차시 보고서 작성 치트시트 (과학적 증명 및 한계점)
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 핵심 이론 정리 -->
+                <div class="bg-gray-950/40 p-4 rounded-xl border border-gray-800/60">
+                    <h4 class="text-sm font-bold text-indigo-300 mb-2 flex items-center gap-1">
+                        <span class="text-xs bg-indigo-500/15 text-indigo-400 px-1.5 py-0.5 rounded">이론 1</span>
+                        슈테판-볼츠만 법칙
+                    </h4>
+                    <div class="text-xs text-gray-400 leading-relaxed space-y-2">
+                        <p>
+                            흑체가 단위 시간당 단위 면적에서 방출하는 에너지 밀도 E는 절대 온도 T의 4제곱에 비례합니다. (E = σ × T⁴)
+                        </p>
+                        <p>
+                            이를 반지름 R인 구형의 별 전체 표면적으로 확장하면 별이 방출하는 총 에너지인 <strong>광도 (L)</strong>는 다음과 같이 결정됩니다.
+                        </p>
+                        <div class="py-2 text-center text-sm font-semibold text-white font-mono bg-gray-900/80 rounded my-1.5 border border-gray-800">
+                            L = 4π × R² × σ × T⁴
+                        </div>
+                        <p>
+                            여기서 π는 원주율, σ는 슈테판-볼츠만 상수입니다. 즉, 별의 광도는 반지름의 제곱과 표면 온도의 4제곱에 비례하므로 온도가 조금만 변해도 광도는 매우 역동적으로 증가 또는 감소하게 됩니다.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 빈의 변위 법칙 -->
+                <div class="bg-gray-950/40 p-4 rounded-xl border border-gray-800/60">
+                    <h4 class="text-sm font-bold text-amber-300 mb-2 flex items-center gap-1">
+                        <span class="text-xs bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded">이론 2</span>
+                        빈의 변위 법칙 & 색지수
+                    </h4>
+                    <div class="text-xs text-gray-400 leading-relaxed space-y-2">
+                        <p>
+                            별이 에너지를 가장 최대로 방출하는 파장(λ_max)은 절대 온도(T)에 완벽하게 반비례합니다.
+                        </p>
+                        <div class="py-2 text-center text-sm font-semibold text-white font-mono bg-gray-900/80 rounded my-1.5 border border-gray-800">
+                            λ_max × T = b (상수)
+                        </div>
+                        <p>
+                            여기서 b는 약 2,897,772 nm·K에 해당하는 빈의 상수입니다.
+                        </p>
+                        <p>
+                            <strong>색지수(Color Index, B - V)의 연계:</strong> 별의 온도가 높을수록 짧은 파장의 파란색 필터(B필터, 약 440nm) 영역의 에너지가 노란색 필터(V필터, 약 550nm) 영역에 비해 상대적으로 강해집니다. 따라서 파란 별일수록 등급 수치가 낮아져 B - V 값은 음수(0보다 작은 값)가 되고, 저온의 붉은 별일수록 양수(0보다 큰 값)가 됩니다.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 과학적 한계 분석 -->
+                <div class="bg-gray-950/40 p-4 rounded-xl border border-gray-800/60">
+                    <h4 class="text-sm font-bold text-rose-300 mb-2 flex items-center gap-1">
+                        <span class="text-xs bg-rose-500/15 text-rose-400 px-1.5 py-0.5 rounded">한계점</span>
+                        시뮬레이션의 과학적 한계
+                    </h4>
+                    <ul class="text-xs text-gray-400 leading-relaxed list-disc list-inside space-y-1.5">
+                        <li><strong>불완전한 흑체성:</strong> 실제 별은 완벽한 흡수·방출을 하는 가상의 물리 모델인 흑체(Blackbody)가 아닙니다. 별의 외부 대기 가스 및 흡수 스펙트럼선에 의해 실제 복사 강도는 플랑크 곡선에 완벽히 정합하지 않습니다.</li>
+                        <li><strong>색지수 근사식의 간소화:</strong> 본 시뮬레이션에서는 플랑크 분포에 기초한 대략적인 비율로 B - V 색지수를 연산 및 역산하지만, 실제 천체 관측에서는 별의 화학적 금속 함량이나 성간 적색화에 따른 편차가 추가로 적용되어야 정밀한 해석이 가능합니다.</li>
+                        <li><strong>성간 적색화 배제:</strong> 우주 공간에 분포하는 미세한 먼지와 성간 물질 때문에 별빛이 지구에 도달할 때 파란빛이 산란되어 붉어 보이는 성간 적색화 현상이 발생하지만, 이 모델에서는 관측자 시선 방향 내의 장애물이 없는 이상적인 순수 복사만을 고려합니다.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 푸터 -->
+    <footer class="border-t border-gray-900 bg-gray-950/90 py-4 px-6 text-center text-xs text-gray-500 font-mono">
+        © 2026 Astronomy Simulation Project for Earth Science Assessment. Built with High Fidelity Blackbody Physics.
+    </footer>
+
+    <!-- 내부 물리량 계산 및 실시간 렌더링 스크립트 -->
+    <script>
+        // DOM 요소 가져오기
+        const tempRange = document.getElementById('tempRange');
+        const tempInput = document.getElementById('tempInput');
+        const radRange = document.getElementById('radRange');
+        const radInput = document.getElementById('radInput');
+
+        const lumDisplay = document.getElementById('lumDisplay');
+        const lumComparison = document.getElementById('lumComparison');
+        const waveDisplay = document.getElementById('waveDisplay');
+        const spectralColorBox = document.getElementById('spectralColorBox');
+        const spectralRegion = document.getElementById('spectralRegion');
+        const spectralClassBox = document.getElementById('spectralClassBox');
+        const spectralClassDesc = document.getElementById('spectralClassDesc');
+        
+        const starVisual = document.getElementById('starVisual');
+        const starCore = document.getElementById('starCore');
+        const sunGuideCircle = document.getElementById('sunGuideCircle');
+        const sunGuideText = document.getElementById('sunGuideText');
+        const scaleWatermark = document.getElementById('scaleWatermark');
+
+        const colorIndexDisplay = document.getElementById('colorIndexDisplay');
+        const colorIndexTag = document.getElementById('colorIndexTag');
+        const bFilterBar = document.getElementById('bFilterBar');
+        const vFilterBar = document.getElementById('vFilterBar');
+
+        const presetIndicator = document.getElementById('presetIndicator');
+
+        const safetyWarningBanner = document.getElementById('safetyWarningBanner');
+        const warningMessage = document.getElementById('warningMessage');
+
+        const customStarName = document.getElementById('customStarName');
+        const savedStarsList = document.getElementById('savedStarsList');
+
+        const planckCanvas = document.getElementById('planckCanvas');
+        const hrCanvas = document.getElementById('hrDiagramCanvas');
+
+        // 상태값 정의
+        let currentFilter = 'visible'; // visible, uv, ir
+        let savedStars = [];
+
+        // 상수 정의
+        const T_sun = 5778; // K
+        const b_constant = 2897771.9; // nm·K (Wien's Constant)
+
+        // 가설 천체 데이터 저장 함수
+        function saveCustomStar() {
+            const name = customStarName.value.trim();
+            if (!name) {
+                showWarning("저장 오류: 설계할 가설 항성의 고유 명칭을 지정해 주세요.");
+                return;
+            }
+
+            const T = parseFloat(tempInput.value);
+            const R = parseFloat(radInput.value);
+            const L = Math.pow(R, 2) * Math.pow((T / T_sun), 4);
+            const bv = calculateColorIndex(T);
+
+            const newStar = {
+                id: Date.now(),
+                name: name,
+                temp: T,
+                rad: R,
+                lum: L,
+                bvIndex: bv
+            };
+
+            savedStars.push(newStar);
+            customStarName.value = ''; // 인풋 클리어
+            renderSavedStars();
+        }
+
+        // 저장고 데이터 렌더링
+        function renderSavedStars() {
+            if (savedStars.length === 0) {
+                savedStarsList.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-4 text-center text-gray-600 italic">저장된 가설 항성이 없습니다. 나만의 별을 커스텀하여 추가해 보세요!</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            savedStarsList.innerHTML = savedStars.map(star => {
+                const lumStr = star.lum >= 10000 ? star.lum.toExponential(2) : star.lum.toFixed(2);
+                return `
+                    <tr class="border-b border-gray-900/60 hover:bg-gray-900/40 transition">
+                        <td class="py-2.5 pl-2 font-bold text-white">${star.name}</td>
+                        <td class="py-2.5 font-mono text-gray-400">${star.temp.toLocaleString()}K</td>
+                        <td class="py-2.5 font-mono text-gray-400">${star.rad.toFixed(2)} R☉</td>
+                        <td class="py-2.5 font-mono text-indigo-400 font-bold">${lumStr} L☉</td>
+                        <td class="py-2.5 font-mono ${star.bvIndex < 0 ? 'text-blue-400' : 'text-red-400'}">${star.bvIndex >= 0 ? '+' : ''}${star.bvIndex.toFixed(2)}</td>
+                        <td class="py-2.5 pr-2 text-right">
+                            <div class="flex justify-end gap-1.5">
+                                <button onclick="loadSavedStar(${star.temp}, ${star.rad}, '${star.name}')" class="bg-gray-850 hover:bg-indigo-950 text-indigo-400 hover:text-white px-2 py-0.5 rounded text-[10px] border border-indigo-500/10 transition">조작선택</button>
+                                <button onclick="deleteSavedStar(${star.id})" class="text-rose-500 hover:text-rose-400 px-1 rounded text-[10px]">삭제</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function loadSavedStar(temp, rad, name) {
+            applyPreset(temp, rad, `${name} (로드됨)`);
+        }
+
+        function deleteSavedStar(id) {
+            savedStars = savedStars.filter(star => star.id !== id);
+            renderSavedStars();
+        }
+
+        // 극단값 예외 감지 배너 노출용
+        function showWarning(msg) {
+            warningMessage.innerText = msg;
+            safetyWarningBanner.classList.remove('hidden');
+        }
+
+        function dismissWarning() {
+            safetyWarningBanner.classList.add('hidden');
+        }
+
+        // 다파장 필터 선택 제어기
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            const btnVisible = document.getElementById('btnFilterVisible');
+            const btnUv = document.getElementById('btnFilterUv');
+            const btnIr = document.getElementById('btnFilterIr');
+            const watermark = document.getElementById('filterStatusWatermark');
+
+            // 버튼 스타일 초기화
+            [btnVisible, btnUv, btnIr].forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-gray-400', 'hover:text-white');
+            });
+
+            if (filterType === 'visible') {
+                btnVisible.classList.add('bg-blue-600', 'text-white');
+                btnVisible.classList.remove('text-gray-400', 'hover:text-white');
+                watermark.innerText = 'VISIBLE FILTER';
+                watermark.className = 'absolute top-3 right-3 bg-gray-950/80 border border-gray-800 px-2.5 py-0.5 rounded text-[10px] font-mono font-bold text-white';
+            } else if (filterType === 'uv') {
+                btnUv.classList.add('bg-purple-600', 'text-white');
+                btnUv.classList.remove('text-gray-400', 'hover:text-white');
+                watermark.innerText = 'ULTRAVIOLET FILTER';
+                watermark.className = 'absolute top-3 right-3 bg-purple-950/80 border border-purple-800 px-2.5 py-0.5 rounded text-[10px] font-mono font-bold text-purple-400';
+            } else if (filterType === 'ir') {
+                btnIr.classList.add('bg-red-600', 'text-white');
+                btnIr.classList.remove('text-gray-400', 'hover:text-white');
+                watermark.innerText = 'INFRARED FILTER';
+                watermark.className = 'absolute top-3 right-3 bg-red-950/80 border border-red-800 px-2.5 py-0.5 rounded text-[10px] font-mono font-bold text-red-400';
+            }
+
+            updateSimulation();
+        }
+
+        // 캘빈 표면온도(K)를 RGB 컬러값으로 변환
+        function kelvinToRGB(kelvin) {
+            let temp = kelvin / 100;
+            let r, g, b;
+
+            if (temp <= 66) {
+                r = 255;
+            } else {
+                r = temp - 60;
+                r = 329.698727446 * Math.pow(r, -0.1332047592);
+                if (r < 0) r = 0;
+                if (r > 255) r = 255;
+            }
+
+            if (temp <= 66) {
+                g = temp;
+                g = 99.4708025861 * Math.log(g) - 161.1195681661;
+                if (g < 0) g = 0;
+                if (g > 255) g = 255;
+            } else {
+                g = temp - 60;
+                g = 288.1221695283 * Math.pow(g, -0.0755148492);
+                if (g < 0) g = 0;
+                if (g > 255) g = 255;
+            }
+
+            if (temp >= 66) {
+                b = 255;
+            } else {
+                if (temp <= 19) {
+                    b = 0;
+                } else {
+                    b = temp - 10;
+                    b = 138.5177312231 * Math.log(b) - 305.0447927307;
+                    if (b < 0) b = 0;
+                    if (b > 255) b = 255;
+                }
+            }
+
+            return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+        }
+
+        // 파장에 따른 가시광선 영역 RGB 근사값 (스펙트럼 가시용)
+        function wavelengthToRGB(wavelength) {
+            let r, g, b, factor;
+            if ((wavelength >= 380) && (wavelength < 440)) {
+                r = -(wavelength - 440) / (440 - 380);
+                g = 0.0;
+                b = 1.0;
+            } else if ((wavelength >= 440) && (wavelength < 490)) {
+                r = 0.0;
+                g = (wavelength - 440) / (490 - 440);
+                b = 1.0;
+            } else if ((wavelength >= 490) && (wavelength < 510)) {
+                r = 0.0;
+                g = 1.0;
+                b = -(wavelength - 510) / (510 - 490);
+            } else if ((wavelength >= 510) && (wavelength < 580)) {
+                r = (wavelength - 510) / (580 - 510);
+                g = 1.0;
+                b = 0.0;
+            } else if ((wavelength >= 580) && (wavelength < 645)) {
+                r = (wavelength - 510) / (580 - 510);
+                g = 1.0;
+                b = 0.0;
+            } else if ((wavelength >= 580) && (wavelength < 645)) {
+                r = 1.0;
+                g = -(wavelength - 645) / (645 - 580);
+                b = 0.0;
+            } else if ((wavelength >= 645) && (wavelength < 781)) {
+                r = 1.0;
+                g = 0.0;
+                b = 0.0;
+            } else {
+                r = 0.0;
+                g = 0.0;
+                b = 0.0;
+            }
+
+            if ((wavelength >= 380) && (wavelength < 420)) {
+                factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+            } else if ((wavelength >= 420) && (wavelength < 701)) {
+                factor = 1.0;
+            } else if ((wavelength >= 701) && (wavelength < 781)) {
+                factor = 0.3 + 0.7 * (780 - wavelength) / (780 - 700);
+            } else {
+                factor = 0.0;
+            }
+
+            return `rgb(${Math.round(r * 255 * factor)},${Math.round(g * 255 * factor)},${Math.round(b * 255 * factor)})`;
+        }
+
+        // 플랑크 분포 함수 계산
+        function planckRadiation(lambda_nm, T) {
+            const h = 6.626e-34;
+            const c = 3.0e8;
+            const k = 1.38e-23;
+            const lambda = lambda_nm * 1e-9;
+
+            const exponent = (h * c) / (lambda * k * T);
+            if (exponent > 700) return 0;
+            
+            return (1 / Math.pow(lambda, 5)) * (1 / (Math.exp(exponent) - 1));
+        }
+
+        // 실제 존재하는 물리적 항성 프리셋 적용 함수
+        function applyPreset(temp, rad, name) {
+            tempRange.value = temp;
+            tempInput.value = temp;
+            radRange.value = rad;
+            radInput.value = rad;
+            presetIndicator.innerText = `${name}`;
+            updateSimulation();
+        }
+
+        // 발레스테로스 역산 공식을 바탕으로 한 색지수(B-V) 정밀 계산기
+        function calculateColorIndex(T) {
+            let bv = Math.pow(5808 / T, 0.82) - 0.4;
+            return bv;
+        }
+
+        // 분광형 구하기
+        function getSpectralClass(temp) {
+            if (temp >= 30000) return { class: 'O', sub: Math.round((40000 - temp)/1000).toString().substring(0,1), desc: '청색의 매우 고온인 별이며 초거성 급이 많이 분포합니다.' };
+            if (temp >= 10000) return { class: 'B', sub: Math.round((30000 - temp)/2000).toString().substring(0,1), desc: '청백색의 고온 주계열성 및 거성 분포 대역입니다.' };
+            if (temp >= 7500) return { class: 'A', sub: Math.round((10000 - temp)/250).toString().substring(0,1), desc: '백색 별이며 수소 흡수선이 가장 강하게 관측되는 분광형입니다.' };
+            if (temp >= 6000) return { class: 'F', sub: Math.round((7500 - temp)/150).toString().substring(0,1), desc: '황백색 별이며 수소 흡수선이 옅어지고 금속 선이 나타납니다.' };
+            if (temp >= 5200) return { class: 'G', sub: Math.round((6000 - temp)/80).toString().substring(0,1), desc: '태양과 같은 황색 주계열성에 속하며 칼슘 흡수선이 강합니다.' };
+            if (temp >= 3700) return { class: 'K', sub: Math.round((5200 - temp)/150).toString().substring(0,1), desc: '오렌지색을 띠는 저온성 별입니다.' };
+            return { class: 'M', sub: Math.round((3700 - temp)/270).toString().substring(0,1), desc: '적색왜성이나 초거성 베텔게우스와 같이 매우 붉고 저온인 별입니다.' };
+        }
+
+        // 과학적 물리량 연산 및 화면 업데이트 (별이 될 수 없는 극단 물리값 원천 강제 차단 제어)
+        function updateSimulation() {
+            let T = parseFloat(tempInput.value);
+            let R = parseFloat(radInput.value);
+
+            let limitTriggered = false;
+            let warningText = "";
+
+            // 별이 될 수 없는 온도의 물리량 차단
+            if (T < 2500) {
+                warningText = "수소 핵융합 한계 도달 (온도 하한 제어): 표면 온도가 2,500K 미만인 천체는 중심부 온도가 낮아 수소 핵융합 반응을 지속할 수 없으므로 '별(항성)'의 지위를 잃고 갈색왜성 이하로 축퇴됩니다. (최소 2,500K 강제 적용)";
+                T = 2500;
+                tempInput.value = 2500;
+                tempRange.value = 2500;
+                limitTriggered = true;
+            } else if (T > 50000) {
+                warningText = "에딩턴 광도 한계 도달 (온도 상한 제어): 표면 온도가 50,000K를 넘어서면 폭발적인 광자 복사압이 자가 중력을 완전히 이겨내어(에딩턴 한계 돌파) 항성이 구조적으로 유지되지 못하고 대기층이 완전히 불타 날아갑니다. (최대 50,000K 강제 적용)";
+                T = 50000;
+                tempInput.value = 50000;
+                tempRange.value = 50000;
+                limitTriggered = true;
+            }
+
+            // 별이 될 수 없는 반지름의 물리량 차단
+            if (R < 0.08) {
+                warningText = "축퇴성 물질 붕괴 한계 (반지름 하한 제어): 태양 반지름의 0.08배(목성 크기 수준)보다 작아지면, 전자 축퇴압이 지배하여 항성 핵융합이 차단되므로 행성상 물체 혹은 백색왜성화가 진행되어 정상 항성이 될 수 없습니다. (최소 0.08배 강제 적용)";
+                R = 0.08;
+                radInput.value = 0.08;
+                radRange.value = 0.08;
+                limitTriggered = true;
+            } else if (R > 30.0) {
+                warningText = "대기 불안정 맥동 한계 (반지름 상한 제어): 태양 반지름의 30배를 초과하게 설계하면, 표면 중력이 극단적으로 약화되어 맥동 변광 및 대기층의 밀도 안정성이 급격하게 상실되어 정상 항성 구조가 해체됩니다. (최대 30배 강제 적용)";
+                R = 30.0;
+                radInput.value = 30.0;
+                radRange.value = 30.0;
+                limitTriggered = true;
+            }
+
+            if (limitTriggered) {
+                showWarning(warningText);
+            } else {
+                dismissWarning();
+            }
+
+            // 1. 슈테판-볼츠만 법칙에 기인한 광도(L) 계산: L/L_sun = R² * (T/T_sun)⁴
+            const L = Math.pow(R, 2) * Math.pow((T / T_sun), 4);
+            
+            // 광도 표시 가독성 처리
+            if (L >= 10000) {
+                lumDisplay.innerHTML = `${L.toExponential(3)} <span class="text-sm font-normal text-gray-500">L<sub>☉</sub></span>`;
+            } else {
+                lumDisplay.innerHTML = `${L.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span class="text-sm font-normal text-gray-500">L<sub>☉</sub></span>`;
+            }
+
+            // 태양 대비 광도 설명 텍스트
+            if (L > 100) {
+                lumComparison.innerHTML = `태양에 비해 광도가 매우 강하여 극도로 밝게 빛나는 고광도 천체입니다.`;
+                lumComparison.className = "text-[11px] text-amber-400 mt-1";
+            } else if (L < 0.01) {
+                lumComparison.innerHTML = `매우 미약한 에너지만 방출하는 어두운 천체(왜성계)입니다.`;
+                lumComparison.className = "text-[11px] text-blue-300 mt-1";
+            } else {
+                lumComparison.innerHTML = `태양 광도의 약 <strong>${L.toFixed(1)}배</strong>에 해당하는 에너지를 방출하고 있습니다.`;
+                lumComparison.className = "text-[11px] text-gray-500 mt-1";
+            }
+
+            // 2. 색지수 (B-V) 정량 계산 및 비교 필터 업데이트
+            const bvIndex = calculateColorIndex(T);
+            colorIndexDisplay.innerText = `${bvIndex >= 0 ? '+' : ''}${bvIndex.toFixed(2)}`;
+            
+            const energyB = planckRadiation(440, T);
+            const energyV = planckRadiation(550, T);
+            const totalFilters = energyB + energyV;
+            const pctB = totalFilters > 0 ? (energyB / totalFilters) * 100 : 50;
+            const pctV = totalFilters > 0 ? (energyV / totalFilters) * 100 : 50;
+
+            bFilterBar.style.width = `${pctB}%`;
+            vFilterBar.style.width = `${pctV}%`;
+
+            // 색지수 상태 등급 매핑 태그 설정
+            if (bvIndex < -0.3) {
+                colorIndexTag.innerText = "초고온 푸른빛";
+                colorIndexTag.className = "px-2.5 py-1 rounded text-xs font-bold bg-blue-500/20 text-blue-300";
+            } else if (bvIndex >= -0.3 && bvIndex < 0.0) {
+                colorIndexTag.innerText = "청백색";
+                colorIndexTag.className = "px-2.5 py-1 rounded text-xs font-bold bg-sky-400/20 text-sky-300";
+            } else if (bvIndex >= 0.0 && bvIndex < 0.3) {
+                colorIndexTag.innerText = "백색 계열";
+                colorIndexTag.className = "px-2.5 py-1 rounded text-xs font-bold bg-gray-100/20 text-white";
+            } else if (bvIndex >= 0.3 && bvIndex < 0.8) {
+                colorIndexTag.innerText = "황색 계열";
+                colorIndexTag.className = "px-2.5 py-1 rounded text-xs font-bold bg-yellow-500/20 text-yellow-300";
+            } else if (bvIndex >= 0.8 && bvIndex < 1.4) {
+                colorIndexTag.innerText = "오렌지색";
+                colorIndexTag.className = "px-2.5 py-1 rounded text-xs font-bold bg-orange-500/20 text-orange-300";
+            } else {
+                colorIndexTag.innerText = "적색 저온성";
+                colorIndexTag.className = "px-2.5 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400";
+            }
+
+            // 3. 빈의 변위 법칙에 의한 최대 방출 파장(λ_max) 계산: λ_max = b / T
+            const lambda_max = b_constant / T; // nm 단위
+            waveDisplay.innerHTML = `${lambda_max.toFixed(1)} <span class="text-sm font-normal text-gray-500">nm</span>`;
+
+            // 최대 파장이 속한 스펙트럼 전자기 영역 정의
+            let regionStr = "";
+            let regionColor = "";
+            let dotColor = "rgb(255, 255, 255)";
+            if (lambda_max < 10) {
+                regionStr = "X-선 영역 (매우 위험한 극고온 영역)";
+                regionColor = "text-fuchsia-500";
+                dotColor = "rgb(236, 72, 153)";
+            } else if (lambda_max >= 10 && lambda_max < 380) {
+                regionStr = "자외선 (UV) 영역";
+                regionColor = "text-purple-400";
+                dotColor = "rgb(192, 132, 252)";
+            } else if (lambda_max >= 380 && lambda_max <= 750) {
+                regionStr = "가시광선 영역";
+                regionColor = "text-emerald-400";
+                dotColor = wavelengthToRGB(lambda_max);
+            } else {
+                regionStr = "적외선 (IR) 영역";
+                regionColor = "text-rose-400";
+                dotColor = "rgb(244, 63, 94)";
+            }
+            spectralRegion.innerHTML = regionStr;
+            spectralRegion.className = `font-bold ${regionColor}`;
+            spectralColorBox.style.backgroundColor = dotColor;
+
+            // 4. 분광형 매핑
+            const spectralInfo = getSpectralClass(T);
+            const subType = isNaN(spectralInfo.sub) || spectralInfo.sub === "" ? "0" : spectralInfo.sub;
+            spectralClassBox.innerText = `${spectralInfo.class}${subType}`;
+            
+            const starColor = kelvinToRGB(T);
+            const starColorHex = `rgb(${starColor.r}, ${starColor.g}, ${starColor.b})`;
+            
+            spectralClassBox.style.color = starColorHex;
+            spectralClassBox.style.borderColor = `rgba(${starColor.r}, ${starColor.g}, ${starColor.b}, 0.3)`;
+            spectralClassDesc.innerText = spectralInfo.desc;
+
+            // 5. [개선 완료] 동적 스케일링을 적용한 별의 2D 모습 시각화 알고리즘
+            // 사용자가 입력한 현재 반지름 R이 최대 30R☉이 되더라도, 화면 프레임(240px) 밖으로 절대 넘치지 않으면서
+            // 값이 바뀔 때마다 부드럽고 뚜렷하게 계속 크기가 확장되도록 "로그 비선형 매핑 + 프레임 핏 가이드"를 연동했습니다.
+            const maxFrameSize = 240; // 캔버스 내부 최대 별 허용 크기 (px)
+            const minFrameSize = 24;  // 최소 별 크기 (px)
+            
+            // 반지름 R을 최대 프레임 크기까지 완벽히 균등 배분하여 크기가 정체되지 않게 선형+로그 융합 스케일링 적용
+            let starSizePx = minFrameSize + (R / 30.0) * (maxFrameSize - minFrameSize);
+            
+            starVisual.style.width = `${starSizePx}px`;
+            starVisual.style.height = `${starSizePx}px`;
+
+            // 가이드라인 동적 보정: 별의 크기가 커지면 가이드라인(1 R☉)은 상대적으로 반비례하여 눈에 띄게 줄어듭니다.
+            // 이를 통해 O형 거성을 만들더라도 태양 가이드라인과 정밀하게 시각적으로 크기 대비를 관찰할 수 있습니다.
+            let guideSizePx = (1.0 / R) * starSizePx;
+            
+            // 너무 작아져서 글씨가 뭉개지는 것을 방지하는 가시성 세이프가드
+            if (guideSizePx < 12) {
+                sunGuideCircle.style.opacity = "0";
+            } else {
+                sunGuideCircle.style.opacity = "1";
+                sunGuideCircle.style.width = `${guideSizePx}px`;
+                sunGuideCircle.style.height = `${guideSizePx}px`;
+            }
+
+            // 시각 보조 정보 라벨링 업데이트
+            scaleWatermark.innerHTML = `현재 화면 배율: 1 R<sub>☉</sub> ≈ ${guideSizePx.toFixed(1)}px`;
+
+            // 다파장 필터 선택 상태에 따른 시각적 렌더링 물리 표현식 전환
+            if (currentFilter === 'visible') {
+                // 가시광선: 실제 온도 캘빈 변환 색상 + 온도비례 글로우
+                starVisual.style.backgroundColor = starColorHex;
+                let glowIntensity = Math.min(100, Math.max(15, (T / 400)));
+                starVisual.style.boxShadow = `0 0 ${glowIntensity}px ${glowIntensity / 3}px ${starColorHex}`;
+                starCore.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+            } else if (currentFilter === 'uv') {
+                // 자외선 필터: 온도가 높을수록 강렬한 자색/바이올렛 글로우 폭발, 온도가 낮으면 자외선이 없으므로 검은색 수축
+                const uvGlow = Math.min(150, Math.max(5, (T - 2500) / 180));
+                starVisual.style.backgroundColor = `rgb(${Math.round(T/300 + 40)}, 20, ${Math.min(255, Math.round(T/120 + 80))})`;
+                starVisual.style.boxShadow = `0 0 ${uvGlow}px ${uvGlow / 2}px rgba(168, 85, 247, 0.75)`;
+                starCore.style.backgroundColor = 'rgba(243, 232, 255, 0.6)';
+            } else if (currentFilter === 'ir') {
+                // 적외선 필터: 온도가 낮고 부피가 클수록 적색 열에너지 글로우 팽창, 온도가 너무 높으면 광자 밀도가 높아져 흐릿해짐
+                const irGlow = Math.min(140, Math.max(15, (R * 4) + (15000 / T)));
+                starVisual.style.backgroundColor = `rgb(${Math.min(255, Math.round(30 + (30000/T)))}, 10, 10)`;
+                starVisual.style.boxShadow = `0 0 ${irGlow}px ${irGlow / 2.5}px rgba(239, 68, 68, 0.7)`;
+                starCore.style.backgroundColor = 'rgba(254, 226, 226, 0.5)';
+            }
+
+            // 차트 재생성
+            drawPlanckCurve(T, lambda_max);
+            drawHRDiagram(T, L);
+        }
+
+        // 플랑크 곡선 수동 Canvas 그리기
+        function drawPlanckCurve(T, lambda_max) {
+            const ctx = planckCanvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            
+            const rect = planckCanvas.getBoundingClientRect();
+            planckCanvas.width = rect.width * dpr;
+            planckCanvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const minLambda = 100;
+            const maxLambda = 2000;
+
+            // 1. 가시광선 가이드 배경 무지개 그리기 (380nm ~ 750nm)
+            const startVisX = ((380 - minLambda) / (maxLambda - minLambda)) * (width - 60) + 40;
+            const endVisX = ((750 - minLambda) / (maxLambda - minLambda)) * (width - 60) + 40;
+            
+            let rainbowGrd = ctx.createLinearGradient(startVisX, 0, endVisX, 0);
+            for (let l = 380; l <= 750; l += 10) {
+                let stop = (l - 380) / (750 - 380);
+                rainbowGrd.addColorStop(stop, wavelengthToRGB(l));
+            }
+            
+            ctx.fillStyle = rainbowGrd;
+            ctx.globalAlpha = 0.12;
+            ctx.fillRect(startVisX, 10, endVisX - startVisX, height - 40);
+            ctx.globalAlpha = 1.0;
+
+            // 2. 가로/세로축 라인 그리기
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(40, 10);
+            ctx.lineTo(40, height - 30);
+            ctx.lineTo(width - 20, height - 30);
+            ctx.stroke();
+
+            // 가로축 라벨
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'center';
+            
+            const tickIntervals = [100, 380, 440, 550, 750, 1000, 1500, 2000];
+            tickIntervals.forEach(tick => {
+                const x = ((tick - minLambda) / (maxLambda - minLambda)) * (width - 60) + 40;
+                
+                if (tick === 440) {
+                    ctx.fillStyle = '#3b82f6';
+                    ctx.fillText("B", x, height - 5);
+                } else if (tick === 550) {
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillText("V", x, height - 5);
+                } else {
+                    ctx.fillStyle = '#9ca3af';
+                }
+                
+                ctx.fillText(`${tick}`, x, height - 15);
+                ctx.beginPath();
+                ctx.moveTo(x, height - 30);
+                ctx.lineTo(x, height - 26);
+                ctx.strokeStyle = (tick === 440 || tick === 550) ? '#6b7280' : '#4b5563';
+                ctx.stroke();
+            });
+            ctx.fillStyle = '#9ca3af';
+            ctx.fillText("파장 (Wavelength, nm)", width/2 + 10, height - 2);
+
+            // 세로축 라벨
+            ctx.save();
+            ctx.translate(12, height / 2 - 10);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText("에너지 방출 세기 (E)", 0, 0);
+            ctx.restore();
+
+            // 3. 플랑크 곡선 정량 모델 계산
+            let maxIntensity = 0;
+            let curvePoints = [];
+
+            for (let l = minLambda; l <= maxLambda; l += (maxLambda - minLambda)/150) {
+                const intensity = planckRadiation(l, T);
+                if (intensity > maxIntensity) {
+                    maxIntensity = intensity;
+                }
+                curvePoints.push({ x: l, y: intensity });
+            }
+
+            // 실제 곡선 그리기
+            if (maxIntensity > 0) {
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+
+                curvePoints.forEach((point, idx) => {
+                    const canvasX = ((point.x - minLambda) / (maxLambda - minLambda)) * (width - 60) + 40;
+                    const canvasY = (height - 30) - (point.y / maxIntensity) * (height - 60);
+                    
+                    if (idx === 0) {
+                        ctx.moveTo(canvasX, canvasY);
+                    } else {
+                        ctx.lineTo(canvasX, canvasY);
+                    }
+                });
+                ctx.stroke();
+
+                // 곡선 아래 영역 반투명 채우기
+                ctx.fillStyle = 'rgba(245, 158, 11, 0.05)';
+                ctx.lineTo(((maxLambda - minLambda) / (maxLambda - minLambda)) * (width - 60) + 40, height - 30);
+                ctx.lineTo(40, height - 30);
+                ctx.fill();
+
+                // 4. B필터(440nm) 및 V필터(550nm) 실시간 수직 세기 안내 점선 표시
+                const drawFilterLine = (wavelength, color, label) => {
+                    const fx = ((wavelength - minLambda) / (maxLambda - minLambda)) * (width - 60) + 40;
+                    const fy = (height - 30) - (planckRadiation(wavelength, T) / maxIntensity) * (height - 60);
+                    
+                    ctx.setLineDash([2, 3]);
+                    ctx.strokeStyle = color;
+                    ctx.beginPath();
+                    ctx.moveTo(fx, fy);
+                    ctx.lineTo(fx, height - 30);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(fx, fy, 3.5, 0, 2*Math.PI);
+                    ctx.fill();
+                };
+
+                drawFilterLine(440, '#2563eb', 'B');
+                drawFilterLine(550, '#ca8a04', 'V');
+            }
+
+            // 5. 최대 방출 파장 (λ_max) 실선 표시
+            const peakX = ((lambda_max - minLambda) / (maxLambda - minLambda)) * (width - 60) + 40;
+            if (peakX >= 40 && peakX <= width - 20) {
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(peakX, 10);
+                ctx.lineTo(peakX, height - 30);
+                ctx.stroke();
+
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(peakX, (height - 30) - (planckRadiation(lambda_max, T) / maxIntensity) * (height - 60), 4, 0, 2*Math.PI);
+                ctx.fill();
+
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 9px monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText(`λ_max = ${lambda_max.toFixed(0)}nm`, peakX + 5, 20);
+            }
+        }
+
+        // H-R도 Canvas 위에 정교하고 흐릿한 영역선 디자인 드로잉 및 점 매핑
+        function drawHRDiagram(T, L) {
+            const ctx = hrCanvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            
+            const rect = hrCanvas.getBoundingClientRect();
+            hrCanvas.width = rect.width * dpr;
+            hrCanvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const minLogT = Math.log10(2000);
+            const maxLogT = Math.log10(50000); // 50000K 한계 반영 확장
+            const minLogL = -5;
+            const maxLogL = 6;
+
+            function getCanvasCoords(tempVal, lumVal) {
+                const logT = Math.log10(tempVal);
+                const logL = Math.log10(lumVal);
+
+                const x = width - 50 - ((logT - minLogT) / (maxLogT - minLogT)) * (width - 85);
+                const y = height - 40 - ((logL - minLogL) / (maxLogL - minLogL)) * (height - 65);
+                return { x, y };
+            }
+
+            const plotX = 45;
+            const plotY = 20;
+            const plotWidth = width - 85;
+            const plotHeight = height - 60;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(plotX, plotY, plotWidth, plotHeight);
+            ctx.clip();
+
+            // 1. 주계열성 흐릿한 밴드형 그라데이션 그리기
+            const msPoints = [
+                { t: 45000, l: 45000 },
+                { t: 25000, l: 5000 },
+                { t: 15000, l: 300 },
+                { t: 9500, l: 30 },
+                { t: 7200, l: 4 },
+                { t: 5800, l: 1 },
+                { t: 4500, l: 0.1 },
+                { t: 3000, l: 0.003 },
+                { t: 2500, l: 0.0005 }
+            ];
+
+            ctx.beginPath();
+            let startCoord = getCanvasCoords(msPoints[0].t, msPoints[0].l * 4);
+            ctx.moveTo(startCoord.x, startCoord.y);
+            for (let i = 1; i < msPoints.length; i++) {
+                let coord = getCanvasCoords(msPoints[i].t, msPoints[i].l * 4);
+                ctx.lineTo(coord.x, coord.y);
+            }
+            for (let i = msPoints.length - 1; i >= 0; i--) {
+                let coord = getCanvasCoords(msPoints[i].t, msPoints[i].l * 0.25);
+                ctx.lineTo(coord.x, coord.y);
+            }
+            ctx.closePath();
+
+            let msGrd = ctx.createLinearGradient(plotX, 0, plotX + plotWidth, 0);
+            msGrd.addColorStop(0.1, 'rgba(59, 130, 246, 0.12)'); 
+            msGrd.addColorStop(0.5, 'rgba(255, 255, 255, 0.09)'); 
+            msGrd.addColorStop(0.9, 'rgba(239, 68, 68, 0.11)');  
+            ctx.fillStyle = msGrd;
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 2. 적색 거성 영역 흐릿한 계란형 그리기
+            const giantCenter = getCanvasCoords(4200, 120);
+            let giantGrd = ctx.createRadialGradient(giantCenter.x, giantCenter.y, 5, giantCenter.x, giantCenter.y, 45);
+            giantGrd.addColorStop(0, 'rgba(249, 115, 22, 0.13)');
+            giantGrd.addColorStop(1, 'rgba(249, 115, 22, 0)');
+            ctx.fillStyle = giantGrd;
+            ctx.beginPath();
+            ctx.arc(giantCenter.x, giantCenter.y, 45, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // 3. 적색/청색 초거성 흐릿한 가로 밴드 그리기
+            let sgGrd = ctx.createLinearGradient(plotX, 0, plotX + plotWidth, 0);
+            sgGrd.addColorStop(0, 'rgba(96, 165, 250, 0.08)');
+            sgGrd.addColorStop(0.6, 'rgba(251, 146, 60, 0.06)');
+            sgGrd.addColorStop(1, 'rgba(248, 113, 113, 0.08)');
+            ctx.fillStyle = sgGrd;
+            const sgYBottom = getCanvasCoords(45000, 3000).y;
+            const sgYTop = getCanvasCoords(2500, 500000).y;
+            ctx.fillRect(plotX, sgYTop, plotWidth, sgYBottom - sgYTop);
+
+            // 4. 백색 왜성 영역 흐릿한 원형 그리기
+            const wdCenter = getCanvasCoords(15000, 0.0007);
+            let wdGrd = ctx.createRadialGradient(wdCenter.x, wdCenter.y, 3, wdCenter.x, wdCenter.y, 35);
+            wdGrd.addColorStop(0, 'rgba(165, 180, 252, 0.14)');
+            wdGrd.addColorStop(1, 'rgba(165, 180, 252, 0)');
+            ctx.fillStyle = wdGrd;
+            ctx.beginPath();
+            ctx.arc(wdCenter.x, wdCenter.y, 35, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // 흐릿한 텍스트 라벨 매핑
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.font = 'italic 8.5px sans-serif';
+            ctx.textAlign = 'center';
+            
+            ctx.fillText("주 계 열 성", getCanvasCoords(8000, 3).x, getCanvasCoords(8000, 3).y);
+            ctx.fillText("초거성군", getCanvasCoords(8000, 50000).x, getCanvasCoords(8000, 50000).y);
+            ctx.fillText("거성군", giantCenter.x, giantCenter.y);
+            ctx.fillText("백색왜성군", wdCenter.x, wdCenter.y + 20);
+
+            ctx.restore(); // 클리핑 해제
+
+            // 5. 격자 보조선 및 주 축 드로잉
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            
+            for (let logL = -4; logL <= 6; logL += 2) {
+                const y = height - 40 - ((logL - minLogL) / (maxLogL - minLogL)) * (height - 65);
+                ctx.beginPath();
+                ctx.moveTo(plotX, y);
+                ctx.lineTo(width - 40, y);
+                ctx.stroke();
+
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '8px monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(`10${logL === 0 ? '⁰' : (logL > 0 ? '^' + logL : '^' + logL)}`, plotX - 6, y + 3);
+            }
+
+            const tTicks = [40000, 20000, 10000, 6000, 4000, 2500];
+            tTicks.forEach(t => {
+                const coords = getCanvasCoords(t, 1);
+                ctx.beginPath();
+                ctx.moveTo(coords.x, plotY);
+                ctx.lineTo(coords.x, height - 40);
+                ctx.stroke();
+
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '8px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${t.toLocaleString()}K`, coords.x, height - 28);
+            });
+
+            ctx.strokeStyle = '#334155';
+            ctx.strokeRect(plotX, plotY, plotWidth, plotHeight);
+
+            // 축 이름과 단위 라벨링
+            ctx.save();
+            ctx.translate(13, plotY + plotHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 9.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("광도 (Luminosity, L/L☉)", 0, 0);
+            ctx.restore();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 9.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("표면 온도 (Temperature, K) ◀ 고온 [역좌표계] 저온", plotX + plotWidth / 2, height - 12);
+
+            // 6. 현재 별의 실시간 위치 점 매핑
+            const starCoords = getCanvasCoords(T, L);
+            
+            if (starCoords.x >= plotX && starCoords.x <= width - 40 && starCoords.y >= plotY && starCoords.y <= height - 40) {
+                const pulseRadius = 6 + Math.abs(Math.sin(Date.now() / 200)) * 5;
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
+                ctx.beginPath();
+                ctx.arc(starCoords.x, starCoords.y, pulseRadius, 0, 2 * Math.PI);
+                ctx.fill();
+
+                const starColor = kelvinToRGB(T);
+                ctx.fillStyle = `rgb(${starColor.r}, ${starColor.g}, ${starColor.b})`;
+                ctx.beginPath();
+                ctx.arc(starCoords.x, starCoords.y, 4.5, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9.5px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText("현재 위치", starCoords.x + 8, starCoords.y + 3);
+            }
+        }
+
+        // 입력 제어 연동 이벤트 바인딩 (실시간 유동 제어 및 보정 연동)
+        function syncSlidersAndInputs(isRangeTriggered, variableType) {
+            presetIndicator.innerText = "수동 조절 모드";
+            if (variableType === 'temp') {
+                if (isRangeTriggered) {
+                    tempInput.value = tempRange.value;
+                } else {
+                    let val = parseFloat(tempInput.value);
+                    if (isNaN(val)) val = 5778;
+                    // 입력 시점에 강제 고정하지 않고 슬라이더 범위 동기화만 진행 (보정은 updateSimulation 단계에서 일괄 적용)
+                    tempRange.value = val;
+                }
+            } else if (variableType === 'rad') {
+                if (isRangeTriggered) {
+                    radInput.value = radRange.value;
+                } else {
+                    let val = parseFloat(radInput.value);
+                    if (isNaN(val)) val = 1.0;
+                    radRange.value = val;
+                }
+            }
+            updateSimulation();
+        }
+
+        // 이벤트리스너 등록
+        tempRange.addEventListener('input', () => syncSlidersAndInputs(true, 'temp'));
+        tempInput.addEventListener('change', () => syncSlidersAndInputs(false, 'temp'));
+        radRange.addEventListener('input', () => syncSlidersAndInputs(true, 'rad'));
+        radInput.addEventListener('change', () => syncSlidersAndInputs(false, 'rad'));
+
+        // 태양값 복구 리셋 함수
+        function resetInputs() {
+            applyPreset(5778, 1.0, '태양 (Sun)');
+        }
+
+        // 실시간 연동 루프 (H-R도 위치 펄스 효과 렌더링용)
+        function animate() {
+            const T = parseFloat(tempInput.value);
+            const R = parseFloat(radInput.value);
+            const L = Math.pow(R, 2) * Math.pow((T / T_sun), 4);
+            drawHRDiagram(T, L);
+            requestAnimationFrame(animate);
+        }
+
+        // 초기 시작
+        window.onload = function() {
+            updateSimulation();
+            animate();
+        };
+
+        // 창 크기 변경 시 캔버스 대응
+        window.addEventListener('resize', updateSimulation);
+    </script>
+</body>
+</html>

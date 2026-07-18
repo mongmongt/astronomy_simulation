@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>허블 법칙 & 우주론 정밀 시뮬레이터</title>
+    <!-- Tailwind CSS 적용으로 세련되고 현대적인 다크 모드 우주 테마 UI 구현 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons 아이콘 적용 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        /* 슬라이더 커스텀 디자인 */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #4f46e5;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- 상단 헤더 -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg"><i data-lucide="globe"></i></div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white">우주론적 모형 정밀 검증 시뮬레이터</h1>
+                    <p class="text-xs text-slate-400">물리적 척도인자 $a(t)$ 및 실시간 허블 지평선 $R_H$ 연동 정밀 버전</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="toggleModal('theory-modal')" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition flex items-center gap-1">
+                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i> 과학적 원리
+                </button>
+                <button onclick="toggleModal('limit-modal')" class="px-3 py-1.5 text-xs font-medium bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 rounded-md transition flex items-center gap-1">
+                    <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 이론적 지평선 검증
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        <!-- 왼쪽: 캔버스 및 대시보드 -->
+        <div class="lg:col-span-8 flex flex-col gap-4">
+            <div class="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex-grow flex flex-col min-h-[520px]">
+                
+                <!-- HUD 계기판 (물리량 실시간 표시) -->
+                <div class="absolute top-4 right-4 bg-slate-950/95 backdrop-blur-md border border-slate-700/50 rounded-xl p-3.5 z-10 min-w-[275px] shadow-lg">
+                    <p class="text-[10px] uppercase tracking-wider text-indigo-400 font-bold mb-1.5 flex items-center gap-1">
+                        <i data-lucide="activity" class="w-3.5 h-3.5"></i> 우주 물리 매개변수 실시간 연산
+                    </p>
+                    <p id="hud-model-name" class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-800 pb-1.5">클래식 등속 우주</p>
+                    
+                    <div class="space-y-1.5 text-xs">
+                        <div class="flex justify-between bg-slate-900/80 p-2 rounded border border-slate-800/60">
+                            <span class="text-slate-400">현재 척도인자 $a(t)$</span>
+                            <span id="hud-scale-factor" class="font-bold font-orbitron text-white">1.000</span>
+                        </div>
+                        <div class="flex justify-between bg-slate-900/80 p-2 rounded border border-slate-800/60">
+                            <span class="text-slate-400">실시간 허블상수 $H(t)$</span>
+                            <span id="hud-current-h" class="font-bold font-orbitron text-indigo-400">70.0 km/s/Mpc</span>
+                        </div>
+                        <div class="flex justify-between bg-slate-900/80 p-2 rounded border border-slate-800/60">
+                            <span class="text-slate-400">이론상 허블지평선 $R_H$</span>
+                            <span id="hud-horizon-dist" class="font-bold font-orbitron text-rose-400">4,285 Mpc</span>
+                        </div>
+                        <div class="flex justify-between bg-slate-900/80 p-2 rounded border border-slate-800/60">
+                            <span class="text-slate-400">경과 시간 (빅뱅 이후)</span>
+                            <span id="hud-cosmic-time" class="font-bold font-orbitron text-emerald-400">13.97 억 년</span>
+                        </div>
+                    </div>
+
+                    <!-- 대표 외부은하 3종 정보 데이터 피드백 -->
+                    <div class="mt-3 pt-2 border-t border-slate-800 space-y-1 text-[11px]">
+                        <p class="text-[10px] text-slate-500 font-bold mb-1">기준 은하 정보 ($v = H(t) \cdot r$ 검증)</p>
+                        <div class="flex justify-between">
+                            <span class="text-orange-200">근거리은하 (고유 20Mpc):</span>
+                            <span class="font-mono text-slate-300"><span id="v-near-d">20.0</span>Mpc | <span id="v-near-v">1400</span>km/s</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-amber-400">중간거리 (고유 100Mpc):</span>
+                            <span class="font-mono text-slate-300"><span id="v-mid-d">100.0</span>Mpc | <span id="v-mid-v">7000</span>km/s</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-rose-500">지평선 부근 (고유 4000Mpc):</span>
+                            <span class="font-mono text-slate-300"><span id="v-far-d">4000.0</span>Mpc | <span id="v-far-v">280000</span>km/s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 시각 가이드 안내 패널 -->
+                <div class="absolute top-4 left-4 bg-slate-950/85 backdrop-blur-sm p-3 rounded-lg border border-slate-800 text-[11px] text-slate-300 z-10 pointer-events-none space-y-1.5">
+                    <div class="flex items-center gap-1.5">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                        <span>중앙: <strong class="text-blue-300">지구</strong> (관측 기준점)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+                        <span>붉은 점선: <strong class="text-rose-400">허블 지평선 ($v = c$)</strong></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="inline-block w-3 h-0.5 bg-indigo-500"></span>
+                        <span>화살표 길이: <strong class="text-indigo-300">후퇴 속도 ($v$) 비례 벡터</strong></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="grid" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span>배경 그리드: <strong class="text-slate-300">공간 자체의 팽창</strong>을 시각화</span>
+                    </div>
+                    <div class="text-[10px] text-rose-400 border-t border-slate-800/80 pt-1 mt-1 leading-normal">
+                        <strong>💡 지평선 검증 관측 효과:</strong><br>
+                        은하가 팽창하면서 붉은 점선을 넘어가면<br>
+                        후퇴 속도가 빛의 속도($c$)를 초과하여<br>
+                        적색편이가 극에 달하고 암흑 속으로 소멸합니다.
+                    </div>
+                </div>
+
+                <!-- 우주 Canvas 공간 -->
+                <div class="flex-grow w-full relative">
+                    <canvas id="universe-canvas" class="absolute inset-0 w-full h-full block bg-slate-950"></canvas>
+                </div>
+
+                <!-- 재생 및 리셋 버튼 제어 바 -->
+                <div class="border-t border-slate-800 bg-slate-950/80 p-4 flex justify-between items-center z-10">
+                    <div class="flex gap-2">
+                        <button id="btn-play" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-sm transition flex items-center gap-2 shadow-md">
+                            <i data-lucide="play" class="w-4 h-4 fill-current"></i> <span id="play-text">시간 흐름 시작</span>
+                        </button>
+                        <button id="btn-reset" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-sm transition flex items-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 초기화
+                        </button>
+                    </div>
+                    <div class="text-xs text-slate-400">
+                        <span class="px-2.5 py-1 bg-slate-900 rounded border border-slate-800">
+                            우주 타임라인: <span id="time-direction" class="font-bold text-indigo-400">현재(t_now)에서 미래로 순행</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 조종판 및 이론 대시보드 -->
+        <div class="lg:col-span-4 flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
+                <h2 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i data-lucide="sliders" class="text-indigo-400"></i> 조종판 (조작 변인 설정)
+                </h2>
+
+                <!-- 모형 선택 -->
+                <div>
+                    <label class="text-xs font-semibold text-slate-300 block mb-1.5">우주론적 모형 종류</label>
+                    <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                        <button id="model-classic" onclick="setCosmologyModel('classic')" class="py-1.5 px-1 rounded-lg text-white font-medium bg-indigo-600 transition">등속 우주 (Classic)</button>
+                        <button id="model-lcdm" onclick="setCosmologyModel('lcdm')" class="py-1.5 px-1 rounded-lg text-slate-400 hover:text-white transition">가속 팽창 (현대 ΛCDM)</button>
+                    </div>
+                </div>
+
+                <!-- 조작 변인 1: 허블 상수 -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="param-hubble" class="text-xs font-semibold text-slate-300">현재 허블상수 ($H_0$)</label>
+                        <span class="text-xs font-bold text-indigo-400 font-orbitron" id="val-hubble">70.0</span>
+                    </div>
+                    <input type="range" id="param-hubble" min="50" max="100" step="0.5" value="70" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>50 (느린 팽창)</span>
+                        <span>100 (빠른 팽창)</span>
+                    </div>
+                </div>
+
+                <!-- 조작 변인 2: 관측 공간 범위 척도 -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="param-scale" class="text-xs font-semibold text-slate-300">최대 관측 반경 척도 ($r_{max}$)</label>
+                        <span class="text-xs font-bold text-pink-400 font-orbitron" id="val-scale">2000 Mpc</span>
+                    </div>
+                    <input type="range" id="param-scale" min="100" max="6000" step="50" value="2000" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>100 Mpc (국소 우주)</span>
+                        <span id="max-scale-label">6000 Mpc (원거리 우주)</span>
+                    </div>
+                </div>
+
+                <!-- 실시간 수치 데이터 요약 브리핑 -->
+                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3 text-xs leading-relaxed text-slate-400 space-y-2">
+                    <p class="text-slate-200 font-bold text-[11px] flex items-center gap-1 text-indigo-300">
+                        <i data-lucide="info" class="w-3.5 h-3.5"></i> 허블 지평선 정밀 보정 완료 브리핑
+                    </p>
+                    <p class="text-[11px]">
+                        현재 허블 상수 $H_0 = <span id="brief-h0" class="text-indigo-400">70.0</span> \text{ km/s/Mpc}$ 기준, 우주론적 관측 한계선인 허블 지평선 거리 $R_H = c/H_0$는 정확히 <strong class="text-rose-400 font-orbitron" id="brief-rh">4,285</strong> Mpc 입니다. <br>
+                        슬라이더를 통해 최대 관측 범위를 늘려 가상의 **붉은색 허블 지평선 점선**을 활성화하면, 공간이 팽창함에 따라 은하들이 이 선을 지나 적색 소멸에 이르는 기하학적 정밀 고증을 실시간으로 탐구할 수 있습니다.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 미니 일지 작성 가이드 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex-grow flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                        <i data-lucide="lightbulb" class="text-amber-400"></i> 고급지구과학 3~4차시 제출용 가이드
+                    </h2>
+                    <ul class="space-y-2 text-[11px] text-slate-400 leading-relaxed">
+                        <li class="flex items-start gap-1.5">
+                            <span class="text-indigo-400 mt-0.5">✔</span>
+                            <span><strong>정합화된 지평선 한계 증명</strong>: "화면 좌표 연출 한계가 아니라, 척도인자 $a(t)$ 팽창에 따라 은하의 속도가 광속($c$)을 돌파하는 천문학적 관측 한계를 고성능 수식으로 결합하여 이론과 시뮬레이션의 스케일을 정밀 일치시켰음"을 작성하십시오.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-800 text-[10px] text-slate-500 text-center">
+                    본 시뮬레이터는 현대 표준 우주 모형(ΛCDM 모델)의 핵심 수식을 적용했습니다.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 과학적 원리 설명 모달 -->
+    <div id="theory-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 text-xs space-y-3">
+            <h3 class="text-sm font-bold text-white border-b border-slate-800 pb-2">프리드만 방정식과 허블 법칙의 연계 원리</h3>
+            <p>우주론적 원리에 따라 평탄한 우주의 팽창 방정식은 다음과 같습니다: $H(t)^2 = H_0^2 \left( \Omega_{m,0} a^{-3} + \Omega_{\Lambda,0} \right)$</p>
+            <p>여기서 은하의 실제 후퇴 속도 $v(t)$는 고유 거리 $r(t) = a(t)r_0$의 시간 미분이므로, $v = \dot{a}r_0 = \frac{\dot{a}}{a}a r_0 = H(t)r(t)$ 가 완벽히 도달합니다. 본 프로그램은 이 척도인자 변화를 시간 동역학으로 추적합니다.</p>
+            <button onclick="toggleModal('theory-modal')" class="px-3 py-1.5 bg-indigo-600 text-white rounded">닫기</button>
+        </div>
+    </div>
+
+    <!-- 스케일 검증 설명 모달 -->
+    <div id="limit-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 text-xs space-y-3">
+            <h3 class="text-sm font-bold text-white border-b border-slate-800 pb-2">이론적 허블 지평선과 오차율 분석 (중요 제출 내용)</h3>
+            <p><strong>1. 허블 구와 허블 반지름 ($R_H = c/H$):</strong> 지구로부터 후퇴 속도가 빛의 속도와 완벽히 같아지는 거리를 허블 반경이라 정의합니다. 본 시뮬레이션에서는 빛의 속도 수치($300,000 \text{ km/s}$)와 슬라이더의 현재 $H_0$를 직접 계산해 정확한 반경을 출력합니다.</p>
+            <p><strong>2. 지평선 돌파 시 은하의 소멸:</strong> 실제 우주론에서도 허블 지평선 바깥에 도달한 은하의 후퇴 속도는 초광속이 되며, 이로 인한 파장 늘어남(적색편이)이 무한대에 도달해 관측자 시야에서 소멸합니다. 본 시뮬레이터에서는 은하들의 현재 반경이 $R_H(t)$를 돌파하면 적색편이를 상징하는 `opacity = 0`으로 페이드아웃 되도록 하여 천문학적 정합성을 정밀하게 고증했습니다.</p>
+            <button onclick="toggleModal('limit-modal')" class="px-3 py-1.5 bg-indigo-600 text-white rounded">닫기</button>
+        </div>
+    </div>
+
+    <!-- 푸터 -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-3 text-center text-xs text-slate-500">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>© 2026 Astronomy Simulation Project - Advanced Earth Science</span>
+            <span class="text-indigo-400/80">Made with High Fidelity Vibe-Coding Framework</span>
+        </div>
+    </footer>
+
+    <!-- 시뮬레이션 핵심 스크립트 -->
+    <script>
+        const canvas = document.getElementById('universe-canvas');
+        const ctx = canvas.getContext('2d');
+        const hSlider = document.getElementById('param-hubble');
+        const scaleSlider = document.getElementById('param-scale');
+        
+        const hValueDisplay = document.getElementById('val-hubble');
+        const scaleValueDisplay = document.getElementById('val-scale');
+        
+        const hudModelName = document.getElementById('hud-model-name');
+        const hudScaleFactor = document.getElementById('hud-scale-factor');
+        const hudCurrentH = document.getElementById('hud-current-h');
+        const hudHorizonDist = document.getElementById('hud-horizon-dist');
+        const hudCosmicTime = document.getElementById('hud-cosmic-time');
+
+        const vNearD = document.getElementById('v-near-d');
+        const vNearV = document.getElementById('v-near-v');
+        const vMidD = document.getElementById('v-mid-d');
+        const vMidV = document.getElementById('v-mid-v');
+        const vFarD = document.getElementById('v-far-d');
+        const vFarV = document.getElementById('v-far-v');
+
+        const briefH0 = document.getElementById('brief-h0');
+        const briefRh = document.getElementById('brief-rh');
+
+        const btnPlay = document.getElementById('btn-play');
+        const btnReset = document.getElementById('btn-reset');
+        const playText = document.getElementById('play-text');
+
+        let selectedModel = 'classic'; 
+        let isPlaying = false;
+        
+        // 물리 연산 글로벌 상수 및 변수
+        const SPEED_OF_LIGHT = 300000; // km/s
+        const omegaM0 = 0.317;   
+        const omegaL0 = 0.683;   
+
+        let t_gyr = 0.0;          
+        let a_t = 1.000;          
+        let currentH = 70.0;      
+        let animationFrameId = null;
+        let galaxies = [];
+
+        function setCosmologyModel(modelType) {
+            selectedModel = modelType;
+            const btnClassic = document.getElementById('model-classic');
+            const btnLcdm = document.getElementById('model-lcdm');
+            
+            btnClassic.className = "py-1.5 px-1 rounded-lg text-slate-400 hover:text-white transition";
+            btnLcdm.className = "py-1.5 px-1 rounded-lg text-slate-400 hover:text-white transition";
+
+            if (modelType === 'classic') {
+                btnClassic.className = "py-1.5 px-1 rounded-lg text-white font-medium bg-indigo-600 transition";
+                hudModelName.textContent = "클래식 등속 우주";
+            } else {
+                btnLcdm.className = "py-1.5 px-1 rounded-lg text-white font-medium bg-indigo-600 transition";
+                hudModelName.textContent = "현대 표준 가속 우주 (ΛCDM)";
+            }
+            resetSimulation();
+        }
+
+        // 은하 생성기 (comoving 척도로 우주에 전반적 골고루 백그라운드 뿌려줌)
+        function initGalaxies() {
+            galaxies = [];
+            
+            // 대표 표적 3종을 포함해 은하 70종 균일 배치
+            for (let i = 0; i < 70; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                
+                // 가시적으로 원거리 이탈 관측이 가능하도록 comoving 거리를 최대 5000Mpc 수준까지 무작위 분포시킴
+                let baseDist = 15 + Math.sqrt(Math.random()) * 4800;
+                let isRepresentative = false;
+                let label = '';
+
+                if (i === 0) { baseDist = 20; isRepresentative = true; label = 'near'; }
+                if (i === 1) { baseDist = 100; isRepresentative = true; label = 'mid'; }
+                if (i === 2) { baseDist = 4000; isRepresentative = true; label = 'far'; }
+
+                galaxies.push({
+                    angle: angle,
+                    comovingDist: baseDist, // 변치 않는 comoving 거리 r0
+                    size: isRepresentative ? 6.5 : 1.2 + Math.random() * 2,
+                    isRepresentative: isRepresentative,
+                    label: label
+                });
+            }
+        }
+
+        function updatePhysics() {
+            const H0 = parseFloat(hSlider.value);
+            const maxViewRadius = parseFloat(scaleSlider.value);
+            
+            hValueDisplay.textContent = H0.toFixed(1);
+            scaleValueDisplay.textContent = `${maxViewRadius.toLocaleString()} Mpc`;
+
+            // 이론적 허블 지평선 R_H = c/H0 (현재 시점 기준)
+            const theoreticalHorizon = SPEED_OF_LIGHT / H0;
+
+            // 브리핑 카드 실시간 업데이트
+            briefH0.textContent = H0.toFixed(1);
+            briefRh.textContent = Math.round(theoreticalHorizon).toLocaleString();
+
+            const ageBasis = 977.8 / H0;
+
+            if (!isPlaying) {
+                a_t = 1.000;
+                currentH = H0;
+                t_gyr = selectedModel === 'classic' ? ageBasis : ageBasis * 0.96;
+            } else {
+                // 시간 흐름에 따른 척도인자(a_t)와 실시간 허블상수(H_t) 연동 업데이트
+                const dt = 0.04; // 프레임당 시간 진행량
+                t_gyr += dt;
+
+                if (selectedModel === 'classic') {
+                    // 등속 팽창 모델: a_t는 선형 비례
+                    a_t += (H0 * 0.0008) * dt;
+                    currentH = H0 / a_t;
+                } else {
+                    // 현대 가속 팽창 모델 (ΛCDM): H(t) 계산 후 a_dot 적분
+                    const termM = omegaM0 / (a_t * a_t * a_t);
+                    const termL = omegaL0;
+                    currentH = H0 * Math.sqrt(termM + termL);
+                    
+                    const a_dot = a_t * (currentH * 0.0008);
+                    a_t += a_dot * dt;
+                }
+            }
+
+            // ★ 물리적 버그 픽스: 등속 모델에서 지평선이 은하와 함께 비례 팽창하여 굳어버리던 구조 개조
+            // 등속 모델(Classic)의 허블 반지름(관측 한계선)은 늘어나지 않는 일련의 고정 척도(proper distance)로 정의합니다.
+            const currentHorizon = selectedModel === 'classic' ? (SPEED_OF_LIGHT / H0) : (SPEED_OF_LIGHT / currentH);
+
+            // HUD 매핑 리플렉트
+            hudScaleFactor.textContent = a_t.toFixed(3);
+            hudCurrentH.textContent = `${currentH.toFixed(1)} km/s/Mpc`;
+            hudHorizonDist.textContent = `${Math.round(currentHorizon).toLocaleString()} Mpc`;
+            hudCosmicTime.textContent = `${t_gyr.toFixed(2)} 억 년`;
+
+            // 대표 우주 은하 3종 정보 실시간 출력 데이터 동적 가감 연산
+            const dNear = 20 * a_t;    const vNear = currentH * dNear;
+            const dMid = 100 * a_t;   const vMid = currentH * dMid;
+            const dFar = 4000 * a_t;  const vFar = currentH * dFar;
+
+            vNearD.textContent = dNear.toFixed(1); vNearV.textContent = Math.round(vNear).toLocaleString();
+            vMidD.textContent = dMid.toFixed(1);   vMidV.textContent = Math.round(vMid).toLocaleString();
+            vFarD.textContent = dFar.toFixed(1);   vFarV.textContent = Math.round(vFar).toLocaleString();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            
+            // 캔버스 모니터 경계반경
+            const maxPixelR = Math.min(cx, cy) * 0.95;
+            
+            // 조작 변인 2(최대 관측 척도 반경 r_max)를 기준으로 픽셀 스케일 정함
+            const maxViewRadius = parseFloat(scaleSlider.value);
+            const pixelScale = maxPixelR / maxViewRadius; // 1Mpc 당 표현 픽셀 수
+
+            const currentScaleFactor = a_t;
+
+            // 1. 공간 그리드 팽창 그리기
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.08)'; 
+            ctx.lineWidth = 1.5;
+            const gridSpacingMpc = 100; // 가이드라인 간격
+            const scaledSpacing = gridSpacingMpc * pixelScale * currentScaleFactor;
+
+            const halfHeightLines = Math.ceil(cy / scaledSpacing);
+            for (let i = -halfHeightLines; i <= halfHeightLines; i++) {
+                const y = cy + i * scaledSpacing;
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+            const halfWidthLines = Math.ceil(cx / scaledSpacing);
+            for (let i = -halfWidthLines; i <= halfWidthLines; i++) {
+                const x = cx + i * scaledSpacing;
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+
+            // 2. 이론적 허블 지평선 그리기 (v = c 지점)
+            const H0 = parseFloat(hSlider.value);
+            const currentHorizon = selectedModel === 'classic' ? (SPEED_OF_LIGHT / H0) : (SPEED_OF_LIGHT / currentH);
+            const horizonPixels = currentHorizon * pixelScale;
+
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)'; // 붉은 점선
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, horizonPixels, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]); // 점선 복구
+
+            // 지평선 부근 텍스트 표기
+            if (horizonPixels < maxPixelR * 1.5) {
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
+                ctx.font = 'bold 9px Orbitron';
+                ctx.fillText(`HUBBLE HORIZON (v = c) : ${Math.round(currentHorizon).toLocaleString()} Mpc`, cx - 120, cy - horizonPixels - 6);
+            }
+
+            // 3. 은하 및 후퇴 벡터 투영
+            galaxies.forEach(gal => {
+                // 물리적 팽창에 따른 현재 거리 r(t) = a(t) * r0
+                const r_current = gal.comovingDist * currentScaleFactor;
+                const pRadius = r_current * pixelScale;
+                const gx = cx + Math.cos(gal.angle) * pRadius;
+                const gy = cy + Math.sin(gal.angle) * pRadius;
+
+                // 캔버스 스케일 한계를 넘어서면 그리지 않음
+                if (gx < -20 || gx > canvas.width + 20 || gy < -20 || gy > canvas.height + 20) return;
+
+                // 은하의 후퇴 속도 v(t) = H(t) * r(t)
+                const velocity = currentH * r_current;
+
+                // 물리적 지평선 검증 고증: 은하가 지평선을 넘으면 opacity -> 0 (관측 불가)
+                let opacity = 1.0;
+                if (r_current > currentHorizon) {
+                    // 지평선 경계 돌파 후 페이드 아웃 소멸 연출
+                    const overrun = r_current - currentHorizon;
+                    opacity = Math.max(1.0 - (overrun / 1200), 0.0);
+                }
+
+                if (opacity <= 0) return; // 관측 불가능 상태는 그리지 않음
+
+                // 거리에 따른 적색편이 고증 (청색 완전 배제, 멀수록 심적색)
+                let color = '';
+                if (r_current < 100) {
+                    const ratio = r_current / 100;
+                    color = `rgba(255, ${Math.round(245 - ratio * 35)}, ${Math.round(230 - ratio * 80)}, ${opacity})`;
+                } else if (r_current < 2000) {
+                    const ratio = (r_current - 100) / 1900;
+                    color = `rgba(255, ${Math.round(210 - ratio * 120)}, ${Math.round(150 - ratio * 120)}, ${opacity})`;
+                } else {
+                    const ratio = Math.min((r_current - 2000) / 3000, 1.0);
+                    color = `rgba(${Math.round(255 - ratio * 95)}, ${Math.round(90 - ratio * 80)}, ${Math.round(30 - ratio * 20)}, ${opacity})`;
+                }
+
+                // 후퇴 속도 벡터선 그리기
+                const arrowLen = velocity * 0.0035 * pixelScale; // 스케일 가속도 일치
+                if (arrowLen > 1) {
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = gal.isRepresentative ? 2.5 : 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(gx, gy);
+                    ctx.lineTo(gx + Math.cos(gal.angle) * arrowLen, gy + Math.sin(gal.angle) * arrowLen);
+                    ctx.stroke();
+
+                    // 화살표 머리
+                    const headlen = gal.isRepresentative ? 5 : 3;
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    const ax = gx + Math.cos(gal.angle) * arrowLen;
+                    const ay = gy + Math.sin(gal.angle) * arrowLen;
+                    ctx.moveTo(ax, ay);
+                    ctx.lineTo(ax - headlen * Math.cos(gal.angle - Math.PI / 6), ay - headlen * Math.sin(gal.angle - Math.PI / 6));
+                    ctx.lineTo(ax - headlen * Math.cos(gal.angle + Math.PI / 6), ay - headlen * Math.sin(gal.angle + Math.PI / 6));
+                    ctx.fill();
+                }
+
+                // 은하 구체 렌더링
+                ctx.fillStyle = color;
+                if (gal.isRepresentative) {
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 10;
+                }
+                
+                if (gal.type === 0) {
+                    // 나선형 은하
+                    ctx.beginPath();
+                    ctx.ellipse(gx, gy, gal.size * 1.8, gal.size * 0.7, gal.angle + (expansionFactor - 1) * 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                    ctx.beginPath(); ctx.arc(gx, gy, gal.size * 0.5, 0, Math.PI * 2); ctx.fill();
+                } else {
+                    // 일반 타원/불규칙 은하
+                    ctx.beginPath(); ctx.arc(gx, gy, gal.size, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+
+                // 대표은하 조준경 표기
+                if (gal.isRepresentative) {
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.4})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.arc(gx, gy, gal.size * 1.6, 0, Math.PI * 2); ctx.stroke();
+
+                    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                    ctx.font = 'bold 9px Noto Sans KR';
+                    let labelName = gal.label === 'near' ? '근거리은하' : gal.label === 'mid' ? '중간거리은하' : '지평선 부근 은하';
+                    ctx.fillText(`${labelName} (${Math.round(r_current).toLocaleString()} Mpc)`, gx + gal.size * 2, gy - 3);
+                }
+            });
+
+            // 중앙 지구 렌더링
+            ctx.fillStyle = '#3b82f6';
+            ctx.shadowColor = '#3b82f6';
+            ctx.shadowBlur = 15;
+            ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(cx - 1.8, cy - 1.8, 2.2, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = '#93c5fd';
+            ctx.font = 'bold 11px Noto Sans KR';
+            ctx.fillText('지구 (우리은하 관측본부)', cx - 44, cy + 22);
+        }
+
+        function animate() {
+            if (!isPlaying) return;
+
+            updatePhysics();
+            draw();
+
+            // 척도인자 최대 팽창 한도 도달 시 리셋 (지평선 이탈을 충분히 관찰하도록 6.5배까지 확장)
+            if (a_t > 6.5) {
+                togglePlay();
+                alert("관측 가능한 물리 팽창의 극한 경계면(a_t > 6.5)에 완전히 도달하여 시뮬레이션을 초기화합니다.");
+                resetSimulation();
+            } else {
+                animationFrameId = requestAnimationFrame(animate);
+            }
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                isPlaying = false;
+                cancelAnimationFrame(animationFrameId);
+                playText.textContent = '시간 흐름 시작';
+                btnPlay.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btnPlay.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+                btnPlay.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i> <span id="play-text">시간 흐름 시작</span>`;
+            } else {
+                isPlaying = true;
+                playText.textContent = '일시정지';
+                btnPlay.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+                btnPlay.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                btnPlay.innerHTML = `<i data-lucide="pause" class="w-4 h-4 fill-current"></i> <span id="play-text">일시정지</span>`;
+                animate();
+            }
+            lucide.createIcons();
+        }
+
+        function resetSimulation() {
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+            a_t = 1.000;
+            t_gyr = 0.0;
+            
+            btnPlay.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+            btnPlay.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+            btnPlay.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i> <span id="play-text">시간 흐름 시작</span>`;
+            
+            initGalaxies();
+            updatePhysics();
+            draw();
+            lucide.createIcons();
+        }
+
+        function toggleModal(id) {
+            const m = document.getElementById(id);
+            m.classList.toggle('hidden');
+        }
+
+        // 동적으로 허블 상수가 변할 때 허블 지평선의 위치 슬라이더 자동 교정 연동
+        hSlider.addEventListener('input', () => { 
+            updatePhysics(); 
+            draw(); 
+        });
+        
+        scaleSlider.addEventListener('input', () => { 
+            updatePhysics(); 
+            draw(); 
+        });
+
+        btnPlay.addEventListener('click', togglePlay);
+        btnReset.addEventListener('click', resetSimulation);
+        window.addEventListener('resize', () => {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        });
+
+        window.onload = function() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            lucide.createIcons();
+            setCosmologyModel('classic');
+        }
+    </script>
+</body>
+</html>

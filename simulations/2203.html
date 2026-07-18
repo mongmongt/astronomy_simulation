@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지구-달 타원 궤도 및 기조력 시뮬레이터</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 구글 폰트 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background-color: #020205;
+            font-family: 'Noto Sans KR', sans-serif;
+            color: #f3f4f6;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        /* 3D 화면 상의 실시간 수치 라벨 */
+        .3d-label {
+            position: absolute;
+            background: rgba(5, 5, 15, 0.85);
+            border: 1px solid #c0ff3e;
+            color: #c0ff3e;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            font-family: 'Share Tech Mono', monospace;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            z-index: 5;
+            transition: opacity 0.2s;
+        }
+        /* 미니멀 슬라이더 스타일 */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #c0ff3e;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px;
+            box-shadow: 0 0 8px rgba(192, 255, 62, 0.6);
+            transition: transform 0.1s, background-color 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+            background: #d4ff70;
+        }
+    </style>
+</head>
+<body class="relative flex flex-col justify-between select-none">
+
+    <!-- Three.js 3D Viewport -->
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+    
+    <!-- 3D 동적 레이블 -->
+    <div id="distance-label" class="3d-label">지구-달 거리: 384,400 km</div>
+
+    <!-- UI Overlay: 상단 헤더 -->
+    <header class="absolute top-0 left-0 right-0 p-6 z-10 pointer-events-none flex flex-col gap-2">
+        <div class="pointer-events-auto bg-slate-950/80 backdrop-blur-md p-4 rounded-xl border border-slate-900 shadow-2xl max-w-xl">
+            <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                <span class="inline-block w-3 h-3 rounded-full bg-[#c0ff3e] animate-pulse"></span>
+                지구-달 타원 궤도 역학 및 기조력 시뮬레이터
+            </h1>
+            <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                달의 <strong>공전 이심률(타원 정도)</strong> 변화에 따른 실시간 중력 반경 변화와, 거리에 연동하여 늘어나고 줄어드는 <strong>지구 해수면의 실시간 기조력 팽창(Tidal Bulge)</strong>을 관측합니다. (화면 드래그로 회전 가능)
+            </p>
+        </div>
+    </header>
+
+    <!-- UI Overlay: 우측 역학 데이터 대시보드 -->
+    <aside class="absolute top-6 right-6 bottom-32 w-80 md:w-90 z-10 pointer-events-auto bg-slate-950/85 backdrop-blur-lg p-5 rounded-xl border border-slate-900 shadow-2xl flex flex-col justify-between overflow-y-auto">
+        <div class="space-y-4">
+            <div class="border-b border-slate-900 pb-2.5">
+                <h2 class="text-base font-bold text-slate-200">정밀 역학 및 해양 데이터</h2>
+                <p class="text-[10px] text-slate-500">천체 크기는 고정 상태, 질량 중심 원점 기준</p>
+            </div>
+
+            <!-- 타원 궤도 데이터 카드 -->
+            <div class="bg-slate-900/40 border border-slate-900 rounded-lg p-3">
+                <span class="text-[9px] uppercase tracking-wider text-[#c0ff3e] font-bold">공전 타원 궤도 요소</span>
+                <div class="grid grid-cols-2 gap-2 mt-1.5 text-[11px]">
+                    <div>
+                        <p class="text-slate-400">근지점 (Perigee)</p>
+                        <p class="text-xs font-mono font-bold text-white" id="perihelion-display">356,400 km</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400">원지점 (Apogee)</p>
+                        <p class="text-xs font-mono font-bold text-white" id="aphelion-display">406,700 km</p>
+                    </div>
+                </div>
+                <div class="mt-2.5 pt-2 border-t border-slate-900/60 text-center">
+                    <span class="text-[9px] uppercase tracking-wider text-slate-400 block">계산된 달 공전 주기</span>
+                    <p class="text-lg font-bold font-mono text-[#c0ff3e]" id="year-period-display">27.3 Days</p>
+                </div>
+            </div>
+
+            <!-- 기조력 분석 카드 -->
+            <div class="bg-blue-950/10 border border-blue-900/20 rounded-lg p-3">
+                <span class="text-[9px] uppercase tracking-wider text-blue-400 font-bold">지구 해수면 기조력 (Tidal Force)</span>
+                <div class="mt-1.5 space-y-1.5">
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-slate-400">실시간 해수면 상승량:</span>
+                        <span class="font-mono font-bold text-blue-300" id="high-tide-display">0.52 m</span>
+                    </div>
+                    <!-- 입체 해수면 모형 지시계 -->
+                    <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                        <div id="tide-intensity-bar" class="bg-blue-500 h-full transition-all duration-300" style="width: 25%"></div>
+                    </div>
+                    <p class="text-[9px] text-slate-500 leading-relaxed">
+                        *타원 운동으로 달이 가까워지면 기조력이 세지고(만조 상승), 멀어지면 약해집니다.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 정밀 수치 지표 -->
+            <div class="space-y-1.5 text-[11px]">
+                <div class="bg-slate-900/30 p-2.5 rounded-lg border border-slate-900 flex justify-between items-center">
+                    <p class="text-slate-400">공통 질량 중심 반지름 ($r_E$)</p>
+                    <span class="font-mono font-bold text-[#c0ff3e]" id="re-display">4,670 km</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-900 flex gap-2">
+            <button id="btn-reset" class="w-full bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] py-1.5 px-2 rounded border border-slate-800 transition duration-150 font-medium">
+                기본값 리셋
+            </button>
+            <button id="btn-camera" class="w-full bg-blue-900/20 hover:bg-blue-900/40 text-blue-200 text-[11px] py-1.5 px-2 rounded border border-blue-900/30 transition duration-150 font-medium">
+                카메라 리셋
+            </button>
+        </div>
+    </aside>
+
+    <!-- UI Overlay: 하단 제어 슬라이더 바 (부피 대폭 감소 및 접기 기능 추가) -->
+    <footer id="controls-footer" class="absolute bottom-6 left-6 right-6 lg:right-[400px] z-20 pointer-events-auto bg-slate-950/80 backdrop-blur-md px-5 py-3 rounded-xl border border-slate-800/80 shadow-2xl flex flex-col xl:flex-row gap-4 items-center justify-between transition-all duration-300 transform translate-y-0">
+        
+        <!-- 접기/펼치기 미니 탭 (Foot 위에 탑재) -->
+        <div onclick="toggleFooter()" class="absolute -top-6 left-4 bg-slate-950/85 backdrop-blur-md border border-slate-800/80 border-b-0 rounded-t-lg px-3 py-1 text-[10px] cursor-pointer text-slate-400 hover:text-[#c0ff3e] transition-colors flex items-center gap-1.5">
+            <span id="collapse-arrow" class="inline-block transition-transform duration-300">▼</span>
+            <span class="font-bold tracking-wider uppercase">조절 패널 접기</span>
+        </div>
+
+        <!-- 조절 1: 달의 질량 -->
+        <div class="w-full xl:w-1/3 space-y-1">
+            <div class="flex justify-between items-center">
+                <label for="mass-slider" class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                    <span class="px-1.5 py-0.2 text-[8px] bg-slate-900 text-slate-400 rounded border border-slate-800">조절 1</span>
+                    달의 질량 ($M_M$)
+                </label>
+                <span class="text-[11px] font-bold text-[#c0ff3e]" id="mass-val-label">1.2% Earth</span>
+            </div>
+            <input type="range" id="mass-slider" min="0.0123" max="1.0" step="0.005" value="0.0123" class="w-full">
+            <div class="flex justify-between text-[9px] text-slate-500">
+                <span>실제 달 질량 (1.23%)</span>
+                <span>지구 질량의 100% (쌍성계 형성)</span>
+            </div>
+        </div>
+
+        <!-- 스플리터 -->
+        <div class="hidden xl:block w-[1px] h-8 bg-slate-800"></div>
+
+        <!-- 조절 2: 달의 평균 속력 -->
+        <div class="w-full xl:w-1/3 space-y-1">
+            <div class="flex justify-between items-center">
+                <label for="speed-slider" class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                    <span class="px-1.5 py-0.2 text-[8px] bg-slate-900 text-slate-400 rounded border border-slate-800">조절 2</span>
+                    공전 속력 ($v$)
+                </label>
+                <span class="text-[11px] font-bold text-[#c0ff3e]" id="speed-val-label">1.02 km/s</span>
+            </div>
+            <input type="range" id="speed-slider" min="0.3" max="2.2" step="0.02" value="1.0" class="w-full">
+            <div class="flex justify-between text-[9px] text-slate-500">
+                <span>최대 감속 (30%)</span>
+                <span>기준 속력 (100%)</span>
+                <span>최대 가속 (220%)</span>
+            </div>
+        </div>
+
+        <!-- 스플리터 -->
+        <div class="hidden xl:block w-[1px] h-8 bg-slate-800"></div>
+
+        <!-- 조절 3: 궤도 이심률 -->
+        <div class="w-full xl:w-1/3 space-y-1">
+            <div class="flex justify-between items-center">
+                <label for="ecc-slider" class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                    <span class="px-1.5 py-0.2 text-[8px] bg-slate-900 text-slate-400 rounded border border-slate-800">조절 3</span>
+                    달의 공전 이심률 ($e$)
+                </label>
+                <span class="text-[11px] font-bold text-[#c0ff3e]" id="ecc-val-label">0.054</span>
+            </div>
+            <input type="range" id="ecc-slider" min="0.0" max="0.75" step="0.01" value="0.054" class="w-full">
+            <div class="flex justify-between text-[9px] text-slate-500">
+                <span>완전 원형 (e=0)</span>
+                <span>찌그러진 타원 (e=0.75)</span>
+            </div>
+        </div>
+
+    </footer>
+
+    <!-- Three.js 엔진 구동 스크립트 -->
+    <script>
+        // --- 물리역학 공식에 근거한 상수 ---
+        const G = 6.67430e-11; 
+        const ME = 5.972e24;   // 지구 질량
+        const REAL_DIST = 3.844e8; // 실제 지구-달 평균 거리 (m)
+        const REAL_V = 1022.0;    // 실제 달 공전 속력 (m/s)
+        const EARTH_RADIUS_REAL = 6371000; // 지구 반경 (m)
+
+        // 글로벌 역학 상태 저장소
+        let state = {
+            massRatio: 0.0123,  // 달 질량 / 지구 질량 비율
+            speedFactor: 1.0,   // 달 공전 속도 배율
+            eccentricity: 0.054,// 궤도 이심률 (실제 달은 약 0.0549)
+            moonAngle: 0,       // 달 공전 각도 (진근점 이각, True Anomaly 역할)
+            currentDistance: REAL_DIST,
+            tideHeight: 0.52    // 만조 상승량 (미터)
+        };
+
+        // --- UI 접기/펼치기 제어 함수 ---
+        let isFooterCollapsed = false;
+        function toggleFooter() {
+            const footer = document.getElementById('controls-footer');
+            const arrow = document.getElementById('collapse-arrow');
+            const tabText = document.querySelector('[onclick="toggleFooter()"] span:last-child');
+            
+            isFooterCollapsed = !isFooterCollapsed;
+            if (isFooterCollapsed) {
+                footer.classList.add('translate-y-[calc(100%+30px)]');
+                arrow.classList.add('rotate-180');
+                tabText.innerText = "조절 패널 열기";
+            } else {
+                footer.classList.remove('translate-y-[calc(100%+30px)]');
+                arrow.classList.remove('rotate-180');
+                tabText.innerText = "조절 패널 접기";
+            }
+        }
+
+        // --- Three.js 초기화 ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x010103);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // 드래그 카메라 컨트롤 직접 구현
+        let isDragging = false;
+        let prevMousePos = { x: 0, y: 0 };
+        let camTheta = Math.PI / 4;  
+        let camPhi = Math.PI / 3.2;  
+        let camRadius = 380;         
+
+        function updateCamera() {
+            camera.position.x = camRadius * Math.sin(camPhi) * Math.sin(camTheta);
+            camera.position.y = camRadius * Math.cos(camPhi);
+            camera.position.z = camRadius * Math.sin(camPhi) * Math.cos(camTheta);
+            camera.lookAt(0, 0, 0);
+        }
+        updateCamera();
+
+        // 우주 배경 성단 추가
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 4000;
+        const starPositions = new Float32Array(starsCount * 3);
+        for (let i = 0; i < starsCount * 3; i++) {
+            starPositions[i] = (Math.random() - 0.5) * 2500;
+        }
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starsMat = new THREE.PointsMaterial({ size: 0.8, color: 0x7788aa, transparent: true, opacity: 0.8 });
+        scene.add(new THREE.Points(starsGeo, starsMat));
+
+        // 은은한 우주광 및 입체 조명 설정
+        const ambientLight = new THREE.AmbientLight(0x222233, 1.5);
+        scene.add(ambientLight);
+        
+        // 지구를 밝게 비추는 주 광원
+        const mainLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        mainLight.position.set(200, 100, 200);
+        scene.add(mainLight);
+
+        // --- 천체 메시 생성 (크기는 고정) ---
+        
+        // 1. 지구 그룹화 (원점에 고정이 아니라 질량 중심 기준으로 미세 움직임 구현)
+        const earthGroup = new THREE.Group();
+        scene.add(earthGroup);
+
+        const earthGeo = new THREE.SphereGeometry(25, 32, 32);
+        const earthMat = new THREE.MeshPhongMaterial({
+            color: 0x1d4ed8,
+            emissive: 0x071e40,
+            shininess: 25
+        });
+        const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+        earthGroup.add(earthMesh);
+
+        // 2. 해수면 기조력 레이어 (Tidal Bulge)
+        const tideGeo = new THREE.SphereGeometry(26.2, 32, 32);
+        const tideMat = new THREE.MeshPhongMaterial({
+            color: 0x0ea5e9,
+            transparent: true,
+            opacity: 0.45,
+            wireframe: true // 입체 형상을 강조하기 위한 와이어프레임
+        });
+        const tideMesh = new THREE.Mesh(tideGeo, tideMat);
+        earthGroup.add(tideMesh);
+
+        // 3. 달 (지구 주위를 타원 공전)
+        const moonGeo = new THREE.SphereGeometry(8, 32, 32);
+        const moonMat = new THREE.MeshPhongMaterial({
+            color: 0xd1d5db,
+            emissive: 0x18181b,
+            shininess: 2
+        });
+        const moon = new THREE.Mesh(moonGeo, moonMat);
+        scene.add(moon);
+
+        // 4. 공통 질량 중심 마커 (Barycenter - 0, 0, 0 에 위치)
+        const barycenterGeo = new THREE.SphereGeometry(1.5, 16, 16);
+        const barycenterMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+        const barycenter = new THREE.Mesh(barycenterGeo, barycenterMat);
+        scene.add(barycenter);
+
+        // 5. 지구-달 중력 연결선
+        let connectionLine;
+        const lineMat = new THREE.LineDashedMaterial({ color: 0xc0ff3e, dashSize: 3, gapSize: 2 });
+
+        // 6. 실시간 궤도 패스 라인
+        let earthOrbitLine, moonOrbitLine;
+
+        // 질량 중심 기준의 지구 및 달 타원 궤도선 그리기
+        function drawOrbitPaths(aE, aM, e) {
+            if (earthOrbitLine) scene.remove(earthOrbitLine);
+            if (moonOrbitLine) scene.remove(moonOrbitLine);
+
+            const segments = 128;
+            const ePoints = [];
+            const mPoints = [];
+
+            // 타원의 극좌표 표현방식: r = a(1-e^2) / (1+e*cos(theta))
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                
+                const rE = (aE * (1 - e * e)) / (1 + e * Math.cos(theta));
+                const rM = (aM * (1 - e * e)) / (1 + e * Math.cos(theta));
+
+                // 지구와 달은 반대 방향으로 중심을 회전하므로 서로 180도 대칭 설계
+                ePoints.push(new THREE.Vector3(-rE * Math.cos(theta), 0, -rE * Math.sin(theta)));
+                mPoints.push(new THREE.Vector3(rM * Math.cos(theta), 0, rM * Math.sin(theta)));
+            }
+
+            // 지구 궤도 렌더링
+            const eGeo = new THREE.BufferGeometry().setFromPoints(ePoints);
+            const eMat = new THREE.LineBasicMaterial({ color: 0x2266ff, transparent: true, opacity: 0.35 });
+            earthOrbitLine = new THREE.Line(eGeo, eMat);
+            scene.add(earthOrbitLine);
+
+            // 달 궤도 렌더링
+            const mGeo = new THREE.BufferGeometry().setFromPoints(mPoints);
+            const mMat = new THREE.LineBasicMaterial({ color: 0x9ca3af, transparent: true, opacity: 0.35 });
+            moonOrbitLine = new THREE.Line(mGeo, mMat);
+            scene.add(moonOrbitLine);
+        }
+
+        // --- DOM 연결 ---
+        const massSlider = document.getElementById('mass-slider');
+        const speedSlider = document.getElementById('speed-slider');
+        const eccSlider = document.getElementById('ecc-slider');
+        
+        const massLabel = document.getElementById('mass-val-label');
+        const speedLabel = document.getElementById('speed-val-label');
+        const eccLabel = document.getElementById('ecc-val-label');
+
+        const perihelionDisplay = document.getElementById('perihelion-display');
+        const aphelionDisplay = document.getElementById('aphelion-display');
+        const yearPeriodDisplay = document.getElementById('year-period-display');
+        const highTideDisplay = document.getElementById('high-tide-display');
+        const tideIntensityBar = document.getElementById('tide-intensity-bar');
+        const reDisplay = document.getElementById('re-display');
+
+        const distanceLabel = document.getElementById('distance-label');
+
+        const btnReset = document.getElementById('btn-reset');
+        const btnCamera = document.getElementById('btn-camera');
+
+        // --- 물리학 연산 구동부 ---
+        function runSimulationPhysics() {
+            state.massRatio = parseFloat(massSlider.value);
+            state.speedFactor = parseFloat(speedSlider.value);
+            state.eccentricity = parseFloat(eccSlider.value);
+
+            const MM = ME * state.massRatio; 
+            const totalMass = ME + MM;      
+            const currentV = REAL_V * state.speedFactor; 
+
+            // 1. 기준 타원 궤도 긴반지름(a) 계산: a = G * M_total / v^2
+            const semimajorAxis = (G * totalMass) / (currentV * currentV);
+
+            // 2. 근지점(Perigee)과 원지점(Apogee) 거리 계산
+            const periapsis = semimajorAxis * (1 - state.eccentricity);
+            const apoapsis = semimajorAxis * (1 + state.eccentricity);
+
+            // 3. 공전 주기 T 계산 (케플러 제3법칙 기반)
+            const periodInSeconds = 2.0 * Math.PI * Math.sqrt(Math.pow(semimajorAxis, 3) / (G * totalMass));
+            const periodInDays = periodInSeconds / (24 * 3600);
+
+            // 4. 질량 중심 기준 천체별 긴반지름 변수
+            const aE = semimajorAxis * (MM / totalMass);
+            const aM = semimajorAxis * (ME / totalMass);
+
+            // 5. 대시보드 UI 수치 업데이트
+            perihelionDisplay.innerText = formatNumber(Math.round(periapsis / 1000)) + " km";
+            aphelionDisplay.innerText = formatNumber(Math.round(apoapsis / 1000)) + " km";
+            yearPeriodDisplay.innerText = `${periodInDays.toFixed(1)}일 (Days)`;
+
+            massLabel.innerText = state.massRatio === 0.0123 
+                ? "실제 달 질량 (1.2% Earth)" 
+                : `지구 대비 ${(state.massRatio * 100).toFixed(1)}%`;
+            
+            speedLabel.innerText = `${(currentV / 1000).toFixed(2)} km/s (${Math.round(state.speedFactor * 100)}%)`;
+            eccLabel.innerText = `${state.eccentricity.toFixed(3)}`;
+
+            const rE = semimajorAxis * (MM / totalMass);
+            reDisplay.innerText = formatNumber(Math.round(rE / 1000)) + " km";
+
+            // 6. 실시간 궤도선 반영 (3D 가상 스케일 매핑)
+            const visualScale = 170 / REAL_DIST; 
+            drawOrbitPaths(aE * visualScale, aM * visualScale, state.eccentricity);
+        }
+
+        // --- 실시간 애니메이션 루프 ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+
+            const MM = ME * state.massRatio;
+            const totalMass = ME + MM;
+            const currentV = REAL_V * state.speedFactor;
+
+            // 1. 기준 타원 긴반지름
+            const semimajorAxis = (G * totalMass) / (currentV * currentV);
+            const e = state.eccentricity;
+
+            // 2. 케플러 제2법칙 모사: 거리가 짧을수록 각속도가 빠르고, 멀수록 늚
+            const r_instant = (semimajorAxis * (1 - e * e)) / (1 + e * Math.cos(state.moonAngle));
+            const angularSpeedMultiplier = Math.pow(semimajorAxis / r_instant, 2); 
+            
+            const baseAngularSpeed = currentV / semimajorAxis;
+            const timeMultiplier = 160000; 
+            state.moonAngle += baseAngularSpeed * angularSpeedMultiplier * delta * timeMultiplier;
+
+            // 3. 현재 각도 기준 지구 및 달의 중심 기준 거리 연산
+            const rE = (semimajorAxis * (1 - e * e)) / (1 + e * Math.cos(state.moonAngle)) * (MM / totalMass);
+            const rM = (semimajorAxis * (1 - e * e)) / (1 + e * Math.cos(state.moonAngle)) * (ME / totalMass);
+
+            // 3D 뷰포트 크기로 환산
+            const visualScale = 170 / REAL_DIST;
+            const vRE = rE * visualScale;
+            const vRM = rM * visualScale;
+
+            // 3D 위치 동적 갱신 (Barycenter 가 원점에 위치하도록 회전)
+            const earthX = -vRE * Math.cos(state.moonAngle);
+            const earthZ = -vRE * Math.sin(state.moonAngle);
+            const moonX = vRM * Math.cos(state.moonAngle);
+            const moonZ = vRM * Math.sin(state.moonAngle);
+
+            earthGroup.position.set(earthX, 0, earthZ);
+            moon.position.set(moonX, 0, moonZ);
+
+            // 4. 입체 기조력 팽창 (Tidal Bulge) 반영
+            const totalInstantDist = rE + rM; // 실시간 지구-달 실제 거리
+            state.tideHeight = 0.52 * (MM / (ME * 0.0123)) * Math.pow(REAL_DIST / totalInstantDist, 3);
+            if(state.tideHeight > 1500) state.tideHeight = 1500;
+
+            // 실시간 상승 높이 표기
+            highTideDisplay.innerText = state.tideHeight > 1000 
+                ? `${(state.tideHeight / 1000).toFixed(1)} km` 
+                : `${state.tideHeight.toFixed(2)} m`;
+
+            // 기조력 게이지 바 반영
+            const pct = Math.min(100, (state.tideHeight / 20) * 100);
+            tideIntensityBar.style.width = `${Math.max(5, pct)}%`;
+
+            // 기조력 방향을 실시간 달의 위치로 동기화 정렬
+            tideMesh.lookAt(moon.position);
+
+            // 거리가 가까워지면(만조 시) 구형 해수면 메쉬를 더 길게 팽창
+            const bulgeScale = 1.0 + Math.min(1.2, (state.tideHeight / 100.0));
+            tideMesh.scale.set(1.0 / Math.sqrt(bulgeScale), 1.0 / Math.sqrt(bulgeScale), bulgeScale);
+
+            // 자전 애니메이션 추가
+            earthMesh.rotation.y += 0.3 * delta;
+            moon.rotation.y += 0.05 * delta;
+
+            // 중력 연결선 렌더링
+            if (connectionLine) scene.remove(connectionLine);
+            const points = [earthGroup.position.clone(), moon.position.clone()];
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            connectionLine = new THREE.Line(lineGeo, lineMat);
+            connectionLine.computeLineDistances();
+            scene.add(connectionLine);
+
+            // 실시간 3D 거리 텍스트 라벨 맵핑
+            update3DLabel(earthGroup.position, moon.position, distanceLabel, `${formatNumber(Math.round(totalInstantDist / 1000))} km`, -12);
+
+            renderer.render(scene, camera);
+        }
+
+        // 3D 좌표를 2D 화면 픽셀로 치환해주는 유틸리티
+        function update3DLabel(posA, posB, element, text, yOffset) {
+            const midPoint = new THREE.Vector3().addVectors(posA, posB).multiplyScalar(0.5);
+            const screenPos = midPoint.clone().project(camera);
+            if (Math.abs(screenPos.z) <= 1.0) {
+                const x = (screenPos.x + 1) * window.innerWidth / 2;
+                const y = (-screenPos.y + 1) * window.innerHeight / 2;
+                element.style.left = x + 'px';
+                element.style.top = (y + yOffset) + 'px';
+                element.style.opacity = '1';
+                element.innerText = text;
+            } else {
+                element.style.opacity = '0';
+            }
+        }
+
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // 이벤트 연동
+        massSlider.addEventListener('input', runSimulationPhysics);
+        speedSlider.addEventListener('input', runSimulationPhysics);
+        eccSlider.addEventListener('input', runSimulationPhysics);
+
+        btnReset.addEventListener('click', () => {
+            massSlider.value = "0.0123";
+            speedSlider.value = "1.0";
+            eccSlider.value = "0.054";
+            runSimulationPhysics();
+        });
+
+        btnCamera.addEventListener('click', () => {
+            camTheta = Math.PI / 4;
+            camPhi = Math.PI / 3.2;
+            camRadius = 380;
+            updateCamera();
+        });
+
+        // 마우스 및 터치 제스처 처리
+        window.addEventListener('mousedown', (e) => {
+            if (e.target.tagName !== 'CANVAS') return;
+            isDragging = true;
+            prevMousePos = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - prevMousePos.x;
+            const deltaY = e.clientY - prevMousePos.y;
+
+            camTheta -= deltaX * 0.006;
+            camPhi = Math.max(0.1, Math.min(Math.PI - 0.1, camPhi - deltaY * 0.006));
+
+            prevMousePos = { x: e.clientX, y: e.clientY };
+            updateCamera();
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('mouseleave', () => isDragging = false);
+
+        window.addEventListener('wheel', (e) => {
+            camRadius = Math.max(100, Math.min(1200, camRadius + e.deltaY * 0.4));
+            updateCamera();
+        }, { passive: true });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        window.onload = function() {
+            runSimulationPhysics();
+            animate();
+        };
+    </script>
+</body>
+</html>

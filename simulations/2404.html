@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>별(Star) 볼 일 있는 우주 연대기 시뮬레이터</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #03060f;
+        }
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #272f3f;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b4252;
+        }
+        /* Pulse Animation for HR Pointer with Ripple */
+        @keyframes hr-pulse-ripple {
+            0% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5), 0 0 8px rgba(239, 68, 68, 0.6); }
+            50% { transform: scale(1.15); opacity: 0.9; box-shadow: 0 0 12px 4px rgba(239, 68, 68, 0.4), 0 0 20px 8px rgba(255, 255, 255, 0.2); }
+            100% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0), 0 0 8px rgba(239, 68, 68, 0.6); }
+        }
+        .hr-active-pointer {
+            animation: hr-pulse-ripple 1.8s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-6 py-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-500/10 p-2 rounded-lg border border-amber-500/20 text-amber-400">
+                    <i class="fa-solid fa-sun text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-slate-100">
+                        별(Star) 볼 일 있는 우주 연대기
+                    </h1>
+                    <p class="text-[10px] text-slate-400 font-medium">Interactive HR-Diagram & Stellar Physics Simulator</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 font-medium">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>실시간 연산 중
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+        
+        <!-- LEFT PANEL: Sliders, Numerical Inputs & Controls -->
+        <section class="lg:col-span-3 flex flex-col gap-5 bg-slate-950/50 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-md">
+            <div class="border-b border-slate-800/60 pb-3">
+                <h2 class="text-base font-bold text-slate-200 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-sliders text-amber-500"></i> 컨트롤 센터
+                </h2>
+                <p class="text-[11px] text-slate-400 mt-1">질량과 온도를 수치로 직접 입력하거나 조작해 보세요.</p>
+            </div>
+
+            <!-- Mass Control (M/M_sun) with Direct Input -->
+            <div class="space-y-3 bg-slate-900/30 p-3 rounded-xl border border-slate-800/40">
+                <div class="flex justify-between items-center gap-2">
+                    <label class="text-xs font-bold flex items-center gap-1.5 text-slate-300 whitespace-nowrap">
+                        <i class="fa-solid fa-weight-hanging text-amber-500"></i> 항성의 질량 (<span class="italic">M</span>)
+                    </label>
+                    <div class="flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        <input type="number" id="mass-input" min="0.1" max="50" step="0.01" value="1.00" 
+                               class="w-16 bg-transparent text-sm font-bold text-amber-400 font-mono text-right focus:outline-none">
+                        <span class="text-xs font-bold text-amber-400/80 font-mono">M_☉</span>
+                    </div>
+                </div>
+                <input type="range" id="mass-slider" min="0.1" max="50" step="0.05" value="1.0" 
+                       class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span class="whitespace-nowrap">0.1 M_☉</span>
+                    <span class="whitespace-nowrap">1.0 M_☉ (태양)</span>
+                    <span class="whitespace-nowrap">50.0 M_☉</span>
+                </div>
+            </div>
+
+            <!-- Temperature Control (K) with Direct Input -->
+            <div class="space-y-3 bg-slate-900/30 p-3 rounded-xl border border-slate-800/40">
+                <div class="flex justify-between items-center gap-2">
+                    <label class="text-xs font-bold flex items-center gap-1.5 text-slate-300 whitespace-nowrap">
+                        <i class="fa-solid fa-temperature-half text-sky-400"></i> 표면 온도 (<span class="italic">T</span>)
+                    </label>
+                    <div class="flex items-center gap-1 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
+                        <input type="number" id="temp-input" min="2500" max="40000" step="1" value="5778" 
+                               class="w-20 bg-transparent text-sm font-bold text-sky-400 font-mono text-right focus:outline-none">
+                        <span class="text-xs font-bold text-sky-400/80 font-mono">K</span>
+                    </div>
+                </div>
+                <input type="range" id="temp-slider" min="2500" max="40000" step="100" value="5778" 
+                       class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400">
+                <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span class="whitespace-nowrap">2,500 K</span>
+                    <span class="whitespace-nowrap">5,778 K (태양)</span>
+                    <span class="whitespace-nowrap">40,000 K</span>
+                </div>
+            </div>
+
+            <!-- Spectral Type Details Info Box -->
+            <div class="mt-auto bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-2.5 relative">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">실시간 분광형</span>
+                <div class="flex items-center gap-3">
+                    <div id="spectral-badge" class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg border transform rotate-3 shrink-0">G</div>
+                    <div>
+                        <h4 id="spectral-class-name" class="font-bold text-xs text-slate-200">G형 주계열성</h4>
+                        <p id="spectral-class-desc" class="text-[11px] text-slate-400 leading-relaxed mt-0.5">태양계 모항성 계열로 온화하고 매우 안정적입니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CENTER PANEL: Animated Stellar Canvas Visualization -->
+        <section class="lg:col-span-5 flex flex-col bg-slate-950/20 border border-slate-800 rounded-2xl overflow-hidden relative min-h-[400px] lg:min-h-[500px]">
+            <!-- Dynamic Neon Radial Backdrop -->
+            <div id="space-vortex" class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05)_0%,rgba(2,4,10,1)_100%)] pointer-events-none z-10 transition-all duration-500"></div>
+            
+            <!-- Floating Stats Over Canvas -->
+            <div class="absolute top-4 left-4 z-20 pointer-events-none bg-slate-950/90 border border-slate-800/80 rounded-xl p-3 backdrop-blur text-[11px] space-y-1 shadow-lg">
+                <div class="flex justify-between gap-4">
+                    <span class="text-slate-400 font-medium">항성 반지름 (R):</span> 
+                    <span id="r-stat" class="font-bold text-slate-200 font-mono">1.000 R_☉</span>
+                </div>
+                <div class="flex justify-between gap-4">
+                    <span class="text-slate-400 font-medium">총 방출에너지 (L):</span> 
+                    <span id="l-stat" class="font-bold text-slate-200 font-mono">1.00 L_☉</span>
+                </div>
+            </div>
+
+            <!-- Dynamic Star Canvas -->
+            <div class="flex-grow flex items-center justify-center relative">
+                <canvas id="stellar-canvas" class="w-full h-full max-h-[450px] aspect-square block z-0 cursor-grab active:cursor-grabbing"></canvas>
+                
+                <!-- Glowing Backlight behind star -->
+                <div id="back-glow" class="absolute w-56 h-56 rounded-full blur-[80px] opacity-30 pointer-events-none transition-all duration-300"></div>
+            </div>
+
+            <!-- Drag Instruction Overlay -->
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-slate-950/90 border border-slate-800/80 rounded-full px-4 py-1.5 backdrop-blur text-[10px] text-slate-300 flex items-center gap-1.5 shadow-md whitespace-nowrap">
+                <span class="flex h-1.5 w-1.5 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500"></span>
+                </span>
+                마우스로 항성을 자유롭게 굴리거나 회전시켜보세요
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: Calculated Values, Lifespan, and High-Saturation HR-Diagram -->
+        <section class="lg:col-span-4 flex flex-col gap-5 bg-slate-950/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-md justify-between">
+            <!-- Stellar Output Calculations -->
+            <div class="space-y-4">
+                <div class="border-b border-slate-800 pb-2">
+                    <h2 class="text-base font-bold text-slate-200 flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-circle-nodes text-slate-400"></i> 실시간 연산 데이터
+                    </h2>
+                </div>
+
+                <!-- Calculated Luminosity -->
+                <div class="space-y-1.5 bg-slate-900/20 p-2.5 rounded-xl border border-slate-800/30">
+                    <div class="flex justify-between items-end">
+                        <span class="text-[11px] text-slate-300 font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-bolt text-yellow-500"></i> 계산된 광도 (<span class="italic">L</span>)
+                        </span>
+                        <span id="calc-luminosity" class="text-sm font-bold text-slate-100 font-mono whitespace-nowrap">1.00 L_☉</span>
+                    </div>
+                    <!-- Logarithmic Scale Gauge -->
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div id="luminosity-gauge" class="bg-amber-500 h-full rounded-full transition-all duration-300"></div>
+                    </div>
+                </div>
+
+                <!-- Estimated Lifespan -->
+                <div class="space-y-1.5 bg-slate-900/20 p-2.5 rounded-xl border border-slate-800/30">
+                    <div class="flex justify-between items-end">
+                        <span class="text-[11px] text-slate-300 font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-hourglass-half text-emerald-400"></i> 예상 연대기 주기 (<span class="italic">τ</span>)
+                        </span>
+                        <span id="calc-lifespan" class="text-sm font-bold text-slate-100 font-mono whitespace-nowrap">100억 년</span>
+                    </div>
+                    <!-- Inverse Scale Gauge -->
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div id="lifespan-gauge" class="bg-emerald-500 h-full rounded-full transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Highly Colorful Interactive HR-Diagram -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-3 relative shadow-inner">
+                <div class="flex justify-between items-center">
+                    <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-chart-line text-slate-400"></i> H-R 다이어그램 (H-R도)
+                    </span>
+                    <span id="hr-coord" class="text-[10px] text-slate-400 font-bold font-mono whitespace-nowrap">G형 왜성</span>
+                </div>
+                
+                <!-- Interactive HR Graph Canvas Area -->
+                <div class="relative w-full aspect-[4/3] bg-black border border-slate-850 rounded-lg overflow-hidden cursor-crosshair group" id="hr-graph-container">
+                    <!-- Cosmic Star dust background -->
+                    <canvas id="hr-bg-canvas" class="absolute inset-0 w-full h-full z-0"></canvas>
+
+                    <!-- Active Glowing Target Tracer on HR Diagram -->
+                    <div id="hr-star-pointer" class="absolute w-6 h-6 -ml-3 -mt-3 rounded-full border-2 border-white hr-active-pointer z-30 flex items-center justify-center">
+                        <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+                    </div>
+                    
+                    <!-- Hover Tooltip -->
+                    <div id="hr-tooltip" class="absolute hidden z-40 bg-slate-950/95 border border-slate-800 rounded-lg p-2 text-[10px] text-slate-100 pointer-events-none shadow-xl"></div>
+                </div>
+
+                <!-- Famous Star Presets Quick Links Grid -->
+                <div class="space-y-2 pt-1 border-t border-slate-900">
+                    <span class="text-[10px] font-bold text-slate-400 block"><i class="fa-solid fa-star text-amber-500 mr-1"></i> 유명 항성 프리셋 바로 가기</span>
+                    <div id="star-presets-grid" class="grid grid-cols-4 gap-1 text-[10px]">
+                        <button onclick="selectStarPreset(1.0, 5778)" class="px-1.5 py-1 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/60 rounded text-slate-300 font-medium transition-all text-center">태양</button>
+                        <button onclick="selectStarPreset(2.1, 9940)" class="px-1.5 py-1 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/60 rounded text-slate-300 font-medium transition-all text-center">시리우스A</button>
+                        <button onclick="selectStarPreset(21.0, 12000)" class="px-1.5 py-1 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/60 rounded text-slate-300 font-medium transition-all text-center">리겔</button>
+                        <button onclick="selectStarPreset(19.0, 8500)" class="px-1.5 py-1 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/60 rounded text-slate-300 font-medium transition-all text-center">데네브</button>
+                        <button onclick="selectStarPreset(18.0, 3500)" class="px-1.5 py-1 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/60 rounded text-slate-300 font-medium transition-all text-center">베텔게우스</button>
+                        <button onclick="selectStarPreset(1.02, 25200)" class="px-1.5 py-1 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/60 rounded text-slate-300 font-medium transition-all text-center">시리우스B</button>
+                        <button onclick="selectStarPreset(0.12, 3040)" class="px-1.5 py-1 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/60 rounded text-slate-300 font-medium transition-all text-center">프록시마</button>
+                        <button onclick="selectStarPreset(1.1, 4300)" class="px-1.5 py-1 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/60 rounded text-slate-300 font-medium transition-all text-center">아크투르스</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Description Panel & Reset Button -->
+    <footer class="bg-slate-950/80 border-t border-slate-800 p-6 backdrop-blur">
+        <div class="max-w-7xl mx-auto flex flex-col justify-between items-start gap-6">
+            <!-- Theory & Explanation with High-Fidelity Styled Formula Cards -->
+            <div class="space-y-4 w-full">
+                <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap"></i> 주계열성 핵심 물리 원리
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                    <!-- Formula 1 Card: Mass-Luminosity -->
+                    <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-800/80 flex flex-col sm:flex-row items-center gap-4">
+                        <div class="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 rounded-lg p-4 min-w-[120px] h-24 shadow-inner shrink-0">
+                            <span class="text-2xl font-serif font-extrabold text-amber-400 select-none tracking-tight">
+                                L &propto; M<sup class="text-xs text-amber-500 font-bold">3.5</sup>
+                            </span>
+                            <span class="text-[9px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">질량-광도 관계식</span>
+                        </div>
+                        <div class="space-y-1">
+                            <strong class="text-slate-200 text-xs flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> 1. 질량-광도 비례 법칙
+                            </strong>
+                            <p class="text-[11px] text-slate-400 leading-relaxed font-normal">
+                                주계열성은 스스로의 중력을 지탱하기 위해 중심핵 내부의 가스 압력을 높여 엄청난 광도를 방출합니다. 질량이 아주 조금만 무거워져도 방출되는 광도(<span class="italic font-serif">L</span>)는 눈에 띄게 폭증하게 됩니다.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Formula 2 Card: Mass-Lifespan -->
+                    <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-800/80 flex flex-col sm:flex-row items-center gap-4">
+                        <div class="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 rounded-lg p-4 min-w-[120px] h-24 shadow-inner shrink-0">
+                            <span class="text-2xl font-serif font-extrabold text-emerald-400 select-none tracking-tight">
+                                &tau; &propto; M<sup class="text-xs text-emerald-500 font-bold">-2.5</sup>
+                            </span>
+                            <span class="text-[9px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">질량-수명 관계식</span>
+                        </div>
+                        <div class="space-y-1">
+                            <strong class="text-slate-200 text-xs flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 2. 질량-수명 역비례 법칙
+                            </strong>
+                            <p class="text-[11px] text-slate-400 leading-relaxed font-normal">
+                                소모율(광도)이 질량보다 훨씬 가파르게 늘어나기 때문에, 고온의 거대한 파란색 항성은 아주 소량의 질량을 지닌 적색 왜성에 비해 우주적인 시간 단위 상으로 무척 빠르게 연료를 소모하고 일찍 일대기를 마감합니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0 self-end mt-2">
+                <button id="sun-preset-btn" class="px-4 py-2.5 bg-slate-900/80 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold border border-slate-800 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-sun text-yellow-500"></i> 태양 프리셋
+                </button>
+                <button id="reset-btn" class="px-4 py-2.5 bg-slate-900/80 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold border border-slate-800 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-rotate-left"></i> 기본화
+                </button>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto mt-6 pt-4 border-t border-slate-800/40 text-center text-[10px] text-slate-500 font-mono">
+            © 2026 Astronomy Education Lab. Powered by Stefan-Boltzmann & Mass-Luminosity High-Saturate Renderer.
+        </div>
+    </footer>
+
+    <!-- Script Block for Stellar Physics and Rendering -->
+    <script>
+        // --- 1. DOM Elements ---
+        const massSlider = document.getElementById('mass-slider');
+        const tempSlider = document.getElementById('temp-slider');
+        const massInput = document.getElementById('mass-input');
+        const tempInput = document.getElementById('temp-input');
+        
+        const rStat = document.getElementById('r-stat');
+        const lStat = document.getElementById('l-stat');
+        
+        const calcLuminosity = document.getElementById('calc-luminosity');
+        const calcLifespan = document.getElementById('calc-lifespan');
+        
+        const luminosityGauge = document.getElementById('luminosity-gauge');
+        const lifespanGauge = document.getElementById('lifespan-gauge');
+        
+        const spectralBadge = document.getElementById('spectral-badge');
+        const spectralClassName = document.getElementById('spectral-class-name');
+        const spectralClassDesc = document.getElementById('spectral-class-desc');
+        
+        const hrStarPointer = document.getElementById('hr-star-pointer');
+        const hrGraphContainer = document.getElementById('hr-graph-container');
+        const hrBgCanvas = document.getElementById('hr-bg-canvas');
+        const hrBgCtx = hrBgCanvas.getContext('2d');
+        const hrTooltip = document.getElementById('hr-tooltip');
+        
+        const resetBtn = document.getElementById('reset-btn');
+        const sunPresetBtn = document.getElementById('sun-preset-btn');
+        const backGlow = document.getElementById('back-glow');
+        const spaceVortex = document.getElementById('space-vortex');
+        
+        const canvas = document.getElementById('stellar-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- 2. State & Dynamic Parameters ---
+        let mass = 1.0; 
+        let temperature = 5778; 
+        let rotationAngle = 0;
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let spinSpeed = 0.003; // 천천히 회전하도록 속도 하향 조정 (0.006 -> 0.003)
+        let timeSeed = 0;
+
+        // Dynamic Flare & Particle system
+        let magneticLoops = [];
+        let stellarWindParticles = [];
+
+        // Realistic Star Database from Image for Clicks & Visual Reference points
+        const stellarDatabase = [
+            { name: "베텔게우스 (Betelgeuse)", mass: 18.0, temp: 3500, radius: 900, class: "Supergiant" },
+            { name: "리겔 (Rigel)", mass: 21.0, temp: 12000, radius: 78, class: "Supergiant" },
+            { name: "아크투르스 (Arcturus)", mass: 1.1, temp: 4300, radius: 25, class: "Giant" },
+            { name: "데네브 (Deneb)", mass: 19.0, temp: 8500, radius: 200, class: "Supergiant" },
+            { name: "시리우스 A (Sirius A)", mass: 2.1, temp: 9940, radius: 1.7, class: "Main Sequence" },
+            { name: "베가 (Vega)", mass: 2.1, temp: 9600, radius: 2.4, class: "Main Sequence" },
+            { name: "알데바란 (Aldebaran)", mass: 1.2, temp: 3900, radius: 44, class: "Giant" },
+            { name: "태양 (Sun)", mass: 1.0, temp: 5778, radius: 1.0, class: "Main Sequence" },
+            { name: "센타우리 A (α Centauri A)", mass: 1.1, temp: 5790, radius: 1.2, class: "Main Sequence" },
+            { name: "시리우스 B (Sirius B)", mass: 1.02, temp: 25200, radius: 0.008, class: "White Dwarf" },
+            { name: "프로키온 B (Procyon B)", mass: 0.6, temp: 7740, radius: 0.012, class: "White Dwarf" },
+            { name: "프록시마 센타우리 (Proxima)", mass: 0.12, temp: 3040, radius: 0.15, class: "Main Sequence" },
+            { name: "적색 왜성 (Wolf 359)", mass: 0.09, temp: 2800, radius: 0.16, class: "Main Sequence" }
+        ];
+
+        // --- 3. Physics Formulation ---
+        function calculateStellarProperties(M, T) {
+            let L = 1.0;
+            // Mass-Luminosity Scaling
+            if (M < 0.43) {
+                L = 0.23 * Math.pow(M, 2.3);
+            } else if (M < 2.0) {
+                L = Math.pow(M, 4.0); 
+            } else if (M < 20.0) {
+                L = 1.4 * Math.pow(M, 3.5);
+            } else {
+                L = 32000 * M; 
+            }
+
+            // Stefan-Boltzmann Equation
+            const T_ratio = T / 5778;
+            const R = Math.sqrt(L) / Math.pow(T_ratio, 2);
+
+            // Nuclear Burning Rate Lifespan
+            const lifespanGyr = 10 * (M / L);
+
+            return { L, R, lifespanGyr };
+        }
+
+        // --- REFINED HIGH-SATURATION COLOR SPEC MAPPING ---
+        function kelvinToRGB(temp) {
+            if (temp >= 28000) {
+                return { r: 90, g: 110, b: 235 };
+            } else if (temp >= 10000) {
+                const ratio = (temp - 10000) / (28000 - 10000);
+                return {
+                    r: Math.round(90 + ratio * 0),
+                    g: Math.round(185 + ratio * -75),
+                    b: Math.round(205 + ratio * 30)
+                };
+            } else if (temp >= 7500) {
+                const ratio = (temp - 7500) / (10000 - 7500);
+                return {
+                    r: Math.round(240 + ratio * -150),
+                    g: Math.round(240 + ratio * -55),
+                    b: Math.round(245 + ratio * -40)
+                };
+            } else if (temp >= 6000) {
+                const ratio = (temp - 6000) / (7500 - 6000);
+                return {
+                    r: Math.round(245 + ratio * -5),
+                    g: Math.round(230 + ratio * 10),
+                    b: Math.round(175 + ratio * 70)
+                };
+            } else if (temp >= 5200) {
+                const ratio = (temp - 5200) / (6000 - 5200);
+                return {
+                    r: Math.round(245 + ratio * 0),
+                    g: Math.round(210 + ratio * 20),
+                    b: Math.round(45 + ratio * 130)
+                };
+            } else if (temp >= 3700) {
+                const ratio = (temp - 3700) / (5200 - 3700);
+                return {
+                    r: Math.round(245 + ratio * 0),
+                    g: Math.round(130 + ratio * 80),
+                    b: Math.round(35 + ratio * 10)
+                };
+            } else {
+                const ratio = Math.max(0, Math.min(1, (temp - 2500) / (3700 - 2500)));
+                return {
+                    r: Math.round(245 + ratio * 0),
+                    g: Math.round(40 + ratio * 90),
+                    b: Math.round(40 + ratio * -5)
+                };
+            }
+        }
+
+        function formatYears(gyr) {
+            const totalYears = gyr * 1e9;
+            if (totalYears >= 1e12) {
+                return (totalYears / 1e12).toFixed(2) + "조 년";
+            } else if (totalYears >= 1e8) {
+                return (totalYears / 1e8).toFixed(1) + "억 년";
+            } else {
+                return (totalYears / 1e6).toFixed(1) + "백만 년";
+            }
+        }
+
+        function getSpectralClass(temp) {
+            if (temp >= 30000) return { type: 'O', name: 'O형 청색 주계열성', desc: '깊고 풍부한 우주 청색 빛으로 에너지를 활발히 연소하는 항성입니다.', color: 'bg-blue-600 border-blue-400 text-blue-100 shadow-[0_0_15px_#5a6eeb]' };
+            if (temp >= 10000) return { type: 'B', name: 'B형 청백색 주계열성', desc: '눈부신 아쿠아 청록빛 에너지를 우주에 가득 뿜어냅니다.', color: 'bg-cyan-500 border-cyan-200 text-cyan-950 shadow-[0_0_15px_#5ac5cd]' };
+            if (temp >= 7500) return { type: 'A', name: 'A형 백색 주계열성', desc: '순백색의 색조를 띠며 표면이 매우 밝고 단아한 분위기의 별입니다.', color: 'bg-white border-slate-300 text-slate-900 shadow-[0_0_12px_#ffffff]' };
+            if (temp >= 6000) return { type: 'F', name: 'F형 황백색 주계열성', desc: '황색과 백색이 가미된 부드러운 빛깔의 온화한 별입니다.', color: 'bg-yellow-100 border-yellow-200 text-yellow-950 shadow-[0_0_10px_#f5eba0]' };
+            if (temp >= 5200) return { type: 'G', name: 'G형 황색 왜성 (태양형)', desc: '찬란한 황색 그대로 빛나며 생명이 살기 가장 좋은 모항성입니다.', color: 'bg-yellow-400 border-yellow-300 text-yellow-950 shadow-[0_0_12px_#f5d22d]' };
+            if (temp >= 3700) return { type: 'K', name: 'K형 오렌지색 주계열성', desc: '따뜻한 주황색 불꽃광으로 불타며, 긴 시간 수명을 유지합니다.', color: 'bg-orange-500 border-orange-300 text-orange-950 shadow-[0_0_10px_#f58223]' };
+            return { type: 'M', name: 'M형 적색 왜성', desc: '불타는 적색빛 왜성으로, 가장 어둡지만 오랜 기간 연소합니다.', color: 'bg-red-600 border-red-400 text-red-100 shadow-[0_0_15px_#f52828]' };
+        }
+
+        // --- 4. HIGH-SATURATION NEON HR-DIAGRAM RENDERER ---
+        function drawHRDiagramBackground() {
+            const w = hrBgCanvas.width = hrBgCanvas.clientWidth;
+            const h = hrBgCanvas.height = hrBgCanvas.clientHeight;
+            
+            // Canvas가 숨겨져 있거나 크기가 정의되지 않은 초기 단계에는 보초 코드로 튕겨냄
+            if (w === 0 || h === 0) return;
+
+            // Base universe black
+            hrBgCtx.fillStyle = '#010204';
+            hrBgCtx.fillRect(0, 0, w, h);
+
+            // Coordinates mapping helper with safety boundary check
+            const getX = (T) => {
+                const logMinT = Math.log10(2000);
+                const logMaxT = Math.log10(45000);
+                const val = Math.max(2000, Math.min(45000, T));
+                return (logMaxT - Math.log10(val)) / (logMaxT - logMinT) * w;
+            };
+            const getY = (L) => {
+                const logMinL = Math.log10(1e-5);
+                const logMaxL = Math.log10(1e7);
+                const val = Math.max(1e-5, Math.min(1e7, L));
+                return (logMaxL - Math.log10(val)) / (logMaxL - logMinL) * h;
+            };
+
+            // Glow rendering utility
+            const drawGlowCircle = (cx, cy, radius, colorStop1, colorStop2) => {
+                if (radius <= 0.1 || isNaN(cx) || isNaN(cy)) return;
+                const radial = hrBgCtx.createRadialGradient(cx, cy, 1, cx, cy, radius);
+                radial.addColorStop(0, colorStop1);
+                radial.addColorStop(0.5, colorStop2);
+                radial.addColorStop(1, 'rgba(0,0,0,0)');
+                hrBgCtx.fillStyle = radial;
+                hrBgCtx.beginPath();
+                hrBgCtx.arc(cx, cy, radius, 0, Math.PI*2);
+                hrBgCtx.fill();
+            };
+
+            // Enable High-Contrast screen blending for neon nebula look
+            hrBgCtx.globalCompositeOperation = 'screen';
+
+            // 1. NEON SUPERGIANTS (Top High Saturation Cyan/Pink)
+            drawGlowCircle(getX(20000), getY(200000), w * 0.45, 'rgba(90, 110, 235, 0.45)', 'rgba(8, 145, 178, 0.1)');
+            drawGlowCircle(getX(3500), getY(500000), w * 0.35, 'rgba(245, 40, 40, 0.55)', 'rgba(185, 28, 28, 0.1)');
+
+            // 2. GIANTS (Middle Right orange flare)
+            drawGlowCircle(getX(4000), getY(200), w * 0.3, 'rgba(245, 130, 35, 0.5)', 'rgba(194, 65, 12, 0.05)');
+
+            // 3. MAIN SEQUENCE (The Ultimate S-curve Nebula)
+            const steps = 60;
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                // Cubic Bezier curve simulation for MS path
+                const T_val = 35000 * Math.pow(1 - t, 1.8) + 2000;
+                const L_val = 1000000 * Math.pow(1 - t, 4.5) + 0.00001;
+                
+                const sx = getX(T_val);
+                const sy = getY(L_val);
+                
+                let segmentColor = 'rgba(90, 110, 235, 0.25)'; // Blue O-type
+                if (t > 0.3) segmentColor = 'rgba(90, 197, 205, 0.2)'; // B-A white/cyan
+                if (t > 0.5) segmentColor = 'rgba(245, 210, 45, 0.25)'; // G yellow
+                if (t > 0.75) segmentColor = 'rgba(245, 40, 40, 0.4)';  // M red
+                
+                drawGlowCircle(sx, sy, Math.max(0.1, w * 0.15), segmentColor, 'rgba(0,0,0,0)');
+            }
+
+            // 4. WHITE DWARFS (Bottom-Left glowing cyber patch)
+            drawGlowCircle(getX(18000), getY(0.0001), w * 0.25, 'rgba(165, 243, 252, 0.4)', 'rgba(0,0,0,0)');
+
+            // Return to normal drawing mode
+            hrBgCtx.globalCompositeOperation = 'source-over';
+
+            // C. Stellar Radius Guidelines (Slanted Lines)
+            hrBgCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            hrBgCtx.lineWidth = 1;
+            const radiiList = [1000, 100, 10, 1, 0.1, 0.01, 0.001];
+            radiiList.forEach(r => {
+                hrBgCtx.beginPath();
+                hrBgCtx.moveTo(getX(45000), getY(r*r * Math.pow(45000/5778, 4)));
+                hrBgCtx.lineTo(getX(2000), getY(r*r * Math.pow(2000/5778, 4)));
+                hrBgCtx.stroke();
+            });
+
+            // D. Draw Specific Star Nodes from Database on HR Diagram
+            stellarDatabase.forEach(star => {
+                const stX = getX(star.temp);
+                const stL = calculateStellarProperties(star.mass, star.temp).L;
+                const stY = getY(stL);
+
+                if (stX >= 0 && stX <= w && stY >= 0 && stY <= h) {
+                    const rgb = kelvinToRGB(star.temp);
+                    
+                    // Outer glow
+                    hrBgCtx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.55)`;
+                    hrBgCtx.beginPath();
+                    hrBgCtx.arc(stX, stY, 5, 0, Math.PI * 2);
+                    hrBgCtx.fill();
+
+                    // White Core
+                    hrBgCtx.fillStyle = '#ffffff';
+                    hrBgCtx.beginPath();
+                    hrBgCtx.arc(stX, stY, 2, 0, Math.PI * 2);
+                    hrBgCtx.fill();
+
+                    // Star name tag
+                    hrBgCtx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    hrBgCtx.font = '7px system-ui';
+                    hrBgCtx.fillText(star.name.split(' (')[0], stX + 7, stY + 3);
+                }
+            });
+
+            // E. Text Regions overlay (Vivid white labels)
+            hrBgCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            hrBgCtx.font = '900 10px system-ui';
+            hrBgCtx.fillText('초거성 (SUPERGIANTS)', getX(15000), getY(200000));
+            
+            hrBgCtx.fillStyle = 'rgba(253, 186, 116, 0.9)';
+            hrBgCtx.fillText('거성 (GIANTS)', getX(4000), getY(500));
+            
+            hrBgCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            hrBgCtx.fillText('주계열성 (MAIN SEQUENCE)', getX(12000), getY(30));
+            
+            hrBgCtx.fillStyle = 'rgba(103, 232, 249, 0.8)';
+            hrBgCtx.fillText('백색왜성 (WHITE DWARFS)', getX(22000), getY(0.00007));
+        }
+
+        // Star Database click event listener
+        hrGraphContainer.addEventListener('click', (e) => {
+            const rect = hrGraphContainer.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            const w = hrBgCanvas.width;
+            const h = hrBgCanvas.height;
+            if (w === 0 || h === 0) return;
+
+            const getX = (T) => {
+                const logMinT = Math.log10(2000);
+                const logMaxT = Math.log10(45000);
+                const val = Math.max(2000, Math.min(45000, T));
+                return (logMaxT - Math.log10(val)) / (logMaxT - logMinT) * w;
+            };
+            const getY = (L) => {
+                const logMinL = Math.log10(1e-5);
+                const logMaxL = Math.log10(1e7);
+                const val = Math.max(1e-5, Math.min(1e7, L));
+                return (logMaxL - Math.log10(val)) / (logMaxL - logMinL) * h;
+            };
+
+            // Check if clicked near any star in the database
+            for (let star of stellarDatabase) {
+                const stX = getX(star.temp);
+                const stL = calculateStellarProperties(star.mass, star.temp).L;
+                const stY = getY(stL);
+
+                const distance = Math.hypot(clickX - stX, clickY - stY);
+                if (distance < 12) { // Hit bubble threshold
+                    selectStarPreset(star.mass, star.temp);
+                    break;
+                }
+            }
+        });
+
+        // External helper function to load a predefined star (Syncs sliders & text fields)
+        window.selectStarPreset = function(m, t) {
+            // Apply defensive boundary clamp
+            const validMass = Math.max(0.1, Math.min(50, parseFloat(m) || 1));
+            const validTemp = Math.max(2500, Math.min(40000, parseInt(t) || 5778));
+
+            massSlider.value = validMass;
+            massInput.value = validMass.toFixed(2);
+            tempSlider.value = validTemp;
+            tempInput.value = validTemp;
+            updateSimulation();
+            
+            const c = kelvinToRGB(validTemp);
+            spaceVortex.style.background = `radial-gradient(circle_at_center, rgba(${c.r}, ${c.g}, ${c.b}, 0.2) 0%, rgba(0,0,0,1) 100%)`;
+        };
+
+        // --- 5. HIGH DYNAMICS STAR GRAPHICS ENGINE ---
+        
+        // Solar Wind Particle (차분한 대기 시뮬레이션을 위해 입자 이동 속도 및 크기 감소)
+        class WindParticle {
+            constructor(cx, cy, startRadius, angle, speed, color) {
+                this.cx = cx;
+                this.cy = cy;
+                this.angle = angle;
+                this.radius = startRadius;
+                this.speed = speed * 0.4; // 파티클 흐름 속도를 조용하고 느리게 완화
+                this.size = Math.random() * 6 + 2; // 가스 구름 알갱이 크기를 줄여 정돈
+                this.opacity = 0.55; // 투명하게 부드러운 대기 흐름 유도
+                this.color = color;
+            }
+            update() {
+                this.radius += this.speed;
+                this.opacity -= 0.008; // 천천히 우주 속으로 스러지게 함
+                this.size *= 0.985;
+            }
+            draw() {
+                const activeSize = Math.max(0.1, this.size);
+                if (activeSize <= 0.1 || this.opacity <= 0.01) return;
+                const px = this.cx + Math.cos(this.angle) * this.radius;
+                const py = this.cy + Math.sin(this.angle) * this.radius;
+                
+                try {
+                    const pGrd = ctx.createRadialGradient(px, py, 0.1, px, py, activeSize);
+                    pGrd.addColorStop(0, `rgba(${this.color}, ${this.opacity})`);
+                    pGrd.addColorStop(0.3, `rgba(${this.color}, ${this.opacity * 0.5})`);
+                    pGrd.addColorStop(1, `rgba(${this.color}, 0)`);
+                    
+                    ctx.fillStyle = pGrd;
+                    ctx.beginPath();
+                    ctx.arc(px, py, activeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                } catch (e) {
+                    ctx.fillStyle = `rgba(${this.color}, ${this.opacity * 0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(px, py, activeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Magnetic loops class (Solar CME arcs)
+        class MagneticLoop {
+            constructor(cx, cy, r, baseAngle, span, color) {
+                this.cx = cx;
+                this.cy = cy;
+                this.r = r;
+                this.angle1 = baseAngle;
+                this.angle2 = baseAngle + span;
+                this.color = color;
+                this.life = 0;
+                this.maxLife = Math.random() * 80 + 40; // 조금 더 천천히 생겨나고 사라짐
+                this.amplitude = Math.random() * 8 + 3; // 자기장 크기를 줄여 얌전하게 표현
+            }
+            update() {
+                this.life++;
+            }
+            draw() {
+                const progress = Math.sin((this.life / this.maxLife) * Math.PI);
+                const activeOpacity = Math.max(0, progress * 0.65); // 눈을 찌르지 않게 불투명도 낮춤
+                if (activeOpacity <= 0) return;
+
+                ctx.strokeStyle = `rgba(${this.color}, ${activeOpacity})`;
+                ctx.lineWidth = Math.random() * 1.0 + 0.5;
+
+                const startX = this.cx + Math.cos(this.angle1) * this.r;
+                const startY = this.cy + Math.sin(this.angle1) * this.r;
+                const endX = this.cx + Math.cos(this.angle2) * this.r;
+                const endY = this.cy + Math.sin(this.angle2) * this.r;
+
+                const midAngle = (this.angle1 + this.angle2) / 2;
+                const controlRadius = Math.max(0.1, this.r + this.amplitude * progress);
+                const ctrlX = this.cx + Math.cos(midAngle) * controlRadius;
+                const ctrlY = this.cy + Math.sin(midAngle) * controlRadius;
+
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+                ctx.stroke();
+            }
+        }
+
+        function renderStar(R, T) {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            if (w === 0 || h === 0) return;
+
+            ctx.clearRect(0, 0, w, h);
+            
+            const centerX = w / 2;
+            const centerY = h / 2;
+            
+            // Scaled radius inside drawing layout
+            const minRenderRadius = 25;
+            const maxRenderRadius = 135;
+            const logMinR = Math.log10(0.08);
+            const logMaxR = Math.log10(20);
+            const logR = Math.log10(R);
+            const normalizedR = (logR - logMinR) / (logMaxR - logMinR);
+            const finalRadius = Math.max(minRenderRadius, minRenderRadius + (normalizedR * (maxRenderRadius - minRenderRadius)));
+
+            const stellarColor = kelvinToRGB(T);
+            const rgbStr = `${stellarColor.r}, ${stellarColor.g}, ${stellarColor.b}`;
+
+            timeSeed += 0.008; // 속도를 느리게 하여 일렁임 감소 (0.015 -> 0.008)
+            rotationAngle += spinSpeed;
+            spinSpeed += (0.002 - spinSpeed) * 0.05; // 기본 자전 속도를 차분하게 감속
+
+            // 1. DYNAMIC SOLAR WIND GAS PARTICLE SYSTEM (입자 생성 속도를 1/3 수준으로 감소)
+            const creationRate = Math.floor(mass * 0.4) + 1; 
+            for (let i = 0; i < creationRate; i++) {
+                if (stellarWindParticles.length < 80) { // 입자 최대 한도를 200 -> 80으로 줄임
+                    const ang = Math.random() * Math.PI * 2;
+                    const spd = Math.random() * 1.0 + 0.5 + mass * 0.05;
+                    stellarWindParticles.push(new WindParticle(centerX, centerY, finalRadius * 0.92, ang, spd, rgbStr));
+                }
+            }
+
+            // Update & Draw Wind particles (Backward Loop to avoid splice skip index error)
+            for (let i = stellarWindParticles.length - 1; i >= 0; i--) {
+                const p = stellarWindParticles[i];
+                p.update();
+                p.draw();
+                if (p.opacity <= 0 || p.radius > finalRadius * 3.0) {
+                    stellarWindParticles.splice(i, 1);
+                }
+            }
+
+            // 2. DYNAMIC CORONA MAGNETIC LOOPS (자기장 고리 빈도를 줄이고 얌전하게 제어)
+            if (Math.random() < 0.08 && magneticLoops.length < 10) { // 출현 확률 0.15 -> 0.08, 최대 수 25 -> 10
+                const baseAng = Math.random() * Math.PI * 2;
+                const span = (Math.random() * 0.2 + 0.1) * (Math.random() > 0.5 ? 1 : -1);
+                magneticLoops.push(new MagneticLoop(centerX, centerY, finalRadius, baseAng, span, rgbStr));
+            }
+
+            for (let i = magneticLoops.length - 1; i >= 0; i--) {
+                const l = magneticLoops[i];
+                l.update();
+                l.draw();
+                if (l.life >= l.maxLife) {
+                    magneticLoops.splice(i, 1);
+                }
+            }
+
+            // 3. LAYERED CORONA GLOW (대기 광풍을 우아한 대기층 구체 형태로 보정)
+            const numCoronas = 4; // 대기층 축소
+            for (let i = 0; i < numCoronas; i++) {
+                const scale = Math.max(0.1, 1.0 + (i * 0.18) + Math.sin(timeSeed * 3 + i) * 0.02); // 흔들림을 절반으로 하향
+                const r0 = Math.max(0.1, finalRadius * 0.2);
+                const r1 = Math.max(0.2, finalRadius * scale);
+                
+                try {
+                    const radGrd = ctx.createRadialGradient(centerX, centerY, r0, centerX, centerY, r1);
+                    radGrd.addColorStop(0, `rgba(${rgbStr}, 0.9)`);
+                    radGrd.addColorStop(0.3, `rgba(${rgbStr}, 0.5)`);
+                    radGrd.addColorStop(0.7, `rgba(${rgbStr}, 0.1)`);
+                    radGrd.addColorStop(1, `rgba(${rgbStr}, 0)`);
+                    
+                    ctx.fillStyle = radGrd;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, r1, 0, Math.PI * 2);
+                    ctx.fill();
+                } catch (e) {
+                    ctx.fillStyle = `rgba(${rgbStr}, 0.05)`;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, r1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // 4. MAIN CORE STELLAR BODY (대류 무늬를 고르고 차분하게 다듬음)
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, finalRadius, 0, Math.PI * 2);
+            ctx.clip(); // Constrain within photosphere disk
+
+            // Center glow base
+            const bodyGrd = ctx.createRadialGradient(
+                centerX - finalRadius * 0.2, centerY - finalRadius * 0.2, 0.1,
+                centerX, centerY, finalRadius
+            );
+            bodyGrd.addColorStop(0, '#ffffff');
+            bodyGrd.addColorStop(0.2, `rgb(${stellarColor.r}, ${stellarColor.g}, ${stellarColor.b})`);
+            const darkR = Math.max(0, stellarColor.r - 80);
+            const darkG = Math.max(0, stellarColor.g - 80);
+            const darkB = Math.max(0, stellarColor.b - 80);
+            bodyGrd.addColorStop(1, `rgb(${darkR}, ${darkG}, ${darkB})`);
+
+            ctx.fillStyle = bodyGrd;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, finalRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Liquid/Bubbling convector granulation (부글부글 대류 세포 수를 줄이고 얌전하게 배치)
+            ctx.fillStyle = `rgba(${stellarColor.r}, ${stellarColor.g}, ${stellarColor.b}, 0.05)`;
+            const numBubbles = 15; // 세포 수 35 -> 15로 감소
+            for (let b = 0; b < numBubbles; b++) {
+                const driftX = centerX + Math.cos(timeSeed * 0.1 + b) * (finalRadius * 0.6);
+                const driftY = centerY + Math.sin(timeSeed * 0.2 + b * 2) * (finalRadius * 0.5);
+                const bubbleRadius = Math.max(0.2, (Math.sin(timeSeed * 2 + b) * 0.15 + 0.85) * (finalRadius * 0.25));
+                
+                try {
+                    const bubbleGrd = ctx.createRadialGradient(driftX, driftY, 0.1, driftX, driftY, bubbleRadius);
+                    bubbleGrd.addColorStop(0, `rgba(255, 255, 255, 0.25)`);
+                    bubbleGrd.addColorStop(0.5, `rgba(${stellarColor.r}, ${stellarColor.g}, ${stellarColor.b}, 0.15)`);
+                    bubbleGrd.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = bubbleGrd;
+
+                    ctx.beginPath();
+                    ctx.arc(driftX, driftY, bubbleRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                } catch (e) {}
+            }
+
+            // Draw spinning coordinate lines to show spherical structure
+            ctx.strokeStyle = `rgba(${darkR}, ${darkG}, ${darkB}, 0.3)`; // 위도선 밝기 낮춤
+            ctx.lineWidth = 1.2;
+            for (let j = -3; j <= 3; j++) {
+                const lat = j * (finalRadius / 4.2);
+                const ellipseVal = finalRadius * finalRadius - lat * lat;
+                if (ellipseVal <= 0.1) continue;
+                const ellipseW = Math.max(0.1, Math.sqrt(ellipseVal));
+                const radiusY = Math.max(0.1, Math.abs(ellipseW * 0.28 * Math.sin(rotationAngle * 0.25)));
+                
+                ctx.beginPath();
+                ctx.ellipse(
+                    centerX, centerY + lat, 
+                    ellipseW, radiusY, 
+                    0, 0, Math.PI * 2
+                );
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 5. FLARES/SOLAR PROMINENCE ESCAPE (삐죽 튀어나오던 불꽃 줄기 세기 대폭 약화)
+            const numFlares = 6 + Math.floor(mass * 0.2); // 과격한 프로미넌스 수 절감 (15 -> 6)
+            for (let f = 0; f < numFlares; f++) {
+                const angle = (f / numFlares) * Math.PI * 2 + rotationAngle;
+                const flareSize = Math.max(0.1, finalRadius * (0.04 + Math.abs(Math.sin(timeSeed * 3 + f)) * 0.1)); // 일렁임 높이 감소
+                const reachX = centerX + Math.cos(angle) * (finalRadius + flareSize * 0.5);
+                const reachY = centerY + Math.sin(angle) * (finalRadius + flareSize * 0.5);
+
+                ctx.fillStyle = `rgba(${rgbStr}, 0.45)`;
+                ctx.beginPath();
+                ctx.arc(reachX, reachY, Math.max(0.1, flareSize * 0.35), 0, Math.PI * 2);
+                ctx.fill();
+
+                // Connect line
+                ctx.strokeStyle = `rgba(${rgbStr}, 0.25)`;
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                ctx.moveTo(centerX + Math.cos(angle) * finalRadius, centerY + Math.sin(angle) * finalRadius);
+                ctx.quadraticCurveTo(
+                    centerX + Math.cos(angle + 0.1) * (finalRadius + flareSize * 0.35),
+                    centerY + Math.sin(angle + 0.1) * (finalRadius + flareSize * 0.35),
+                    reachX, reachY
+                );
+                ctx.stroke();
+            }
+
+            // Photosphere boundary rings
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.lineWidth = 1.0;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, finalRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // --- 6. Event Handlers & Core Synchronizer ---
+
+        function updateSimulation() {
+            mass = parseFloat(massSlider.value);
+            temperature = parseInt(tempSlider.value);
+
+            const { L, R, lifespanGyr } = calculateStellarProperties(mass, temperature);
+
+            // Update Control center values (Direct inputs instead of non-existent spans)
+            massInput.value = mass.toFixed(2);
+            tempInput.value = temperature;
+            
+            rStat.textContent = `${R.toFixed(3)} R_☉`;
+            lStat.textContent = `${L.toFixed(2)} L_☉`;
+
+            // Smart formatting for crazy high luminosities
+            if (L >= 100000) {
+                calcLuminosity.textContent = `${(L / 1000).toLocaleString(undefined, {maximumFractionDigits:1})}k L_☉`;
+            } else if (L < 0.01) {
+                calcLuminosity.textContent = `${L.toExponential(2)} L_☉`;
+            } else {
+                calcLuminosity.textContent = `${L.toFixed(2)} L_☉`;
+            }
+
+            calcLifespan.textContent = formatYears(lifesyr = lifespanGyr);
+
+            // Logarithmic scales formatting for slider outputs
+            const minL = 1e-5;
+            const maxL = 1e7;
+            const logL = Math.max(Math.log10(minL), Math.min(Math.log10(maxL), Math.log10(L)));
+            const lgPercent = ((logL - Math.log10(minL)) / (Math.log10(maxL) - Math.log10(minL))) * 100;
+            luminosityGauge.style.width = `${lgPercent}%`;
+
+            const minT_life = 1e6; 
+            const maxT_life = 1e13; 
+            const totalYears = lifespanGyr * 1e9;
+            const logLife = Math.max(Math.log10(minT_life), Math.min(Math.log10(maxT_life), Math.log10(totalYears)));
+            const lifePercent = ((logLife - Math.log10(minT_life)) / (Math.log10(maxT_life) - Math.log10(minT_life))) * 100;
+            lifespanGauge.style.width = `${lifePercent}%`;
+
+            // Danger indicator for extremely short-lived blue supergiants
+            if (totalYears < 1e8) {
+                lifespanGauge.className = "bg-gradient-to-r from-red-600 via-fuchsia-600 to-red-400 h-full rounded-full transition-all duration-300";
+                calcLifespan.className = "text-sm font-bold text-red-500 font-mono animate-pulse";
+            } else if (totalYears < 2e9) {
+                lifespanGauge.className = "bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-400 h-full rounded-full transition-all duration-300";
+                calcLifespan.className = "text-sm font-bold text-amber-500 font-mono";
+            } else {
+                lifespanGauge.className = "bg-gradient-to-r from-emerald-600 via-teal-500 to-green-400 h-full rounded-full transition-all duration-300";
+                calcLifespan.className = "text-sm font-bold text-emerald-400 font-mono";
+            }
+
+            // Sync the Spectral info
+            const specClass = getSpectralClass(temperature);
+            spectralBadge.textContent = specClass.type;
+            spectralBadge.className = `w-12 h-12 rounded-2xl flex items-center justify-center font-black text-2xl shadow-xl border-2 transform rotate-3 transition-all duration-300 ${specClass.color}`;
+            spectralClassName.textContent = specClass.name;
+            spectralClassDesc.textContent = specClass.desc;
+
+            // Sync H-R coordinates and dynamic backlighting
+            const stellarColor = kelvinToRGB(temperature);
+            spaceVortex.style.background = `radial-gradient(circle_at_center, rgba(${stellarColor.r}, ${stellarColor.g}, ${stellarColor.b}, 0.15) 0%, rgba(2,4,10,1) 100%)`;
+
+            updateHRDiagram(mass, temperature, L);
+            renderStar(R, temperature);
+        }
+
+        function updateHRDiagram(M, T, L) {
+            const width = hrGraphContainer.clientWidth;
+            const height = hrGraphContainer.clientHeight;
+            if (width === 0 || height === 0) return;
+
+            // 레이아웃 지연 렌더링 검사 (최초 로드 시 0px 이었다가 배치되는 오류 완화)
+            if (hrBgCanvas.width !== width || hrBgCanvas.height !== height) {
+                resizeCanvas();
+            }
+            
+            // X: Temperature (Log scale 45k -> 2k)
+            const minT = 2000;
+            const maxT = 45000;
+            const logMinT = Math.log10(minT);
+            const logMaxT = Math.log10(maxT);
+            const valT = Math.max(minT, Math.min(maxT, T));
+            const xPercent = (logMaxT - Math.log10(valT)) / (logMaxT - logMinT);
+            const posX = Math.max(0, Math.min(width, xPercent * width));
+
+            // Y: Luminosity (Log scale 1e-5 -> 1e7)
+            const minL = 1e-5;
+            const maxL = 1e7;
+            const logMinL = Math.log10(minL);
+            const logMaxL = Math.log10(maxL);
+            const valL = Math.max(minL, Math.min(maxL, L));
+            const yPercent = (logMaxL - Math.log10(valL)) / (logMaxL - logMinL);
+            const posY = Math.max(0, Math.min(height, yPercent * height));
+
+            // Point positioning
+            hrStarPointer.style.left = `${posX}px`;
+            hrStarPointer.style.top = `${posY}px`;
+
+            // Match pointer style
+            const colorObj = kelvinToRGB(T);
+            hrStarPointer.style.borderColor = `rgb(${colorObj.r}, ${colorObj.g}, ${colorObj.b})`;
+            hrStarPointer.style.backgroundColor = `rgba(${colorObj.r}, ${colorObj.g}, ${colorObj.b}, 0.2)`;
+            
+            const specClass = getSpectralClass(T);
+            document.getElementById('hr-coord').textContent = `${specClass.name.split(' (')[0]} (질량: ${mass.toFixed(2)} M_☉)`;
+        }
+
+        // --- 7. Event Observers & Interaction Helpers ---
+        
+        // Link slider and number inputs for Mass
+        massSlider.addEventListener('input', () => {
+            massInput.value = parseFloat(massSlider.value).toFixed(2);
+            updateSimulation();
+        });
+
+        massInput.addEventListener('change', () => {
+            let val = parseFloat(massInput.value);
+            if (isNaN(val)) val = 1.0;
+            // Bound safety checks
+            val = Math.max(0.1, Math.min(50, val));
+            massInput.value = val.toFixed(2);
+            massSlider.value = val;
+            updateSimulation();
+        });
+
+        // Link slider and number inputs for Temperature
+        tempSlider.addEventListener('input', () => {
+            tempInput.value = tempSlider.value;
+            updateSimulation();
+        });
+
+        tempInput.addEventListener('change', () => {
+            let val = parseInt(tempInput.value);
+            if (isNaN(val)) val = 5778;
+            // Bound safety checks
+            val = Math.max(2500, Math.min(40000, val));
+            tempInput.value = val;
+            tempSlider.value = val;
+            updateSimulation();
+        });
+
+        // Orbital Rotation Controller Drag hooks
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - lastMouseX;
+            spinSpeed = deltaX * 0.004; 
+            lastMouseX = e.clientX;
+        });
+
+        // Touch interfaces
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                lastMouseX = e.touches[0].clientX;
+            }
+        });
+        window.addEventListener('touchend', () => { isDragging = false; });
+        canvas.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length !== 1) return;
+            const deltaX = e.touches[0].clientX - lastMouseX;
+            spinSpeed = deltaX * 0.004;
+            lastMouseX = e.touches[0].clientX;
+        });
+
+        // Tooltip hover mechanism for stars on HR graph
+        hrGraphContainer.addEventListener('mousemove', (e) => {
+            const rect = hrGraphContainer.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const w = hrBgCanvas.width;
+            const h = hrBgCanvas.height;
+            if (w === 0 || h === 0) return;
+
+            const getX = (T) => {
+                const logMinT = Math.log10(2000);
+                const logMaxT = Math.log10(45000);
+                const val = Math.max(2000, Math.min(45000, T));
+                return (logMaxT - Math.log10(val)) / (logMaxT - logMinT) * w;
+            };
+            const getY = (L) => {
+                const logMinL = Math.log10(1e-5);
+                const logMaxL = Math.log10(1e7);
+                const val = Math.max(1e-5, Math.min(1e7, L));
+                return (logMaxL - Math.log10(val)) / (logMaxL - logMinL) * h;
+            };
+
+            let hoveredStar = null;
+            for (let star of stellarDatabase) {
+                const stX = getX(star.temp);
+                const stL = calculateStellarProperties(star.mass, star.temp).L;
+                const stY = getY(stL);
+
+                if (Math.hypot(mouseX - stX, mouseY - stY) < 10) {
+                    hoveredStar = star;
+                    break;
+                }
+            }
+
+            if (hoveredStar) {
+                hrTooltip.style.left = `${mouseX + 15}px`;
+                hrTooltip.style.top = `${mouseY + 15}px`;
+                hrTooltip.style.display = 'block';
+                hrTooltip.innerHTML = `
+                    <div class="font-black text-cyan-300 text-xs">${hoveredStar.name}</div>
+                    <div class="text-[9px] text-gray-300 mt-1">
+                        질량: ${hoveredStar.mass} M_☉<br>
+                        온도: ${hoveredStar.temp.toLocaleString()} K<br>
+                        크기: ${hoveredStar.radius} R_☉<br>
+                        계열: ${hoveredStar.class}
+                    </div>
+                `;
+            } else {
+                hrTooltip.style.display = 'none';
+            }
+        });
+
+        function setSunProperties() {
+            massSlider.value = "1.00";
+            massInput.value = "1.00";
+            tempSlider.value = "5778";
+            tempInput.value = "5778";
+            updateSimulation();
+        }
+        
+        resetBtn.addEventListener('click', setSunProperties);
+        sunPresetBtn.addEventListener('click', setSunProperties);
+
+        // Responsive window handlers
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            updateSimulation();
+        });
+
+        function resizeCanvas() {
+            const rect = canvas.parentNode ? canvas.parentNode.getBoundingClientRect() : { width: 400, height: 400 };
+            canvas.width = (rect.width || 400) * window.devicePixelRatio;
+            canvas.height = (rect.height || 400) * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            drawHRDiagramBackground();
+        }
+
+        // Realtime animation runner
+        function animationLoop() {
+            const { R } = calculateStellarProperties(mass, temperature);
+            renderStar(R, temperature);
+            requestAnimationFrame(animationLoop);
+        }
+
+        // On loaded entry point
+        window.onload = function () {
+            // 캔버스 사이즈 조정을 먼저 진행한 뒤, 배경 및 UI 드로잉을 시작하도록 보장함
+            resizeCanvas();
+            updateSimulation();
+            animationLoop();
+        };
+    </script>
+</body>
+</html>

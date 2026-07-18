@@ -1,0 +1,2220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>천문학 시뮬레이션 v8 — 우주 택배 물류 역학 시뮬레이터</title>
+  <style>
+    /* 디자인 토큰 및 기본 설정 */
+    :root {
+      --bg-dark: #050811;
+      --bg-card: #0b111e;
+      --border-color: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-sun: #f97316;
+      --accent-peri: #ef4444; 
+      --accent-aphe: #3b82f6; 
+      --accent-area: rgba(168, 85, 247, 0.22); 
+      --accent-delivery: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    header h1 span {
+      background: linear-gradient(135deg, var(--accent-sun), #e2e8f0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    /* 개선된 가로 분할 레이아웃 구조 */
+    .main-grid {
+      display: grid;
+      /* 좌측은 남은 여백을 모두 채우고(1fr), 우측 변인 조작틀은 370px 크기로 완전히 고정 */
+      grid-template-columns: 1fr 370px;
+      gap: 1.25rem;
+      padding: 1.25rem;
+      max-width: 1920px;
+      margin: 0 auto;
+      width: 100%;
+      flex-grow: 1;
+      position: relative;
+    }
+
+    /* 좌측 뷰포트 A와 B를 위아래 스택으로 정렬하는 컨테이너 */
+    .viewports-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 1200px) {
+      .main-grid {
+        grid-template-columns: 1fr; /* 태블릿 및 모바일 기기에서는 조작틀도 세로 스택으로 */
+      }
+      .sidebar {
+        grid-column: span 1;
+      }
+    }
+
+    /* 시뮬레이터 뷰포트 패널 공통 */
+    .viewport-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      position: relative;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 480px; /* 세로 스택 정렬이므로 화면 균형을 위해 세로 높이를 최적화 */
+      background-color: #010307;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 뷰포트 A 카메라 컨트롤 오버레이 UI */
+    .viewport-controls {
+      position: absolute;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 10;
+    }
+
+    .vp-btn {
+      background-color: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+
+    .vp-btn:hover {
+      background-color: var(--accent-sun);
+      border-color: var(--accent-sun);
+      color: #000;
+    }
+
+    .graph-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .graph-container {
+      position: relative;
+      width: 100%;
+      height: 110px;
+      background-color: #010307;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    /* 사이드바 스타일링 */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .panel {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .panel-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      border-left: 3px solid var(--accent-sun);
+      padding-left: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .form-group label span.value {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .slider {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: #1e293b;
+      outline: none;
+      margin: 8px 0;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-sun);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .input-field {
+      width: 100%;
+      background-color: #070b12;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 0.5rem;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: var(--accent-sun);
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn {
+      background-color: #1e293b;
+      border: none;
+      color: var(--text-main);
+      padding: 0.6rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .btn:hover {
+      background-color: #334155;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background-color: #2563eb;
+    }
+
+    .btn-primary:hover {
+      background-color: #1d4ed8;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn-preset {
+      background-color: #111827;
+      border: 1px solid #1e293b;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      padding: 0.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+    }
+
+    .btn-preset:hover {
+      background-color: #1e293b;
+      color: #fb923c;
+      border-color: #fb923c;
+    }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .data-box {
+      background-color: #070b12;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.6rem;
+      text-align: center;
+    }
+
+    .data-box .label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .data-box .value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    .speed-bar-container {
+      width: 100%;
+      height: 10px;
+      background: linear-gradient(to right, #3b82f6, #10b981, #ef4444);
+      border-radius: 5px;
+      position: relative;
+      margin-top: 0.4rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .speed-bar-indicator {
+      width: 4px;
+      height: 14px;
+      background-color: #ffffff;
+      border-radius: 2px;
+      position: absolute;
+      top: -2px;
+      left: 0%;
+      transform: translateX(-50%);
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+      transition: left 0.05s ease-out;
+    }
+
+    .legends {
+      display: flex;
+      gap: 0.8rem;
+      font-size: 0.75rem;
+      flex-wrap: wrap;
+      background-color: #070b12;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    #alert-box {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background-color: rgba(239, 68, 68, 0.95);
+      color: white;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      z-index: 100;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    #alert-box.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* --- 우주 택배 대시보드 컴포넌트 전용 스타일 --- */
+    .delivery-panel {
+      background: linear-gradient(145deg, #0d1527 0%, #070b14 100%);
+      border: 2px solid #10b981;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 8px 32px rgba(16, 185, 129, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      flex-grow: 1;
+    }
+
+    .delivery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+      padding-bottom: 0.75rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .delivery-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #10b981;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .jd-clock-container {
+      display: flex;
+      gap: 1rem;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-family: monospace;
+    }
+
+    .jd-clock-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .jd-clock-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    .jd-clock-value {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    /* 운송 궤도전이 모드 선택기 스타일 */
+    .delivery-mode-selector {
+      display: flex;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 6px;
+      padding: 0.25rem;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .mode-tab {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .mode-tab.active {
+      background: #10b981;
+      color: #000;
+    }
+
+    .parcel-info-card {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .parcel-meta {
+      font-size: 0.82rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .parcel-meta .lbl { color: var(--text-muted); }
+    .parcel-meta .val { font-weight: 600; color: var(--text-main); }
+
+    .delivery-status-display {
+      background: #04070d;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 10px;
+      padding: 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      flex-grow: 1;
+    }
+
+    .live-ticker {
+      background: rgba(16, 185, 129, 0.1);
+      border-left: 4px solid #10b981;
+      padding: 0.75rem 1rem;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.88rem;
+      font-weight: bold;
+      color: #f8fafc;
+      margin-bottom: 0.85rem;
+      animation: pulseTicker 2s infinite alternate;
+    }
+
+    @keyframes pulseTicker {
+      from { background: rgba(16, 185, 129, 0.08); }
+      to { background: rgba(16, 185, 129, 0.2); }
+    }
+
+    /* 실시간 터미널 텔레메트리 로그 패널 */
+    .live-telemetry-terminal {
+      background-color: #03050a;
+      border: 1px solid rgba(16, 185, 129, 0.15);
+      border-radius: 6px;
+      padding: 0.6rem;
+      font-family: monospace;
+      font-size: 0.72rem;
+      color: #34d399;
+      height: 110px;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .terminal-line {
+      display: flex;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+
+    .terminal-line .timestamp {
+      color: #94a3b8;
+    }
+
+    /* 배송 단계 진행 가이드 라인 */
+    .progress-track-wrapper {
+      position: relative;
+      padding: 1.5rem 0;
+      margin: 0.5rem 0;
+    }
+
+    .progress-line-bg {
+      position: absolute;
+      top: 50%;
+      left: 5%;
+      right: 5%;
+      height: 4px;
+      background: #1e293b;
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+
+    .progress-line-fill {
+      position: absolute;
+      top: 50%;
+      left: 5%;
+      width: 0%;
+      height: 4px;
+      background: linear-gradient(to right, #2563eb, #10b981);
+      transform: translateY(-50%);
+      z-index: 2;
+      transition: width 0.1s linear;
+    }
+
+    .progress-nodes {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 4%;
+    }
+
+    .node-point {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .node-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 3px solid #0b111e;
+      transition: all 0.3s;
+    }
+
+    .node-point.active .node-dot {
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      transform: scale(1.2);
+    }
+
+    .node-text {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      line-height: 1.2;
+    }
+
+    .node-point.active .node-text {
+      color: #10b981;
+    }
+
+    .ship-icon-overlay {
+      position: absolute;
+      top: 50%;
+      left: 5%;
+      transform: translate(-50%, -50%);
+      z-index: 4;
+      font-size: 1.25rem;
+      transition: left 0.1s linear;
+      filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.8));
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1><span>천문학 오딧세이 v8 — Cosmic Logistics & Orbital Physics</span></h1>
+      <p class="subtitle">케플러 타원 궤도 물리 역학 및 실시간 우주 표준 시간(JD) 연동 택배 물류 운송 시뮬레이터</p>
+    </div>
+    <div class="legends">
+      <div class="legend-item">
+        <span class="legend-dot" style="background: var(--accent-sun);"></span>
+        <span>태양</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background: #a855f7;"></span>
+        <span>인력 벡터 (Fg)</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background: #10b981;"></span>
+        <span>운동 속도 벡터 (v)</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background: var(--accent-area);"></span>
+        <span>케플러 제2법칙 면적</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 가로 분할 레이아웃 적용 -->
+  <div class="main-grid">
+    <!-- 에러 알림창 배치 -->
+    <div id="alert-box">날짜를 올바르게 입력해주세요.</div>
+    
+    <!-- 좌측 상하 정렬 레이아웃 구역 -->
+    <div class="viewports-container">
+      
+      <!-- [뷰포트 A] 케플러 태양계 타원 궤도 분석기 (카메라 조작 컨트롤 내장) -->
+      <div class="viewport-panel">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #fb923c; display: flex; justify-content: space-between; align-items: center; padding: 2px;">
+          <span>[뷰포트 A] 태양계 공전 궤도 및 물리 법칙 시각화</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">드래그: 카메라 이동 / 휠: 줌인·줌아웃</span>
+        </div>
+        <div class="canvas-container" id="canvas-container-el" style="cursor: grab;">
+          <canvas id="simCanvas"></canvas>
+          
+          <!-- 뷰포트 A 시야 제어 버튼 콘솔 -->
+          <div class="viewport-controls">
+            <button class="vp-btn" id="vp-zoom-in" title="시야 확대">+</button>
+            <button class="vp-btn" id="vp-zoom-out" title="시야 축소">-</button>
+            <button class="vp-btn" id="vp-reset" title="시야 초기화">⟲</button>
+          </div>
+        </div>
+
+        <div class="graph-panel">
+          <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between;">
+            <span>시간 경과에 따른 궤도 속도 변화 (Vis-viva 이론값)</span>
+            <span style="font-size: 0.75rem; color: #a855f7;">가로축: 우주 경과 일수 (일) / 세로축: 속도 (km/s)</span>
+          </div>
+          <div class="graph-container">
+            <canvas id="graphCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- [뷰포트 B] 우주 택배 실시간 배송 계기판 및 제2법칙 모니터 -->
+      <div class="viewport-panel">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #10b981; display: flex; justify-content: space-between; align-items: center; padding: 2px;">
+          <span>[뷰포트 B] 우주 택배 순항 추적 대시보드 — "내 택배는 언제 올까?"</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">케플러 궤도 요소 및 기준일 변경 실시간 동기화</span>
+        </div>
+        
+        <div class="delivery-panel">
+          <div class="delivery-header">
+            <div class="delivery-title">
+              <span>🚀 심우주 배송 관제 시스템</span>
+            </div>
+
+            <!-- 궤도전이 운송 모드 선택기 -->
+            <div class="delivery-mode-selector">
+              <button class="mode-tab active" id="mode-loop" onclick="setDeliveryMode('loop')">무한 순환 모드</button>
+              <button class="mode-tab" id="mode-hohmann" onclick="setDeliveryMode('hohmann')">호만 전이 모드</button>
+            </div>
+            
+            <!-- 실시간 율리우스 표준시 연동 디스플레이 -->
+            <div class="jd-clock-container">
+              <div class="jd-clock-item">
+                <span class="jd-clock-label">배송 시작 율리우스일 (Launch JD)</span>
+                <span class="jd-clock-value" id="deliv-start-jd" style="color: #a78bfa;">-</span>
+              </div>
+              <div class="jd-clock-item" style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1rem;">
+                <span class="jd-clock-label">현재 우주 표준 율리우스일 (Current Cosmic JD)</span>
+                <span class="jd-clock-value" id="deliv-current-jd" style="color: #10b981;">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 궤도 물리 연동형 배송 송장 카드 -->
+          <div class="parcel-info-card">
+            <div style="font-size: 0.85rem; font-weight: bold; color: #10b981; margin-bottom: 0.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.3rem;">
+              🧾 실시간 매핑 배송 송장 (Invoice)
+            </div>
+            <div class="parcel-meta">
+              <span class="lbl">현재 배송 상품:</span>
+              <span class="val" id="deliv-item-name" style="color: #fca5a5;">-</span>
+            </div>
+            <div class="parcel-meta">
+              <span class="lbl">발송 시작 기지:</span>
+              <span class="val">지구 상업 우주항 (1.00 AU)</span>
+            </div>
+            <div class="parcel-meta">
+              <span class="lbl">배송 목적지 기지:</span>
+              <span class="val" id="deliv-dest-name" style="color: #60a5fa;">-</span>
+            </div>
+            <div class="parcel-meta">
+              <span class="lbl">선택된 전이 궤도 반경:</span>
+              <span class="val" id="deliv-meta-r" style="color:#fbbf24;">-</span>
+            </div>
+            <div class="parcel-meta">
+              <span class="lbl">케플러 이론 공전 주기:</span>
+              <span class="val" id="deliv-meta-period" style="color: #34d399;">-</span>
+            </div>
+            <div class="parcel-meta">
+              <span class="lbl">현재 우주선 운송 속도:</span>
+              <span class="val" id="deliv-meta-speed" style="color:#10b981; font-family: monospace;">-</span>
+            </div>
+          </div>
+
+          <!-- 실시간 배송 추적 및 케플러 법칙 메시지 타임라인 -->
+          <div class="delivery-status-display">
+            <div class="live-ticker" id="deliv-ticker-message">
+              계산 엔진 동기화 중...
+            </div>
+
+            <!-- 택배 진행도 바 및 우주선 아이콘 -->
+            <div class="progress-track-wrapper">
+              <div class="progress-line-bg"></div>
+              <div class="progress-line-fill" id="deliv-progress-fill"></div>
+              <div class="ship-icon-overlay" id="deliv-ship-icon">🚀</div>
+              
+              <div class="progress-nodes">
+                <div class="node-point" id="node-start">
+                  <div class="node-dot"></div>
+                  <div class="node-text">지구 발송<br><span style="font-size:10px; color:var(--text-muted);" id="node-start-jd-lbl">JD -</span></div>
+                </div>
+                <div class="node-point" id="node-peri">
+                  <div class="node-dot"></div>
+                  <div class="node-text" style="color: #ef4444;">근일점 통과<br><span style="font-size:9px;">중력가속 2배속</span></div>
+                </div>
+                <div class="node-point" id="node-aphe">
+                  <div class="node-dot"></div>
+                  <div class="node-text" style="color: #3b82f6;">원일점 통과<br><span style="font-size:9px;">중력감속 구간</span></div>
+                </div>
+                <div class="node-point" id="node-end">
+                  <div class="node-dot"></div>
+                  <div class="node-text">행성 도착<br><span style="font-size:10px; color:var(--text-muted);" id="node-end-jd-lbl">-</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 실시간 우주 통신 데이터 로그 모니터 -->
+            <div style="font-size: 0.75rem; color: var(--accent-delivery); margin-bottom: 0.3rem; font-weight: bold; margin-top: 0.5rem;">
+              📡 실시간 배송 텔레메트리 스트림 (Cosmic Data Log)
+            </div>
+            <div class="live-telemetry-terminal" id="deliv-telemetry-log">
+              <div class="terminal-line"><span class="timestamp">[INIT]</span> 배송 관제 시스템 부팅 완료...</div>
+              <div class="terminal-line"><span class="timestamp">[SYS]</span> 율리우스 표준 적일(JD) 타임 소스 바인딩 완료.</div>
+            </div>
+
+            <!-- JD 필수성 교육 요약 라벨 -->
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem; background: rgba(0,0,0,0.4); padding: 0.6rem; border-radius: 6px; line-height: 1.4;" id="deliv-countdown-summary">
+              * 각 행성의 윤달과 공전주기 체계가 모두 다르므로, 우주 물류선은 연속 시간 단위인 **율리우스 적일(JD)**을 기준으로 전이 궤도를 역학 연산합니다.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 우측 제어 및 분석 사이드바 (기존 유지) -->
+    <div class="sidebar">
+      
+      <!-- 물리 상수 조절 패널 -->
+      <div class="panel">
+        <div class="panel-title">궤도 요소 조절 (Orbital Controls)</div>
+        
+        <div class="form-group">
+          <label>
+            <span>궤도 장반경 (a)</span>
+            <span class="value" id="val-semiMajor" style="color: #fb923c;">1.00 AU</span>
+          </label>
+          <input type="range" class="slider" id="input-semiMajor" min="0.3" max="5.0" step="0.05" value="1.00">
+        </div>
+
+        <div class="form-group">
+          <!-- 이심률 최솟값을 과학적 기준에 맞춰 0.01로 상향 조정 -->
+          <label>
+            <span>이심률 (e)</span>
+            <span class="value" id="val-eccentricity" style="color: #a78bfa;">0.40</span>
+          </label>
+          <input type="range" class="slider" id="input-eccentricity" min="0.01" max="0.95" step="0.01" value="0.40">
+        </div>
+
+        <div class="form-group">
+          <label>
+            <span>공전 주기 (T)</span>
+            <span class="value" id="val-period" style="color:#10b981;">1.00 년</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 시간 정보 및 제어 패널 -->
+      <div class="panel">
+        <div class="panel-title">기준일 및 흐름 제어</div>
+        
+        <div class="form-group">
+          <label>기준 시작일 / 생년월일 (UT)</label>
+          <input type="date" class="input-field" id="input-epoch-date" value="2000-01-01">
+        </div>
+
+        <div class="form-group">
+          <label>
+            <span>시간 흐름 배율</span>
+            <span class="value" id="val-timescale">1.0배</span>
+          </label>
+          <input type="range" class="slider" id="input-timescale" min="0.1" max="10.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-playpause">
+            <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span>일시정지</span>
+          </button>
+          <button class="btn" id="btn-reset">
+            <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>초기화</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 우주 탐사 역사적 사건 퀵 이동 -->
+      <div class="panel">
+        <div class="panel-title">인류 우주사 주요 순간 이동</div>
+        <div class="preset-grid">
+          <button class="btn-preset" onclick="setPresetDate('1969-07-20', '아폴로 11호 달 착륙')">
+            🚀 <strong>아폴로 11호</strong><br>1969-07-20
+          </button>
+          <button class="btn-preset" onclick="setPresetDate('1977-09-05', '보이저 1호 발사')">
+            🛰️ <strong>보이저 1호</strong><br>1977-09-05
+          </button>
+          <button class="btn-preset" onclick="setPresetDate('2012-08-06', '화성 큐리오시티 착륙')">
+            🤖 <strong>큐리오시티</strong><br>2012-08-06
+          </button>
+          <button class="btn-preset" onclick="setPresetDate('2015-07-14', '뉴 호라이즌스 명왕성 근접')">
+            🪐 <strong>뉴 호라이즌스</strong><br>2015-07-14
+          </button>
+        </div>
+      </div>
+
+      <!-- 생일/시작일 기반 우주 공전 비교기 -->
+      <div class="panel" style="background: linear-gradient(135deg, #0f1524 0%, #1a153b 100%); border-color: #3b0764;">
+        <div class="panel-title" style="border-left-color: #a855f7;">나의 우주 나이 분석</div>
+        <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.8rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.25); padding: 0.5rem; border-radius: 6px;">
+            <span>🌍 지구의 공전수 (나이)</span>
+            <span id="analysis-earth-rot" style="color:#60a5fa; font-weight:bold; font-family:monospace;">- 바퀴</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.25); padding: 0.5rem; border-radius: 6px;">
+            <span>🛸 택배선의 공전수</span>
+            <span id="analysis-probe-rot" style="color:#c084fc; font-weight:bold; font-family:monospace;">- 바퀴</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 수치 해석 상세 보고서 -->
+      <div class="panel">
+        <div class="panel-title">정밀 궤도 분석 보고서</div>
+        <div style="display:flex; flex-direction:column; gap:0.6rem;">
+          <div class="grid-2col">
+            <div class="data-box">
+              <div class="label">생일 율리우스 적일(JD)</div>
+              <div class="value" id="report-epoch-jd" style="color: #60a5fa; font-size:0.85rem;">-</div>
+            </div>
+            <div class="data-box">
+              <div class="label">오늘 율리우스 적일(JD)</div>
+              <div class="value" id="report-today-jd" style="color: #34d399; font-size:0.85rem;">-</div>
+            </div>
+          </div>
+          <div class="grid-2col">
+            <div class="label">실제 경과 일수</div>
+            <div class="value" id="report-real-elapsed" style="color: #fb7185;">-</div>
+          </div>
+          <div class="grid-2col">
+            <div class="label">시뮬레이션 가상 시간</div>
+            <div class="value" id="report-anim-offset" style="color: #c084fc;">-</div>
+          </div>
+          <div class="grid-2col">
+            <div class="data-box">
+              <div class="label">평균 이각 (M)</div>
+              <div class="value" id="report-m">0.00°</div>
+            </div>
+            <div class="data-box">
+              <div class="label">偏이심 이각 (E)</div>
+              <div class="value" id="report-e">0.00°</div>
+            </div>
+          </div>
+          <div class="grid-2col">
+            <div class="data-box">
+              <div class="label">진이각 (ν)</div>
+              <div class="value" id="report-nu">0.00°</div>
+            </div>
+            <div class="data-box">
+              <div class="label">현재 반경 (r)</div>
+              <div class="value" id="report-r" style="color: #fbbf24;">1.00 AU</div>
+            </div>
+          </div>
+          <div class="data-box" style="width:100%; text-align: left; padding: 0.75rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.3rem;">
+              <span class="label" style="margin-bottom:0;">실시간 속도 (Vis-viva)</span>
+              <span class="value" id="report-speed" style="color: #10b981; font-size:1.1rem;">-</span>
+            </div>
+            <div class="speed-bar-container">
+              <div class="speed-bar-indicator" id="speed-indicator"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <span>원일점속도(<span id="val-vmin">-</span> km/s)</span>
+              <span>근일점속도(<span id="val-vmax">-</span> km/s)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // --- 시뮬레이터 글로벌 물리 상태 객체 ---
+    const state = {
+      a: 1.0,           
+      e: 0.4,           
+      period: 1.0,      
+      
+      epochDateStr: "2000-01-01",
+      epochJD: 2451545.0,  
+      todayJD: 0.0,        
+      realElapsed: 0.0,    
+      animOffset: 0.0,     
+      totalElapsed: 0.0,   
+
+      timeScale: 1.0,      
+      isPlaying: true,
+
+      M: 0,   
+      E: 0,   
+      nu: 0,  
+      r: 1.0,  
+      v: 29.78, 
+
+      stars: [],
+      trail: [],
+      maxTrailLength: 180,
+
+      graphHistory: [],
+      maxGraphPoints: 150,
+
+      // 카메라 조작 관련 줌/팬 상태 객체
+      camera: {
+        zoom: 1.0,
+        panX: 0,
+        panY: 0,
+        isDragging: false,
+        startX: 0,
+        startY: 0,
+        autoTrack: true // B 조작 시 자동 정렬 여부 추적용 플래그
+      },
+
+      deliveryMode: 'loop', // 'loop' (순환) 또는 'hohmann' (호만 전이)
+      hasAnnouncedArrival: false, // 호만 전이 완료 로그 중복 출력 방지용 플래그
+      hohmannElapsed: 0.0, // 호만 전이 모드 전용으로 흘러갈 격리 시간 변수
+
+      logs: []
+    };
+
+    const solarSystemInnerPlanets = [
+      { name: "수성 (0.39 AU)", a: 0.39, color: "rgba(161, 161, 170, 0.65)" }, 
+      { name: "금성 (0.72 AU)", a: 0.72, color: "rgba(253, 224, 71, 0.7)" },  
+      { name: "지구 (1.00 AU)", a: 1.00, color: "rgba(96, 165, 250, 0.75)" },  
+      { name: "화성 (1.52 AU)", a: 1.52, color: "rgba(248, 113, 113, 0.7)" },  
+      { name: "소행성대 (2.77 AU)", a: 2.77, color: "rgba(168, 85, 247, 0.5)" }, 
+      { name: "목성 (5.20 AU)", a: 5.20, color: "rgba(251, 146, 60, 0.75)" }   
+    ];
+
+    // --- UI 엘리먼트 수집 ---
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
+    const container = document.getElementById("canvas-container-el");
+
+    const graphCanvas = document.getElementById("graphCanvas");
+    const graphCtx = graphCanvas.getContext("2d");
+
+    // 제어 인풋
+    const inputSemiMajor = document.getElementById("input-semiMajor");
+    const inputEccentricity = document.getElementById("input-eccentricity");
+    const inputEpochDate = document.getElementById("input-epoch-date");
+    const inputTimescale = document.getElementById("input-timescale");
+
+    const valSemiMajor = document.getElementById("val-semiMajor");
+    const valEccentricity = document.getElementById("val-eccentricity");
+    const valPeriod = document.getElementById("val-period");
+    const valTimescale = document.getElementById("val-timescale");
+
+    const btnPlayPause = document.getElementById("btn-playpause");
+    const btnReset = document.getElementById("btn-reset");
+
+    const reportEpochJD = document.getElementById("report-epoch-jd");
+    const reportTodayJD = document.getElementById("report-today-jd");
+    const reportRealElapsed = document.getElementById("report-real-elapsed");
+    const reportAnimOffset = document.getElementById("report-anim-offset");
+
+    const reportM = document.getElementById("report-m");
+    const reportE = document.getElementById("report-e");
+    const reportNu = document.getElementById("report-nu");
+    const reportR = document.getElementById("report-r");
+    const reportSpeed = document.getElementById("report-speed");
+
+    const analysisEarthRot = document.getElementById("analysis-earth-rot");
+    const analysisProbeRot = document.getElementById("analysis-probe-rot");
+
+    const speedIndicator = document.getElementById("speed-indicator");
+    const valVmin = document.getElementById("val-vmin");
+    const valVmax = document.getElementById("val-vmax");
+
+    const alertBox = document.getElementById("alert-box");
+
+    // --- 우주 택배 대시보드 전용 UI 노드 수집 ---
+    const delivStartJd = document.getElementById("deliv-start-jd");
+    const delivCurrentJd = document.getElementById("deliv-current-jd");
+    const delivMetaPeriod = document.getElementById("deliv-meta-period");
+    const delivMetaR = document.getElementById("deliv-meta-r");
+    const delivMetaSpeed = document.getElementById("deliv-meta-speed");
+    const delivTickerMessage = document.getElementById("deliv-ticker-message");
+    const delivProgressFill = document.getElementById("deliv-progress-fill");
+    const delivShipIcon = document.getElementById("deliv-ship-icon");
+    const delivCountdownSummary = document.getElementById("deliv-countdown-summary");
+    const nodeStartJdLbl = document.getElementById("node-start-jd-lbl");
+    const nodeEndJdLbl = document.getElementById("node-end-jd-lbl");
+    const delivTelemetryLog = document.getElementById("deliv-telemetry-log");
+
+    const delivItemName = document.getElementById("deliv-item-name");
+    const delivDestName = document.getElementById("deliv-dest-name");
+
+    const nodeStart = document.getElementById("node-start");
+    const nodePeri = document.getElementById("node-peri");
+    const nodeAphe = document.getElementById("node-aphe");
+    const nodeEnd = document.getElementById("node-end");
+
+    // 뷰포트 조작 인터페이스 수집
+    const vpZoomIn = document.getElementById("vp-zoom-in");
+    const vpZoomOut = document.getElementById("vp-zoom-out");
+    const vpReset = document.getElementById("vp-reset");
+
+    // --- 운송 모드 스위칭 함수 ---
+    function setDeliveryMode(mode) {
+      state.deliveryMode = mode;
+      
+      // 모드 선택 버튼 비주얼 클래스 전환
+      document.getElementById("mode-loop").classList.remove("active");
+      document.getElementById("mode-hohmann").classList.remove("active");
+      document.getElementById(`mode-${mode}`).classList.add("active");
+
+      // 호만 전이용 경과시간 리셋
+      state.hohmannElapsed = 0.0;
+      state.camera.autoTrack = true;
+      state.hasAnnouncedArrival = false;
+      addTerminalLog("MODE", `운송 모드 전환 -> [${mode === 'loop' ? '무한 순환 공전' : '호만 전이 궤도'}]`);
+      resetSimulation();
+    }
+
+    // --- 역사적 연대기 날짜 점프 제어용 ---
+    function setPresetDate(dateString, eventName) {
+      state.camera.autoTrack = true; // B 버튼 조작으로 인한 자동 카메라 정렬 복원
+      inputEpochDate.value = dateString;
+      handleDateInput(dateString);
+      showAlert(`우주 연대기 이동: [${eventName}] 시점으로 천체가 동적 정렬됩니다!`);
+    }
+
+    // --- 율리우스 일자를 달력 날짜로 변환 ---
+    function julianDateToCalendar(jd) {
+      const Z = Math.floor(jd + 0.5);
+      const F = (jd + 0.5) - Z;
+      let A;
+      if (Z < 2299161) {
+        A = Z;
+      } else {
+        const alpha = Math.floor((Z - 1867216.25) / 365.2425);
+        A = Z + 1 + alpha - Math.floor(alpha / 4);
+      }
+      const B = A + 1524;
+      const C = Math.floor((B - 122.1) / 365.25);
+      const D = Math.floor(365.25 * C);
+      const E = Math.floor((B - D) / 30.6001);
+      const day = B - D - Math.floor(30.6001 * E) + F;
+      const month = (E < 14) ? E - 1 : E - 13;
+      const year = (month > 2) ? C - 4716 : C - 4715;
+
+      return {
+        year: year,
+        month: String(month).padStart(2, '0'),
+        day: String(Math.floor(day)).padStart(2, '0')
+      };
+    }
+
+    // --- 정밀 율리우스 적일(JD) 계산 ---
+    function getJulianDate(dateObj) {
+      try {
+        let Y = dateObj.getUTCFullYear();
+        let M = dateObj.getUTCMonth() + 1; 
+        let D = dateObj.getUTCDate() + (dateObj.getUTCHours() / 24.0) + (dateObj.getUTCMinutes() / 1440.0) + (dateObj.getUTCSeconds() / 86400.0);
+
+        if (M <= 2) {
+          Y = Y - 1;
+          M = M + 12;
+        }
+
+        const A = Math.floor(Y / 100);
+        const B = 2 - A + Math.floor(A / 4);
+
+        const jd = Math.floor(365.25 * (Y + 4716)) + Math.floor(30.6001 * (M + 1)) + D + B - 1524.5;
+        return jd;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function getJulianDateFromStr(dateString) {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return null;
+      return getJulianDate(d);
+    }
+
+    function showAlert(msg) {
+      if (alertBox) {
+        alertBox.textContent = msg;
+        alertBox.classList.add("show");
+        setTimeout(() => {
+          alertBox.classList.remove("show");
+        }, 3500);
+      }
+    }
+
+    function initStars() {
+      state.stars = [];
+      for (let i = 0; i < 180; i++) {
+        state.stars.push({
+          x: Math.random() * 2000 - 1000,
+          y: Math.random() * 2000 - 1000,
+          size: Math.random() * 1.5 + 0.4,
+          brightness: Math.random() * 0.75 + 0.25,
+          parallaxFactor: Math.random() * 0.14 + 0.03
+        });
+      }
+    }
+
+    function updateOrbitalPeriod() {
+      state.period = Math.pow(state.a, 1.5);
+      valPeriod.textContent = `${state.period.toFixed(3)} 년 (${(state.period * 365.256).toFixed(1)} 일)`;
+    }
+
+    // --- 수치 해석용 Kepler 수치 해석자 ---
+    function solveKepler(M, e) {
+      if (e === 0) return M;
+      let E = M;
+      const iterLimit = 10;
+      for (let i = 0; i < iterLimit; i++) {
+        const delta = E - e * Math.sin(E) - M;
+        const derivative = 1 - e * Math.cos(E);
+        const nextE = E - delta / derivative;
+        if (isNaN(nextE)) return M; 
+        E = nextE;
+      }
+      return E;
+    }
+
+    function handleDateInput(dateStr) {
+      try {
+        let birthJD = getJulianDateFromStr(dateStr);
+        if (birthJD === null) {
+          const today = new Date();
+          const todayStr = today.toISOString().split('T')[0];
+          inputEpochDate.value = todayStr;
+          state.epochDateStr = todayStr;
+          state.epochJD = getJulianDate(today);
+          state.realElapsed = 0;
+          return;
+        }
+
+        if (birthJD > state.todayJD) {
+          showAlert("경고: 미래 시점은 시작일이 될 수 없습니다. 금일 일자로 보정합니다.");
+          const today = new Date();
+          const todayStr = today.toISOString().split('T')[0];
+          inputEpochDate.value = todayStr;
+          state.epochDateStr = todayStr;
+          state.epochJD = state.todayJD;
+          state.realElapsed = 0;
+        } else {
+          state.epochDateStr = dateStr;
+          state.epochJD = birthJD;
+          state.realElapsed = Math.max(0, state.todayJD - state.epochJD);
+        }
+
+        state.animOffset = 0;
+        state.hohmannElapsed = 0.0; // 호만 시각 초기화
+        state.trail = [];
+        state.graphHistory = [];
+        updatePhysics();
+      } catch (err) {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        inputEpochDate.value = todayStr;
+        state.epochDateStr = todayStr;
+        state.epochJD = getJulianDate(today);
+        state.realElapsed = 0;
+        state.animOffset = 0;
+        state.hohmannElapsed = 0.0;
+        updatePhysics();
+      }
+    }
+
+    // --- 장반경 조절 값에 기반한 배송 데이터 동적 할당 연산 장치 ---
+    function getDynamicDeliveryMeta(a) {
+      if (a <= 0.55) {
+        return { dest: "수성 과학 연구 기지", item: "냉각용 초전도 액체 헬륨" };
+      } else if (a <= 0.85) {
+        return { dest: "금성 대기 아스피라 고층 도시", item: "강산성 기체 방어용 세라믹 필터" };
+      } else if (a <= 1.25) {
+        return { dest: "지구-달 루나 하버 전초기지", item: "중력 배터리용 티타늄 실린더" };
+      } else if (a <= 2.00) {
+        return { dest: "화성 제1 전초기지 (아레스 밸리)", item: "대기 산소 방출용 테라포밍 이끼 씨앗" };
+      } else if (a <= 3.50) {
+        return { dest: "소행성대 세레스 자원채굴창고", item: "고강도 암석 굴착용 다이아몬드 드릴" };
+      } else {
+        return { dest: "목성 가역성 수소 가압 위성", item: "핵융합 추진제 수소 고압 축축 용기" };
+      }
+    }
+
+    // --- 배송 시뮬레이터 실시간 로그 출력 모듈 ---
+    function addTerminalLog(type, message) {
+      const timeStr = new Date().toLocaleTimeString();
+      const line = `<div class="terminal-line"><span class="timestamp">[${timeStr}] [${type}]</span> ${message}</div>`;
+      state.logs.push(line);
+      if (state.logs.length > 5) {
+        state.logs.shift(); 
+      }
+      if (delivTelemetryLog) {
+        delivTelemetryLog.innerHTML = state.logs.join('');
+      }
+    }
+
+    // --- 우주 택배 대시보드 실시간 업데이트 & 케플러 제2법칙 연동 속보 알림 연산 ---
+    function updateDeliverySimulator(currentJD) {
+      const totalPeriodDays = state.period * 365.256;
+      const isHohmann = state.deliveryMode === 'hohmann'; // ★ 선언 위치 보정 완료
+      
+      // 장반경 변화에 기반한 실시간 목적지 및 배달 물품 텍스트 바인딩
+      const meta = getDynamicDeliveryMeta(state.a);
+      delivItemName.textContent = meta.item;
+      delivDestName.textContent = meta.dest;
+
+      // 수치 바인딩
+      delivStartJd.textContent = state.epochJD.toFixed(4);
+      delivCurrentJd.textContent = currentJD.toFixed(4);
+      delivMetaPeriod.textContent = `${totalPeriodDays.toFixed(1)} 우주역학일 (년 단위: ${state.period.toFixed(3)} 년)`;
+      delivMetaR.textContent = `${state.r.toFixed(3)} AU`;
+      delivMetaSpeed.textContent = `${state.v.toFixed(2)} km/s`;
+      nodeStartJdLbl.textContent = `JD ${state.epochJD.toFixed(1)}`;
+      
+      // 호만 전이 모드 시에는 궤도의 절반(반 바퀴)만을 총 전이 시간으로 한계 설정합니다.
+      const arrivalOffset = isHohmann ? (totalPeriodDays * 0.5) : totalPeriodDays;
+      const arrivalJD = state.epochJD + arrivalOffset;
+      nodeEndJdLbl.textContent = `JD ${arrivalJD.toFixed(1)}`;
+
+      // 진행도 퍼센트 연산 및 바인딩
+      let currentProgressRatio;
+      if (isHohmann) {
+        // 호만 전이는 딱 0.5주기 한계까지 리니어하게 추적
+        currentProgressRatio = Math.min(state.hohmannElapsed / arrivalOffset, 1.0);
+      } else {
+        currentProgressRatio = (state.totalElapsed % totalPeriodDays) / totalPeriodDays;
+      }
+      const progressPercent = currentProgressRatio * 100;
+      
+      delivProgressFill.style.width = `${progressPercent}%`;
+      delivShipIcon.style.left = `calc(${progressPercent}% + 4px)`;
+
+      // 케플러 제2법칙에 기반한 실시간 속도 안내 메시지 분기 연산
+      const radToDeg = 180 / Math.PI;
+      const currentTrueAnomalyDeg = state.nu * radToDeg; 
+      
+      // 잔여 배송 기간 산출
+      const remainingDays = Math.max(0, arrivalOffset - (isHohmann ? state.hohmannElapsed : (state.totalElapsed % totalPeriodDays)));
+      let countdownText = ` 🔔 **[우주 표준시 동보]** 각 행성의 역법 윤달 규격이 다릅니다. 따라서 배송 관제 시스템은 표준 시간 단위인 **율리우스 적일(JD)**로만 배송 잔여 시간(**${remainingDays.toFixed(1)}일**)을 정밀 연산하고 있습니다.`;
+      delivCountdownSummary.innerHTML = countdownText;
+
+      // 노드 하이라이트 제어
+      nodeStart.classList.remove("active");
+      nodePeri.classList.remove("active");
+      nodeAphe.classList.remove("active");
+      nodeEnd.classList.remove("active");
+
+      if (progressPercent < 5) {
+        nodeStart.classList.add("active");
+      }
+
+      // 호만 전이 완료 정지 판단
+      if (isHohmann && state.hohmannElapsed >= arrivalOffset) {
+        nodeEnd.classList.add("active");
+        if (state.isPlaying) {
+          state.isPlaying = false; // 공전 정지
+          btnPlayPause.innerHTML = `
+            <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span>배송 완료</span>
+          `;
+        }
+        delivTickerMessage.innerHTML = `🏁 [배송 완료!] 호만 전이 타원 궤도 종점에 진입했습니다. 목적지 기지 [${meta.dest}]에 최종 하역 완료!`;
+        delivTickerMessage.style.borderColor = "#10b981";
+        delivTickerMessage.style.background = "rgba(16, 185, 129, 0.25)";
+        
+        if (!state.hasAnnouncedArrival) {
+          addTerminalLog("ARRV", `목적지 [${meta.dest}] 정밀 도킹 완료. 배송 패키지 인계 성공.`);
+          state.hasAnnouncedArrival = true;
+        }
+        return;
+      }
+
+      // 근일점 부근 (진이각 330도 이상 또는 30도 이하일 때 최고속 구간)
+      if (currentTrueAnomalyDeg < 35 || currentTrueAnomalyDeg > 325) {
+        nodePeri.classList.add("active");
+        const msg = `🔥 [근일점 도달 완료!] 태양 중력 슬링샷 구동 가속! 배송 순항 속도 2배속 돌파 중! (현재 속도: ${state.v.toFixed(1)} km/s)`;
+        if (delivTickerMessage.textContent !== msg) {
+          delivTickerMessage.innerHTML = msg;
+          addTerminalLog("VELO", `속도 에너지 부스트 가동: ${state.v.toFixed(1)} km/s`);
+        }
+        delivTickerMessage.style.borderColor = "#ef4444";
+        delivTickerMessage.style.background = "rgba(239, 68, 68, 0.15)";
+      } 
+      // 원일점 부근 (진이각 145도에서 215도 사이일 때 최저속 구간)
+      else if (currentTrueAnomalyDeg > 145 && currentTrueAnomalyDeg < 215) {
+        nodeAphe.classList.add("active");
+        const msg = `⏳ [원일점 정체 통과 중...] 태양 중력 저항 최대 및 최소 추진 속도 구간. 안전 서행 중입니다. (현재 속도: ${state.v.toFixed(1)} km/s)`;
+        if (delivTickerMessage.textContent !== msg) {
+          delivTickerMessage.innerHTML = msg;
+          addTerminalLog("GRAV", `태양 중력 저항 한계점 통과, 안전 서행 중`);
+        }
+        delivTickerMessage.style.borderColor = "#3b82f6";
+        delivTickerMessage.style.background = "rgba(59, 130, 246, 0.15)";
+      } 
+      // 일반 순항 구간
+      else {
+        if (progressPercent > 95) nodeEnd.classList.add("active");
+        const msg = `🛰️ [궤도 순항] 타원 궤도를 따라 안정적으로 물리 계산 전송 중입니다. (현재 속도: ${state.v.toFixed(1)} km/s)`;
+        if (delivTickerMessage.textContent !== msg) {
+          delivTickerMessage.innerHTML = msg;
+          addTerminalLog("NAV", `설정 궤도 이격률 ${state.e.toFixed(2)} 진입 안정 각도 확보`);
+        }
+        delivTickerMessage.style.borderColor = "#10b981";
+        delivTickerMessage.style.background = "rgba(16, 185, 129, 0.1)";
+      }
+    }
+
+    // --- 케플러 법칙 기반 물리 수치 최종 연산 루틴 ---
+    function updatePhysics() {
+      state.a = Math.max(0.3, Math.min(state.a, 5.0));
+      // 과학적 현실성을 반영하여 이심률 클램프 한계를 0.01로 조정
+      state.e = Math.max(0.01, Math.min(state.e, 0.95));
+
+      state.totalElapsed = state.realElapsed + state.animOffset;
+
+      const orbitalPeriodDays = state.period * 365.256;
+      const meanMotion = (2 * Math.PI) / orbitalPeriodDays;
+
+      // 호만 전이 모드 시 가속 이각 범위를 0 ~ PI(반 바퀴)로 제한합니다.
+      const isHohmann = state.deliveryMode === 'hohmann';
+      if (isHohmann) {
+        const transferDuration = orbitalPeriodDays * 0.5;
+        if (state.hohmannElapsed >= transferDuration) {
+          state.hohmannElapsed = transferDuration;
+        }
+      }
+
+      state.M = (meanMotion * (isHohmann ? state.hohmannElapsed : state.totalElapsed)) % (2 * Math.PI);
+      if (state.M < 0) state.M += 2 * Math.PI;
+
+      state.E = solveKepler(state.M, state.e);
+
+      const tanHalfE = Math.tan(state.E / 2);
+      const factor = Math.sqrt((1 + state.e) / (1 - state.e));
+      state.nu = 2 * Math.atan(factor * tanHalfE);
+      if (state.nu < 0) state.nu += 2 * Math.PI;
+
+      state.r = state.a * (1 - state.e * Math.cos(state.E));
+
+      const speedTerm = (2.0 / state.r) - (1.0 / state.a);
+      state.v = 29.78 * Math.sqrt(Math.max(speedTerm, 0.0001));
+
+      if (state.isPlaying) {
+        state.trail.push({ nu: state.nu, r: state.r, v: state.v });
+        if (state.trail.length > state.maxTrailLength) {
+          state.trail.shift();
+        }
+
+        state.graphHistory.push({
+          day: Math.round(isHohmann ? state.hohmannElapsed : state.totalElapsed),
+          speed: state.v
+        });
+        if (state.graphHistory.length > state.maxGraphPoints) {
+          state.graphHistory.shift();
+        }
+      }
+
+      const currentJD = isHohmann ? (state.epochJD + state.hohmannElapsed) : (state.epochJD + state.totalElapsed);
+
+      // 택배 시스템 및 보고서 동기화 업데이트 호출
+      updateDeliverySimulator(currentJD);
+      renderNumericalReport();
+    }
+
+    function renderNumericalReport() {
+      const isHohmann = state.deliveryMode === 'hohmann';
+      const currentJD = isHohmann ? (state.epochJD + state.hohmannElapsed) : (state.epochJD + state.totalElapsed);
+      reportEpochJD.textContent = state.epochJD.toFixed(4);
+      reportTodayJD.textContent = currentJD.toFixed(4);
+      
+      reportRealElapsed.textContent = isHohmann ? `호만 활성화` : `${state.realElapsed.toFixed(1)} 일`;
+      reportAnimOffset.textContent = isHohmann ? `+ ${state.hohmannElapsed.toFixed(1)} 일` : `+ ${state.animOffset.toFixed(1)} 일`;
+      
+      const radToDeg = 180 / Math.PI;
+      reportM.textContent = `${(state.M * radToDeg).toFixed(2)}°`;
+      reportE.textContent = `${(state.E * radToDeg).toFixed(2)}°`;
+      reportNu.textContent = `${(state.nu * radToDeg).toFixed(2)}°`;
+      reportR.textContent = `${state.r.toFixed(3)} AU`;
+      reportSpeed.textContent = `${state.v.toFixed(2)} km/s`;
+
+      const earthRotations = (isHohmann ? state.hohmannElapsed : state.totalElapsed) / 365.256;
+      const probeRotations = (isHohmann ? state.hohmannElapsed : state.totalElapsed) / (state.period * 365.256);
+
+      analysisEarthRot.textContent = `${earthRotations.toFixed(2)} 바퀴`;
+      analysisProbeRot.textContent = `${probeRotations.toFixed(2)} 바퀴`;
+
+      const vMax = 29.78 * Math.sqrt((1 + state.e) / (state.a * (1 - state.e)));
+      const vMin = 29.78 * Math.sqrt((1 - state.e) / (state.a * (1 + state.e)));
+      const speedSpan = Math.max(vMax - vMin, 0.001);
+      
+      const speedPercent = Math.min(Math.max(((state.v - vMin) / speedSpan) * 100, 0.0), 100.0);
+      speedIndicator.style.left = `${speedPercent}%`;
+      
+      valVmin.textContent = vMin.toFixed(1);
+      valVmax.textContent = vMax.toFixed(1);
+    }
+
+    function getSpeedColor(v) {
+      const vMax = 29.78 * Math.sqrt((1 + state.e) / (state.a * (1 - state.e)));
+      const vMin = 29.78 * Math.sqrt((1 - state.e) / (state.a * (1 + state.e)));
+      const span = Math.max(vMax - vMin, 0.001);
+      
+      const normalized = Math.min(Math.max((v - vMin) / span, 0.0), 1.0);
+
+      let r, g, b;
+      if (normalized < 0.5) {
+        const t = normalized * 2;
+        r = 0;
+        g = Math.floor(190 * t + 30);
+        b = Math.floor(220 * (1 - t) + 35);
+      } else {
+        const t = (normalized - 0.5) * 2;
+        r = Math.floor(220 * t + 35);
+        g = Math.floor(190 * (1 - t) + 30);
+        b = 0;
+      }
+
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function resizeCanvas() {
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      
+      const graphRect = graphCanvas.parentElement.getBoundingClientRect();
+      graphCanvas.width = graphRect.width;
+      graphCanvas.height = graphRect.height;
+    }
+
+    function drawSectorAreas(ctx, scale, cxShift, cy) {
+      const sectorTimePercent = 0.045; 
+      const dT = state.period * 365.256 * sectorTimePercent;
+      
+      ctx.fillStyle = varColor('--accent-area');
+      ctx.strokeStyle = "rgba(168, 85, 247, 0.35)";
+      ctx.lineWidth = 1;
+
+      drawSector(ctx, scale, cxShift, cy, 0, dT);
+      
+      // 호만 전이 모드일 때는 근일점 부채꼴만 렌더링하여 반 바퀴 여정의 가독성을 높입니다.
+      if (state.deliveryMode !== 'hohmann') {
+        const aphelionM = Math.PI;
+        drawSector(ctx, scale, cxShift, cy, aphelionM, dT);
+      }
+    }
+
+    function drawSector(ctx, scale, cxShift, cy, baseM, dT) {
+      const orbitalPeriodDays = state.period * 365.256;
+      const meanMotion = (2 * Math.PI) / orbitalPeriodDays;
+
+      const mStart = baseM - (meanMotion * dT / 2);
+      const mEnd = baseM + (meanMotion * dT / 2);
+
+      const resolution = 24;
+      const points = [];
+
+      for (let i = 0; i <= resolution; i++) {
+        const currentM = mStart + (mEnd - mStart) * (i / resolution);
+        const E = solveKepler(currentM, state.e);
+        const tanHalfE = Math.tan(E / 2);
+        const factor = Math.sqrt((1 + state.e) / (1 - state.e));
+        const nu = 2 * Math.atan(factor * tanHalfE);
+        const r = state.a * (1 - state.e * Math.cos(E));
+        const px = r * Math.cos(nu);
+        const py = r * Math.sin(nu);
+
+        points.push({
+          x: cxShift + px * scale,
+          y: cy - py * scale
+        });
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(cxShift, cy);
+      for (const p of points) {
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.lineTo(cxShift, cy);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    function varColor(variableName) {
+      return getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+    }
+
+    function drawScene() {
+      if (canvas.width === 0 || canvas.height === 0) return;
+
+      const isHohmann = state.deliveryMode === 'hohmann'; // ★ 선언부를 최상단으로 옮겨 ReferenceError 해결!
+
+      // 드로잉 전 캔버스 초기 청소
+      ctx.fillStyle = "#010408";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 뷰포트 A 자동 확대/축소 제어기 (B 조작 시 연동 및 줌아웃 범위 결정)
+      if (state.camera.autoTrack) {
+        const maxLeftDist = state.a * (1 + state.e);
+        const maxRightDist = state.a * (1 - state.e);
+        const maxVertDist = state.a * Math.sqrt(1 - state.e * state.e);
+        const boundaryLimit = Math.max(maxLeftDist, maxRightDist, maxVertDist, 0.8) * 1.35;
+
+        const scaleX = (canvas.width / 2 - 140) / (boundaryLimit * 100);
+        const scaleY = (canvas.height / 2 - 80) / (boundaryLimit * 100);
+        
+        state.camera.zoom = Math.min(scaleX, scaleY);
+        state.camera.panX = 0;
+        state.camera.panY = 0;
+      }
+
+      ctx.save();
+      // 카메라 평행 이동 및 스케일 행렬 매핑 적용
+      ctx.translate(canvas.width / 2 + state.camera.panX, canvas.height / 2 + state.camera.panY);
+      ctx.scale(state.camera.zoom, state.camera.zoom);
+
+      const scale = 100; // 스케일 팩터 상수
+      const cxShift = -(state.a * state.e * scale); 
+
+      // 1. 별자리 시차 배경 드로잉
+      for (const star of state.stars) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness * 0.75})`;
+        ctx.beginPath();
+        const sx = star.x + (Math.cos(state.nu) * 10 * star.parallaxFactor);
+        const sy = star.y - (Math.sin(state.nu) * 10 * star.parallaxFactor);
+        ctx.arc(sx, sy, star.size / state.camera.zoom, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 2. 우주 거리 단위 AU 점선 격자 원선
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 1 / state.camera.zoom;
+      ctx.setLineDash([5, 5]); 
+      
+      const maxGridAU = Math.max(Math.ceil(state.a * (1 + state.e)), 1);
+      for (let au = 1; au <= maxGridAU; au++) {
+        ctx.beginPath();
+        ctx.arc(cxShift, 0, au * scale, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+        ctx.font = `${10 / state.camera.zoom}px monospace`;
+        ctx.fillText(`${au} AU`, cxShift + au * scale + 5, -4);
+      }
+      ctx.setLineDash([]);
+
+      for (const planet of solarSystemInnerPlanets) {
+        ctx.strokeStyle = planet.color;
+        ctx.lineWidth = 1.8 / state.camera.zoom;
+        ctx.setLineDash([3, 4]); 
+        ctx.beginPath();
+        ctx.arc(cxShift, 0, planet.a * scale, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.fillStyle = planet.color;
+        ctx.font = `bold ${10 / state.camera.zoom}px sans-serif`;
+        ctx.fillText(planet.name, cxShift + 4, -planet.a * scale - 4);
+      }
+      ctx.setLineDash([]);
+
+      drawSectorAreas(ctx, scale, cxShift, 0);
+
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.65)";
+      ctx.lineWidth = 2.2 / state.camera.zoom;
+      
+      const orbitResolution = 200;
+      for (let i = 0; i <= orbitResolution; i++) {
+        const theta = (i / orbitResolution) * Math.PI * 2;
+        if (isHohmann && theta > Math.PI) break; // 호만 전이는 위 절반만 그림
+
+        const rOrbit = (state.a * (1 - state.e * state.e)) / (1 + state.e * Math.cos(theta));
+        const ox = rOrbit * Math.cos(theta);
+        const oy = rOrbit * Math.sin(theta);
+
+        if (i === 0) {
+          ctx.moveTo(cxShift + ox * scale, -oy * scale);
+        } else {
+          ctx.lineTo(cxShift + ox * scale, -oy * scale);
+        }
+      }
+      ctx.stroke();
+
+      // 호만 전이 시 하단 미탑재 궤도는 투명 점선으로 안내 처리
+      if (isHohmann) {
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.18)";
+        ctx.lineWidth = 1.5 / state.camera.zoom;
+        ctx.setLineDash([4, 4]);
+        for (let i = Math.floor(orbitResolution / 2); i <= orbitResolution; i++) {
+          const theta = (i / orbitResolution) * Math.PI * 2;
+          const rOrbit = (state.a * (1 - state.e * state.e)) / (1 + state.e * Math.cos(theta));
+          const ox = rOrbit * Math.cos(theta);
+          const oy = rOrbit * Math.sin(theta);
+
+          if (i === Math.floor(orbitResolution / 2)) {
+            ctx.moveTo(cxShift + ox * scale, -oy * scale);
+          } else {
+            ctx.lineTo(cxShift + ox * scale, -oy * scale);
+          }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // 6. 택배선 궤도 잔상 트레일 (Trail)
+      if (state.trail.length > 1) {
+        for (let i = 0; i < state.trail.length - 1; i++) {
+          const pt1 = state.trail[i];
+          const pt2 = state.trail[i+1];
+          const opacity = i / state.trail.length;
+
+          const x1 = pt1.r * Math.cos(pt1.nu) * scale;
+          const y1 = -pt1.r * Math.sin(pt1.nu) * scale;
+
+          const x2 = pt2.r * Math.cos(pt2.nu) * scale;
+          const y2 = -pt2.r * Math.sin(pt2.nu) * scale;
+
+          ctx.beginPath();
+          ctx.strokeStyle = getSpeedColor(pt2.v);
+          ctx.globalAlpha = opacity * 0.7;
+          ctx.lineWidth = (3.0 * opacity + 0.6) / state.camera.zoom;
+          ctx.moveTo(cxShift + x1, y1);
+          ctx.lineTo(cxShift + x2, y2);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0; 
+      }
+
+      // 7. 근일점 & 원일점 천문학 포인트 마커
+      const rPeri = state.a * (1 - state.e);
+      const px = cxShift + rPeri * scale;
+      const py = 0;
+
+      const rAphe = state.a * (1 + state.e);
+      const ax = cxShift - rAphe * scale;
+      const ay = 0;
+
+      ctx.beginPath();
+      ctx.fillStyle = varColor('--accent-peri');
+      ctx.arc(px, py, 6 / state.camera.zoom, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = varColor('--text-main');
+      ctx.font = `bold ${10 / state.camera.zoom}px monospace`;
+      ctx.fillText(`지구 출발점 (${rPeri.toFixed(2)} AU)`, px + (10 / state.camera.zoom), py + (4 / state.camera.zoom));
+
+      ctx.beginPath();
+      ctx.fillStyle = varColor('--accent-aphe');
+      ctx.arc(ax, ay, 6 / state.camera.zoom, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText(`목적지 정박점 (${rAphe.toFixed(2)} AU)`, ax - (125 / state.camera.zoom), ay + (4 / state.camera.zoom));
+
+      // 8. 항성(태양)
+      const sunRadius = 14 + (state.a * 1.5);
+      const sunGradient = ctx.createRadialGradient(cxShift, 0, sunRadius * 0.1, cxShift, 0, sunRadius * 1.8);
+      sunGradient.addColorStop(0, '#ffffff');
+      sunGradient.addColorStop(0.15, '#f97316');
+      sunGradient.addColorStop(0.55, 'rgba(239, 68, 68, 0.4)');
+      sunGradient.addColorStop(1, 'rgba(0,0,0,0)');
+      
+      ctx.beginPath();
+      ctx.fillStyle = sunGradient;
+      ctx.arc(cxShift, 0, sunRadius * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = '#ff9f1c';
+      ctx.arc(cxShift, 0, sunRadius * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 9. 현재 순항중인 우주 택배선 드로잉
+      const planetX = state.r * Math.cos(state.nu) * scale;
+      const planetY = -state.r * Math.sin(state.nu) * scale;
+      const actualX = cxShift + planetX;
+      const actualY = planetY;
+
+      const planetColor = getSpeedColor(state.v);
+      const planetSize = 9 + (state.e * 1.5);
+
+      const glowGrad = ctx.createRadialGradient(actualX, actualY, planetSize * 0.2, actualX, actualY, planetSize * 2.5);
+      glowGrad.addColorStop(0, planetColor);
+      glowGrad.addColorStop(0.35, planetColor);
+      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
+      ctx.beginPath();
+      ctx.fillStyle = glowGrad;
+      ctx.arc(actualX, actualY, planetSize * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = "#ffffff";
+      ctx.arc(actualX, actualY, planetSize * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.strokeStyle = planetColor;
+      ctx.lineWidth = 2.5 / state.camera.zoom;
+      ctx.arc(actualX, actualY, planetSize * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${11 / state.camera.zoom}px sans-serif`;
+      ctx.fillText(`가상 택배선 (${state.v.toFixed(1)} km/s)`, actualX + planetSize + 10, actualY - 6);
+
+      // 10. 역학 벡터 화살표 드로잉
+      const deltaNu = 0.001;
+      const nextE = solveKepler(state.M + deltaNu, state.e);
+      const nextNu = 2 * Math.atan(Math.sqrt((1 + state.e) / (1 - state.e)) * Math.tan(nextE / 2));
+      const nextR = state.a * (1 - state.e * Math.cos(nextE));
+      const nextX = nextR * Math.cos(nextNu) * scale;
+      const nextY = -nextR * Math.sin(nextNu) * scale;
+
+      let vx = nextX - planetX;
+      let vy = nextY - planetY;
+      const len = Math.sqrt(vx * vx + vy * vy) || 1;
+      vx /= len;
+      vy /= len;
+
+      const speedArrowLen = 15 + (state.v * 1.1); 
+      const gravityForceLen = 20 + (35 / (state.r * state.r));
+      let gx = cxShift - actualX;
+      let gy = -actualY;
+      const gLen = Math.sqrt(gx * gx + gy * gy) || 1;
+      gx /= gLen;
+      gy /= gLen;
+
+      drawVectorArrow(ctx, actualX, actualY, actualX + vx * speedArrowLen, actualY + vy * speedArrowLen, "#10b981", "운송속도 v");
+      drawVectorArrow(ctx, actualX, actualY, actualX + gx * gravityForceLen, actualY + gy * gravityForceLen, "#a855f7", "중력인력 Fg");
+
+      ctx.restore(); // 카메라 보정 행렬 탈출
+
+      // 11. 화면 고정 오버레이 UI: 계기판 HUD
+      const currentSimJD = state.epochJD + state.totalElapsed;
+      const cal = julianDateToCalendar(currentSimJD);
+
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.strokeStyle = "rgba(30, 41, 59, 0.8)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(15, 15, 230, 85, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = "#10b981";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(15, 15);
+      ctx.lineTo(35, 15);
+      ctx.moveTo(15, 15);
+      ctx.lineTo(15, 35);
+      ctx.stroke();
+
+      ctx.fillStyle = "#10b981";
+      ctx.font = "bold 9px monospace";
+      ctx.fillText("SPACE LOGISTICS HUD", 24, 28);
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 13px monospace";
+      ctx.fillText(`${cal.year}년 ${cal.month}월 ${cal.day}일`, 24, 48);
+
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "11px monospace";
+      ctx.fillText(`JD ${currentSimJD.toFixed(4)}`, 24, 68);
+    }
+
+    // --- 동적 화살표 벡터 드로잉 함수 ---
+    function drawVectorArrow(ctx, fromX, fromY, toX, toY, color, label) {
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2.5;
+
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+
+      const angle = Math.atan2(toY - fromY, toX - fromX);
+      const headLen = 6;
+      ctx.beginPath();
+      ctx.moveTo(toX, toY);
+      ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI / 6), toY - headLen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(toX - headLen * Math.cos(angle + Math.PI / 6), toY - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.fill();
+
+      ctx.fillStyle = color;
+      ctx.font = "bold 9px sans-serif";
+      ctx.fillText(label, toX + 6 * Math.cos(angle), toY + 6 * Math.sin(angle) + 2);
+    }
+
+    function drawGraph() {
+      if (graphCanvas.width === 0 || graphCanvas.height === 0) return;
+
+      graphCtx.fillStyle = "#010408";
+      graphCtx.fillRect(0, 0, graphCanvas.width, graphCanvas.height);
+
+      if (state.graphHistory.length < 2) return;
+
+      const paddingLeft = 45;
+      const paddingRight = 20;
+      const paddingTop = 15;
+      const paddingBottom = 22;
+
+      const w = graphCanvas.width - paddingLeft - paddingRight;
+      const h = graphCanvas.height - paddingTop - paddingBottom;
+
+      let minVal = Infinity;
+      let maxVal = -Infinity;
+
+      for (const pt of state.graphHistory) {
+        if (pt.speed < minVal) minVal = pt.speed;
+        if (pt.speed > maxVal) maxVal = pt.speed;
+      }
+
+      if (maxVal - minVal < 2.0) {
+        maxVal += 1.0;
+        minVal -= 1.0;
+      } else {
+        const offset = (maxVal - minVal) * 0.1;
+        maxVal += offset;
+        minVal = Math.max(0, minVal - offset);
+      }
+
+      graphCtx.strokeStyle = "rgba(75, 85, 99, 0.15)";
+      graphCtx.lineWidth = 1;
+      
+      const gridLevels = 3;
+      for (let i = 0; i <= gridLevels; i++) {
+        const yVal = minVal + (maxVal - minVal) * (i / gridLevels);
+        const cy = graphCanvas.height - paddingBottom - (i / gridLevels) * h;
+        
+        graphCtx.beginPath();
+        graphCtx.moveTo(paddingLeft, cy);
+        graphCtx.lineTo(graphCanvas.width - paddingRight, cy);
+        graphCtx.stroke();
+
+        graphCtx.fillStyle = varColor('--text-muted');
+        graphCtx.font = "8px monospace";
+        graphCtx.fillText(yVal.toFixed(1), 8, cy + 3);
+      }
+
+      const firstDay = state.graphHistory[0].day;
+      const lastDay = state.graphHistory[state.graphHistory.length - 1].day;
+
+      graphCtx.fillStyle = varColor('--text-muted');
+      graphCtx.font = "8px monospace";
+      graphCtx.fillText(`${firstDay}일`, paddingLeft, graphCanvas.height - 6);
+      graphCtx.fillText(`${lastDay}일`, graphCanvas.width - paddingRight - 45, graphCanvas.height - 6);
+
+      graphCtx.beginPath();
+      graphCtx.lineWidth = 2.2;
+
+      for (let i = 0; i < state.graphHistory.length; i++) {
+        const pt = state.graphHistory[i];
+        const cx = paddingLeft + (i / (state.maxGraphPoints - 1)) * w;
+        const cy = graphCanvas.height - paddingBottom - ((pt.speed - minVal) / (maxVal - minVal)) * h;
+
+        graphCtx.strokeStyle = getSpeedColor(pt.speed);
+
+        if (i === 0) {
+          graphCtx.moveTo(cx, cy);
+        } else {
+          graphCtx.lineTo(cx, cy);
+        }
+      }
+      graphCtx.stroke();
+    }
+
+    function togglePlay() {
+      const isHohmann = state.deliveryMode === 'hohmann';
+      const totalPeriodDays = state.period * 365.256;
+      if (isHohmann && state.totalElapsed >= totalPeriodDays * 0.5) {
+        state.animOffset = 0;
+        state.hasAnnouncedArrival = false;
+        state.trail = [];
+        state.graphHistory = [];
+      }
+
+      state.isPlaying = !state.isPlaying;
+      state.camera.autoTrack = true; // 버튼 동기 조작으로 자동 정렬 복귀
+
+      if (state.isPlaying) {
+        btnPlayPause.innerHTML = `
+          <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          <span>일시정지</span>
+        `;
+        addTerminalLog("INFO", "물류 비행 가동 시작");
+      } else {
+        btnPlayPause.innerHTML = `
+          <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <span>애니메이션 재개</span>
+        `;
+        addTerminalLog("INFO", "관제 장치 일시정지됨");
+      }
+    }
+
+    function resetSimulation() {
+      state.animOffset = 0;
+      state.hohmannElapsed = 0.0; // ★ 호만 시각 리셋 안전 처리
+      state.trail = [];
+      state.graphHistory = [];
+      state.hasAnnouncedArrival = false;
+      state.camera.autoTrack = true; // B 버튼 조작으로 인한 자동 카메라 정렬 복원
+      
+      const inputVal = inputEpochDate.value;
+      const parsedEpochJD = getJulianDateFromStr(inputVal);
+
+      if (parsedEpochJD !== null && parsedEpochJD <= state.todayJD) {
+        state.epochDateStr = inputVal;
+        state.epochJD = parsedEpochJD;
+        state.realElapsed = state.todayJD - state.epochJD;
+      } else {
+        const defaultEpoch = "2000-01-01";
+        inputEpochDate.value = defaultEpoch;
+        state.epochDateStr = defaultEpoch;
+        state.epochJD = getJulianDateFromStr(defaultEpoch);
+        state.realElapsed = state.todayJD - state.epochJD;
+      }
+
+      // 플레이 버튼 비주얼 초기화 복구
+      state.isPlaying = true;
+      btnPlayPause.innerHTML = `
+        <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        <span>일시정지</span>
+      `;
+
+      addTerminalLog("RESET", "궤도 오프셋 및 비행 로그를 원점으로 초기화했습니다.");
+      updatePhysics();
+    }
+
+    // --- 카메라 확대 및 조작 제어용 이벤트 부착 장치 ---
+    function setupCameraInteraction() {
+      const containerEl = document.getElementById("canvas-container-el");
+
+      // 1. 마우스 스크롤 휠 이벤트 (Zoom In / Zoom Out)
+      containerEl.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        state.camera.autoTrack = false; 
+        const zoomFactor = 1.05;
+        if (e.deltaY < 0) {
+          state.camera.zoom = Math.min(state.camera.zoom * zoomFactor, 8.0); 
+        } else {
+          state.camera.zoom = Math.max(state.camera.zoom / zoomFactor, 0.4); 
+        }
+      }, { passive: false });
+
+      // 2. 드래그 조작 평행 이동 (Panning)
+      containerEl.addEventListener("mousedown", (e) => {
+        state.camera.autoTrack = false; 
+        state.camera.isDragging = true;
+        state.camera.startX = e.clientX - state.camera.panX;
+        state.camera.startY = e.clientY - state.camera.panY;
+        containerEl.style.cursor = "grabbing";
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!state.camera.isDragging) return;
+        state.camera.panX = e.clientX - state.camera.startX;
+        state.camera.panY = e.clientY - state.camera.startY;
+      });
+
+      window.addEventListener("mouseup", () => {
+        state.camera.isDragging = false;
+        containerEl.style.cursor = "grab";
+      });
+
+      // 3. 플로팅 보조 조작 버튼 바인딩 (수동 제어)
+      vpZoomIn.addEventListener("click", () => {
+        state.camera.autoTrack = false;
+        state.camera.zoom = Math.min(state.camera.zoom * 1.2, 8.0);
+      });
+
+      vpZoomOut.addEventListener("click", () => {
+        state.camera.autoTrack = false;
+        state.camera.zoom = Math.max(state.camera.zoom / 1.2, 0.4);
+      });
+
+      vpReset.addEventListener("click", () => {
+        state.camera.autoTrack = true; 
+        addTerminalLog("INFO", "뷰포트 A 스케일 및 정렬 방향을 초기화했습니다.");
+      });
+    }
+
+    function setupEventListeners() {
+      inputSemiMajor.addEventListener("input", (e) => {
+        try {
+          const val = parseFloat(e.target.value);
+          if (isNaN(val) || val <= 0) {
+            throw new Error("장반경은 최소 0.3 AU 이상이어야 합니다.");
+          }
+          state.a = val;
+          valSemiMajor.textContent = `${state.a.toFixed(2)} AU`;
+          state.trail = [];
+          state.graphHistory = [];
+          
+          state.camera.autoTrack = true; 
+          updateOrbitalPeriod();
+          updatePhysics();
+        } catch (err) {
+          showAlert(err.message);
+          inputSemiMajor.value = "1.00";
+          state.a = 1.0;
+        }
+      });
+
+      inputEccentricity.addEventListener("input", (e) => {
+        try {
+          const val = parseFloat(e.target.value);
+          // 과학적 상한선(0.95)과 하한선(0.01) 예외 처리 동기화
+          if (isNaN(val) || val < 0.01 || val > 0.95) {
+            throw new Error("이심률 한계치는 0.01 ~ 0.95 이내입니다.");
+          }
+          state.e = val;
+          valEccentricity.textContent = state.e.toFixed(2);
+          state.trail = [];
+          state.graphHistory = [];
+          
+          state.camera.autoTrack = true; 
+          updatePhysics();
+        } catch (err) {
+          showAlert(err.message);
+          inputEccentricity.value = "0.40";
+          state.e = 0.40;
+        }
+      });
+
+      inputEpochDate.addEventListener("change", (e) => {
+        state.camera.autoTrack = true; 
+        handleDateInput(e.target.value);
+      });
+
+      inputTimescale.addEventListener("input", (e) => {
+        state.timeScale = parseFloat(e.target.value);
+        valTimescale.textContent = `${state.timeScale.toFixed(1)}배`;
+      });
+
+      btnPlayPause.addEventListener("click", togglePlay);
+      btnReset.addEventListener("click", resetSimulation);
+
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        drawScene();
+        drawGraph();
+      });
+    }
+
+    function mainLoop(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      let deltaTime = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      if (deltaTime > 0.1) deltaTime = 0.1;
+
+      if (state.isPlaying) {
+        const daysPerSecond = 1.0 * state.timeScale;
+        state.animOffset += daysPerSecond * deltaTime;
+        if (state.deliveryMode === 'hohmann') {
+          state.hohmannElapsed += daysPerSecond * deltaTime;
+        }
+        updatePhysics();
+      }
+
+      drawScene();
+      drawGraph();
+
+      requestAnimationFrame(mainLoop);
+    }
+
+    function init() {
+      const todayDate = new Date();
+      state.todayJD = getJulianDate(todayDate);
+
+      state.epochDateStr = inputEpochDate.value;
+      state.epochJD = getJulianDateFromStr(state.epochDateStr);
+      state.realElapsed = Math.max(0, state.todayJD - state.epochJD);
+
+      initStars();
+      resizeCanvas();
+      updateOrbitalPeriod();
+      updatePhysics();
+      setupEventListeners();
+      setupCameraInteraction(); 
+      
+      requestAnimationFrame(mainLoop);
+    }
+
+    let lastTime = 0;
+    window.onload = init;
+  </script>
+</body>
+</html>

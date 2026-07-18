@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K2-18b 하이시언 외계행성 시뮬레이터</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.5);
+        }
+        .glow-button {
+            transition: all 0.3s ease;
+        }
+        .glow-button:hover {
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+        }
+        .math-font {
+            font-family: 'Cambria', 'Georgia', 'Times New Roman', serif;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-hidden font-sans select-none">
+
+    <!-- Header -->
+    <header class="bg-slate-900/90 border-b border-slate-800/80 px-6 py-3.5 backdrop-blur-md flex items-center justify-between z-10 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-sky-500/20 text-sky-400 p-2 rounded-lg border border-sky-500/30">
+                <i class="fa-solid fa-satellite-dish text-xl animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-teal-300 to-indigo-400">
+                    K2-18b 하이시언 외계행성 시뮬레이터 Pro
+                </h1>
+                <p class="text-[11px] text-slate-400">궤도 역학 · 온실 대기 열평형 · 생태학적 DMS 미분방정식 수치 해석 모델</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="resetToJWSTPreset()" class="glow-button bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] px-3 py-1.5 rounded-md flex items-center space-x-1.5">
+                <i class="fa-solid fa-rotate"></i>
+                <span>JWST 관측값 프리셋</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        
+        <!-- Left Panel: Control Center & Mathematical Theories -->
+        <aside class="w-full lg:w-[420px] bg-slate-900/80 border-r border-slate-800/80 p-5 flex flex-col space-y-4 overflow-y-auto backdrop-blur-md z-10 shrink-0">
+            
+            <!-- Tab selector -->
+            <div class="flex bg-slate-950/80 rounded-lg p-1 border border-slate-800">
+                <button id="tab-btn-controls" onclick="switchTab('controls')" class="flex-1 py-1.5 text-xs font-semibold rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 transition-all duration-200">
+                    대기 & 기체 시각화 제어
+                </button>
+                <button id="tab-btn-science" onclick="switchTab('science')" class="flex-1 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-slate-200 transition-all duration-200">
+                    물리 수식 및 과학 이론
+                </button>
+            </div>
+
+            <!-- Tab Content 1: Controls -->
+            <div id="tab-content-controls" class="space-y-4">
+                
+                <!-- Rotation & Airflow Control Switch -->
+                <div class="bg-slate-950/50 p-3 rounded-lg border border-sky-500/30 shadow-[0_0_10px_rgba(56,189,248,0.1)] space-y-2.5">
+                    <!-- Rotation Toggle -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="p-1.5 bg-sky-500/10 rounded text-sky-400">
+                                <i id="rot-icon" class="fa-solid fa-arrows-spin text-sm animate-spin" style="animation-duration: 4s;"></i>
+                            </div>
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">실시간 회전 시뮬레이션</span>
+                                <span class="text-[10px] text-slate-400">행성 자전 및 대기 입자의 흐름 제어</span>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-animation" checked onchange="toggleAnimation(this.checked)" class="sr-only peer">
+                            <div class="w-10 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Separator line -->
+                    <div class="border-t border-slate-800/80"></div>
+
+                    <!-- Airflow / Cloud Line Toggle -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="p-1.5 bg-cyan-500/10 rounded text-cyan-400">
+                                <i class="fa-solid fa-wind text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">대기 기류선(구름) 가시화</span>
+                                <span class="text-[10px] text-slate-400">표면 구름 띠 및 기류 순환선 제어</span>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-clouds" checked onchange="toggleClouds(this.checked)" class="sr-only peer">
+                            <div class="w-10 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Gas Controls Section (with scientifically verified ranges) -->
+                <div>
+                    <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-bold text-sky-400 tracking-wide uppercase flex items-center space-x-1.5">
+                            <i class="fa-solid fa-sliders text-xs"></i>
+                            <span>대기 선택 적용 및 과학적 분압 제어</span>
+                        </h2>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <!-- H2: 80 ~ 99% -->
+                        <div class="bg-slate-950/40 p-2.5 rounded-lg border border-blue-500/20 shadow-[0_0_5px_rgba(59,130,246,0.05)]">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-semibold flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" id="show-gas-h2" checked onchange="toggleGasVisibility('h2', this.checked)" class="rounded bg-slate-900 border-blue-500 text-blue-500 focus:ring-blue-500">
+                                    <span class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_6px_#3b82f6] block"></span>
+                                    <span class="text-blue-400 font-bold">수소 ($H_2$) [80 ~ 99%]</span>
+                                </label>
+                                <span id="val-h2" class="text-xs font-mono text-blue-400 font-bold">90.0%</span>
+                            </div>
+                            <input type="range" id="slider-h2" min="80" max="99" step="0.1" value="90" oninput="updateGases('h2', this.value)" class="w-full accent-blue-500 bg-slate-800 h-1 rounded-lg cursor-pointer">
+                        </div>
+
+                        <!-- CO2: 0.1 ~ 10% -->
+                        <div class="bg-slate-950/40 p-2.5 rounded-lg border border-orange-500/20 shadow-[0_0_5px_rgba(249,115,22,0.05)]">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-semibold flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" id="show-gas-co2" checked onchange="toggleGasVisibility('co2', this.checked)" class="rounded bg-slate-900 border-orange-500 text-orange-500 focus:ring-orange-500">
+                                    <span class="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_6px_#f97316] block"></span>
+                                    <span class="text-orange-400 font-bold">이산화탄소 ($CO_2$) [0.1 ~ 10%]</span>
+                                </label>
+                                <span id="val-co2" class="text-xs font-mono text-orange-400 font-bold">4.5%</span>
+                            </div>
+                            <input type="range" id="slider-co2" min="0.1" max="10" step="0.1" value="4.5" oninput="updateGases('co2', this.value)" class="w-full accent-orange-500 bg-slate-800 h-1 rounded-lg cursor-pointer">
+                        </div>
+
+                        <!-- CH4: 0.1 ~ 5% -->
+                        <div class="bg-slate-950/40 p-2.5 rounded-lg border border-yellow-500/20 shadow-[0_0_5px_rgba(234,179,8,0.05)]">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-semibold flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" id="show-gas-ch4" checked onchange="toggleGasVisibility('ch4', this.checked)" class="rounded bg-slate-900 border-yellow-500 text-yellow-500 focus:ring-yellow-500">
+                                    <span class="w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_6px_#eab308] block"></span>
+                                    <span class="text-yellow-400 font-bold">메탄 ($CH_4$) [0.1 ~ 5%]</span>
+                                </label>
+                                <span id="val-ch4" class="text-xs font-mono text-yellow-400 font-bold">2.0%</span>
+                            </div>
+                            <input type="range" id="slider-ch4" min="0.1" max="5" step="0.1" value="2.0" oninput="updateGases('ch4', this.value)" class="w-full accent-yellow-500 bg-slate-800 h-1 rounded-lg cursor-pointer">
+                        </div>
+
+                        <!-- H2O: 0 ~ 2% -->
+                        <div class="bg-slate-950/40 p-2.5 rounded-lg border border-cyan-500/20 shadow-[0_0_5px_rgba(6,182,212,0.05)]">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-semibold flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" id="show-gas-h2o" checked onchange="toggleGasVisibility('h2o', this.checked)" class="rounded bg-slate-900 border-cyan-500 text-cyan-500 focus:ring-cyan-500">
+                                    <span class="w-3 h-3 rounded-full bg-cyan-500 shadow-[0_0_6px_#06b6d4] block"></span>
+                                    <span class="text-cyan-400 font-bold">수증기 ($H_2O$) [0 ~ 2%]</span>
+                                </label>
+                                <span id="val-h2o" class="text-xs font-mono text-cyan-400 font-bold">0.5%</span>
+                            </div>
+                            <input type="range" id="slider-h2o" min="0" max="2" step="0.01" value="0.5" oninput="updateGases('h2o', this.value)" class="w-full accent-cyan-500 bg-slate-800 h-1 rounded-lg cursor-pointer">
+                        </div>
+
+                        <!-- DMS: 0 ~ 0.5% -->
+                        <div class="bg-slate-950/40 p-2.5 rounded-lg border border-emerald-500/20 shadow-[0_0_5px_rgba(16,185,129,0.05)]">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-semibold flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" id="show-gas-dms" checked onchange="toggleGasVisibility('dms', this.checked)" class="rounded bg-slate-900 border-emerald-500 text-emerald-500 focus:ring-emerald-500">
+                                    <span class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981] block"></span>
+                                    <span class="text-emerald-400 font-bold">황화디메틸 ($DMS$) [0 ~ 0.5%]</span>
+                                </label>
+                                <span id="val-dms" class="text-xs font-mono text-emerald-400 font-bold">0.05%</span>
+                            </div>
+                            <input type="range" id="slider-dms" min="0" max="0.5" step="0.001" value="0.05" oninput="updateGases('dms', this.value)" class="w-full accent-emerald-500 bg-slate-800 h-1 rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Real-time Graph/Readout -->
+                <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <h3 class="text-xs font-bold text-teal-400 tracking-wide uppercase flex items-center space-x-1.5">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>물리 환경 시뮬레이션 지표</span>
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="p-2 bg-slate-900/60 border border-slate-800 rounded">
+                            <div class="text-slate-400 text-[10px]">대기 유입 광도</div>
+                            <div class="font-mono font-bold text-white">0.023 L<sub>☉</sub></div>
+                        </div>
+                        <div class="p-2 bg-slate-900/60 border border-slate-800 rounded">
+                            <div class="text-slate-400 text-[10px]">평균 본드 알베도</div>
+                            <div id="val-albedo" class="font-mono font-bold text-sky-400">0.31</div>
+                        </div>
+                        <div class="p-2 bg-slate-900/60 border border-slate-800 rounded">
+                            <div class="text-slate-400 text-[10px]">유효 광학 깊이 ($\tau$)</div>
+                            <div id="val-tau" class="font-mono font-bold text-amber-400">1.45</div>
+                        </div>
+                        <div class="p-2 bg-slate-900/60 border border-slate-800 rounded">
+                            <div class="text-slate-400 text-[10px]">미생물 바이오매스</div>
+                            <div id="val-biomass" class="font-mono font-bold text-emerald-400">1.25 g/m³</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transparency Control -->
+                <div class="bg-slate-950/40 p-3 rounded-lg border border-sky-950/80">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-sky-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-eye-slash"></i>
+                            <span>수소 대기층 투과율 (관측 필터)</span>
+                        </label>
+                        <span id="val-transparency" class="text-xs font-mono text-sky-400">0% (Thick)</span>
+                    </div>
+                    <input type="range" id="slider-transparency" min="0" max="100" value="0" oninput="updateTransparency(this.value)" class="w-full accent-sky-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Tab Content 2: Science Info -->
+            <div id="tab-content-science" class="hidden space-y-4 text-xs text-slate-300">
+                <div class="bg-slate-950/80 p-4 border border-slate-800 rounded-xl space-y-3">
+                    <h3 class="font-bold text-sky-400 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span>궤도 역학 & 광 에너지 방정식</span>
+                    </h3>
+                    <p class="leading-relaxed text-[11px] text-slate-400">
+                        모항성 K2-18의 낮은 유효 온도 $T_{eff} \approx 3450\text{ K}$와 공전 궤도 반경 $a = 0.1429\text{ AU}$에 따른 유입 광 도달 플럭스 $S$는 다음 수식으로 구밀 산출됩니다.
+                    </p>
+                    
+                    <!-- Beautiful Custom HTML Equation Structure -->
+                    <div class="p-4 bg-slate-900/90 rounded border border-slate-800 flex items-center justify-center space-x-2 text-sky-300 text-sm font-semibold tracking-wide">
+                        <span class="math-font">S = </span>
+                        <div class="flex flex-col items-center">
+                            <span class="border-b border-sky-400 px-2 pb-0.5 math-font">L</span>
+                            <span class="pt-0.5 math-font">4 &pi; a<sup>2</sup></span>
+                        </div>
+                        <span class="math-font">&approx; 1361 &times; 1.13 W/m<sup>2</sup></span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-4 border border-slate-800 rounded-xl space-y-3">
+                    <h3 class="font-bold text-orange-400 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-fire-flame-simple"></i>
+                        <span>1차원 대기 열평형 수식</span>
+                    </h3>
+                    <p class="leading-relaxed text-[11px] text-slate-400">
+                        각 기체의 흡수 단면적과 분압에 비례하는 전체 유효 광학 두께 $\tau$를 적용하여, 최종적인 표면 유효 온도 $T_s$를 보수적인 기후 복사 평형 모델로 정밀 유도합니다.
+                    </p>
+                    
+                    <!-- Beautiful Custom HTML Equation Structure -->
+                    <div class="p-4 bg-slate-900/90 rounded border border-slate-800 flex items-center justify-center space-x-1 text-orange-400 text-sm font-semibold tracking-wide">
+                        <span class="math-font">T<sub>s</sub> = </span>
+                        <span class="text-lg">[</span>
+                        <div class="flex flex-col items-center mx-1">
+                            <span class="border-b border-orange-400 px-2 pb-0.5 math-font">S ( 1 - A )</span>
+                            <span class="pt-0.5 math-font">4 &sigma;</span>
+                        </div>
+                        <span class="math-font"> ( 1 + </span>
+                        <div class="flex flex-col items-center mx-1">
+                            <span class="border-b border-orange-400 px-2 pb-0.5 math-font">3</span>
+                            <span class="pt-0.5 math-font">4</span>
+                        </div>
+                        <span class="math-font"> &tau; ) </span>
+                        <span class="text-lg">]<sup>1/4</sup></span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-4 border border-slate-800 rounded-xl space-y-3">
+                    <h3 class="font-bold text-emerald-400 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-wave-square"></i>
+                        <span>생태학적 미분방정식 (DMS 동역학)</span>
+                    </h3>
+                    <p class="leading-relaxed text-[11px] text-slate-400">
+                        온도 환경 $T_s$에 종속적인 미생물의 성장 상수 $r(T_s)$와 이에 따른 바이오매스 생성 및 대기 DMS의 광화학적 광분해 소멸 항을 미분 연산 루프로 실시간 피드백합니다.
+                    </p>
+                    
+                    <!-- Beautiful Custom HTML Equation Structure -->
+                    <div class="p-4 bg-slate-900/90 rounded border border-slate-800 flex flex-col items-center space-y-3 text-emerald-400 text-xs font-semibold">
+                        <!-- Equation 1 -->
+                        <div class="flex items-center space-x-1.5">
+                            <div class="flex flex-col items-center">
+                                <span class="border-b border-emerald-400 px-1 pb-0.5 math-font">dB</span>
+                                <span class="pt-0.5 math-font">dt</span>
+                            </div>
+                            <span class="math-font"> = r(T<sub>s</sub>) &middot; B &middot; ( 1 - </span>
+                            <div class="flex flex-col items-center">
+                                <span class="border-b border-emerald-400 px-1 pb-0.5 math-font">B</span>
+                                <span class="pt-0.5 math-font">K</span>
+                            </div>
+                            <span class="math-font"> ) - d &middot; B</span>
+                        </div>
+                        <!-- Separator line -->
+                        <div class="w-full border-t border-slate-800/80"></div>
+                        <!-- Equation 2 -->
+                        <div class="flex items-center space-x-1.5">
+                            <div class="flex flex-col items-center">
+                                <span class="border-b border-emerald-400 px-1 pb-0.5 math-font">d [DMS]</span>
+                                <span class="pt-0.5 math-font">dt</span>
+                            </div>
+                            <span class="math-font"> = p &middot; B - k<sub>photo</sub> &middot; [DMS]</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Area: 3D Visualization Canvas -->
+        <main class="flex-1 relative flex flex-col justify-between overflow-hidden">
+            <!-- Canvas Container -->
+            <div id="canvas-container" class="absolute inset-0 w-full h-full bg-gradient-to-b from-slate-950 to-slate-900"></div>
+
+            <!-- UI Overlay: Environmental metrics & Habitability -->
+            <div class="absolute top-5 left-5 right-5 pointer-events-none z-10 flex flex-col sm:flex-row justify-between gap-4">
+                <!-- Planetary States Monitor -->
+                <div class="bg-slate-950/80 border border-slate-800/80 p-4 rounded-xl backdrop-blur-md pointer-events-auto shadow-2xl flex flex-col space-y-2 min-w-[240px]">
+                    <div class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">K2-18b 환경 모니터링</div>
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-xs text-slate-300">평균 표면 온도</span>
+                        <div class="text-right">
+                            <span id="temp-display-c" class="text-2xl font-bold tracking-tight text-white">-16.0°C</span>
+                            <span id="temp-display-k" class="text-xs text-slate-400 block">(257.1 K)</span>
+                        </div>
+                    </div>
+                    <div class="border-t border-slate-800 my-1"></div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-300">표면 기압</span>
+                        <span id="pressure-display" class="font-semibold text-sky-400">1.2 atm</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-300">해양 물리 조건</span>
+                        <span id="ocean-status-display" class="font-semibold text-blue-400">안정된 액체 바다</span>
+                    </div>
+                </div>
+
+                <!-- Habitability Index -->
+                <div class="bg-slate-950/80 border border-slate-800/80 p-4 rounded-xl backdrop-blur-md pointer-events-auto shadow-2xl flex flex-col space-y-2.5 min-w-[240px]">
+                    <div class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">외계 생명지표 진단</div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-300">생존 적합도 지수</span>
+                            <span id="habitability-score" class="font-bold text-sky-400">82%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div id="habitability-bar" class="bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 h-full rounded-full transition-all duration-300" style="width: 82%;"></div>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-slate-900/50 rounded-lg border border-slate-800 flex items-center justify-between space-x-2">
+                        <div class="flex items-center space-x-2">
+                            <div class="p-1 rounded bg-emerald-500/10 text-emerald-400">
+                                <i class="fa-solid fa-bacteria text-sm animate-pulse"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-slate-400">DMS 검출량</span>
+                                <span id="bio-strength-label" class="text-[10px] font-bold text-emerald-300">신호 뚜렷함</span>
+                            </div>
+                        </div>
+                        <span id="bio-percentage" class="text-xs font-mono font-bold text-emerald-400">2.5 ppm</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Size Comparison Container (지구 vs K2-18b 스케일 뷰어) -->
+            <div class="absolute left-5 bottom-40 bg-slate-950/85 border border-slate-800/80 p-3 rounded-xl backdrop-blur-md pointer-events-auto shadow-2xl z-10 w-[200px] text-center space-y-2">
+                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">실제 크기 비례 모델</span>
+                <div class="flex justify-center items-end space-x-4 h-24">
+                    <!-- Earth -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 border border-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.6)] flex items-center justify-center text-[8px] font-bold">1R<sub>⊕</sub></div>
+                        <span class="text-[10px] text-slate-300 mt-1 block">지구</span>
+                    </div>
+                    <!-- K2-18b -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-[83px] h-[83px] rounded-full bg-gradient-to-tr from-indigo-900 via-sky-800 to-sky-400 border border-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.7)] flex items-center justify-center text-[10px] font-bold">2.61R<sub>⊕</sub></div>
+                        <span class="text-[10px] text-sky-300 mt-1 block font-bold">K2-18b</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3D Spherical Boundary (Rectangular outlines) On/Off control overlay panel -->
+            <div class="absolute right-5 top-56 bg-slate-950/85 border border-slate-800/80 p-4 rounded-xl backdrop-blur-md pointer-events-auto shadow-2xl z-10 w-[260px] space-y-3">
+                <div class="text-[10px] text-slate-400 font-bold tracking-wider uppercase flex justify-between items-center border-b border-slate-800 pb-1.5">
+                    <span>3D 행성 표면 영역 분석 테두리</span>
+                    <i class="fa-solid fa-cube text-sky-400"></i>
+                </div>
+                
+                <div class="space-y-2.5">
+                    <!-- Toggle 1: Bio-Zone -->
+                    <label class="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-900/50 p-1.5 rounded transition">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded bg-emerald-500 border border-emerald-400 shadow-[0_0_5px_#10b981]"></span>
+                            <span class="text-slate-300">생명 서식 후보대 (Bio-Zone)</span>
+                        </span>
+                        <input type="checkbox" id="chk-3dzone-bio" checked onchange="toggle3DZone('bio', this.checked)" class="rounded bg-slate-900 border-emerald-500 text-emerald-500 focus:ring-emerald-500 h-3.5 w-3.5">
+                    </label>
+
+                    <!-- Toggle 2: Ocean Zone -->
+                    <label class="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-900/50 p-1.5 rounded transition">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded bg-blue-500 border border-blue-400 shadow-[0_0_5px_#3b82f6]"></span>
+                            <span class="text-slate-300">액체 바다 형성대 (Ocean-Zone)</span>
+                        </span>
+                        <input type="checkbox" id="chk-3dzone-ocean" checked onchange="toggle3DZone('ocean', this.checked)" class="rounded bg-slate-900 border-blue-500 text-blue-500 focus:ring-blue-500 h-3.5 w-3.5">
+                    </label>
+
+                    <!-- Toggle 3: Glacial Zones -->
+                    <label class="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-900/50 p-1.5 rounded transition">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded bg-slate-300 border border-white shadow-[0_0_5px_#e2e8f0]"></span>
+                            <span class="text-slate-300">남/북극 빙하 동결대 (Glacial)</span>
+                        </span>
+                        <input type="checkbox" id="chk-3dzone-glacial" checked onchange="toggle3DZone('glacial', this.checked)" class="rounded bg-slate-900 border-slate-500 text-slate-500 focus:ring-slate-500 h-3.5 w-3.5">
+                    </label>
+                </div>
+                <div class="text-[9px] text-slate-500 leading-normal border-t border-slate-800/80 pt-2 flex items-start space-x-1">
+                    <i class="fa-solid fa-circle-info mt-0.5"></i>
+                    <span>테두리는 행성의 자전에 맞춰 표면에 밀착되어 회전합니다.</span>
+                </div>
+            </div>
+
+            <!-- Bottom Presets and Explainers -->
+            <div class="absolute bottom-5 left-5 right-5 pointer-events-none z-10 flex flex-col md:flex-row justify-between gap-4">
+                <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl backdrop-blur-md pointer-events-auto shadow-2xl flex flex-wrap gap-2 shrink-0 md:max-w-md items-center">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold px-2 w-full">기후 템플릿 프리셋</span>
+                    <button onclick="setPreset('glacial')" class="text-[10px] bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded px-2.5 py-1 text-sky-300 transition duration-200">
+                        ☃️ 전면적 빙하기 해양
+                    </button>
+                    <button onclick="setPreset('hycean')" class="text-[10px] bg-sky-950/40 hover:bg-sky-900/50 border border-sky-500/30 rounded px-2.5 py-1 text-sky-400 font-semibold transition duration-200">
+                        🪐 온화한 하이시언 바다
+                    </button>
+                    <button onclick="setPreset('super_bio')" class="text-[10px] bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 rounded px-2.5 py-1 text-emerald-400 font-semibold transition duration-200">
+                        🦠 대번성 야간 발광기
+                    </button>
+                    <button onclick="setPreset('runaway')" class="text-[10px] bg-orange-950/40 hover:bg-orange-900/50 border border-orange-500/30 rounded px-2.5 py-1 text-orange-400 transition duration-200">
+                        🔥 끓어오르는 대기 증발
+                    </button>
+                </div>
+
+                <div id="status-card" class="bg-slate-950/90 border border-slate-800/80 p-4 rounded-xl backdrop-blur-md pointer-events-auto shadow-2xl flex-1 max-w-xl flex space-x-3 items-center">
+                    <div id="status-icon-box" class="bg-sky-500/10 text-sky-400 p-3 rounded-lg border border-sky-500/20 text-xl flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-cloud-sun"></i>
+                    </div>
+                    <div>
+                        <h4 id="status-title" class="text-xs font-bold text-sky-400">기후 피드백 요약</h4>
+                        <p id="status-desc" class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                            수소가 우세한 대기에 대량의 메탄과 이산화탄소가 공존하며 가혹한 전 지구적 온실효과를 차단하는 평형 상태를 형성하고 있습니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interaction Guides -->
+            <div class="absolute bottom-28 right-5 pointer-events-none text-[10px] text-slate-500 flex flex-col items-end space-y-1">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-mouse-pointer"></i>
+                    <span>드래그: 구체 회전 | 스크롤: 줌 조절</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Info Toast -->
+    <div id="toast-notif" class="fixed top-20 right-5 bg-emerald-950/90 border border-emerald-500/40 px-4 py-3 rounded-xl shadow-2xl text-emerald-300 text-xs flex items-center space-x-3 transition-all duration-300 transform translate-x-72 opacity-0 pointer-events-none z-50">
+        <i class="fa-solid fa-circle-check text-lg"></i>
+        <div>
+            <h5 class="font-bold">프리셋 시나리오 로드 완료</h5>
+            <p class="text-[10px] text-emerald-400/80">K2-18b의 극단적인 환경 시뮬레이션 상태가 화면에 투영되었습니다.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- Core Environmental Variables & Physics Equations ---
+        const BaseEquilibriumTemp = 257.15; // 257.15 K
+        let atmosphericComposition = {
+            h2: 90.0,
+            co2: 4.5,
+            ch4: 2.0,
+            h2o: 0.5,
+            dms: 0.05
+        };
+        let cloudTransparency = 0.0;
+        let biomass = 1.25; 
+        let isAnimationActive = true; 
+        let isCloudsActive = true; 
+
+        // UI Sliders
+        const sliders = {
+            h2: document.getElementById('slider-h2'),
+            co2: document.getElementById('slider-co2'),
+            ch4: document.getElementById('slider-ch4'),
+            h2o: document.getElementById('slider-h2o'),
+            dms: document.getElementById('slider-dms'),
+            transparency: document.getElementById('slider-transparency')
+        };
+
+        const valDisplays = {
+            h2: document.getElementById('val-h2'),
+            co2: document.getElementById('val-co2'),
+            ch4: document.getElementById('val-ch4'),
+            h2o: document.getElementById('val-h2o'),
+            dms: document.getElementById('val-dms')
+        };
+
+        // --- helper to convert hexadecimal to RGBA string ---
+        function hexToRgbaStr(hex, alpha) {
+            let r = (hex >> 16) & 255;
+            let g = (hex >> 8) & 255;
+            let b = hex & 255;
+            return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+        }
+
+        // --- setPreset function declared globally before onload ---
+        function setPreset(presetName) {
+            if (presetName === 'glacial') {
+                sliders.h2.value = 98;
+                sliders.co2.value = 0.1;
+                sliders.ch4.value = 0.1;
+                sliders.h2o.value = 0.01;
+                sliders.dms.value = 0.0;
+            } else if (presetName === 'hycean') {
+                sliders.h2.value = 90;
+                sliders.co2.value = 4.5;
+                sliders.ch4.value = 2.0;
+                sliders.h2o.value = 0.5;
+                sliders.dms.value = 0.05;
+            } else if (presetName === 'super_bio') {
+                sliders.h2.value = 85;
+                sliders.co2.value = 3.0;
+                sliders.ch4.value = 4.0;
+                sliders.h2o.value = 1.5;
+                sliders.dms.value = 0.45; 
+            } else if (presetName === 'runaway') {
+                sliders.h2.value = 80;
+                sliders.co2.value = 10.0;
+                sliders.ch4.value = 5.0;
+                sliders.h2o.value = 2.0;
+                sliders.dms.value = 0.0;
+            }
+            
+            recalculatePlanetMetrics();
+            showToast();
+        }
+
+        function resetToJWSTPreset() {
+            setPreset('hycean');
+        }
+
+        // --- Tab Switching ---
+        function switchTab(tabId) {
+            const btnControls = document.getElementById('tab-btn-controls');
+            const btnScience = document.getElementById('tab-btn-science');
+            const contentControls = document.getElementById('tab-content-controls');
+            const contentScience = document.getElementById('tab-content-science');
+
+            if (tabId === 'controls') {
+                btnControls.classList.add('bg-sky-500/10', 'text-sky-400', 'border-sky-500/20');
+                btnControls.classList.remove('text-slate-400');
+                btnScience.classList.remove('bg-sky-500/10', 'text-sky-400', 'border-sky-500/20');
+                btnScience.classList.add('text-slate-400');
+                contentControls.classList.remove('hidden');
+                contentScience.classList.add('hidden');
+            } else {
+                btnScience.classList.add('bg-sky-500/10', 'text-sky-400', 'border-sky-500/20');
+                btnScience.classList.remove('text-slate-400');
+                btnControls.classList.remove('bg-sky-500/10', 'text-sky-400', 'border-sky-500/20');
+                btnControls.classList.add('text-slate-400');
+                contentScience.classList.remove('hidden');
+                contentControls.classList.add('hidden');
+            }
+        }
+
+        function toggleAnimation(isActive) {
+            isAnimationActive = isActive;
+            const icon = document.getElementById('rot-icon');
+            if (isActive) {
+                icon.classList.add('animate-spin');
+            } else {
+                icon.classList.remove('animate-spin');
+            }
+        }
+
+        function toggleClouds(isActive) {
+            isCloudsActive = isActive;
+            recalculatePlanetMetrics();
+        }
+
+        function updateGases(changedGas, val) {
+            atmosphericComposition[changedGas] = parseFloat(val);
+            recalculatePlanetMetrics();
+        }
+
+        function updateTransparency(val) {
+            cloudTransparency = parseFloat(val) / 100.0;
+            document.getElementById('val-transparency').innerText = val + "% " + (cloudTransparency > 0.7 ? "(Clear)" : (cloudTransparency > 0.3 ? "(Partial)" : "(Thick)"));
+            recalculatePlanetMetrics();
+        }
+
+        // --- Simulated Physics Engine for K2-18b ---
+        let currentTempK = BaseEquilibriumTemp;
+        let totalPressureAtm = 1.0;
+        let habitabilityScore = 80;
+        let bioStrengthPpm = 2.5;
+
+        function recalculatePlanetMetrics() {
+            // Read active values from sliders
+            atmosphericComposition.h2 = parseFloat(sliders.h2.value);
+            atmosphericComposition.co2 = parseFloat(sliders.co2.value);
+            atmosphericComposition.ch4 = parseFloat(sliders.ch4.value);
+            atmosphericComposition.h2o = parseFloat(sliders.h2o.value);
+            atmosphericComposition.dms = parseFloat(sliders.dms.value);
+
+            // Read state checkboxes
+            const activeH2  = document.getElementById('show-gas-h2').checked ? atmosphericComposition.h2 : 0;
+            const activeCO2 = document.getElementById('show-gas-co2').checked ? atmosphericComposition.co2 : 0;
+            const activeCH4 = document.getElementById('show-gas-ch4').checked ? atmosphericComposition.ch4 : 0;
+            const activeH2O = document.getElementById('show-gas-h2o').checked ? atmosphericComposition.h2o : 0;
+            const activeDMS = document.getElementById('show-gas-dms').checked ? atmosphericComposition.dms : 0;
+
+            // Update UI Readouts
+            valDisplays.h2.innerText = atmosphericComposition.h2.toFixed(1) + "%";
+            valDisplays.co2.innerText = atmosphericComposition.co2.toFixed(1) + "%";
+            valDisplays.ch4.innerText = atmosphericComposition.ch4.toFixed(1) + "%";
+            valDisplays.h2o.innerText = atmosphericComposition.h2o.toFixed(1) + "%";
+            valDisplays.dms.innerText = atmosphericComposition.dms.toFixed(3) + "%";
+
+            // 1. Calculate Optical Depth (\tau) based on Greenhouse Gas Abundances (with active factors)
+            let opticalDepth = (activeCO2 * 0.18) + 
+                               (activeCH4 * 0.12) + 
+                               (activeH2O * 0.35) + 
+                               ((activeH2 / 100) * 0.25); 
+            document.getElementById('val-tau').innerText = opticalDepth.toFixed(2);
+
+            // 2. Albedo and Inflowing Radiation Flux Calculation
+            let bondAlbedo = 0.25 + (activeH2O * 0.05) + ((100 - activeH2) * 0.001);
+            bondAlbedo = Math.max(0.1, Math.min(0.65, bondAlbedo));
+            document.getElementById('val-albedo').innerText = bondAlbedo.toFixed(2);
+
+            // 1D Greenhouse Balance equation
+            let sFlux = 1530; 
+            let sigma = 5.670374e-8; 
+            let tempS = Math.pow((sFlux * (1 - bondAlbedo)) / (4 * sigma) * (1 + 0.75 * opticalDepth), 0.25);
+            
+            currentTempK = tempS - 25; 
+            let currentTempC = currentTempK - 273.15;
+
+            // Pressure estimation
+            totalPressureAtm = 1.0 + (opticalDepth * 0.5);
+
+            document.getElementById('temp-display-c').innerText = currentTempC.toFixed(1) + "°C";
+            document.getElementById('temp-display-k').innerText = "(" + currentTempK.toFixed(1) + " K)";
+            document.getElementById('pressure-display').innerText = totalPressureAtm.toFixed(2) + " atm";
+
+            // Determine Ocean Status
+            let oceanStatus = "";
+            let oceanColorState = "blue"; 
+            if (currentTempC < 0) {
+                oceanStatus = "글레이셜 (동결 표면)";
+                oceanColorState = "ice";
+            } else if (currentTempC >= 0 && currentTempC <= 50) {
+                oceanStatus = "안정된 액체 바다";
+                oceanColorState = "blue";
+            } else if (currentTempC > 50 && currentTempC <= 100) {
+                oceanStatus = "초온온화 해양 비등";
+                oceanColorState = "boiled";
+            } else {
+                oceanStatus = "가스 초임계 유체 증발";
+                oceanColorState = "steam";
+            }
+            document.getElementById('ocean-status-display').innerText = oceanStatus;
+
+            // 3. Ecological Differential Equation - Microbe Biomass (B)
+            let growthRate = 0;
+            if (currentTempC >= 0 && currentTempC <= 65) {
+                growthRate = Math.max(0, 0.4 - Math.pow((currentTempC - 28) / 30, 2));
+            }
+            let decayRate = 0.05;
+            let carryingCapacity = 5.0; 
+            
+            // Euler integration
+            biomass = biomass + (growthRate * biomass * (1 - biomass / carryingCapacity) - decayRate * biomass) * 0.5;
+            biomass = Math.max(0, Math.min(carryingCapacity, biomass));
+            document.getElementById('val-biomass').innerText = biomass.toFixed(2) + " g/m³";
+
+            // DMS concentration calculation (using active DMS state)
+            bioStrengthPpm = (biomass * activeDMS * 2.8);
+            document.getElementById('bio-percentage').innerText = bioStrengthPpm.toFixed(3) + " %";
+
+            let bioLabel = "";
+            if (bioStrengthPpm === 0) {
+                bioLabel = "비검출 (생물학적 한계)";
+                document.getElementById('bio-strength-label').className = "text-[10px] font-bold text-slate-400";
+            } else if (bioStrengthPpm < 0.05) {
+                bioLabel = "비생물 기원 유력";
+                document.getElementById('bio-strength-label').className = "text-[10px] font-bold text-blue-400";
+            } else if (bioStrengthPpm >= 0.05 && bioStrengthPpm < 0.3) {
+                bioLabel = "미생물 대사 징후 뚜렷";
+                document.getElementById('bio-strength-label').className = "text-[10px] font-bold text-teal-400";
+            } else {
+                bioLabel = "DMS 생물 발광 활성화";
+                document.getElementById('bio-strength-label').className = "text-[10px] font-bold text-emerald-400 animate-pulse";
+            }
+            document.getElementById('bio-strength-label').innerText = bioLabel;
+
+            // 4. Habitability Score
+            let habitability = 0;
+            if (currentTempC >= 0 && currentTempC <= 100) {
+                let tempFactor = 1.0 - Math.abs(currentTempC - 22) / 55;
+                let pressureFactor = 1.0 - Math.min(1.0, Math.abs(totalPressureAtm - 1.5) / 4);
+                habitability = Math.max(0, tempFactor * 75 + pressureFactor * 25);
+            } else {
+                habitability = Math.max(5, 15 - Math.abs(currentTempC - 20) * 0.08);
+            }
+            habitabilityScore = Math.round(habitability);
+            document.getElementById('habitability-score').innerText = habitabilityScore + "%";
+            document.getElementById('habitability-bar').style.width = habitabilityScore + "%";
+
+            updateFeedbackReport(currentTempC, totalPressureAtm, bioStrengthPpm);
+            updatePlanetVisuals(currentTempC, oceanColorState, bioStrengthPpm);
+            update3DZoneRendering(currentTempC); 
+        }
+
+        function updateFeedbackReport(temp, press, bio) {
+            const iconBox = document.getElementById('status-icon-box');
+            const title = document.getElementById('status-title');
+            const desc = document.getElementById('status-desc');
+
+            if (temp < 0) {
+                iconBox.innerHTML = '<i class="fa-solid fa-snowflake"></i>';
+                iconBox.className = "bg-blue-500/10 text-blue-400 p-3 rounded-lg border border-blue-500/20 text-xl flex items-center justify-center shrink-0";
+                title.innerText = "전 지구적 빙하기 피드백";
+                title.className = "text-xs font-bold text-blue-400";
+                desc.innerText = "대기 온실 피드백 지수가 너무 낮습니다. 광활한 심해가 얼어붙었고, 미생물의 동결로 유효 DMS 검출량이 임계값 이하로 소실되었습니다.";
+            } else if (temp >= 0 && temp <= 50) {
+                iconBox.innerHTML = '<i class="fa-solid fa-umbrella-beach"></i>';
+                iconBox.className = "bg-emerald-500/10 text-emerald-400 p-3 rounded-lg border border-emerald-500/20 text-xl flex items-center justify-center shrink-0";
+                title.innerText = "골디락스 하이시언 평형 상태";
+                title.className = "text-xs font-bold text-emerald-400";
+                
+                let bioSuffix = bio > 0.05 ? " 풍부하게 증폭된 황화디메틸(DMS) 성분에 의해 미생물의 유기적인 에메랄드빛 발광 현상이 아름답게 형성되었습니다." : " 대기층 하단에 조용히 흐르는 행성 단위의 남색 글로벌 해류와 구름 띠가 안정적으로 정렬되어 있습니다.";
+                desc.innerText = `현재 온도(${temp.toFixed(1)}°C)는 액체 바다가 보존될 수 있는 최적의 평형 구간입니다.${bioSuffix}`;
+            } else if (temp > 50 && temp <= 100) {
+                iconBox.innerHTML = '<i class="fa-solid fa-temperature-high"></i>';
+                iconBox.className = "bg-orange-500/10 text-orange-400 p-3 rounded-lg border border-orange-500/20 text-xl flex items-center justify-center shrink-0";
+                title.innerText = "비등점 도달 및 스팀 전이";
+                title.className = "text-xs font-bold text-orange-400";
+                desc.innerText = `온도가 ${temp.toFixed(1)}°C에 도달하여 수해양이 거세게 비등하기 시작합니다. 증발되는 엄청난 대류성 열기로 미생물의 단백질 구조가 파괴되어 대사 능력이 완전히 붕괴됩니다.`;
+            } else {
+                iconBox.innerHTML = '<i class="fa-solid fa-volcano"></i>';
+                iconBox.className = "bg-red-500/10 text-red-400 p-3 rounded-lg border border-red-500/20 text-xl flex items-center justify-center shrink-0";
+                title.innerText = "초임계 열화 지각 피드백";
+                title.className = "text-xs font-bold text-red-400";
+                desc.innerText = `바다가 전부 증발해 대기는 고온의 수증기 가스층으로 뒤덮였습니다. 과열로 인해 지표층 암석에 벌어진 틈새를 따라 붉은 내부 열류와 크랙 흔적이 직접적으로 드러납니다.`;
+            }
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast-notif');
+            if (toast) {
+                toast.classList.remove('translate-x-72', 'opacity-0');
+                toast.classList.add('translate-x-0', 'opacity-100');
+                
+                setTimeout(() => {
+                    toast.classList.add('translate-x-72', 'opacity-0');
+                    toast.classList.remove('translate-x-0', 'opacity-100');
+                }, 3000);
+            }
+        }
+
+        // --- Three.js 3D Advanced Graphics Engine with High-Contrast Translucent Fluorescent Gas Shells ---
+        let scene, camera, renderer;
+        let planetSphere, atmosphereGlow, spaceParticles;
+        let container = document.getElementById('canvas-container');
+        
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationSpeed = 0.003;
+
+        // Structures for both Fluorescent Spherical Shells and Orbiting Particles
+        let gasLayers = {
+            h2: { shell: null, particles: null, color: 0x3b82f6, radius: 4.8, size: 0.16, count: 280, velocity: 0.003 },
+            co2: { shell: null, particles: null, color: 0xf97316, radius: 4.4, size: 0.15, count: 220, velocity: -0.0025 },
+            ch4: { shell: null, particles: null, color: 0xeab308, radius: 4.1, size: 0.14, count: 240, velocity: 0.0018 },
+            h2o: { shell: null, particles: null, color: 0x06b6d4, radius: 3.8, size: 0.18, count: 180, velocity: 0.0045 },
+            dms: { shell: null, particles: null, color: 0x10b981, radius: 3.6, size: 0.22, count: 200, velocity: 0.0055 } 
+        };
+        let gasVisibleState = { h2: true, co2: true, ch4: true, h2o: true, dms: true };
+
+        // 3D Spherical Boundary (Projected Rectangles) meshes references & toggle states
+        let boundaryMeshes = {
+            bio: null,
+            ocean: null,
+            glacialNorth: null,
+            glacialSouth: null
+        };
+        let boundaryVisibleState = {
+            bio: true,
+            ocean: true,
+            glacial: true
+        };
+
+        let diffuseCanvas, diffuseCtx, diffuseTexture;
+        let emissiveCanvas, emissiveCtx, emissiveTexture;
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 13;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Light sources representing M-Dwarf host star (Red-orange cast)
+            const ambientLight = new THREE.AmbientLight(0x0e142c, 1.5);
+            scene.add(ambientLight);
+
+            // Host Star K2-18 (Placed to closely emulate the provided image lighting)
+            const sunLight = new THREE.DirectionalLight(0xff5511, 5.0);
+            sunLight.position.set(-25, -6, 12);
+            scene.add(sunLight);
+
+            // Shading ambient back-reflection to prevent flat black shadows
+            const cyanReflect = new THREE.DirectionalLight(0x38bdf8, 0.9);
+            cyanReflect.position.set(20, -10, -15);
+            scene.add(cyanReflect);
+
+            createStarfield();
+            createAdvancedPlanet();
+            createAtmosphereGlow();
+
+            // Create both neon shells and dense fuzzy fluorescent clouds
+            createFluorescentGasEnvelopes();
+
+            // Initialize 3D Spherical Rectangular boundaries projected onto the planet sphere
+            create3DPlanetaryBoundaries();
+
+            // Create 3D Host Star (M-dwarf) visual representation in the background
+            createVisualHostStar();
+
+            window.addEventListener('resize', onWindowResize, false);
+
+            container.addEventListener('mousedown', () => { isDragging = true; });
+            container.addEventListener('mousemove', handleCameraRotation);
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z = Math.max(7, Math.min(25, camera.position.z + e.deltaY * 0.008));
+            }, { passive: false });
+
+            animate();
+        }
+
+        // Create a visual sun representation to match the provided image
+        function createVisualHostStar() {
+            const sunGeo = new THREE.SphereGeometry(1.8, 32, 32);
+            const sunMat = new THREE.MeshBasicMaterial({
+                color: 0xff4411,
+                transparent: true,
+                opacity: 0.95
+            });
+            const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+            sunMesh.position.set(-16, -4, -6);
+            scene.add(sunMesh);
+
+            // Add subtle glow corona around the sun
+            const coronaGeo = new THREE.SphereGeometry(2.3, 32, 32);
+            const coronaMat = new THREE.MeshBasicMaterial({
+                color: 0xff6622,
+                transparent: true,
+                opacity: 0.35,
+                blending: THREE.AdditiveBlending
+            });
+            const coronaMesh = new THREE.Mesh(coronaGeo, coronaMat);
+            coronaMesh.position.copy(sunMesh.position);
+            scene.add(coronaMesh);
+        }
+
+        // Helper: Generates a beautiful soft fuzzy fluorescent circular particle sprite from hex
+        function createFuzzyParticleTexture(colorHexNum) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            
+            const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)'); 
+            grad.addColorStop(0.2, hexToRgbaStr(colorHexNum, 1.0));
+            grad.addColorStop(0.5, hexToRgbaStr(colorHexNum, 0.4)); 
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 32, 32);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // Creates layered fluorescent envelopes (spheres) + orbital fuzzy clouds
+        function createFluorescentGasEnvelopes() {
+            for (let key in gasLayers) {
+                let layer = gasLayers[key];
+                
+                // 1. Create Transparent Fluorescent Shell (Outer Atmospheric Sphere)
+                const shellGeo = new THREE.SphereGeometry(layer.radius, 32, 32);
+                const shellMat = new THREE.MeshBasicMaterial({
+                    color: layer.color,
+                    transparent: true,
+                    opacity: 0.15, 
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                
+                const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+                scene.add(shellMesh);
+                layer.shell = shellMesh;
+
+                // 2. Create Orbiting Fuzzy Particle Clouds (To convey atmospheric motion)
+                let geom = new THREE.BufferGeometry();
+                let pos = new Float32Array(layer.count * 3);
+                
+                for (let i = 0; i < layer.count * 3; i += 3) {
+                    let theta = Math.random() * Math.PI * 2;
+                    let phi = (Math.random() - 0.5) * 0.5 + Math.PI/2; 
+                    let dist = layer.radius + (Math.random() - 0.5) * 0.15;
+
+                    pos[i] = dist * Math.sin(phi) * Math.cos(theta);
+                    pos[i+1] = dist * Math.cos(phi);
+                    pos[i+2] = dist * Math.sin(phi) * Math.sin(theta);
+                }
+
+                geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                
+                // Generate procedural fluorescent brush texture cleanly from Hex color configuration
+                const particleTexture = createFuzzyParticleTexture(layer.color);
+
+                let mat = new THREE.PointsMaterial({
+                    size: layer.size,
+                    map: particleTexture,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                let points = new THREE.Points(geom, mat);
+                scene.add(points);
+                layer.particles = points;
+            }
+        }
+
+        // Mathematical projection to draw curved rectangular borders above the planet sphere
+        function createSphericalRectangle(minLatDeg, maxLatDeg, minLonDeg, maxLonDeg, borderRadius, colorHex) {
+            const points = [];
+            const segments = 32; 
+
+            // Math converter: Latitude/Longitude degrees -> 3D Vector coordinates
+            function getSphericalPoint(lat, lon) {
+                const phi = (90 - lat) * Math.PI / 180;
+                const theta = (lon + 180) * Math.PI / 180;
+                
+                const x = -(borderRadius * Math.sin(phi) * Math.sin(theta));
+                const y = borderRadius * Math.cos(phi);
+                const z = borderRadius * Math.sin(phi) * Math.cos(theta);
+                return new THREE.Vector3(x, y, z);
+            }
+
+            // Edge 1: Top horizontal segment
+            for (let i = 0; i <= segments; i++) {
+                const lon = minLonDeg + (maxLonDeg - minLonDeg) * (i / segments);
+                points.push(getSphericalPoint(maxLatDeg, lon));
+            }
+            // Edge 2: Right vertical segment
+            for (let i = 0; i <= segments; i++) {
+                const lat = maxLatDeg - (maxLatDeg - minLatDeg) * (i / segments);
+                points.push(getSphericalPoint(lat, maxLonDeg));
+            }
+            // Edge 3: Bottom horizontal segment
+            for (let i = 0; i <= segments; i++) {
+                const lon = maxLonDeg - (maxLonDeg - minLonDeg) * (i / segments);
+                points.push(getSphericalPoint(minLatDeg, lon));
+            }
+            // Edge 4: Left vertical segment
+            for (let i = 0; i <= segments; i++) {
+                const lat = minLatDeg + (maxLatDeg - minLatDeg) * (i / segments);
+                points.push(getSphericalPoint(lat, minLonDeg));
+            }
+
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({
+                color: colorHex,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.95,
+                depthWrite: false
+            });
+
+            return new THREE.Line(geometry, material);
+        }
+
+        // Instantiate all boundaries and add them to the rotating planet group
+        function create3DPlanetaryBoundaries() {
+            const targetRadius = 3.53; 
+
+            // 1. 생명 서식 후보 영역 (Bio-Zone) -> Equatorial high-biomass region (Green)
+            boundaryMeshes.bio = createSphericalRectangle(-18, 18, -45, 45, targetRadius, 0x10b981);
+            planetSphere.add(boundaryMeshes.bio);
+
+            // 2. 액체 바다 형성 영역 (Ocean Zone) -> Global deep current belt (Cyan-Blue)
+            boundaryMeshes.ocean = createSphericalRectangle(-42, 42, -135, 135, targetRadius, 0x3b82f6);
+            planetSphere.add(boundaryMeshes.ocean);
+
+            // 3. 극지 동결 영역 (Glacial North/South) -> Frozen icy cap outlines (White)
+            boundaryMeshes.glacialNorth = createSphericalRectangle(58, 80, -180, 180, targetRadius, 0xe2e8f0);
+            boundaryMeshes.glacialSouth = createSphericalRectangle(-80, -58, -180, 180, targetRadius, 0xe2e8f0);
+            
+            planetSphere.add(boundaryMeshes.glacialNorth);
+            planetSphere.add(boundaryMeshes.glacialSouth);
+        }
+
+        // --- REFACTORED: toggle3DZone function with proper visibility states ---
+        function toggle3DZone(zoneKey, isVisible) {
+            if (zoneKey === 'bio') {
+                boundaryVisibleState.bio = isVisible;
+                if (boundaryMeshes.bio) boundaryMeshes.bio.visible = isVisible;
+            } else if (zoneKey === 'ocean') {
+                boundaryVisibleState.ocean = isVisible;
+                if (boundaryMeshes.ocean) boundaryMeshes.ocean.visible = isVisible;
+            } else if (zoneKey === 'glacial') {
+                boundaryVisibleState.glacial = isVisible;
+                if (boundaryMeshes.glacialNorth) boundaryMeshes.glacialNorth.visible = isVisible;
+                if (boundaryMeshes.glacialSouth) boundaryMeshes.glacialSouth.visible = isVisible;
+            }
+            recalculatePlanetMetrics();
+        }
+
+        // --- REFACTORED: update3DZoneRendering to obey toggle states ---
+        function update3DZoneRendering(tempC) {
+            if (!planetSphere) return;
+
+            if (boundaryMeshes.bio) {
+                let opacity = 0.0;
+                if (tempC >= 0 && tempC <= 60) {
+                    opacity = Math.max(0.2, 1.0 - Math.abs(tempC - 24) / 36);
+                }
+                boundaryMeshes.bio.material.opacity = opacity;
+                // Obey boundaryVisibleState.bio toggle
+                boundaryMeshes.bio.visible = boundaryVisibleState.bio && (opacity > 0.1);
+            }
+
+            if (boundaryMeshes.ocean) {
+                let opacity = 0.0;
+                if (tempC >= -30 && tempC <= 95) {
+                    opacity = 0.9;
+                }
+                boundaryMeshes.ocean.material.opacity = opacity;
+                // Obey boundaryVisibleState.ocean toggle
+                boundaryMeshes.ocean.visible = boundaryVisibleState.ocean && (opacity > 0.1);
+            }
+
+            if (boundaryMeshes.glacialNorth && boundaryMeshes.glacialSouth) {
+                // Obey boundaryVisibleState.glacial toggle
+                let visible = boundaryVisibleState.glacial && (tempC < 45);
+                boundaryMeshes.glacialNorth.visible = visible;
+                boundaryMeshes.glacialSouth.visible = visible;
+            }
+        }
+
+        function toggleGasVisibility(gasKey, isVisible) {
+            gasVisibleState[gasKey] = isVisible;
+            if (gasLayers[gasKey]) {
+                if (gasLayers[gasKey].shell) gasLayers[gasKey].shell.visible = isVisible;
+                if (gasLayers[gasKey].particles) gasLayers[gasKey].particles.visible = isVisible;
+            }
+            recalculatePlanetMetrics();
+        }
+
+        function createStarfield() {
+            const particleCount = 1000;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                const u = Math.random();
+                const v = Math.random();
+                const theta = u * 2.0 * Math.PI;
+                const phi = Math.acos(2.0 * v - 1.0);
+                const r = 130 + Math.random() * 150;
+
+                positions[i] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i+1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i+2] = r * Math.cos(phi);
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.6,
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.5
+            });
+
+            spaceParticles = new THREE.Points(geometry, material);
+            scene.add(spaceParticles);
+        }
+
+        function createAdvancedPlanet() {
+            diffuseCanvas = document.createElement('canvas');
+            diffuseCanvas.width = 1024;
+            diffuseCanvas.height = 512;
+            diffuseCtx = diffuseCanvas.getContext('2d');
+            diffuseTexture = new THREE.CanvasTexture(diffuseCanvas);
+
+            emissiveCanvas = document.createElement('canvas');
+            emissiveCanvas.width = 1024;
+            emissiveCanvas.height = 512;
+            emissiveCtx = emissiveCanvas.getContext('2d');
+            emissiveTexture = new THREE.CanvasTexture(emissiveCanvas);
+
+            const geometry = new THREE.SphereGeometry(3.5, 64, 64);
+            const material = new THREE.MeshStandardMaterial({
+                map: diffuseTexture,
+                roughness: 0.5,
+                metalness: 0.15,
+                emissiveMap: emissiveTexture,
+                emissive: new THREE.Color(0xffffff),
+                emissiveIntensity: 1.0
+            });
+
+            planetSphere = new THREE.Mesh(geometry, material);
+            scene.add(planetSphere);
+        }
+
+        // Render planet surface 2D maps dynamically (Matching Wikipedia and Reddit artistic style)
+        function drawProceduralMaps(state, dmsValue) {
+            const w = 1024;
+            const h = 512;
+
+            diffuseCtx.clearRect(0, 0, w, h);
+            emissiveCtx.fillStyle = '#000000';
+            emissiveCtx.fillRect(0, 0, w, h);
+
+            let oceanColor, band1, band2, cloudColor, cloudOpacity;
+
+            if (state === 'ice') {
+                oceanColor = '#122543'; // deep navy/grey
+                band1 = '#e0f2fe';
+                band2 = '#bae6fd';
+                cloudColor = '#f8fafc';
+                cloudOpacity = isCloudsActive ? (0.85 * (1.0 - cloudTransparency)) : 0; 
+            } else if (state === 'blue') {
+                // HIGH QUALITY BLUE: Wikipedia & Reddit Hycean world profile
+                oceanColor = '#102742'; // Rich slate-blue ocean base
+                band1 = '#1c3e5d';      
+                band2 = '#29547d';
+                cloudColor = '#d9eaff'; // Gaseous wispy white-blue clouds
+                cloudOpacity = isCloudsActive ? (0.75 * (1.0 - cloudTransparency)) : 0; 
+            } else if (state === 'boiled') {
+                oceanColor = '#1c2536';
+                band1 = '#3e240c';      
+                band2 = '#231201';
+                cloudColor = '#ffdcb5'; 
+                cloudOpacity = isCloudsActive ? (0.8 * (1.0 - cloudTransparency)) : 0; 
+            } else {
+                // Toxic steam runaway
+                oceanColor = '#241a10';
+                band1 = '#5c3d18';      
+                band2 = '#3d2407';
+                cloudColor = '#fbbf24'; 
+                cloudOpacity = isCloudsActive ? (0.95 * (1.0 - cloudTransparency)) : 0; 
+            }
+
+            // Draw base ocean
+            diffuseCtx.fillStyle = oceanColor;
+            diffuseCtx.fillRect(0, 0, w, h);
+
+            // Flowing currents (Reddit style wispy bands)
+            if (isCloudsActive) {
+                for (let i = 0; i < 20; i++) {
+                    let y = (h / 20) * i;
+                    let bandH = Math.sin(i * 0.5) * 20 + 25;
+                    diffuseCtx.fillStyle = (i % 2 === 0) ? band1 : band2;
+                    diffuseCtx.globalAlpha = 0.25 + Math.sin(i) * 0.1;
+                    
+                    diffuseCtx.beginPath();
+                    diffuseCtx.moveTo(0, y);
+                    for (let x = 0; x <= w; x += 32) {
+                        let offset = Math.sin(x * 0.015 + i) * 15;
+                        diffuseCtx.lineTo(x, y + offset);
+                    }
+                    diffuseCtx.lineTo(w, y + bandH);
+                    diffuseCtx.lineTo(0, y + bandH);
+                    diffuseCtx.closePath();
+                    diffuseCtx.fill();
+                }
+            }
+
+            // Ice sheets
+            if (state === 'ice') {
+                diffuseCtx.globalAlpha = 0.9;
+                diffuseCtx.fillStyle = '#ffffff';
+                diffuseCtx.fillRect(0, 0, w, 95);
+                diffuseCtx.fillRect(0, h - 95, w, 95);
+            }
+
+            // Wispy Reddit-Style Atmosphere Convection Layers
+            if (isCloudsActive && cloudOpacity > 0.01) {
+                diffuseCtx.globalAlpha = cloudOpacity;
+                diffuseCtx.fillStyle = cloudColor;
+
+                // Fine brush paths for clouds to emulate real spaceporn renderings
+                for (let j = 0; j < 35; j++) {
+                    let cy = Math.random() * h;
+                    let cx = Math.random() * w;
+                    let len = Math.random() * 350 + 100;
+                    let thick = Math.random() * 20 + 6;
+
+                    diffuseCtx.beginPath();
+                    diffuseCtx.moveTo(cx, cy);
+                    for (let xOffset = 0; xOffset < len; xOffset += 16) {
+                        let sampleX = (cx + xOffset) % w;
+                        // Beautiful sinusoidal wind shearing curves
+                        let waveY = cy + Math.sin(xOffset * 0.015 + j) * 20 + Math.cos(xOffset * 0.005) * 5;
+                        diffuseCtx.lineTo(sampleX, waveY);
+                    }
+                    diffuseCtx.lineWidth = thick;
+                    diffuseCtx.lineCap = 'round';
+                    diffuseCtx.strokeStyle = cloudColor;
+                    diffuseCtx.stroke();
+                }
+            }
+
+            // Fluorescent DMS/Bioluminescent glow (Only if active DMS is present and visible)
+            const activeDMS = document.getElementById('show-gas-dms').checked ? atmosphericComposition.dms : 0;
+            if (state === 'blue' && dmsValue > 0.1 && gasVisibleState.dms) {
+                emissiveCtx.globalAlpha = Math.min(1.0, dmsValue * 0.22);
+                for (let b = 0; b < 18; b++) {
+                    let bx = Math.random() * w;
+                    let by = 120 + Math.random() * (h - 240);
+                    let length = Math.random() * 280 + 120;
+
+                    emissiveCtx.beginPath();
+                    emissiveCtx.moveTo(bx, by);
+                    for (let step = 0; step < length; step += 10) {
+                        let targetX = (bx + step) % w;
+                        let targetY = by + Math.sin(step * 0.035 + b) * 14;
+                        emissiveCtx.lineTo(targetX, targetY);
+                    }
+                    if (emissiveCtx.strokeStyle) {
+                        emissiveCtx.lineWidth = Math.random() * 3.5 + 1.5;
+                        emissiveCtx.strokeStyle = '#00ff88'; 
+                        emissiveCtx.stroke();
+                    }
+                }
+            } else if (state === 'steam') {
+                emissiveCtx.globalAlpha = 0.85;
+                emissiveCtx.strokeStyle = '#ff3300';
+                emissiveCtx.lineWidth = 1.2;
+                for (let f = 0; f < 12; f++) {
+                    let fx = Math.random() * w;
+                    let fy = Math.random() * h;
+                    emissiveCtx.beginPath();
+                    emissiveCtx.moveTo(fx, fy);
+                    for (let s = 0; s < 4; s++) {
+                        fx = (fx + (Math.random() - 0.5) * 80 + w) % w;
+                        fy = Math.max(0, Math.min(h, fy + (Math.random() - 0.5) * 80));
+                        emissiveCtx.lineTo(fx, fy);
+                    }
+                    emissiveCtx.stroke();
+                }
+            }
+
+            diffuseCtx.globalAlpha = 1.0;
+            emissiveCtx.globalAlpha = 1.0;
+        }
+
+        function createAtmosphereGlow() {
+            const glowGeometry = new THREE.SphereGeometry(3.68, 32, 32);
+            const glowMaterial = new THREE.ShaderMaterial({
+                vertexShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vNormal;
+                    uniform vec3 glowColor;
+                    void main() {
+                        // High power edge-halo effect matching the Wikipedia atmosphere look
+                        float intensity = pow(0.75 - dot(vNormal, vec3(0, 0, 1.0)), 2.8);
+                        gl_FragColor = vec4(glowColor, intensity * 0.85);
+                    }
+                `,
+                uniforms: {
+                    glowColor: { value: new THREE.Color(0x7399b2) } // Soft blue atmospheric rim
+                },
+                blending: THREE.AdditiveBlending,
+                side: THREE.BackSide,
+                transparent: true
+            });
+
+            atmosphereGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+            scene.add(atmosphereGlow);
+        }
+
+        function updatePlanetVisuals(tempC, colorState, bioPpm) {
+            if (!planetSphere || !atmosphereGlow) return;
+
+            drawProceduralMaps(colorState, bioPpm);
+            diffuseTexture.needsUpdate = true;
+            emissiveTexture.needsUpdate = true;
+
+            planetSphere.material.roughness = THREE.MathUtils.lerp(0.6, 0.22, cloudTransparency);
+
+            let glowHexColor;
+            if (colorState === 'ice') {
+                glowHexColor = 0xbce5ff;
+                atmosphereGlow.scale.set(1.0, 1.0, 1.0);
+            } else if (colorState === 'blue') {
+                // Match the soft icy-blue haze from the uploaded reference image
+                glowHexColor = 0x82b0d2; 
+                atmosphereGlow.scale.set(1.03, 1.025, 1.03);
+            } else if (colorState === 'boiled') {
+                glowHexColor = 0xf59e0b;
+                atmosphereGlow.scale.set(1.04, 1.04, 1.04);
+            } else {
+                glowHexColor = 0xea580c;
+                atmosphereGlow.scale.set(1.06, 1.06, 1.06);
+            }
+            atmosphereGlow.material.uniforms.glowColor.value.setHex(glowHexColor);
+
+            if (gasLayers.dms && gasVisibleState.dms) {
+                let currentBioOpacity = Math.min(0.35, (bioPpm / 15.0) * 0.35);
+                gasLayers.dms.shell.material.opacity = currentBioOpacity;
+                gasLayers.dms.particles.material.opacity = Math.min(0.9, (bioPpm / 15.0) * 0.9);
+            }
+        }
+
+        function handleCameraRotation(e) {
+            if (!isDragging || !planetSphere) return;
+
+            const deltaMove = {
+                x: e.offsetX - previousMousePosition.x,
+                y: e.offsetY - previousMousePosition.y
+            };
+
+            planetSphere.rotation.y += deltaMove.x * rotationSpeed;
+            planetSphere.rotation.x += deltaMove.y * rotationSpeed;
+            
+            atmosphereGlow.rotation.y += deltaMove.x * rotationSpeed;
+            atmosphereGlow.rotation.x += deltaMove.y * rotationSpeed;
+
+            // Maintain rotation synchronization for all fluorescent gas shells and clouds
+            for (let key in gasLayers) {
+                if (gasLayers[key]) {
+                    gasLayers[key].shell.rotation.y += deltaMove.x * rotationSpeed;
+                    gasLayers[key].shell.rotation.x += deltaMove.y * rotationSpeed;
+                    
+                    gasLayers[key].particles.rotation.y += deltaMove.x * rotationSpeed;
+                    gasLayers[key].particles.rotation.x += deltaMove.y * rotationSpeed;
+                }
+            }
+
+            previousMousePosition = {
+                x: e.offsetX,
+                y: e.offsetY
+            };
+        }
+
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Apply rotation only if the animation state toggle is ON
+            if (isAnimationActive) {
+                if (planetSphere && !isDragging) {
+                    planetSphere.rotation.y += 0.0004; // Gentle rotation matching planetary scale
+                }
+
+                // Orbit the individual chemical species' fluorescent gas layers
+                for (let key in gasLayers) {
+                    let layer = gasLayers[key];
+                    if (layer && gasVisibleState[key]) {
+                        layer.shell.rotation.y += 0.0004;
+                        layer.particles.rotation.y += layer.velocity;
+                    }
+                }
+
+                if (spaceParticles) {
+                    spaceParticles.rotation.y += 0.00004;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Initialization
+        window.onload = function() {
+            initThreeJS();
+            setPreset('hycean');
+            
+            // Fast-updating climate & ecology loop
+            setInterval(recalculatePlanetMetrics, 150);
+        };
+    </script>
+</body>
+</html>

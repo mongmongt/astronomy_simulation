@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>식쌍성 실시간 광도 시뮬레이터</title>
+    <style>
+        :root {
+            --bg-color: #080c14;
+            --panel-bg: #111625;
+            --panel-hover: #161d30;
+            --border-color: #1e293b;
+            --text-color: #f1f5f9;
+            --text-muted: #64748b;
+            --accent-blue: #0ea5e9;
+            --accent-yellow: #eab308;
+            --accent-orange: #f97316;
+            --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 왼쪽 컨트롤 사이드바 */
+        .sidebar {
+            width: 340px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 30px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--accent-blue);
+            letter-spacing: -0.5px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        /* 전체화면 토글 버튼 스타일 */
+        #btn_fullscreen {
+            background-color: var(--panel-hover);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        #btn_fullscreen:hover {
+            background-color: var(--border-color);
+            border-color: var(--accent-blue);
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .slider-group label span {
+            color: var(--text-color);
+            font-weight: 700;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--accent-blue);
+            height: 5px;
+            border-radius: 3px;
+            background: #1e293b;
+            outline: none;
+            transition: background 0.2s;
+        }
+
+        /* 오른쪽 메인 시각화 화면 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            gap: 24px;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #0f172a 0%, #030712 100%);
+            overflow-y: auto;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0;
+            text-align: center;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        h1 span {
+            color: var(--accent-yellow);
+        }
+
+        .canvas-container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .canvas-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .canvas-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        canvas {
+            background-color: #020617;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        canvas:hover {
+            border-color: rgba(14, 165, 233, 0.4);
+            box-shadow: 0 10px 35px rgba(14, 165, 233, 0.1);
+        }
+
+        /* 실시간 데이터 디스플레이 패널 */
+        .data-panel {
+            width: 100%;
+            max-width: 1180px;
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .data-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border-top: 2px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .data-item:hover {
+            background: rgba(255, 255, 255, 0.02);
+            border-color: var(--accent-blue);
+        }
+
+        .data-item label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .data-item span {
+            font-size: 14px;
+            color: #ffffff;
+            font-weight: 700;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        .data-item.total {
+            grid-column: span 5;
+            border-top: 2px solid var(--accent-orange);
+            background: linear-gradient(180deg, rgba(249, 115, 22, 0.03) 0%, rgba(0, 0, 0, 0.2) 100%);
+            align-items: center;
+            padding: 12px;
+        }
+
+        .data-item.total label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .data-item.total span {
+            font-size: 20px;
+            color: var(--accent-orange);
+            text-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+        }
+
+        /* 반응형 고려 */
+        @media (max-width: 1200px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow-y: auto;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 20px;
+            }
+            .main-content {
+                padding: 20px;
+            }
+            .canvas-container {
+                flex-wrap: wrap;
+            }
+            .data-panel {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .data-item.total {
+                grid-column: span 2;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>🔭 시뮬레이션 제어</h2>
+        
+        <!-- 전체화면 토글 버튼 -->
+        <button id="btn_fullscreen">
+            <span id="fs_icon">🖥️</span> <span id="fs_text">전체화면 켜기</span>
+        </button>
+
+        <div class="slider-group">
+            <label>관측자와의 거리 (d) <span id="val_d_earth">10.0 ly</span></label>
+            <input type="range" id="sl_d_earth" min="1.0" max="100.0" step="0.5" value="10.0">
+        </div>
+
+        <div class="slider-group">
+            <label>궤도 경사각 (i) <span id="val_inc">85.0°</span></label>
+            <input type="range" id="sl_inc" min="0" max="90" step="0.5" value="85.0">
+        </div>
+
+        <div class="slider-group">
+            <label>질량비 (q = M₂/M₁) <span id="val_q">0.50</span></label>
+            <input type="range" id="sl_q" min="0.1" max="1.0" step="0.01" value="0.50">
+        </div>
+
+        <div class="slider-group">
+            <label>주성 절대광도 (L) <span id="val_L">2.00 L☉</span></label>
+            <input type="range" id="sl_L" min="0.5" max="5.0" step="0.1" value="2.00">
+        </div>
+
+        <div class="slider-group">
+            <label>광도비 (l = L₂/L₁) <span id="val_ratio_l">0.40</span></label>
+            <input type="range" id="sl_ratio_l" min="0.1" max="2.0" step="0.05" value="0.40">
+        </div>
+    </div>
+
+    <div class="main-content">
+        <h1>식쌍성 공전 및 <span>포그슨 방정식(Pogson)</span> 메커니즘</h1>
+
+        <div class="canvas-container">
+            <!-- 왼쪽: 쌍성계 정면 관측 뷰 (크기 확장) -->
+            <div class="canvas-box">
+                <div class="canvas-label">공전 애니메이션</div>
+                <canvas id="simCanvas" width="480" height="380"></canvas>
+            </div>
+            <!-- 가운데: 실시간 개별 식 관측 상세 뷰 -->
+            <div class="canvas-box">
+                <div class="canvas-label">식 통과 상세 (오컬팅 차단)</div>
+                <canvas id="phaseCanvas" width="280" height="380"></canvas>
+            </div>
+            <!-- 오른쪽: 실시간 광도곡선 그래프 -->
+            <div class="canvas-box">
+                <div class="canvas-label">겉보기 총광도 곡선 (Light Curve)</div>
+                <canvas id="graphCanvas" width="380" height="380"></canvas>
+            </div>
+        </div>
+
+        <div class="data-panel">
+            <div class="data-item">
+                <label>시스템 상태</label>
+                <span id="txt_state">평상시</span>
+            </div>
+            <div class="data-item">
+                <label>현재 공전 위상</label>
+                <span id="txt_phase">0.000</span>
+            </div>
+            <div class="data-item">
+                <label>겹친 투영 면적</label>
+                <span id="txt_overlap">0.00 px²</span>
+            </div>
+            <div class="data-item">
+                <label>쌍성계 실시간 절대광도</label>
+                <span id="txt_l_abs">2.80 L☉</span>
+            </div>
+            <div class="data-item">
+                <label>포그슨 등급 변동량 (Δm)</label>
+                <span id="txt_mag">0.000 mag</span>
+            </div>
+            <div class="data-item total">
+                <label>지구 수신 실시간 겉보기 총광도 (Flux)</label>
+                <span id="txt_flux">0.00000 L☉/ly²</span>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const simCanvas = document.getElementById('simCanvas');
+    const ctxSim = simCanvas.getContext('2d');
+    const phaseCanvas = document.getElementById('phaseCanvas');
+    const ctxPhase = phaseCanvas.getContext('2d');
+    const graphCanvas = document.getElementById('graphCanvas');
+    const ctxGraph = graphCanvas.getContext('2d');
+
+    // UI 입력 및 텍스트 엘리먼트 맵업
+    const inputs = {
+        d_earth: document.getElementById('sl_d_earth'),
+        inc: document.getElementById('sl_inc'),
+        q: document.getElementById('sl_q'),
+        L: document.getElementById('sl_L'),
+        ratio_l: document.getElementById('sl_ratio_l')
+    };
+
+    const labels = {
+        d_earth: document.getElementById('val_d_earth'),
+        inc: document.getElementById('val_inc'),
+        q: document.getElementById('val_q'),
+        L: document.getElementById('val_L'),
+        ratio_l: document.getElementById('val_ratio_l')
+    };
+
+    const display = {
+        state: document.getElementById('txt_state'),
+        phase: document.getElementById('txt_phase'),
+        overlap: document.getElementById('txt_overlap'),
+        l_abs: document.getElementById('txt_l_abs'),
+        mag: document.getElementById('txt_mag'),
+        flux: document.getElementById('txt_flux')
+    };
+
+    let theta = 0;
+    const dt = 0.007; // 자연스럽고 부드럽게 관찰하기 위한 최적의 슬로우 공전 속도
+    const ORBIT_RADIUS = 145; // 캔버스(480x380) 크기에 맞춰 궤도 반경을 115에서 145로 확장
+
+    // 전체화면 기능 구현
+    const btnFullscreen = document.getElementById('btn_fullscreen');
+    btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`전체화면 모드를 활성화할 수 없습니다: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+        const fsText = document.getElementById('fs_text');
+        const fsIcon = document.getElementById('fs_icon');
+        if (document.fullscreenElement) {
+            fsText.innerText = "전체화면 끄기";
+            fsIcon.innerText = "❌";
+        } else {
+            fsText.innerText = "전체화면 켜기";
+            fsIcon.innerText = "🖥️";
+        }
+    });
+
+    // 기하학적 교집합 공식 기반 두 투영 구체의 면적 연동 계산식
+    function calculateOverlapArea(d, r1, r2) {
+        if (d >= r1 + r2) return 0;
+        if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
+        let part1 = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1));
+        let part2 = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2));
+        let part3 = 0.5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2));
+        return part1 + part2 - part3;
+    }
+
+    // 주어진 특정 위상(phase)에서의 총 복사 에너지(L_abs)를 연산하는 독립 함수
+    function calculateAbsoluteLAtPhase(p, Q, incRad, L, ratio_l) {
+        const R1 = 36; // 캔버스 확장에 맞춰 주성 시각 반경을 30에서 36으로 확장
+        const R2 = R1 * Math.sqrt(Q);
+        
+        const a1 = ORBIT_RADIUS * (Q / (1 + Q));
+        const a2 = ORBIT_RADIUS * (1 / (1 + Q));
+
+        const tempTheta = p * 2 * Math.PI;
+
+        const x1 = a1 * Math.cos(tempTheta);
+        const y1 = a1 * Math.sin(tempTheta) * Math.cos(incRad);
+        const z1 = a1 * Math.sin(tempTheta) * Math.sin(incRad);
+
+        const x2 = -a2 * Math.cos(tempTheta);
+        const y2 = -a2 * Math.sin(tempTheta) * Math.cos(incRad);
+        const z2 = -a2 * Math.sin(tempTheta) * Math.sin(incRad);
+
+        const dist = Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+        const overlap = calculateOverlapArea(dist, R1, R2);
+
+        const L1 = L;
+        const L2 = L * ratio_l;
+        const base_L = L1 + L2;
+        let current_L = base_L;
+
+        if (overlap > 0) {
+            const area1 = Math.PI * R1 * R1;
+            const area2 = Math.PI * R2 * R2;
+            if (z1 < z2) { // 주성이 뒤편에 위치 (주식)
+                current_L -= (overlap / area1) * L1;
+            } else { // 동반성이 뒤편에 위치 (부식)
+                current_L -= (overlap / area2) * L2;
+            }
+        }
+
+        return current_L;
+    }
+
+    // 주성과 동반성의 정면 식 통과 애니메이션 함수 (관측자가 보는 시선 방향 일치)
+    // 겹치지 않을 때는 둘 다 예쁜 보름형(Full Circle) 디스크로 빛납니다.
+    // 겹칠 때만 다른 한쪽 별이 '검은색 그림자 구체(Occulting Disk)'처럼 통과하며 광량을 차단합니다.
+    function drawIndividualEclipseDetail(ctx, cx, cy, r_target, targetColor, targetGlow, starName, isBlocked, dx, dy, r_occulter, obscuredRatio) {
+        // 우주 배경 백그라운드 원형 영역
+        ctx.fillStyle = '#090d16';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r_target + 18, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 1. 타겟 별 본체 그리기 (완벽한 구체 보름형)
+        ctx.save();
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = targetGlow;
+        ctx.fillStyle = targetColor;
+        
+        // 그라데이션 광원 입혀서 주성과 동반성 본체 표현
+        const radGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r_target);
+        radGrad.addColorStop(0, '#ffffff');
+        radGrad.addColorStop(0.3, targetColor);
+        radGrad.addColorStop(1, targetGlow);
+        ctx.fillStyle = radGrad;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, r_target, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        // 2. 가려질 때 (식 발생 상황): 다른 별을 완전히 검은색 오컬팅 디스크로 만들어 표면 위로 패스시킴
+        if (isBlocked) {
+            ctx.save();
+            // 타겟 별 안의 영역에만 제한되도록 클리핑 가이드 설정
+            ctx.beginPath();
+            ctx.arc(cx, cy, r_target, 0, Math.PI * 2);
+            ctx.clip();
+
+            // 지나가는 가림 천체 (검은색 식반) 렌더링
+            ctx.fillStyle = '#020617'; // 완전 검정색 또는 우주 암흑색
+            ctx.strokeStyle = '#263554'; // 실루엣을 드러내줄 아주 부드러운 회색 아웃라인
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(cx + dx, cy + dy, r_occulter, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 테두리 미세 라인 마감
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r_target, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 이름 표기
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px var(--font-family)';
+        ctx.textAlign = 'center';
+        ctx.fillText(starName, cx, cy - r_target - 12);
+
+        // 하단 식 상태 및 가려지는 비율 표시
+        ctx.fillStyle = isBlocked ? 'var(--accent-orange)' : 'var(--text-muted)';
+        ctx.font = '10px var(--font-family)';
+        ctx.fillText(isBlocked ? "암흑체 식 통과 중 (Transit)" : "완전 노출 (Full Face)", cx, cy + r_target + 16);
+
+        ctx.fillStyle = isBlocked ? 'var(--accent-yellow)' : 'var(--text-muted)';
+        ctx.font = 'bold 10px var(--font-family)';
+        ctx.fillText(`가려진 비율: ${(obscuredRatio * 100).toFixed(1)}%`, cx, cy + r_target + 30);
+    }
+
+    function runSimulation() {
+        // 1. 슬라이더 설정값 실시간 갱신
+        const D_EARTH = parseFloat(inputs.d_earth.value);
+        const INC = parseFloat(inputs.inc.value) * Math.PI / 180;
+        const Q = parseFloat(inputs.q.value);
+        const L = parseFloat(inputs.L.value);
+        const ratio_l = parseFloat(inputs.ratio_l.value);
+
+        labels.d_earth.innerText = `${D_EARTH.toFixed(1)} ly`;
+        labels.inc.innerText = `${parseFloat(inputs.inc.value).toFixed(1)}°`;
+        labels.q.innerText = Q.toFixed(2);
+        labels.L.innerText = `${L.toFixed(2)} L☉`;
+        labels.ratio_l.innerText = ratio_l.toFixed(2);
+
+        // 주계열성 질량-반지름 물리학 표준 설계 대입 (캔버스 확장에 맞춰 별 크기도 비례 조정)
+        const R1 = 36; 
+        const R2 = R1 * Math.sqrt(Q);
+
+        // 질량 중심 기준 두 천체의 공전 반경 분배
+        const a1 = ORBIT_RADIUS * (Q / (1 + Q));
+        const a2 = ORBIT_RADIUS * (1 / (1 + Q)); 
+
+        const cx = simCanvas.width / 2;
+        const cy = simCanvas.height / 2;
+
+        // 투영 타원 평면 내의 좌표계 추출 (관측자의 시선 방향 = 지구는 Z축 전면에 멀리 떨어진 위치)
+        const x1 = cx + a1 * Math.cos(theta);
+        const y1 = cy + a1 * Math.sin(theta) * Math.cos(INC);
+        const z1 = a1 * Math.sin(theta) * Math.sin(INC);
+
+        const x2 = cx - a2 * Math.cos(theta);
+        const y2 = cy - a2 * Math.sin(theta) * Math.cos(INC);
+        const z2 = -a2 * Math.sin(theta) * Math.sin(INC);
+
+        // 투영상 가상 관측 거리
+        const dist = Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+        const overlap = calculateOverlapArea(dist, R1, R2);
+
+        // 광량 계산 수식 반영 (L1 = L, L2 = L * ratio_l)
+        const L1 = L;
+        const L2 = L * ratio_l;
+        const base_L = L1 + L2;
+        let current_L = base_L;
+        let state = "평상시 (식 없음)";
+
+        if (overlap > 0) {
+            const area1 = Math.PI * R1 * R1;
+            const area2 = Math.PI * R2 * R2;
+            if (z1 < z2) { // 주성(노란색)이 동반성에 의해 뒤편으로 가려짐
+                current_L -= (overlap / area1) * L1;
+                state = "주식 (Primary Eclipse)";
+            } else { // 동반성(파란색)이 주성에 의해 뒤편으로 가려짐
+                current_L -= (overlap / area2) * L2;
+                state = "부식 (Secondary Eclipse)";
+            }
+        }
+
+        // 절대광도 형식(L☉)에 맞춰 겉보기 광도(Flux) 단위 표기 수정 (L☉/ly²)
+        const flux = current_L / (D_EARTH * D_EARTH);
+        const delta_mag = -2.5 * Math.log10(current_L / base_L);
+
+        // 현재 위상 정보 환산 (0.0 ~ 1.0)
+        const currentPhase = (theta / (2 * Math.PI)) % 1.0;
+
+        // UI 데이터 표시값 포맷 매핑
+        display.state.innerText = state;
+        display.phase.innerText = currentPhase.toFixed(3);
+        display.overlap.innerText = `${overlap.toFixed(2)} px²`;
+        display.l_abs.innerText = `${current_L.toFixed(2)} L☉`;
+        display.mag.innerText = `${delta_mag.toFixed(3)} mag`;
+        display.flux.innerText = `${flux.toFixed(5)} L☉/ly²`;
+
+        // 2. [왼쪽 캔버스] 3D 공전 뷰 연출
+        ctxSim.clearRect(0, 0, simCanvas.width, simCanvas.height);
+        
+        // 공전궤도면 시각화 (반투명 격자 원판 형태로 입체감 부여)
+        ctxSim.fillStyle = 'rgba(56, 189, 248, 0.05)';
+        ctxSim.beginPath();
+        ctxSim.ellipse(cx, cy, ORBIT_RADIUS, ORBIT_RADIUS * Math.cos(INC), 0, 0, Math.PI * 2);
+        ctxSim.fill();
+
+        // 궤도 타원형 가이드 아웃라인
+        ctxSim.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+        ctxSim.lineWidth = 1.5;
+        ctxSim.beginPath();
+        ctxSim.ellipse(cx, cy, ORBIT_RADIUS, ORBIT_RADIUS * Math.cos(INC), 0, 0, Math.PI * 2);
+        ctxSim.stroke();
+
+        // 궤도 평면 내부 입체 그리드선 (Y축 평행 가상 선들)
+        ctxSim.strokeStyle = 'rgba(38, 53, 84, 0.25)';
+        ctxSim.lineWidth = 1;
+        for (let dx = -ORBIT_RADIUS; dx <= ORBIT_RADIUS; dx += 25) {
+            let halfY = Math.sqrt(ORBIT_RADIUS * ORBIT_RADIUS - dx * dx);
+            ctxSim.beginPath();
+            ctxSim.moveTo(cx + dx, cy - halfY * Math.cos(INC));
+            ctxSim.lineTo(cx + dx, cy + halfY * Math.cos(INC));
+            ctxSim.stroke();
+        }
+        // X축 평행 가상 선들
+        for (let dy = -ORBIT_RADIUS; dy <= ORBIT_RADIUS; dy += 25) {
+            let halfX = Math.sqrt(ORBIT_RADIUS * ORBIT_RADIUS - dy * dy);
+            ctxSim.beginPath();
+            ctxSim.moveTo(cx - halfX, cy + dy * Math.cos(INC));
+            ctxSim.lineTo(cx + halfX, cy + dy * Math.cos(INC));
+            ctxSim.stroke();
+        }
+
+        // 질량 중심점 표시
+        ctxSim.fillStyle = '#475569';
+        ctxSim.beginPath(); 
+        ctxSim.arc(cx, cy, 3, 0, 2 * Math.PI); 
+        ctxSim.fill();
+
+        // 우측 상단 미니 3D 경사각 가이드 그리기 (Side-view Indicator) - 넓어진 캔버스 가로(480)에 맞게 조정
+        const indX = 425, indY = 55, indR = 25;
+        ctxSim.strokeStyle = '#334155';
+        ctxSim.lineWidth = 1;
+        ctxSim.beginPath(); ctxSim.arc(indX, indY, indR, 0, 2 * Math.PI); ctxSim.stroke();
+        
+        // 관측 시선 방향 가이드
+        ctxSim.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+        ctxSim.setLineDash([2, 2]);
+        ctxSim.beginPath();
+        ctxSim.moveTo(indX - indR - 10, indY);
+        ctxSim.lineTo(indX + indR + 10, indY);
+        ctxSim.stroke();
+        ctxSim.setLineDash([]);
+
+        // 지구로 향하는 시선 방향 텍스트 표시
+        ctxSim.fillStyle = 'rgba(148, 163, 184, 0.7)';
+        ctxSim.font = '9px var(--font-family)';
+        ctxSim.fillText("지구 방향", indX - 45, indY - 6);
+
+        // 궤도면 틸팅축 가이드 (경사각만큼 꺾어짐)
+        ctxSim.strokeStyle = '#38bdf8';
+        ctxSim.lineWidth = 2;
+        ctxSim.beginPath();
+        ctxSim.moveTo(indX - indR * Math.cos(INC), indY - indR * Math.sin(INC));
+        ctxSim.lineTo(indX + indR * Math.cos(INC), indY + indR * Math.sin(INC));
+        ctxSim.stroke();
+
+        ctxSim.fillStyle = '#38bdf8';
+        ctxSim.fillText(`i: ${parseFloat(inputs.inc.value).toFixed(1)}°`, indX - 15, indY + indR + 13);
+
+        // 별 광원 렌더링 함수
+        function drawGlowingStar(ctx, x, y, r, color, glow) {
+            ctx.shadowBlur = 18;
+            ctx.shadowColor = glow;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        // Z값 깊이 우선순위에 맞춰 입체적 가림 현상 완성
+        if (z1 < z2) {
+            drawGlowingStar(ctxSim, x1, y1, R1, '#f59e0b', '#d97706'); // 주성 (노란색)
+            drawGlowingStar(ctxSim, x2, y2, R2, '#38bdf8', '#0284c7'); // 동반성 (파란색)
+        } else {
+            drawGlowingStar(ctxSim, x2, y2, R2, '#38bdf8', '#0284c7');
+            drawGlowingStar(ctxSim, x1, y1, R1, '#f59e0b', '#d97706');
+        }
+
+        // 별 이름 드로잉
+        ctxSim.fillStyle = '#ffdf7a';
+        ctxSim.font = 'bold 11px var(--font-family)';
+        ctxSim.fillText(`주성`, x1 + R1 + 6, y1 + 4);
+
+        ctxSim.fillStyle = '#a6d5ff';
+        ctxSim.font = '11px var(--font-family)';
+        ctxSim.fillText(`동반성`, x2 + R2 + 6, y2 + 4);
+
+        // 3. [가운데 캔버스] 실시간 정면 개별 식 통과 상세 뷰 (Phase/Occultation Viewer)
+        ctxPhase.clearRect(0, 0, phaseCanvas.width, phaseCanvas.height);
+        
+        // 가로 구분선 구축 - 확장된 높이(380)에 맞게 y축 오프셋을 85/255에서 95/285로 최적 배분
+        ctxPhase.strokeStyle = 'rgba(38, 53, 84, 0.4)';
+        ctxPhase.lineWidth = 1;
+        ctxPhase.beginPath();
+        ctxPhase.moveTo(0, phaseCanvas.height / 2);
+        ctxPhase.lineTo(phaseCanvas.width, phaseCanvas.height / 2);
+        ctxPhase.stroke();
+
+        // 캔버스 상대 스케일에 맞는 겹침 오프셋 계산 (실제 메인 공전 좌표의 정규화 대응)
+        const dx12 = x2 - x1; 
+        const dy12 = y2 - y1;
+        const dx21 = x1 - x2;
+        const dy21 = y1 - y2;
+
+        const area1 = Math.PI * R1 * R1;
+        const area2 = Math.PI * R2 * R2;
+
+        // ** 오컬팅 애니메이션 픽셀 동기화용 스케일 계산 **
+        // 1) 주성 개별 관측 뷰 (상단): 타겟 주성 반지름 R1(36px) -> r_target_drawn(45px)로 매핑되므로 배율은 45/36배
+        const scale1 = 45 / R1;
+        const scaled_dx12 = dx12 * scale1;
+        const scaled_dy12 = dy12 * scale1;
+        const scaled_R2_for_1 = R2 * scale1; // 동반성의 상대적 차단 크기 보정
+
+        const isPrimaryEclipsed = (overlap > 0 && z1 < z2);
+        const primaryObscuredRatio = isPrimaryEclipsed ? (overlap / area1) : 0;
+        drawIndividualEclipseDetail(
+            ctxPhase, phaseCanvas.width / 2, 95, 45, '#f59e0b', '#d97706', "주성 개별 관측 (Primary)", 
+            isPrimaryEclipsed, scaled_dx12, scaled_dy12, scaled_R2_for_1, primaryObscuredRatio
+        );
+
+        // 2) 동반성 개별 관측 뷰 (하단): 타겟 동반성 반지름 R2(변동형) -> r_target_drawn(42px)로 매핑되므로 배율은 42/R2배
+        const scale2 = 42 / R2;
+        const scaled_dx21 = dx21 * scale2;
+        const scaled_dy21 = dy21 * scale2;
+        const scaled_R1_for_2 = R1 * scale2; // 주성의 상대적 차단 크기 보정
+
+        const isSecondaryEclipsed = (overlap > 0 && z2 < z1);
+        const secondaryObscuredRatio = isSecondaryEclipsed ? (overlap / area2) : 0;
+        drawIndividualEclipseDetail(
+            ctxPhase, phaseCanvas.width / 2, 285, 42, '#38bdf8', '#0284c7', "동반성 개별 관측 (Secondary)", 
+            isSecondaryEclipsed, scaled_dx21, scaled_dy21, scaled_R1_for_2, secondaryObscuredRatio
+        );
+
+        // 4. [오른쪽 캔버스] 실시간 광도 곡선 정밀 플로팅 (Pre-calculated Smooth Curve)
+        ctxGraph.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+        
+        const gx = 55, gy = 30, gw = 300, gh = 300; // 그래프 세로 높이 확장(260 -> 300)
+        
+        // 모니터 격자 배경 박스
+        ctxGraph.fillStyle = '#090d16';
+        ctxGraph.fillRect(gx, gy, gw, gh);
+        ctxGraph.strokeStyle = '#1e293b';
+        ctxGraph.strokeRect(gx, gy, gw, gh);
+
+        // 가로 방향 점선 그리드 그리기 (가시성 확보)
+        ctxGraph.strokeStyle = 'rgba(30, 41, 59, 0.5)';
+        ctxGraph.lineWidth = 1;
+        ctxGraph.setLineDash([4, 4]);
+        for (let gy_line = gy + 50; gy_line < gy + gh; gy_line += 50) {
+            ctxGraph.beginPath();
+            ctxGraph.moveTo(gx, gy_line);
+            ctxGraph.lineTo(gx + gw, gy_line);
+            ctxGraph.stroke();
+        }
+        ctxGraph.setLineDash([]);
+
+        // 축 범례 텍스트 표시
+        ctxGraph.fillStyle = '#94a3b8';
+        ctxGraph.font = '11px var(--font-family)';
+        ctxGraph.fillText("0.0 (공전 위상)", gx, gy + gh + 18);
+        ctxGraph.fillText("1.0", gx + gw - 18, gy + gh + 18);
+        ctxGraph.fillText("최대 밝기", gx - 50, gy + 12);
+        ctxGraph.fillText("식 최저점", gx - 50, gy + gh - 4);
+
+        // 0.0부터 1.0 위상까지의 전체 광도 데이터 풀을 실시간 프레임마다 즉시 전체 연산
+        let fullCurvePoints = [];
+        const resolution = 150; // 곡선 완성도를 높이기 위한 분해능 수치
+        for (let i = 0; i <= resolution; i++) {
+            let p = i / resolution;
+            let pL = calculateAbsoluteLAtPhase(p, Q, INC, L, ratio_l);
+            let pFlux = pL / (D_EARTH * D_EARTH);
+            fullCurvePoints.push({ phase: p, flux: pFlux });
+        }
+
+        // 정적인 곡선 전체를 배경에 매끄럽게 렌더링
+        if (fullCurvePoints.length > 1) {
+            ctxGraph.strokeStyle = '#f97316';
+            ctxGraph.lineWidth = 2.5;
+            ctxGraph.beginPath();
+
+            const maxFluxValue = base_L / (D_EARTH * D_EARTH);
+            const minFluxValue = (base_L - Math.max(L1, L2)) / (D_EARTH * D_EARTH);
+            const margin = (maxFluxValue - minFluxValue) * 0.25 || 1e-12;
+
+            const yTop = maxFluxValue + margin;
+            const yBottom = minFluxValue - margin;
+
+            for (let i = 0; i < fullCurvePoints.length; i++) {
+                let pt = fullCurvePoints[i];
+                let px = gx + pt.phase * gw;
+                
+                let ratio = (pt.flux - yBottom) / (yTop - yBottom);
+                let py = gy + gh - (ratio * gh);
+
+                // 바운더리 이탈 가드
+                if (py < gy) py = gy;
+                if (py > gy + gh) py = gy + gh;
+
+                if (i === 0) ctxGraph.moveTo(px, py);
+                else ctxGraph.lineTo(px, py);
+            }
+            ctxGraph.stroke();
+
+            // 현재 공전 위상 위치에 세로 실시간 가이드 점선 그리기
+            let currentIndicatorX = gx + currentPhase * gw;
+            ctxGraph.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+            ctxGraph.lineWidth = 1;
+            ctxGraph.setLineDash([4, 4]);
+            ctxGraph.beginPath();
+            ctxGraph.moveTo(currentIndicatorX, gy);
+            ctxGraph.lineTo(currentIndicatorX, gy + gh);
+            ctxGraph.stroke();
+            ctxGraph.setLineDash([]);
+
+            // 현재 위치의 실제 광도 수치에 일치하는 붉은 오렌지빛 동적 포인터 마커 추가
+            let currentRatio = (flux - yBottom) / (yTop - yBottom);
+            let currentIndicatorY = gy + gh - (currentRatio * gh);
+            if (currentIndicatorY < gy) currentIndicatorY = gy;
+            if (currentIndicatorY > gy + gh) currentIndicatorY = gy + gh;
+
+            ctxGraph.shadowBlur = 10;
+            ctxGraph.shadowColor = '#f97316';
+            ctxGraph.fillStyle = '#ff9c54';
+            ctxGraph.beginPath();
+            ctxGraph.arc(currentIndicatorX, currentIndicatorY, 6, 0, Math.PI * 2);
+            ctxGraph.fill();
+            ctxGraph.shadowBlur = 0;
+        }
+
+        // 공전 주기 프레임 전진
+        theta += dt;
+        requestAnimationFrame(runSimulation);
+    }
+
+    // 시뮬레이션 최초 자동 실행
+    runSimulation();
+</script>
+
+</body>
+</html>

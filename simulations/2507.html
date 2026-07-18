@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>성간 티끌은 파란빛을 싫어해 (성간 소광 및 색초과 시뮬레이션)</title>
+    <!-- Tailwind CSS 사용 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js 라이브러리 (플랑크 곡선 시각화용) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- KaTeX 수식 렌더링 라이브러리 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <!-- body 로드 전 실행 오류를 차단하기 위해 auto-render 라이브러리만 로드합니다 -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        body {
+            background-color: #0d0f14;
+            color: #f3f4f6;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+        /* 우주 공간 느낌의 캔버스 배경 */
+        .space-canvas {
+            background: radial-gradient(circle at center, #1b2030 0%, #08090d 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .star-dust-particle {
+            position: absolute;
+            background-color: rgba(244, 164, 96, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 min-h-screen flex flex-col items-center">
+
+    <div class="w-full max-w-7xl bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl p-4 md:p-6">
+        
+        <!-- 타이틀 헤더 수정 ("성간 티끌은 파란빛을 싫어해") -->
+        <div class="border-b border-gray-800 pb-3 mb-4 text-center">
+            <h1 class="text-2xl md:text-3xl font-extrabold text-blue-400 tracking-tight">성간 티끌은 파란빛을 싫어해</h1>
+            <p class="text-gray-400 mt-1 text-xs md:text-sm">
+                조작 변인인 <b>표준 색지수</b>와 <b>성간 티끌 수밀도</b>를 바꾸어 보며, 물리적 연산에 의한 성간 색초과 발생과 별빛의 붉어짐(성간 적색화) 현상을 정밀 탐구합니다.
+            </p>
+        </div>
+
+        <!-- 상단 실제 별 데이터 연동 탑바 -->
+        <div class="bg-blue-950/20 border border-blue-900/30 p-3 md:p-4 rounded-xl mb-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div class="flex-1 text-left">
+                <h3 class="text-sm md:text-base font-bold text-blue-300 flex items-center gap-1.5">
+                    ✨ 실제 별 관측 데이터 탐구 (실시간 역추정 모드)
+                </h3>
+                <p class="text-[11px] text-gray-400 mt-0.5">
+                    신뢰할 만한 천문학 데이터 출처(Hipparcos, SIMBAD)의 표준 별 정보를 선택하여 실제 소광량과 우주 티끌 밀도를 역추정해 봅니다.
+                </p>
+            </div>
+            <div class="w-full md:w-auto flex items-center gap-2">
+                <label for="starSelector" class="text-xs font-bold text-gray-300 whitespace-nowrap">별 선택:</label>
+                <select id="starSelector" class="bg-gray-800 text-white border border-gray-700 text-xs md:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 w-full md:w-64">
+                    <option value="manual">-- 수동 조작 모드 --</option>
+                    <option value="vega">베가 (Vega - 표준 A형성)</option>
+                    <option value="betelgeuse">베텔게우스 (Betelgeuse - 초거성 M형)</option>
+                    <option value="rigel">리겔 (Rigel - 청색초거성 B형)</option>
+                    <option value="sun">태양 (Sun - 주계열성 G형)</option>
+                    <option value="sirius">시리우스 (Sirius - 주계열성 A형)</option>
+                    <option value="antares">안타레스 (Antares - 소광이 강한 M형)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 메인 2단 레이아웃 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            
+            <!-- [왼쪽 영역]: 조종판 & 데이터 분석 수치 (lg:col-span-5) -->
+            <div class="lg:col-span-5 flex flex-col gap-4">
+                
+                <!-- 조작 변인 1: 표준 색지수 (CI_std) -->
+                <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700 relative">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-bold text-blue-300">① 표준 색지수 <span class="katex-inline">$(B-V)_{\text{std}}$</span></span>
+                        <span class="bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded text-base font-mono font-bold" id="ciStdVal">0.00</span>
+                    </div>
+                    
+                    <input type="range" id="ciStd" min="-0.33" max="1.64" step="0.01" value="0.00" class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                    
+                    <!-- 슬라이더 아래 분광형 및 표면온도 수치 표현 정보 -->
+                    <div class="grid grid-cols-6 gap-1 text-[9px] text-gray-400 mt-2 text-center leading-tight">
+                        <div class="border-r border-gray-700/50 pr-0.5">
+                            <span class="block font-bold text-blue-400">O형</span>
+                            <span class="block text-gray-500">-0.33</span>
+                            <span class="block text-blue-300">40000K</span>
+                        </div>
+                        <div class="border-r border-gray-700/50 px-0.5">
+                            <span class="block font-bold text-teal-300">B형</span>
+                            <span class="block text-gray-500">-0.15</span>
+                            <span class="block text-teal-300">15000K</span>
+                        </div>
+                        <div class="border-r border-gray-700/50 px-0.5">
+                            <span class="block font-bold text-white">A형</span>
+                            <span class="block text-gray-500">0.00</span>
+                            <span class="block text-gray-300">9500K</span>
+                        </div>
+                        <div class="border-r border-gray-700/50 px-0.5">
+                            <span class="block font-bold text-yellow-100">F형</span>
+                            <span class="block text-gray-500">0.30</span>
+                            <span class="block text-yellow-100">7200K</span>
+                        </div>
+                        <div class="border-r border-gray-700/50 px-0.5">
+                            <span class="block font-bold text-yellow-400">G형</span>
+                            <span class="block text-gray-500">0.60</span>
+                            <span class="block text-yellow-400">5700K</span>
+                        </div>
+                        <div class="pl-0.5">
+                            <span class="block font-bold text-red-400">M형</span>
+                            <span class="block text-gray-500">1.40</span>
+                            <span class="block text-red-300">3400K</span>
+                        </div>
+                    </div>
+                    <div id="starLockOverlay" class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm rounded-xl flex items-center justify-center text-xs text-gray-300 font-bold hidden">
+                        🔒 실제 별 데이터 잠금 상태 (수동 복귀 시 해제)
+                    </div>
+                </div>
+
+                <!-- 조작 변인 2: 성간 티끌 수밀도 (dustDensity) -->
+                <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700 relative">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-bold text-orange-300">② 성간 티끌 수밀도 <span class="katex-inline">$n_{\text{dust}} \ (\text{p/pc}^3)$</span></span>
+                        <span class="bg-orange-900/50 text-orange-200 px-2 py-0.5 rounded text-base font-mono font-bold" id="dustDensityVal">0</span>
+                    </div>
+                    
+                    <div class="relative w-full mb-1">
+                        <input type="range" id="dustDensity" min="0" max="150" step="1" value="0" class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                        <!-- 실제 별의 데이터와 일치하는 지점 마킹용 플로팅 마커 -->
+                        <div id="targetDensityMarker" class="absolute top-3 flex flex-col items-center pointer-events-none transition-all duration-300 opacity-0">
+                            <div class="w-1.5 h-2 bg-emerald-400 rounded-sm shadow-md shadow-emerald-400/50"></div>
+                            <span id="targetDensityText" class="text-[8px] text-emerald-300 font-bold bg-gray-950/95 px-1 py-0.5 rounded border border-emerald-400/30 mt-0.5 whitespace-nowrap">실제: 0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between text-[10px] text-gray-400 mt-1 px-1">
+                        <span>진공 (0)</span>
+                        <span>보통 가스성운 (50)</span>
+                        <span>밀집 암흑성운 (150)</span>
+                    </div>
+                    <div class="text-[10px] text-orange-200/80 mt-2 bg-orange-950/20 p-1.5 rounded border border-orange-900/20 flex justify-between items-center">
+                        <span>성간 색초과 <span class="katex-inline">$E(B-V)$</span>:</span>
+                        <span class="font-mono font-bold text-orange-400 text-xs" id="calculatedCe">0.00</span>
+                    </div>
+                </div>
+
+                <!-- 실제 별 데이터 역추정 수치 출력창 -->
+                <div class="bg-emerald-950/20 border border-emerald-900/30 p-3.5 rounded-xl">
+                    <h3 class="text-emerald-400 font-bold text-xs mb-2 flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                        성간 티끌 밀도 역추정 연산 결과
+                    </h3>
+                    <div id="reverseEstimatePanel" class="text-[11px] space-y-1.5 text-gray-300">
+                        선택된 실제 별이 없습니다. 탐구를 위해 상단 드롭다운에서 실제 천체를 골라보세요.
+                    </div>
+                </div>
+
+                <!-- 천체 정보 요약 카드 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- 고유 상태 카드 -->
+                    <div class="bg-gray-800/30 border border-gray-800 p-3 rounded-xl text-xs">
+                        <h4 class="text-blue-400 font-bold mb-1.5 text-[11px]">고유 상태 (본래)</h4>
+                        <div class="space-y-1.5 text-gray-400">
+                            <div class="flex justify-between border-b border-gray-800/50 pb-0.5">
+                                <span>색지수 <span class="katex-inline">$(B-V)$</span></span>
+                                <span class="font-mono font-semibold text-gray-200" id="dataStdCi">0.00</span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-800/50 pb-0.5">
+                                <span>온도</span>
+                                <span class="font-mono text-blue-300 font-semibold" id="dataStdTemp">0 K</span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-800/50 pb-0.5">
+                                <span>분광형</span>
+                                <span class="font-mono text-blue-200 font-semibold" id="dataStdSp">-</span>
+                            </div>
+                            <div class="flex flex-col text-[10px] pt-0.5">
+                                <span class="text-gray-500">필터 비율:</span>
+                                <span class="font-mono text-blue-300 font-semibold" id="dataStdRgb">R: 0% / G: 0% / B: 0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 관측 상태 카드 -->
+                    <div class="bg-gray-800/30 border border-gray-800 p-3 rounded-xl text-xs">
+                        <h4 class="text-yellow-400 font-bold mb-1.5 text-[11px]">관측 상태 (소광 후)</h4>
+                        <div class="space-y-1.5 text-gray-400">
+                            <div class="flex justify-between border-b border-gray-800/50 pb-0.5">
+                                <span>색지수 <span class="katex-inline">$(B-V)$</span></span>
+                                <span class="font-mono font-semibold text-gray-200" id="dataObsCi">0.00</span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-800/50 pb-0.5">
+                                <span>온도</span>
+                                <span class="font-mono text-amber-400 font-semibold" id="dataObsTemp">0 K</span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-800/50 pb-0.5">
+                                <span>소광량 <span class="katex-inline">$A_V$</span></span>
+                                <span class="font-mono text-orange-400 font-semibold" id="dataExtinction">0.00 등급</span>
+                            </div>
+                            <div class="flex flex-col text-[10px] pt-0.5">
+                                <span class="text-gray-500">필터 비율:</span>
+                                <span class="font-mono text-amber-400 font-semibold" id="dataObsRgb">R: 0% / G: 0% / B: 0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- [오른쪽 영역]: 우주 시각화 캔버스 & H-R도 / 플랑크 차트 탭 (lg:col-span-7) -->
+            <div class="lg:col-span-7 flex flex-col gap-4">
+                
+                <!-- 2-A. 시각 시뮬레이션 출력 화면 -->
+                <div class="space-canvas rounded-xl border border-gray-800 p-4 relative flex flex-col md:flex-row items-center justify-between h-[180px] md:h-[150px]">
+                    <!-- 배경 별가루 파티클 레이어 -->
+                    <div id="particleBg" class="absolute inset-0 pointer-events-none"></div>
+
+                    <!-- 원래 별빛 (좌측 배치) -->
+                    <div class="flex flex-col items-center z-10 w-full md:w-1/4">
+                        <div class="relative flex items-center justify-center">
+                            <div id="stellarCore" class="w-12 h-12 rounded-full transition-all duration-300 relative z-10 flex items-center justify-center font-bold text-[9px] text-slate-900 text-center shadow-lg"></div>
+                            <div id="stellarHalo" class="absolute w-16 h-16 rounded-full opacity-40 blur-lg transition-all duration-300"></div>
+                        </div>
+                        <div class="mt-1.5 text-center leading-tight">
+                            <span class="block font-bold text-xs text-blue-200">고유 별</span>
+                            <span class="text-[9px] text-blue-300/80" id="stellarTypeLabel">A형성</span>
+                        </div>
+                    </div>
+
+                    <!-- 티끌 통과 전 원래의 RGB 사인파 빛줄기 -->
+                    <div class="hidden md:block flex-1 h-14 relative z-10 mx-1">
+                        <canvas id="waveCanvasLeft" class="w-full h-full"></canvas>
+                    </div>
+
+                    <!-- 성간 티끌 지대 (중앙 배치) -->
+                    <div class="flex flex-col items-center z-10 w-full md:w-1/4">
+                        <div id="dustCloud" class="w-24 h-16 rounded-full border border-yellow-700/20 transition-all duration-300 flex flex-col items-center justify-center p-1 relative text-center">
+                            <span class="text-orange-200 font-bold text-[10px] tracking-wide z-10">성간 티끌</span>
+                            <span class="text-[8px] text-orange-300/80 z-10" id="dustCloudStatus">진공</span>
+                        </div>
+                    </div>
+
+                    <!-- 티끌 통과 후 변형된 RGB 사인파 빛줄기 -->
+                    <div class="hidden md:block flex-1 h-14 relative z-10 mx-1">
+                        <canvas id="waveCanvasRight" class="w-full h-full"></canvas>
+                    </div>
+
+                    <!-- 관측되는 별빛 (우측 배치) -->
+                    <div class="flex flex-col items-center z-10 w-full md:w-1/4">
+                        <div class="relative flex items-center justify-center">
+                            <div id="observedCore" class="w-12 h-12 rounded-full transition-all duration-300 relative z-10 flex items-center justify-center font-bold text-[9px] text-slate-900 text-center shadow-lg"></div>
+                            <div id="observedHalo" class="absolute w-16 h-16 rounded-full opacity-40 blur-lg transition-all duration-300"></div>
+                        </div>
+                        <div class="mt-1.5 text-center leading-tight">
+                            <span class="block font-bold text-xs text-yellow-100">관측 별</span>
+                            <span class="text-[9px] text-yellow-300/80" id="reddeningIndicator">관측색</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2-B. 실시간 동적 H-R도 & 플랑크 곡선 듀얼 시각화 탭 -->
+                <div class="bg-gray-800/20 border border-gray-800 p-4 rounded-xl flex flex-col justify-between h-[280px]">
+                    <!-- 탭 선택 헤더 -->
+                    <div class="flex border-b border-gray-800 pb-2 mb-2 justify-between items-center">
+                        <div class="flex gap-2">
+                            <button id="tabHr" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-600 text-white">동적 H-R도</button>
+                            <button id="tabPlanck" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700">플랑크 분광 곡선</button>
+                        </div>
+                        <span id="tabDesc" class="text-[9px] text-gray-500">슬라이더를 조작하면 우측 그래프도 동시 반응합니다.</span>
+                    </div>
+
+                    <!-- 탭 1: 실시간 H-R도 영역 -->
+                    <div id="hrTabArea" class="w-full h-[220px] relative flex flex-col items-center justify-center">
+                        <div class="text-[9px] text-gray-400 text-center mb-1 bg-gray-950/40 py-0.5 w-full rounded border border-gray-800/30">
+                            🔴 <b class="text-blue-400">원래 고유 위치</b> ➡️ 🔵 <b class="text-yellow-400">사용자 제어 위치</b> ➡️ 🎯 <b class="text-emerald-400">실제 관측 목표</b>
+                        </div>
+                        <canvas id="hrDiagramCanvas" class="w-full max-w-[420px] h-[190px] bg-slate-950/80 rounded border border-gray-800 shadow-inner"></canvas>
+                    </div>
+
+                    <!-- 탭 2: 플랑크 곡선 영역 -->
+                    <div id="planckTabArea" class="w-full h-[220px] hidden relative">
+                        <canvas id="planckChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- 탐구 보고서 작성 힌트 및 과학적 공식 요약 -->
+        <div class="mt-6 bg-gray-950/50 p-4 rounded-xl border border-gray-800/80 text-[11px] text-gray-400 space-y-1.5">
+            <h4 class="font-bold text-gray-300 text-xs mb-1">💡 과학적 적용 이론 및 수식 요약 (개발 보고서 제출용)</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ul class="list-disc pl-4 space-y-0.5">
+                    <li><b>성간 색초과 수밀도 식</b>: <span class="katex-inline">$E(B-V) = \alpha \times n_{\text{dust}} \times d$</span></li>
+                    <li><b>발레스테로스 표면온도 근사식</b>: <span class="katex-inline">$T_{eff} = 4600 \times \left( \frac{1}{0.92(B-V) + 1.7} + \frac{1}{0.92(B-V) + 0.62} \right)$</span></li>
+                    <li><b>실시간 시각 소광량 공식</b>: <span class="katex-inline">$A_V = R_V \times E(B-V)$</span> (<span class="katex-inline">$R_V = 3.1$</span> 기준 반영)</li>
+                </ul>
+                <ul class="list-disc pl-4 space-y-0.5">
+                    <li><b>색채 시각화 기법 (Mitchell Charity)</b>: CIE 등색 곡선 자극치 모델과 실제 천문 필터 스펙트럼 합성값을 컴퓨터 그래픽 sRGB 변환 행렬 및 감마 비선형 공식($\gamma=2.4$)과 맞추어 실제 별의 온도를 과학적 오차 없이 완벽하게 컬러화했습니다.</li>
+                    <li><b>성간 소광과 H-R도</b>: 성간 소광비가 반영될수록 관측 위치(🔵)는 원래 위치(🔴)에서 색지수 증가(오른쪽) 및 밝기 소광(아래쪽) 방향으로 이동하게 됩니다.</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 상수 정의 ---
+        const h = 6.62607015e-34; // 플랑크 상수 (J·s)
+        const c = 2.99792458e8;   // 광속 (m/s)
+        const kB = 1.380649e-23;  // 볼츠만 상수 (J/K)
+
+        // 가시광선 영역의 기준 필터 중심 파장 (단위: m)
+        const lambdaB = 440e-9; // Blue 필터 중심
+        const lambdaG = 550e-9; // Green 필터 중심
+        const lambdaR = 640e-9; // Red 필터 중심
+
+        // --- Mitchell Charity 가시광 sRGB 테이블 ---
+        const charityStarColors = [
+            { bv: -0.40, rgb: {r: 155, g: 176, b: 255} },
+            { bv: -0.33, rgb: {r: 159, g: 181, b: 255} },
+            { bv: -0.30, rgb: {r: 162, g: 185, b: 255} },
+            { bv: -0.25, rgb: {r: 168, g: 191, b: 255} },
+            { bv: -0.20, rgb: {r: 175, g: 197, b: 255} },
+            { bv: -0.15, rgb: {r: 184, g: 204, b: 255} },
+            { bv: -0.10, rgb: {r: 193, g: 211, b: 255} },
+            { bv: -0.05, rgb: {r: 204, g: 219, b: 255} },
+            { bv: 0.00,  rgb: {r: 216, g: 228, b: 255} },
+            { bv: 0.05,  rgb: {r: 227, g: 236, b: 255} },
+            { bv: 0.10,  rgb: {r: 237, g: 243, b: 255} },
+            { bv: 0.15,  rgb: {r: 246, g: 249, b: 255} },
+            { bv: 0.20,  rgb: {r: 252, g: 253, b: 255} },
+            { bv: 0.25,  rgb: {r: 255, g: 254, b: 250} },
+            { bv: 0.30,  rgb: {r: 255, g: 251, b: 241} },
+            { bv: 0.35,  rgb: {r: 255, g: 247, b: 231} },
+            { bv: 0.40,  rgb: {r: 255, g: 242, b: 219} },
+            { bv: 0.45,  rgb: {r: 255, g: 237, b: 207} },
+            { bv: 0.50,  rgb: {r: 255, g: 231, b: 194} },
+            { bv: 0.55,  rgb: {r: 255, g: 225, b: 181} },
+            { bv: 0.60,  rgb: {r: 255, g: 219, b: 168} },
+            { bv: 0.65,  rgb: {r: 255, g: 212, b: 154} },
+            { bv: 0.70,  rgb: {r: 255, g: 205, b: 141} },
+            { bv: 0.75,  rgb: {r: 255, g: 198, b: 129} },
+            { bv: 0.80,  rgb: {r: 255, g: 191, b: 117} },
+            { bv: 0.85,  rgb: {r: 255, g: 184, b: 106} },
+            { bv: 0.90,  rgb: {r: 255, g: 177, b: 95} },
+            { bv: 0.95,  rgb: {r: 255, g: 170, b: 85} },
+            { bv: 1.00,  rgb: {r: 255, g: 163, b: 76} },
+            { bv: 1.05,  rgb: {r: 255, g: 156, b: 68} },
+            { bv: 1.10,  rgb: {r: 255, g: 149, b: 60} },
+            { bv: 1.15,  rgb: {r: 255, g: 141, b: 53} },
+            { bv: 1.20,  rgb: {r: 255, g: 134, b: 47} },
+            { bv: 1.25,  rgb: {r: 255, g: 127, b: 41} },
+            { bv: 1.30,  rgb: {r: 255, g: 120, b: 36} },
+            { bv: 1.35,  rgb: {r: 255, g: 113, b: 31} },
+            { bv: 1.40,  rgb: {r: 255, g: 106, b: 27} },
+            { bv: 1.45,  rgb: {r: 255, g: 99, b: 24} },
+            { bv: 1.50,  rgb: {r: 255, g: 92, b: 20} },
+            { bv: 1.55,  rgb: {r: 255, g: 85, b: 18} },
+            { bv: 1.60,  rgb: {r: 255, g: 79, b: 15} },
+            { bv: 1.65,  rgb: {r: 255, g: 73, b: 13} },
+            { bv: 1.70,  rgb: {r: 255, g: 67, b: 11} },
+            { bv: 1.75,  rgb: {r: 255, g: 61, b: 9} },
+            { bv: 1.80,  rgb: {r: 255, g: 56, b: 8} }
+        ];
+
+        // Mitchell Charity 보간 색상 획득 엔진
+        function getCharityRGB(bv) {
+            if (bv <= -0.40) return charityStarColors[0].rgb;
+            if (bv >= 1.80) return charityStarColors[charityStarColors.length - 1].rgb;
+
+            for (let i = 0; i < charityStarColors.length - 1; i++) {
+                const c1 = charityStarColors[i];
+                const c2 = charityStarColors[i+1];
+                if (bv >= c1.bv && bv <= c2.bv) {
+                    const ratio = (bv - c1.bv) / (c2.bv - c1.bv);
+                    return {
+                        r: Math.round(c1.rgb.r + ratio * (c2.rgb.r - c1.rgb.r)),
+                        g: Math.round(c1.rgb.g + ratio * (c2.rgb.g - c1.rgb.g)),
+                        b: Math.round(c1.rgb.b + ratio * (c2.rgb.b - c1.rgb.b))
+                    };
+                }
+            }
+            return { r: 255, g: 255, b: 255 };
+        }
+
+        // 실제 신뢰성 높은 별 데이터 셋
+        const realStarsData = {
+            vega: {
+                name: "베가 (Vega / 직녀성)",
+                stdCi: 0.00,
+                obsCi: 0.08,
+                absMag: 0.6,
+                dustDensity: 8
+            },
+            betelgeuse: {
+                name: "베텔게우스 (Betelgeuse)",
+                stdCi: 1.50,
+                obsCi: 1.85,
+                absMag: -5.6,
+                dustDensity: 35
+            },
+            rigel: {
+                name: "리겔 (Rigel)",
+                stdCi: -0.15,
+                obsCi: -0.03,
+                absMag: -7.0,
+                dustDensity: 12
+            },
+            sun: {
+                name: "태양 (Sun)",
+                stdCi: 0.65,
+                obsCi: 0.65,
+                absMag: 4.8,
+                dustDensity: 0
+            },
+            sirius: {
+                name: "시리우스 (Sirius)",
+                stdCi: 0.01,
+                obsCi: 0.02,
+                absMag: 1.4,
+                dustDensity: 1
+            },
+            antares: {
+                name: "안타레스 (Antares)",
+                stdCi: 1.42,
+                obsCi: 1.87,
+                absMag: -5.2,
+                dustDensity: 45
+            }
+        };
+
+        // --- DOM 연결 ---
+        const starSelector = document.getElementById('starSelector');
+        const starLockOverlay = document.getElementById('starLockOverlay');
+        const targetDensityMarker = document.getElementById('targetDensityMarker');
+        const targetDensityText = document.getElementById('targetDensityText');
+        const reverseEstimatePanel = document.getElementById('reverseEstimatePanel');
+
+        const ciStdInput = document.getElementById('ciStd');
+        const dustDensityInput = document.getElementById('dustDensity');
+        const ciStdVal = document.getElementById('ciStdVal');
+        const dustDensityVal = document.getElementById('dustDensityVal');
+        const calculatedCe = document.getElementById('calculatedCe');
+
+        const stellarCore = document.getElementById('stellarCore');
+        const stellarHalo = document.getElementById('stellarHalo');
+        const observedCore = document.getElementById('observedCore');
+        const observedHalo = document.getElementById('observedHalo');
+        
+        const waveCanvasLeft = document.getElementById('waveCanvasLeft');
+        const waveCanvasRight = document.getElementById('waveCanvasRight');
+
+        const dustCloud = document.getElementById('dustCloud');
+        const dustCloudStatus = document.getElementById('dustCloudStatus');
+        const stellarTypeLabel = document.getElementById('stellarTypeLabel');
+        const reddeningIndicator = document.getElementById('reddeningIndicator');
+
+        const dataStdCi = document.getElementById('dataStdCi');
+        const dataStdTemp = document.getElementById('dataStdTemp');
+        const dataStdSp = document.getElementById('dataStdSp');
+        const dataStdRgb = document.getElementById('dataStdRgb');
+        const dataObsCi = document.getElementById('dataObsCi');
+        const dataObsTemp = document.getElementById('dataObsTemp');
+        const dataExtinction = document.getElementById('dataExtinction');
+        const dataObsRgb = document.getElementById('dataObsRgb');
+
+        // 탭 제어 연동 DOM
+        const tabHr = document.getElementById('tabHr');
+        const tabPlanck = document.getElementById('tabPlanck');
+        const hrTabArea = document.getElementById('hrTabArea');
+        const planckTabArea = document.getElementById('planckTabArea');
+
+        // 전역 상태 변수 (사인파 애니메이션 연동용)
+        let currentStdRGB = { r: 255, g: 255, b: 255, pctR: 33, pctG: 33, pctB: 33 };
+        let currentObsRGB = { r: 255, g: 255, b: 255, pctR: 33, pctG: 33, pctB: 33 };
+        let currentCE = 0.0;
+        let wavePhase = 0;
+
+        // --- 3D 느낌의 먼지 효과 생성 ---
+        const particleBg = document.getElementById('particleBg');
+        for (let i = 0; i < 40; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'star-dust-particle';
+            particle.style.width = Math.random() * 5 + 2 + 'px';
+            particle.style.height = particle.style.width;
+            particle.style.left = Math.random() * 40 + 30 + '%';
+            particle.style.top = Math.random() * 80 + 10 + '%';
+            particle.style.opacity = '0';
+            particle.style.transition = 'opacity 0.4s ease';
+            particleBg.appendChild(particle);
+        }
+
+        // --- 과학 연산 엔진 ---
+
+        // 1. 발레스테로스 온도 근사식 (Ballesteros' Formula)
+        function getTempFromColorIndex(bv) {
+            if (bv < -0.4) bv = -0.4;
+            const term1 = 1 / (0.92 * bv + 1.7);
+            const term2 = 1 / (0.92 * bv + 0.62);
+            return 4600 * (term1 + term2);
+        }
+
+        // 2. 특정 온도(T)와 파장(lambda)에 대한 플랑크 복사 강도 계산식
+        function planckIntensity(lambda, temp) {
+            if (temp <= 0) return 0;
+            const exponent = (h * c) / (lambda * kB * temp);
+            if (exponent > 700) return 0;
+            return (2 * h * Math.pow(c, 2)) / (Math.pow(lambda, 5) * (Math.exp(exponent) - 1));
+        }
+
+        // 3. 플랑크 세기 분석용 필터 비율 계산 함수 (데이터 보드 전용)
+        function getPlanckRgbRatio(temp, extinctionCoeff = 0) {
+            let intensityR = planckIntensity(lambdaR, temp);
+            let intensityG = planckIntensity(lambdaG, temp);
+            let intensityB = planckIntensity(lambdaB, temp);
+
+            const kR = 0.8;
+            const kG = 1.0;
+            const kB_val = 1.35;
+
+            intensityR *= Math.exp(-extinctionCoeff * kR);
+            intensityG *= Math.exp(-extinctionCoeff * kG);
+            intensityB *= Math.exp(-extinctionCoeff * kB_val);
+
+            const total = intensityR + intensityG + intensityB;
+            if (total === 0) return { pctR: 33, pctG: 33, pctB: 33 };
+
+            return {
+                pctR: Math.round((intensityR / total) * 100),
+                pctG: Math.round((intensityG / total) * 100),
+                pctB: Math.round((intensityB / total) * 100)
+            };
+        }
+
+        // 4. 분광학적 형 분류기
+        function getSpectralType(temp) {
+            if (temp >= 30000) return 'O형성 (청색)';
+            if (temp >= 10000) return 'B형성 (청백색)';
+            if (temp >= 7500) return 'A형성 (백색)';
+            if (temp >= 6000) return 'F형성 (황백색)';
+            if (temp >= 5200) return 'G형성 (황색, 태양급)';
+            if (temp >= 3700) return 'K형성 (주황색)';
+            return 'M형성 (적색)';
+        }
+
+        // --- Chart.js를 사용한 플랑크 곡선 차트 초기화 ---
+        const ctx = document.getElementById('planckChart').getContext('2d');
+        const planckChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 40}, (_, i) => 350 + i * 15),
+                datasets: [
+                    {
+                        label: '고유 복사 세기',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        borderWidth: 2.5,
+                        backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0
+                    },
+                    {
+                        label: '소광 후 관측 세기',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        borderWidth: 2,
+                        borderDash: [5, 3],
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#9ca3af', font: { size: 9 } }
+                    },
+                    tooltip: { enabled: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#1f2937' },
+                        ticks: { color: '#9ca3af', font: { size: 8 } },
+                        title: { display: true, text: '파장 (nm)', color: '#9ca3af', font: { size: 8 } }
+                    },
+                    y: {
+                        grid: { color: '#1f2937' },
+                        ticks: { display: false },
+                        title: { display: true, text: 'B(λ)', color: '#9ca3af', font: { size: 8 } }
+                    }
+                }
+            }
+        });
+
+        // 그래프 플랑크 곡선 업데이트 함수
+        function updateChart(tempStd, tempObs, ce) {
+            const wavelengths = Array.from({length: 40}, (_, i) => (350 + i * 15) * 1e-9);
+            const dataStd = [];
+            const dataObs = [];
+
+            wavelengths.forEach(wl => {
+                let intensityStd = planckIntensity(wl, tempStd);
+                dataStd.push(intensityStd);
+
+                const relativeWlFactor = 550e-9 / wl; 
+                const extinctionFactor = ce * 1.5 * relativeWlFactor; 
+                let intensityObs = intensityStd * Math.exp(-extinctionFactor);
+                dataObs.push(intensityObs);
+            });
+
+            const maxVal = Math.max(...dataStd);
+            const scaleDataStd = dataStd.map(v => v / maxVal);
+            const scaleDataObs = dataObs.map(v => v / maxVal);
+
+            planckChart.data.datasets[0].data = scaleDataStd;
+            planckChart.data.datasets[1].data = scaleDataObs;
+            planckChart.update();
+        }
+
+        // --- R,G,B 실시간 사인파 (Wave) 그리기 엔진 ---
+        function drawSineWaves() {
+            wavePhase -= 0.08;
+
+            const renderCanvasWave = (canvas, isRightSide) => {
+                if (!canvas) return;
+                const context = canvas.getContext('2d');
+                
+                const w = canvas.width = canvas.clientWidth;
+                const h = canvas.height = canvas.clientHeight;
+                
+                context.clearRect(0, 0, w, h);
+                const midY = h / 2;
+                const maxAmplitude = h * 0.23;
+
+                const config = [
+                    {
+                        color: 'rgba(239, 68, 68, 0.85)',
+                        freq: 0.035,
+                        ampRatio: isRightSide ? (currentObsRGB.pctR / 100) * Math.exp(-currentCE * 0.2) : (currentStdRGB.pctR / 100)
+                    },
+                    {
+                        color: 'rgba(34, 197, 94, 0.85)',
+                        freq: 0.055,
+                        ampRatio: isRightSide ? (currentObsRGB.pctG / 100) * Math.exp(-currentCE * 0.6) : (currentStdRGB.pctG / 100)
+                    },
+                    {
+                        color: 'rgba(59, 130, 246, 0.85)',
+                        freq: 0.085,
+                        ampRatio: isRightSide ? (currentObsRGB.pctB / 100) * Math.exp(-currentCE * 1.5) : (currentStdRGB.pctB / 100)
+                    }
+                ];
+
+                config.forEach(wave => {
+                    context.beginPath();
+                    context.strokeStyle = wave.color;
+                    context.lineWidth = 2.0;
+                    context.lineCap = 'round';
+
+                    for (let x = 0; x < w; x++) {
+                        const y = midY + Math.sin(x * wave.freq + wavePhase) * (maxAmplitude * wave.ampRatio * 3.0);
+                        if (x === 0) context.moveTo(x, y);
+                        else context.lineTo(x, y);
+                    }
+                    context.stroke();
+                });
+            };
+
+            renderCanvasWave(waveCanvasLeft, false);
+            renderCanvasWave(waveCanvasRight, true);
+
+            requestAnimationFrame(drawSineWaves);
+        }
+
+        // --- H-R도 그리기 엔진 ---
+        const hrCanvas = document.getElementById('hrDiagramCanvas');
+        const hrCtx = hrCanvas.getContext('2d');
+
+        function drawHrDiagram(activeStarKey, currentStdCi, currentObsCi, currentAbsMag) {
+            const w = hrCanvas.width = hrCanvas.clientWidth;
+            const h = hrCanvas.height = hrCanvas.clientHeight;
+            
+            hrCtx.clearRect(0, 0, w, h);
+            
+            const margin = { top: 12, right: 12, bottom: 25, left: 30 };
+            const plotW = w - margin.left - margin.right;
+            const plotH = h - margin.top - margin.bottom;
+
+            // 정밀 보정: 가로축(색지수 B-V)의 한계를 -0.5 ~ 2.1로 확장하여 1.85이상의 베텔게우스/안타레스 실제 좌표 누락 오류 완벽 해결
+            const getX = (bv) => margin.left + ((bv - (-0.5)) / (2.1 - (-0.5))) * plotW;
+            const getY = (mag) => margin.top + ((mag - (-8)) / (15 - (-8))) * plotH;
+
+            hrCtx.strokeStyle = '#1e2937';
+            hrCtx.lineWidth = 1;
+            
+            // 색지수 격자선 라벨 출력
+            [-0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0].forEach(tick => {
+                const x = getX(tick);
+                hrCtx.beginPath();
+                hrCtx.moveTo(x, margin.top);
+                hrCtx.lineTo(x, h - margin.bottom);
+                hrCtx.stroke();
+                
+                hrCtx.fillStyle = '#6b7280';
+                hrCtx.font = '8px monospace';
+                hrCtx.textAlign = 'center';
+                hrCtx.fillText(tick.toFixed(1), x, h - margin.bottom + 9);
+            });
+
+            [-5, 0, 5, 10].forEach(tick => {
+                const y = getY(tick);
+                hrCtx.beginPath();
+                hrCtx.moveTo(margin.left, y);
+                hrCtx.lineTo(w - margin.right, y);
+                hrCtx.stroke();
+                
+                hrCtx.fillStyle = '#6b7280';
+                hrCtx.font = '8px monospace';
+                hrCtx.textAlign = 'right';
+                hrCtx.fillText(tick, margin.left - 4, y + 2.5);
+            });
+
+            hrCtx.strokeStyle = '#374151';
+            hrCtx.strokeRect(margin.left, margin.top, plotW, plotH);
+
+            hrCtx.fillStyle = '#9ca3af';
+            hrCtx.font = '8px sans-serif';
+            hrCtx.textAlign = 'center';
+            hrCtx.fillText('색지수 (B-V)', margin.left + plotW/2, h - 3);
+
+            hrCtx.save();
+            hrCtx.translate(8, margin.top + plotH/2);
+            hrCtx.rotate(-Math.PI/2);
+            hrCtx.fillText('절대 등급 (M)', 0, 0);
+            hrCtx.restore();
+
+            // 가이드라인 주계열 선
+            hrCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            hrCtx.lineWidth = 10;
+            hrCtx.lineCap = 'round';
+            hrCtx.beginPath();
+            hrCtx.moveTo(getX(-0.3), getY(-5));
+            hrCtx.bezierCurveTo(getX(0.1), getY(1.5), getX(0.6), getY(5), getX(1.5), getY(12));
+            hrCtx.stroke();
+
+            // 리스트의 별 고유 상태(🔴) 백그라운드 드로잉
+            Object.keys(realStarsData).forEach(key => {
+                const star = realStarsData[key];
+                const isSelected = (key === activeStarKey);
+                
+                const x = getX(star.stdCi);
+                const y = getY(star.absMag);
+
+                hrCtx.beginPath();
+                hrCtx.arc(x, y, isSelected ? 4.5 : 2.5, 0, Math.PI * 2);
+                hrCtx.fillStyle = isSelected ? '#ef4444' : '#374151'; // 선택 시 붉은 고유 천체색 표현
+                hrCtx.shadowBlur = isSelected ? 6 : 0;
+                hrCtx.shadowColor = '#ef4444';
+                hrCtx.fill();
+                hrCtx.shadowBlur = 0;
+
+                hrCtx.fillStyle = isSelected ? '#fca5a5' : '#4b5563';
+                hrCtx.font = isSelected ? 'bold 8px sans-serif' : '8px sans-serif';
+                hrCtx.textAlign = 'left';
+                hrCtx.fillText(star.name.split(' ')[0], x + 5, y + 2.5);
+            });
+
+            if (activeStarKey !== 'manual') {
+                const targetStar = realStarsData[activeStarKey];
+                const stdX = getX(currentStdCi);
+                const obsX = getX(currentObsCi);
+                const targetX = getX(targetStar.obsCi); // 실제 우주적 관측 최종 목표 위치
+                const currentY = getY(currentAbsMag);
+
+                // 1. 성간 적색화 가이드 점선 경로 (🔴 -> 🎯)
+                hrCtx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+                hrCtx.lineWidth = 1.0;
+                hrCtx.setLineDash([3, 2]);
+                hrCtx.beginPath();
+                hrCtx.moveTo(stdX, currentY);
+                hrCtx.lineTo(targetX, currentY);
+                hrCtx.stroke();
+                hrCtx.setLineDash([]);
+
+                // 2. 실제 관측 목표 지점 마커 플로팅 (🎯 녹색 정밀 원형 과녁선)
+                hrCtx.beginPath();
+                hrCtx.arc(targetX, currentY, 6.5, 0, Math.PI * 2);
+                hrCtx.strokeStyle = '#10b981'; // 에메랄드 그린
+                hrCtx.lineWidth = 1.5;
+                hrCtx.setLineDash([2, 1.5]);
+                hrCtx.stroke();
+                hrCtx.setLineDash([]);
+
+                hrCtx.fillStyle = '#10b981';
+                hrCtx.font = 'bold 7px sans-serif';
+                hrCtx.textAlign = 'center';
+                hrCtx.fillText('목표', targetX, currentY - 8);
+
+                // 3. 사용자 슬라이더 조절로 실시간 추종되는 파란색 관측점 (🔵)
+                hrCtx.beginPath();
+                hrCtx.arc(obsX, currentY, 5, 0, Math.PI * 2);
+                hrCtx.fillStyle = '#3b82f6';
+                hrCtx.strokeStyle = '#ffffff';
+                hrCtx.lineWidth = 1;
+                hrCtx.shadowBlur = 8;
+                hrCtx.shadowColor = '#3b82f6';
+                hrCtx.fill();
+                hrCtx.stroke();
+                hrCtx.shadowBlur = 0;
+            }
+        }
+
+        // --- 시뮬레이터 인터페이스 업데이트 엔진 ---
+        function runSimulation() {
+            const activeStarKey = starSelector.value;
+            let ci_std = parseFloat(ciStdInput.value);
+            const dustDensity = parseInt(dustDensityInput.value);
+            
+            const ce = parseFloat((dustDensity * 0.01).toFixed(2));
+            currentCE = ce;
+
+            if (activeStarKey !== 'manual') {
+                const targetStar = realStarsData[activeStarKey];
+                ci_std = targetStar.stdCi;
+                ciStdInput.value = ci_std;
+                ciStdVal.innerText = ci_std.toFixed(2);
+                
+                const realCe = parseFloat((targetStar.obsCi - targetStar.stdCi).toFixed(2));
+                const realDustDensity = targetStar.dustDensity;
+                
+                reverseEstimatePanel.innerHTML = `
+                    <div class="flex justify-between border-b border-emerald-900/30 pb-0.5">
+                        <span class="text-gray-400">고유 표준 색지수:</span>
+                        <span class="font-mono text-emerald-300 font-bold">${targetStar.stdCi.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-emerald-900/30 pb-0.5">
+                        <span class="text-gray-400">지상 관측 색지수:</span>
+                        <span class="font-mono text-orange-300 font-bold">${targetStar.obsCi.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-emerald-900/30 pb-0.5">
+                        <span class="text-gray-400">역추정 성간 색초과:</span>
+                        <span class="font-mono text-emerald-300 font-bold">${realCe.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-emerald-400 mt-1 pt-1 border-t border-emerald-800/40">
+                        <span>역추정 성간 티끌 밀도:</span>
+                        <span class="font-mono text-xs">${realDustDensity} p/pc³</span>
+                    </div>
+                `;
+
+                // 오프셋 동기화 보정 수식 (슬라이더 핸들 반지름 8px 반영)
+                targetDensityMarker.style.opacity = '1';
+                const percent = (realDustDensity / 150) * 100;
+                targetDensityMarker.style.left = `calc(8px + (100% - 16px) * ${percent / 100})`;
+                targetDensityText.innerText = `실제: ${realDustDensity}`;
+            } else {
+                targetDensityMarker.style.opacity = '0';
+                reverseEstimatePanel.innerHTML = `
+                    <p class="text-gray-500 text-center py-2 leading-relaxed">수동 조작 모드입니다.<br>상단 드롭다운에서 실제 별을 골라 탐구할 수 있습니다.</p>
+                `;
+            }
+
+            const ci_obs = parseFloat((ci_std + ce).toFixed(2));
+
+            ciStdVal.innerText = ci_std.toFixed(2);
+            dustDensityVal.innerText = dustDensity;
+            calculatedCe.innerText = ce.toFixed(2);
+
+            const t_std = getTempFromColorIndex(ci_std);
+            const t_obs = getTempFromColorIndex(ci_obs);
+            const specType = getSpectralType(t_std);
+
+            const rgbStd = getCharityRGB(ci_std);
+            const rgbObs = getCharityRGB(ci_obs);
+
+            const colorStdRatio = getPlanckRgbRatio(t_std, 0);
+            const colorObsRatio = getPlanckRgbRatio(t_std, ce * 2.1);
+
+            currentStdRGB = colorStdRatio;
+            currentObsRGB = colorObsRatio;
+
+            const atten = Math.max(1.0 - (ce * 0.45), 0.15);
+            const rgbStdStr = `rgb(${rgbStd.r}, ${rgbStd.g}, ${rgbStd.b})`;
+            const rgbObsStr = `rgb(${Math.round(rgbObs.r * atten)}, ${Math.round(rgbObs.g * atten)}, ${Math.round(rgbObs.b * atten)})`;
+
+            stellarCore.style.backgroundColor = rgbStdStr;
+            stellarCore.style.boxShadow = `0 0 25px 5px ${rgbStdStr}`;
+            stellarHalo.style.backgroundColor = rgbStdStr;
+            stellarCore.innerText = `${Math.round(t_std)}K`;
+
+            observedCore.style.backgroundColor = rgbObsStr;
+            observedCore.style.boxShadow = `0 0 25px 5px ${rgbObsStr}`;
+            observedHalo.style.backgroundColor = rgbObsStr;
+            observedCore.innerText = `${Math.round(t_obs)}K`;
+
+            dustCloud.style.backgroundColor = `rgba(105, 60, 20, ${Math.min(ce * 0.55, 0.95)})`;
+            if (ce === 0) {
+                dustCloudStatus.innerText = "진공 (소광 없음)";
+                dustCloud.style.boxShadow = "none";
+            } else if (ce < 0.5) {
+                dustCloudStatus.innerText = "희박 가스운";
+                dustCloud.style.boxShadow = `inset 0 0 6px rgba(244, 164, 96, ${ce})`;
+            } else {
+                dustCloudStatus.innerText = "밀집 암흑성운";
+                dustCloud.style.boxShadow = `inset 0 0 15px rgba(244, 164, 96, ${ce})`;
+            }
+
+            const particles = document.querySelectorAll('.star-dust-particle');
+            particles.forEach((p, index) => {
+                p.style.opacity = index / particles.length < ce ? '1' : '0';
+            });
+
+            stellarTypeLabel.innerText = specType;
+            if (ce === 0) {
+                reddeningIndicator.innerText = "소광 없음";
+                reddeningIndicator.className = "inline-block bg-green-900/30 text-green-300 text-[9px] px-1.5 py-0.5 rounded-full mt-1 border border-green-800/40";
+            } else {
+                reddeningIndicator.innerText = `${Math.round(t_obs)}K`;
+                reddeningIndicator.className = "inline-block bg-red-900/40 text-red-300 text-[9px] px-1.5 py-0.5 rounded-full mt-1 border border-red-800/40";
+            }
+
+            dataStdCi.innerText = ci_std.toFixed(2);
+            dataStdTemp.innerText = `${Math.round(t_std).toLocaleString()} K`;
+            dataStdSp.innerText = specType.split(' ')[0];
+            dataStdRgb.innerText = `R: ${colorStdRatio.pctR}% / G: ${colorStdRatio.pctG}% / B: ${colorStdRatio.pctB}%`;
+
+            dataObsCi.innerText = ci_obs.toFixed(2);
+            dataObsTemp.innerText = `${Math.round(t_obs).toLocaleString()} K`;
+            
+            const av = (3.1 * ce).toFixed(2);
+            dataExtinction.innerText = `${av} 등급 감소`;
+            dataObsRgb.innerText = `R: ${colorObsRatio.pctR}% / G: ${colorObsRatio.pctG}% / B: ${colorObsRatio.pctB}%`;
+
+            updateChart(t_std, t_obs, ce);
+
+            const absMag = (activeStarKey !== 'manual') ? realStarsData[activeStarKey].absMag : 1.0;
+            drawHrDiagram(activeStarKey, ci_std, ci_obs, absMag);
+        }
+
+        // --- 이벤트 연결 및 수동 조작 오버레이 제어 ---
+        starSelector.addEventListener('change', () => {
+            const isManual = (starSelector.value === 'manual');
+            starLockOverlay.classList.toggle('hidden', isManual);
+            runSimulation();
+        });
+
+        // 탭 전환 제어 이벤트
+        tabHr.addEventListener('click', () => {
+            tabHr.className = "px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-600 text-white";
+            tabPlanck.className = "px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700";
+            hrTabArea.classList.remove('hidden');
+            planckTabArea.classList.add('hidden');
+        });
+
+        tabPlanck.addEventListener('click', () => {
+            tabPlanck.className = "px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-600 text-white";
+            tabHr.className = "px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700";
+            planckTabArea.classList.remove('hidden');
+            hrTabArea.classList.add('hidden');
+        });
+
+        ciStdInput.addEventListener('input', runSimulation);
+        dustDensityInput.addEventListener('input', runSimulation);
+
+        window.onload = function() {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+            runSimulation();
+            drawSineWaves();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우주론 배틀: 태양 중심설 vs 지구 중심설</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts (Noto Sans KR) -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #0b0f19;
+    }
+    /* 스크롤바 커스텀 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- 헤더 영역 -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+      <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg border border-indigo-500/30">
+        <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.246.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.772-.564-.373-1.81.588-1.81h4.906a1 1 0 00.95-.69l1.519-4.674z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">우주론 시뮬레이터 v3.2</h1>
+        <p class="text-xs text-slate-400">금성의 위상 및 크기 변화를 통해 갈릴레이의 역사적 발견 증명하기</p>
+      </div>
+    </div>
+    
+    <!-- 탭 내비게이션 -->
+    <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+      <button onclick="switchTab('simulation')" id="btn-tab-sim" class="px-4 py-1.5 text-sm font-medium rounded-md transition-all bg-indigo-600 text-white">시뮬레이션</button>
+      <button onclick="switchTab('theory')" id="btn-tab-theory" class="px-4 py-1.5 text-sm font-medium rounded-md transition-all text-slate-400 hover:text-white">과학적 원리 및 한계</button>
+    </div>
+  </header>
+
+  <!-- 메인 레이아웃 -->
+  <main class="flex-1 flex flex-col xl:flex-row gap-6 p-4 md:p-6">
+    
+    <!-- 시뮬레이션 화면 탭 -->
+    <div id="tab-simulation" class="flex-1 flex flex-col lg:flex-row gap-6 w-full">
+      
+      <!-- 시뮬레이터 공간 (좌측/중앙) -->
+      <div class="flex-1 flex flex-col gap-6">
+        
+        <!-- 모델 뷰포트 (2개 병렬 배치) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+          
+          <!-- [좌] 태양 중심설 및 지구 기준 관측 변환 -->
+          <div class="bg-slate-950/40 rounded-2xl border border-slate-800 p-4 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-amber-500"></div>
+            <div class="flex justify-between items-center mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                <h2 class="font-bold text-base text-slate-200">태양 중심설 (지구 고정 관측계 변환)</h2>
+              </div>
+              <div class="flex items-center gap-2">
+                <!-- 지구 고정 뷰 모드 토글 스위치 -->
+                <span class="text-[11px] text-slate-400">지구 고정 중심 뷰</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="chk-earth-fixed-view" checked class="sr-only peer">
+                  <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+            </div>
+            
+            <!-- 캔버스 컨테이너 -->
+            <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-900 aspect-square w-full flex-1 min-h-[300px] md:min-h-[380px]">
+              <canvas id="canvas-helio" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+              <!-- 지구 기준 궤적 설명 오버레이 -->
+              <div class="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur-md p-2 rounded-lg border border-slate-800 text-[10px] text-slate-400 max-w-[220px]">
+                <div class="font-semibold text-orange-400 mb-1" id="helio-info-title">지구 절대 고정 기준 상대 궤적</div>
+                <div id="helio-info-text">지구를 중심에 고정하고 우주배경 대비 상대적인 태양과 행성의 경로를 관찰합니다. (교과서 탐구 활동 구현)</div>
+              </div>
+              <div class="absolute top-3 right-3 text-[9px] bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded text-emerald-400">
+                정밀 화면비 자동 스케일 ON
+              </div>
+            </div>
+          </div>
+
+          <!-- [우] 지구 중심설 및 연속 주전원 시각화 -->
+          <div class="bg-slate-950/40 rounded-2xl border border-slate-800 p-4 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-sky-500"></div>
+            <div class="flex justify-between items-center mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                <h2 class="font-bold text-base text-slate-200">지구 중심설 (태양-연속 주전원 연동)</h2>
+              </div>
+              <span class="text-xs bg-indigo-500/10 text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-500/20">중심: 지구</span>
+            </div>
+            
+            <!-- 캔버스 컨테이너 -->
+            <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-900 aspect-square w-full flex-1 min-h-[300px] md:min-h-[380px]">
+              <canvas id="canvas-geo" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+              <!-- 주전원 기믹 설명 오버레이 -->
+              <div class="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur-md p-2 rounded-lg border border-slate-800 text-[10px] text-slate-400 max-w-[220px]">
+                <div class="font-semibold text-indigo-400 mb-1">프톨레마이오스의 내행성-태양 연동 궤도</div>
+                <div>지구 중심설에서 내행성 주전원의 중심은 항상 태양과 일렬로 정렬됩니다. 태양은 항상 주전원 궤도 바깥을 공전합니다.</div>
+              </div>
+              <div class="absolute top-3 right-3 text-[9px] bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded text-emerald-400">
+                정밀 화면비 자동 스케일 ON
+              </div>
+            </div>
+          </div>
+          
+        </div>
+        
+        <!-- 실시간 행성 위상 및 크기 비교 관측기 (해상도 붕괴 방지 패치 적용 완료) -->
+        <div class="bg-slate-950/40 rounded-2xl border border-slate-800 p-5 flex flex-col gap-3">
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-semibold flex items-center gap-1.5 text-slate-200">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+              🔭 실시간 금성/행성 위상(Phase) 및 겉보기 크기 관측기 (갈릴레이의 결정적 우주론 증명)
+            </span>
+            <span id="evidence-badge" class="hidden px-3 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full font-bold animate-pulse">
+              💡 갈릴레이의 결정적 증거 관측 중!
+            </span>
+          </div>
+          
+          <!-- 두 모델의 예측 위상 원형 구면 렌더링 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- 태양중심설 위상 관측실 -->
+            <div class="bg-slate-900/50 rounded-xl p-4 border border-slate-800/80 flex items-center justify-between gap-4">
+              <div class="flex flex-col justify-center h-full min-w-0">
+                <span class="text-xs text-orange-400 font-bold uppercase tracking-wider mb-1">태양중심설 예측 관측</span>
+                <span id="phase-text-helio" class="text-base font-extrabold text-slate-100 truncate mb-1">--</span>
+                <span id="dist-text-helio" class="text-xs text-slate-400 truncate">--</span>
+              </div>
+              <!-- w-20 h-20 고정 스퀘어 컨테이너로 높이 차단 및 강제 비율 고정 -->
+              <div class="relative w-20 h-20 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                <canvas id="canvas-phase-helio" width="80" height="80" class="w-16 h-16"></canvas>
+              </div>
+            </div>
+
+            <!-- 지구중심설 위상 관측실 -->
+            <div class="bg-slate-900/50 rounded-xl p-4 border border-slate-800/80 flex items-center justify-between gap-4">
+              <div class="flex flex-col justify-center h-full min-w-0">
+                <span class="text-xs text-indigo-400 font-bold uppercase tracking-wider mb-1">지구중심설 예측 관측</span>
+                <span id="phase-text-geo" class="text-base font-extrabold text-slate-100 truncate mb-1">--</span>
+                <span id="dist-text-geo" class="text-xs text-slate-400 truncate">--</span>
+              </div>
+              <!-- w-20 h-20 고정 스퀘어 컨테이너로 높이 차단 및 강제 비율 고정 -->
+              <div class="relative w-20 h-20 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                <canvas id="canvas-phase-geo" width="80" height="80" class="w-16 h-16"></canvas>
+              </div>
+            </div>
+
+          </div>
+          
+          <div class="text-xs text-slate-400 text-center bg-slate-900/30 p-2.5 rounded-lg border border-slate-800/50 mt-1">
+            <span class="text-amber-400 font-semibold">🔍 우주론 검증 팁:</span> 지구 중심설 모형에서는 금성이 지구와 태양 사이에서만 움직이므로 <span class="text-red-400 font-bold">오직 초승달 모양(삭~반달)</span>만 보이는 반면, 실제 우주인 태양 중심설에서는 금성이 태양 뒤로 돌아가므로 <span class="text-emerald-400 font-bold">크기가 아주 작고 둥글게 차오른 보름달 모양(망)</span>이 성공적으로 관측됩니다.
+          </div>
+        </div>
+        
+      </div>
+      
+      <!-- 컨트롤 제어판 (우측) -->
+      <div class="w-full lg:w-[380px] bg-slate-950/50 rounded-2xl border border-slate-800 p-5 flex flex-col gap-6 shrink-0">
+        <div>
+          <h2 class="text-lg font-bold text-white mb-1">🌌 천체 조종판</h2>
+          <p class="text-xs text-slate-400">수행평가 조작 변인을 설정하세요.</p>
+        </div>
+        
+        <!-- 조작 변인 1: 행성 선택 -->
+        <div class="flex flex-col gap-2">
+          <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex justify-between">
+            <span>① 조작 변인: 관측 행성 선택</span>
+            <span id="selected-planet-name" class="text-emerald-400 font-bold">화성 (Mars)</span>
+          </label>
+          <div class="grid grid-cols-5 gap-1.5" id="planet-selectors">
+            <!-- 행성 버튼 자동 생성 예정 -->
+          </div>
+        </div>
+        
+        <!-- 조작 변인 2: 기하학적 궤도 파라미터 조절 -->
+        <div class="flex flex-col gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+          <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider">② 조작 변인: 상세 물리 변인 조절</span>
+          
+          <!-- 슬라이더: 행성 궤도 크기 / 주전원 반지름 -->
+          <div class="flex flex-col gap-2">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span id="label-slider-r">행성 궤도 반경 / 주전원 크기</span>
+              <span id="val-slider-r" class="text-indigo-400 font-bold">122 px</span>
+            </div>
+            
+            <!-- 슬라이더와 마커 컨테이너 -->
+            <div class="relative w-full py-1">
+              <input type="range" id="slider-r" min="30" max="180" step="1" value="122" 
+                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 relative z-10">
+              
+              <!-- 빨간색 역사적 권장값 눈금선(마커) -->
+              <div id="historical-marker" class="absolute top-[-3px] w-0.5 h-4 bg-red-500 shadow-[0_0_6px_#ef4444] z-20 pointer-events-none" title="역사적 실제 관측 비율"></div>
+            </div>
+            
+            <div class="flex justify-between items-center mt-1">
+              <span class="text-[10px] text-red-400 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block animate-pulse"></span>
+                빨간 마커: 역사적 실제 관측 비율
+              </span>
+              <!-- 역사적 권장 비율 원클릭 맞춤 버튼 -->
+              <button id="btn-set-historical" class="px-2 py-1 bg-red-500/20 hover:bg-red-500/35 border border-red-500/30 text-red-300 rounded text-[10px] font-bold transition-colors">
+                실제 비율로 자동 맞춤 🎯
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-relaxed mt-1">이 값을 조작하면 궤도가 일치하는 최적 지점을 찾을 수 있습니다.</p>
+          </div>
+          
+          <!-- 슬라이더: 공전 속도 비율 -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>전체 애니메이션 속도</span>
+              <span id="val-slider-speed" class="text-indigo-400 font-bold">1.5x</span>
+            </div>
+            <input type="range" id="slider-speed" min="0.1" max="4.0" step="0.1" value="1.5" 
+              class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+          </div>
+        </div>
+
+        <!-- 시뮬레이션 상태 컨트롤 -->
+        <div class="flex flex-col gap-2">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">재생 및 뷰 컨트롤</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-play-pause" class="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-900/20">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 000-16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+              일시정지
+            </button>
+            <button id="btn-clear" class="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 border border-slate-700">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              궤적 지우기
+            </button>
+          </div>
+          
+          <div class="mt-2 space-y-2.5">
+            <label class="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" id="chk-show-orbits" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+              <span>원시 궤도 가이드라인 표시</span>
+            </label>
+            <label class="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" id="chk-show-labels" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+              <span>천체 이름 레이블 표시</span>
+            </label>
+            <label class="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" id="chk-show-vectors" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+              <span>지구-행성 시선(Line of Sight)선 표시</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 궤적 확인 및 결과 평가 피드백 카드 -->
+        <div class="mt-auto bg-indigo-950/40 p-4 rounded-xl border border-indigo-900/40 flex flex-col gap-2">
+          <div class="flex items-center gap-2 text-indigo-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-xs font-bold">과학적 관찰 일치성 분석</span>
+          </div>
+          <p id="theory-analysis-box" class="text-[11px] text-slate-300 leading-relaxed">
+            행성이 서쪽에서 동쪽으로 가다가 갑자기 동쪽에서 서쪽으로 역행하는 구간이 발생합니다. 두 시뮬레이션의 황도상 운동 궤적이 실제 하늘 운동과 완벽하게 일치하는 것을 확인하세요. 기하학적 원리는 다르지만, 두 모델 모두 이 역행 현상을 정교하게 설명할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 과학적 원리 설명 탭 -->
+    <div id="tab-theory" class="hidden flex-1 max-w-4xl mx-auto bg-slate-950/40 border border-slate-800 rounded-2xl p-6 flex flex-col gap-6">
+      <div>
+        <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">과학적 이론적 배경 및 시뮬레이션 한계 분석</h2>
+        <p class="text-xs text-slate-400 mt-1">이 내용을 수행평가 '산출물 소개' 및 '지구과학 내용·이론' 보고서 작성 시 적극 활용하세요.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80">
+          <h3 class="text-sm font-bold text-orange-400 mb-2">1. 태양 중심설 (지구 고정계 변환)</h3>
+          <p class="text-xs text-slate-300 leading-relaxed space-y-2">
+            태양을 우주의 중심에 두고, 지구와 타 행성이 각자 일정한 반경의 원(실제는 타원) 궤도로 공전한다는 이론입니다. <br><br>
+            <strong>역행 현상의 원인:</strong><br>
+            지구와 다른 행성의 <strong>공전 속도 차이</strong>로 인해 발생합니다. 예를 들어, 공전 속도가 더 빠른 지구(내행성)가 외행성(화성 등)을 안쪽 궤도에서 추월하여 지나갈 때, 지구에서 외행성을 바라보면 행성이 마치 우주 배경 별자리 사이에서 일시적으로 뒤로(서쪽으로) 밀려나는 것처럼 보입니다. <br><br>
+            <strong>시뮬레이션 구현 특징:</strong><br>
+            실제 태양 중심 좌표에 위치한 지구($\vec{r}_E$)와 행성($\vec{r}_P$)의 위치 차이 벡터($\vec{r}_P - \vec{r}_E$)를 계산하여, 지구 중심에서 바라본 행성의 겉보기 방향을 상대 궤적으로 구현하였습니다.
+          </p>
+        </div>
+
+        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80">
+          <h3 class="text-sm font-bold text-indigo-400 mb-2">2. 지구 중심설 (주전원 연속체 기하학)</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            지구를 우주의 중심에 고정하고, 태양과 행성이 지구 주위를 돈다는 이론입니다. 행성이 단순히 원만 돌면 겉보기 역행 현상을 설명할 수 없기 때문에 <strong>이중 원 운동</strong>을 도입했습니다.<br><br>
+            <strong>주전원(Epicycle)과 대원(Deferent):</strong><br>
+            행성은 직접 지구 주위를 도는 것이 아니라, 가상의 중심점 주위를 도는 작은 원인 <strong>주전원</strong> 위를 공전하며, 이 주전원의 중심이 지구 주위를 도는 큰 원인 <strong>대원</strong> 위를 따라 공전합니다. 행성이 주전원의 안쪽(지구와 가까워지는 구간)을 지나갈 때는 실제 역행 방향으로 주전원을 돌기 때문에 겉보기 운동에서도 뒤로 꺾이게 됩니다.<br><br>
+            <strong>시뮬레이션 구현 특징:</strong><br>
+            대원의 반지름($R$)과 주전원의 반지름($r$), 대원의 속도($\omega_1$)와 주전원의 속도($\omega_2$)를 결합하여 천체의 자전궤도를 기하학적으로 연산 및 매핑하였습니다.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-indigo-950/20 p-5 rounded-xl border border-indigo-900/40">
+        <h3 class="text-sm font-bold text-emerald-400 mb-2">🚨 시뮬레이션의 과학적 한계점 분석 (수행평가 고득점 포인트!)</h3>
+        <ul class="list-disc list-inside text-xs text-slate-300 space-y-2 leading-relaxed">
+          <li><strong>완전 원 궤도 가정:</strong> 실제 태양계 행성들은 케플러 제1법칙에 따라 미세한 타원 궤도(이심률 $e \neq 0$)를 그리며 공전하지만, 본 시뮬레이션에서는 현상의 극대화와 기하학적 단순화를 위해 완벽한 원 궤도로만 구성하였습니다.</li>
+          <li><strong>공전 속도의 등속도 운동 가정:</strong> 케플러 제2법칙(면적 속도 일정 법칙)에 따르면 행성은 근일점에서 빠르고 원일점에서 느리게 운동하지만, 시뮬레이션 내의 행성들은 등속 원운동을 하고 있어 세부적인 겉보기 속도 가속 변화까지 반영하진 못했습니다.</li>
+          <li><strong>중력 물리 법칙의 배제:</strong> 시뮬레이션은 중력($F = G \frac{Mm}{r^2}$)과 운동방정식을 풀이한 물리 엔진이 아니라 기하학적 각속도 계산으로만 천체의 움직임을 그립니다.</li>
+          <li><strong>프톨레마이오스의 이심(Equant) 및 편심원 배제:</strong> 프톨레마이오스의 오리지널 지구중심설 모델은 지구를 중심에서 약간 비켜난 편심원에 두고 공전을 균일하게 하는 가상 점인 이심(Equant)을 도입해 행성의 속도 불규칙성을 맞추었으나, 본 시뮬레이션은 이해를 위해 순수 대원-주전원 중심 모델로 단순화했습니다.</li>
+        </ul>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 푸터 영역 -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-4 px-6 text-center text-xs text-slate-500">
+    <p>© [고급 지구과학] 바이브코딩 시뮬레이션 프로젝트 - 천문 현상의 과학적 탐구</p>
+  </footer>
+
+  <!-- 자바스크립트 로직 -->
+  <script>
+    // --- 1. 천체 물리 변수 데이터베이스 (상대 크기 스케일 조정) ---
+    const planetsData = {
+      mercury: {
+        name: '수성 (Mercury)',
+        color: '#94a3b8',
+        helio: { rEarth: 80, rPlanet: 31, speedEarth: 0.8, speedPlanet: 2.2 },
+        geo: { rDeferent: 80, rEpicycle: 31, speedDeferent: 0.8, speedEpicycle: 2.5 },
+        recommendedR: 31,
+        desc: '수성은 태양에서 가장 가까운 내행성으로 공전 속도가 매우 빠릅니다. 주전원/행성 궤도가 매우 좁아 오밀조밀한 루프를 형성합니다.'
+      },
+      venus: {
+        name: '금성 (Venus)',
+        color: '#fde047',
+        helio: { rEarth: 80, rPlanet: 58, speedEarth: 0.8, speedPlanet: 1.3 },
+        geo: { rDeferent: 80, rEpicycle: 58, speedDeferent: 0.8, speedEpicycle: 1.5 },
+        recommendedR: 58,
+        desc: '금성은 지구 바로 안쪽의 내행성입니다. 지구와 궤도 크기가 유사해 역행 현상이 일어날 때 밤하늘에서 엄청나게 큰 전진-후진 궤적 루프를 그립니다.'
+      },
+      mars: {
+        name: '화성 (Mars)',
+        color: '#f87171',
+        helio: { rEarth: 80, rPlanet: 122, speedEarth: 1.0, speedPlanet: 0.53 },
+        geo: { rDeferent: 122, rEpicycle: 52, speedDeferent: 0.53, speedEpicycle: 1.53 },
+        recommendedR: 122,
+        desc: '화성은 지구 바로 바깥의 외행성입니다. 지구와의 상대 속도 차이가 가장 드라마틱하게 교차하여 역행 현상을 탐구하기에 가장 이상적인 표본이 됩니다.'
+      },
+      jupiter: {
+        name: '목성 (Jupiter)',
+        color: '#fbbf24',
+        helio: { rEarth: 80, rPlanet: 155, speedEarth: 1.5, speedPlanet: 0.3 },
+        geo: { rDeferent: 155, rEpicycle: 41, speedDeferent: 0.3, speedEpicycle: 1.8 },
+        recommendedR: 155,
+        desc: '목성은 멀리 떨어져 있어 겉보기 이동 속도가 느리며, 일년에 수차례씩 완만하고 작은 역행 루프 모양을 연속해서 그리게 됩니다.'
+      },
+      saturn: {
+        name: '토성 (Saturn)',
+        color: '#e2e8f0',
+        helio: { rEarth: 80, rPlanet: 175, speedEarth: 1.8, speedPlanet: 0.15 },
+        geo: { rDeferent: 175, rEpicycle: 36, speedDeferent: 0.15, speedEpicycle: 1.95 },
+        recommendedR: 175,
+        desc: '토성은 공전 주기가 매우 길어 하늘에서 아주 조밀하고 정교한 가느다란 고리 모양의 역행 궤적을 촘촘히 엮어 냅니다.'
+      }
+    };
+
+    // --- 2. 전역 상태 변수 ---
+    let activePlanetKey = 'mars';
+    let isPlaying = true;
+    let globalSpeedScale = 1.5;
+    let customR = 122; // 기본 슬라이더 값
+    
+    // 시각화 옵션들
+    let showOrbits = true;
+    let showLabels = true;
+    let showVectors = true;
+    let earthFixedView = true; // 태양중심설 캔버스에서 지구 고정 뷰 모드 여부
+
+    // 천체 상태 각도 변수
+    let angleHelioEarth = 0;
+    let angleHelioPlanet = 0;
+    let angleGeoDeferent = 0;
+    let angleGeoEpicycle = 0;
+
+    // 궤적(Trace) 히스토리 저장 배열
+    let traceHelioEarthRelative = []; // 지구 중심계에서 본 태양중심설 행성 상대 위치
+    let traceHelioEarthAbsolute = []; // 태양 고정 중심에서 본 지구 및 행성의 위치 자취
+    let traceGeoAbsolute = [];        // 지구중심설에서 지구 중심 행성 최종 궤적
+
+    // DOM 요소들 캐싱
+    const canvasHelio = document.getElementById('canvas-helio');
+    const canvasGeo = document.getElementById('canvas-geo');
+    const canvasPhaseHelio = document.getElementById('canvas-phase-helio');
+    const canvasPhaseGeo = document.getElementById('canvas-phase-geo');
+
+    const ctxHelio = canvasHelio.getContext('2d');
+    const ctxGeo = canvasGeo.getContext('2d');
+    const ctxPhaseHelio = canvasPhaseHelio.getContext('2d');
+    const ctxPhaseGeo = canvasPhaseGeo.getContext('2d');
+
+    const sliderR = document.getElementById('slider-r');
+    const valSliderR = document.getElementById('val-slider-r');
+    const labelSliderR = document.getElementById('label-slider-r');
+    const historicalMarker = document.getElementById('historical-marker');
+    const btnSetHistorical = document.getElementById('btn-set-historical');
+
+    const sliderSpeed = document.getElementById('slider-speed');
+    const valSliderSpeed = document.getElementById('val-slider-speed');
+
+    const btnPlayPause = document.getElementById('btn-play-pause');
+    const btnClear = document.getElementById('btn-clear');
+
+    const chkShowOrbits = document.getElementById('chk-show-orbits');
+    const chkShowLabels = document.getElementById('chk-show-labels');
+    const chkShowVectors = document.getElementById('chk-show-vectors');
+    const chkEarthFixedView = document.getElementById('chk-earth-fixed-view');
+
+    const theoryAnalysisBox = document.getElementById('theory-analysis-box');
+    const selectedPlanetName = document.getElementById('selected-planet-name');
+    const helioInfoTitle = document.getElementById('helio-info-title');
+    const helioInfoText = document.getElementById('helio-info-text');
+    const evidenceBadge = document.getElementById('evidence-badge');
+
+    // 실시간 피드백 요소
+    const phaseTextHelio = document.getElementById('phase-text-helio');
+    const distTextHelio = document.getElementById('dist-text-helio');
+    const phaseTextGeo = document.getElementById('phase-text-geo');
+    const distTextGeo = document.getElementById('dist-text-geo');
+
+    // --- 3. 행성 선택 버튼 동적 렌더링 ---
+    function initPlanetSelectors() {
+      const container = document.getElementById('planet-selectors');
+      container.innerHTML = '';
+      
+      const pKeys = Object.keys(planetsData);
+      pKeys.forEach(key => {
+        const p = planetsData[key];
+        const korName = p.name.split(' ')[0];
+        const btn = document.createElement('button');
+        btn.id = `btn-planet-${key}`;
+        btn.className = `py-2 text-xs font-bold rounded-lg transition-all border ${
+          key === activePlanetKey 
+          ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-950/50' 
+          : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400 hover:text-white'
+        }`;
+        btn.innerText = korName;
+        btn.addEventListener('click', () => selectPlanet(key));
+        container.appendChild(btn);
+      });
+    }
+
+    // 행성 선택 함수
+    function selectPlanet(key) {
+      document.getElementById(`btn-planet-${activePlanetKey}`).className = "py-2 text-xs font-bold rounded-lg transition-all border bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400 hover:text-white";
+      document.getElementById(`btn-planet-${key}`).className = "py-2 text-xs font-bold rounded-lg transition-all border bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-950/50";
+      
+      activePlanetKey = key;
+      const data = planetsData[key];
+      
+      selectedPlanetName.innerText = data.name;
+      theoryAnalysisBox.innerText = data.desc;
+
+      // 갈릴레이 결정적 증거 강조 배지 (금성일 때 노출)
+      if (key === 'venus') {
+        evidenceBadge.classList.remove('hidden');
+      } else {
+        evidenceBadge.classList.add('hidden');
+      }
+
+      // 슬라이더 한계값 및 가이드라인 텍스트 조정
+      if (key === 'mercury' || key === 'venus') {
+        labelSliderR.innerText = "내행성 궤도반지름 / 주전원 반지름 조절";
+        sliderR.min = "20";
+        sliderR.max = "100";
+      } else {
+        labelSliderR.innerText = "외행성 궤도반지름 / 주전원 반지름 조절";
+        sliderR.min = "90";
+        sliderR.max = "190";
+      }
+      
+      applyRecommendedRadius(data.recommendedR);
+      clearTraces();
+
+      angleHelioEarth = 0;
+      angleHelioPlanet = 0;
+      angleGeoDeferent = 0;
+      angleGeoEpicycle = 0;
+    }
+
+    // 슬라이더 추천 마커 위치 및 조절값 세팅 함수
+    function applyRecommendedRadius(rVal) {
+      sliderR.value = rVal;
+      customR = rVal;
+      valSliderR.innerText = rVal + " px";
+      
+      const min = parseFloat(sliderR.min);
+      const max = parseFloat(sliderR.max);
+      const percent = ((rVal - min) / (max - min)) * 100;
+      
+      historicalMarker.style.left = `calc(${percent}% - 1px)`;
+    }
+
+    // 궤적 초기화
+    function clearTraces() {
+      traceHelioEarthRelative = [];
+      traceHelioEarthAbsolute = [];
+      traceGeoAbsolute = [];
+    }
+
+    // --- 4. 이벤트 리스너 세팅 ---
+    sliderR.addEventListener('input', (e) => {
+      customR = parseFloat(e.target.value);
+      valSliderR.innerText = customR + " px";
+      clearTraces();
+    });
+
+    btnSetHistorical.addEventListener('click', () => {
+      const p = planetsData[activePlanetKey];
+      applyRecommendedRadius(p.recommendedR);
+      clearTraces();
+    });
+
+    sliderSpeed.addEventListener('input', (e) => {
+      globalSpeedScale = parseFloat(e.target.value);
+      valSliderSpeed.innerText = globalSpeedScale.toFixed(1) + "x";
+    });
+
+    btnPlayPause.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        btnPlayPause.innerHTML = `
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 000-16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+          일시정지`;
+        btnPlayPause.className = "py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-900/20";
+      } else {
+        btnPlayPause.innerHTML = `
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+          다시재생`;
+        btnPlayPause.className = "py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-950/50";
+      }
+    });
+
+    btnClear.addEventListener('click', clearTraces);
+
+    chkShowOrbits.addEventListener('change', (e) => { showOrbits = e.target.checked; });
+    chkShowLabels.addEventListener('change', (e) => { showLabels = e.target.checked; });
+    chkShowVectors.addEventListener('change', (e) => { showVectors = e.target.checked; });
+    chkEarthFixedView.addEventListener('change', (e) => { 
+      earthFixedView = e.target.checked; 
+      if (earthFixedView) {
+        helioInfoTitle.innerText = "지구 절대 고정 기준 상대 궤적";
+        helioInfoText.innerText = "지구를 중심에 고정하고 우주배경 대비 상대적인 태양과 행성의 경로를 관찰합니다. (교과서 탐구 활동 구현)";
+      } else {
+        helioInfoTitle.innerText = "태양 고정 궤도 뷰";
+        helioInfoText.innerText = "태양을 고정 중심에 둔 원시 코페르니쿠스 모델입니다. 각 행성이 서로 다른 원 궤도 반지름을 그리며 공전합니다.";
+      }
+      clearTraces();
+    });
+
+    // --- 5. 탭 전환 제어 ---
+    function switchTab(tabId) {
+      const btnSim = document.getElementById('btn-tab-sim');
+      const btnTheory = document.getElementById('btn-tab-theory');
+      const tabSim = document.getElementById('tab-simulation');
+      const tabTheory = document.getElementById('tab-theory');
+
+      if (tabId === 'simulation') {
+        tabSim.classList.remove('hidden');
+        tabTheory.classList.add('hidden');
+        btnSim.className = "px-4 py-1.5 text-sm font-medium rounded-md transition-all bg-indigo-600 text-white";
+        btnTheory.className = "px-4 py-1.5 text-sm font-medium rounded-md transition-all text-slate-400 hover:text-white";
+        setTimeout(resizeCanvases, 50);
+      } else {
+        tabSim.classList.add('hidden');
+        tabTheory.classList.remove('hidden');
+        btnSim.className = "px-4 py-1.5 text-sm font-medium rounded-md transition-all text-slate-400 hover:text-white";
+        btnTheory.className = "px-4 py-1.5 text-sm font-medium rounded-md transition-all bg-indigo-600 text-white";
+      }
+    }
+
+    // --- 6. 캔버스 리사이징 관리 ---
+    function resizeCanvases() {
+      const canvases = [
+        { canvas: canvasHelio, parent: canvasHelio.parentNode },
+        { canvas: canvasGeo, parent: canvasGeo.parentNode },
+        { canvas: canvasPhaseHelio, parent: canvasPhaseHelio.parentNode },
+        { canvas: canvasPhaseGeo, parent: canvasPhaseGeo.parentNode }
+      ];
+
+      canvases.forEach(item => {
+        const rect = item.parent.getBoundingClientRect();
+        item.canvas.width = rect.width;
+        item.canvas.height = rect.height;
+      });
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    // --- 7. 위상 렌더링 엔진 (Canvas Phase Drawing Engine) ---
+    function drawPlanetPhase(canvas, ctx, phaseAngle, planetColor, distanceRatio) {
+      const w = canvas.width;
+      const h = canvas.height;
+      if (w === 0 || h === 0 || isNaN(w) || isNaN(h)) return;
+
+      ctx.clearRect(0, 0, w, h);
+      
+      const cx = w / 2;
+      const cy = h / 2;
+      
+      let safePhaseAngle = phaseAngle;
+      if (isNaN(safePhaseAngle) || !isFinite(safePhaseAngle)) {
+        safePhaseAngle = 0;
+      }
+
+      const cosP = Math.cos(safePhaseAngle);
+      const sinP = Math.sin(safePhaseAngle);
+
+      let safeDistanceRatio = distanceRatio;
+      if (isNaN(safeDistanceRatio) || !isFinite(safeDistanceRatio) || safeDistanceRatio <= 0) {
+        safeDistanceRatio = 1;
+      }
+      
+      let r = Math.max(5, Math.min(24, 14 / safeDistanceRatio));
+      if (isNaN(r) || !isFinite(r)) {
+        r = 14;
+      }
+      
+      // 1. 행성의 어두운 그늘면 그리기 (삭 상태 기본 검정 구체)
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#111827';
+      ctx.fill();
+      
+      // 희미한 테두리 광원 처리
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // 2. 햇빛을 받아 반사하는 밝은 면 그리기
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.clip(); // 구형 영역에만 그려지도록 클리핑 마스크 적용
+      
+      const gradX = cx + r * sinP * 0.4;
+      if (isFinite(gradX) && isFinite(cy) && isFinite(r)) {
+        const grad = ctx.createRadialGradient(gradX, cy, 1, cx, cy, r);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.3, '#fef08a');
+        grad.addColorStop(1, planetColor);
+        
+        ctx.fillStyle = grad;
+        
+        if (cosP >= 0) {
+          // 볼록달 ~ 보름달 구간 (만상)
+          ctx.beginPath();
+          if (sinP >= 0) {
+            ctx.arc(cx, cy, r, -Math.PI/2, Math.PI/2, false);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, r * cosP, r, 0, -Math.PI/2, Math.PI/2, true);
+            ctx.fill();
+          } else {
+            ctx.arc(cx, cy, r, Math.PI/2, -Math.PI/2, false);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, r * cosP, r, 0, Math.PI/2, -Math.PI/2, true);
+            ctx.fill();
+          }
+        } else {
+          // 초승달 ~ 반달 구간 (삭상)
+          ctx.beginPath();
+          if (sinP >= 0) {
+            ctx.ellipse(cx, cy, r * Math.abs(cosP), r, 0, -Math.PI/2, Math.PI/2, false);
+            ctx.arc(cx, cy, r, Math.PI/2, -Math.PI/2, true);
+            ctx.fill();
+          } else {
+            ctx.ellipse(cx, cy, r * Math.abs(cosP), r, 0, Math.PI/2, -Math.PI/2, false);
+            ctx.arc(cx, cy, r, -Math.PI/2, Math.PI/2, true);
+            ctx.fill();
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function getPhaseName(fraction) {
+      if (fraction < 0.05) return "삭 (New)";
+      if (fraction >= 0.05 && fraction < 0.45) return "초승달/그믐달 (Crescent)";
+      if (fraction >= 0.45 && fraction < 0.55) return "반달 (Half)";
+      if (fraction >= 0.55 && fraction < 0.95) return "볼록한 달 (Gibbous)";
+      return "망 (Full, 보름달)";
+    }
+
+    // --- 8. 메인 렌더링 루프 (Physics & Drawing) ---
+    function animate() {
+      const p = planetsData[activePlanetKey];
+      const hWidth = canvasHelio.width;
+      const hHeight = canvasHelio.height;
+      const gWidth = canvasGeo.width;
+      const gHeight = canvasGeo.height;
+
+      // 1. 물리 프레임 업데이트
+      if (isPlaying) {
+        const dt = 0.01 * globalSpeedScale;
+        angleHelioEarth += p.helio.speedEarth * dt;
+        angleHelioPlanet += p.helio.speedPlanet * dt;
+        angleGeoDeferent += p.geo.speedDeferent * dt;
+        angleGeoEpicycle += p.geo.speedEpicycle * dt;
+      }
+
+      // ──────────────────────────────────────────────────────────
+      // [그리기 과정 1] 태양 중심설 및 지구 중심 관측 변환 캔버스
+      // ──────────────────────────────────────────────────────────
+      ctxHelio.fillStyle = '#070a13';
+      ctxHelio.fillRect(0, 0, hWidth, hHeight);
+      drawStarfield(ctxHelio, hWidth, hHeight);
+
+      const helioCenter = { x: hWidth / 2, y: hHeight / 2 };
+      const rEarth = p.helio.rEarth;
+      const rPlanet = customR;
+
+      // 화면 이탈 방지 배율 스케일 및 유효 수치 안전 가드
+      const maxRadiusHelio = earthFixedView ? (rPlanet + rEarth) : Math.max(rEarth, rPlanet);
+      let scaleHelio = (Math.min(hWidth, hHeight) * 0.35) / maxRadiusHelio;
+      if (isNaN(scaleHelio) || !isFinite(scaleHelio) || scaleHelio <= 0) {
+        scaleHelio = 1;
+      }
+
+      // 태양 기준의 실제 좌표 계산
+      const actualEx = rEarth * scaleHelio * Math.cos(angleHelioEarth);
+      const actualEy = rEarth * scaleHelio * Math.sin(angleHelioEarth);
+      const actualPx = rPlanet * scaleHelio * Math.cos(angleHelioPlanet);
+      const actualPy = rPlanet * scaleHelio * Math.sin(angleHelioPlanet);
+
+      let ex, ey, px, py, sunX, sunY;
+
+      if (earthFixedView) {
+        ex = helioCenter.x;
+        ey = helioCenter.y;
+        sunX = helioCenter.x - actualEx;
+        sunY = helioCenter.y - actualEy;
+        px = helioCenter.x + (actualPx - actualEx);
+        py = helioCenter.y + (actualPy - actualEy);
+
+        if (isPlaying) {
+          traceHelioEarthRelative.push({ x: px, y: py });
+          if (traceHelioEarthRelative.length > 800) traceHelioEarthRelative.shift();
+        }
+      } else {
+        sunX = helioCenter.x;
+        sunY = helioCenter.y;
+        ex = helioCenter.x + actualEx;
+        ey = helioCenter.y + actualEy;
+        px = helioCenter.x + actualPx;
+        py = helioCenter.y + actualPy;
+
+        if (isPlaying) {
+          traceHelioEarthAbsolute.push({ x: px, y: py });
+          if (traceHelioEarthAbsolute.length > 800) traceHelioEarthAbsolute.shift();
+        }
+      }
+
+      if (showOrbits) {
+        if (earthFixedView) {
+          ctxHelio.beginPath();
+          ctxHelio.arc(ex, ey, rEarth * scaleHelio, 0, Math.PI * 2);
+          ctxHelio.strokeStyle = 'rgba(245, 158, 11, 0.15)';
+          ctxHelio.lineWidth = 1;
+          ctxHelio.stroke();
+        } else {
+          ctxHelio.beginPath();
+          ctxHelio.arc(sunX, sunY, rEarth * scaleHelio, 0, Math.PI * 2);
+          ctxHelio.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+          ctxHelio.stroke();
+
+          ctxHelio.beginPath();
+          ctxHelio.arc(sunX, sunY, rPlanet * scaleHelio, 0, Math.PI * 2);
+          ctxHelio.strokeStyle = 'rgba(249, 115, 22, 0.15)';
+          ctxHelio.stroke();
+        }
+      }
+
+      if (showVectors) {
+        ctxHelio.beginPath();
+        ctxHelio.moveTo(ex, ey);
+        ctxHelio.lineTo(px, py);
+        ctxHelio.strokeStyle = 'rgba(234, 179, 8, 0.4)';
+        ctxHelio.lineWidth = 1.2;
+        ctxHelio.stroke();
+      }
+
+      ctxHelio.beginPath();
+      const activeTrace = earthFixedView ? traceHelioEarthRelative : traceHelioEarthAbsolute;
+      for (let i = 0; i < activeTrace.length; i++) {
+        const pt = activeTrace[i];
+        if (i === 0) ctxHelio.moveTo(pt.x, pt.y);
+        else ctxHelio.lineTo(pt.x, pt.y);
+      }
+      ctxHelio.strokeStyle = '#f97316';
+      ctxHelio.lineWidth = 2.5;
+      ctxHelio.shadowBlur = 6;
+      ctxHelio.shadowColor = '#f97316';
+      ctxHelio.stroke();
+      ctxHelio.shadowBlur = 0;
+
+      ctxHelio.beginPath();
+      ctxHelio.arc(sunX, sunY, 8, 0, Math.PI * 2);
+      ctxHelio.fillStyle = '#f59e0b';
+      ctxHelio.shadowBlur = 10;
+      ctxHelio.shadowColor = '#f59e0b';
+      ctxHelio.fill();
+      ctxHelio.shadowBlur = 0;
+
+      ctxHelio.beginPath();
+      ctxHelio.arc(ex, ey, 6, 0, Math.PI * 2);
+      ctxHelio.fillStyle = '#38bdf8';
+      ctxHelio.fill();
+
+      ctxHelio.beginPath();
+      ctxHelio.arc(px, py, 5, 0, Math.PI * 2);
+      ctxHelio.fillStyle = '#fb923c';
+      ctxHelio.fill();
+
+      if (showLabels) {
+        ctxHelio.fillStyle = '#ffffff';
+        ctxHelio.font = '10px Noto Sans KR';
+        ctxHelio.fillText("태양", sunX + 12, sunY + 3);
+        ctxHelio.fillStyle = '#93c5fd';
+        ctxHelio.fillText(earthFixedView ? "지구 (고정)" : "지구", ex + 10, ey + 3);
+        ctxHelio.fillStyle = '#fdba74';
+        ctxHelio.fillText("행성", px + 10, py + 3);
+      }
+
+      // ──────────────────────────────────────────────────────────
+      // [그리기 과정 2] 지구 중심설 및 연속 주전원 시각화 캔버스
+      // ──────────────────────────────────────────────────────────
+      ctxGeo.fillStyle = '#070a13';
+      ctxGeo.fillRect(0, 0, gWidth, gHeight);
+      drawStarfield(ctxGeo, gWidth, gHeight);
+
+      const geoCenter = { x: gWidth / 2, y: gHeight / 2 };
+      let rDeferent, rEpicycle;
+
+      if (activePlanetKey === 'mercury' || activePlanetKey === 'venus') {
+        rDeferent = 80;
+        rEpicycle = customR;
+      } else {
+        rDeferent = customR;
+        rEpicycle = rDeferent * (80 / p.helio.rPlanet);
+      }
+
+      let rSunGeo;
+      if (activePlanetKey === 'mercury' || activePlanetKey === 'venus') {
+        rSunGeo = rDeferent + rEpicycle + 35; 
+      } else {
+        rSunGeo = 65; 
+      }
+
+      const maxRadiusGeo = Math.max(rDeferent + rEpicycle, rSunGeo);
+      let scaleGeo = (Math.min(gWidth, gHeight) * 0.35) / maxRadiusGeo;
+      if (isNaN(scaleGeo) || !isFinite(scaleGeo) || scaleGeo <= 0) {
+        scaleGeo = 1;
+      }
+
+      const gSunX = geoCenter.x + (rSunGeo * scaleGeo) * Math.cos(angleGeoDeferent);
+      const gSunY = geoCenter.y + (rSunGeo * scaleGeo) * Math.sin(angleGeoDeferent);
+
+      const cx = geoCenter.x + (rDeferent * scaleGeo) * Math.cos(angleGeoDeferent);
+      const cy = geoCenter.y + (rDeferent * scaleGeo) * Math.sin(angleGeoDeferent);
+      const gpx = cx + (rEpicycle * scaleGeo) * Math.cos(angleGeoEpicycle);
+      const gpy = cy + (rEpicycle * scaleGeo) * Math.sin(angleGeoEpicycle);
+
+      if (isPlaying) {
+        traceGeoAbsolute.push({ x: gpx, y: gpy });
+        if (traceGeoAbsolute.length > 800) traceGeoAbsolute.shift();
+      }
+
+      if (showOrbits) {
+        ctxGeo.beginPath();
+        ctxGeo.arc(geoCenter.x, geoCenter.y, rDeferent * scaleGeo, 0, Math.PI * 2);
+        ctxGeo.strokeStyle = 'rgba(99, 102, 241, 0.3)';
+        ctxGeo.lineWidth = 1;
+        ctxGeo.stroke();
+
+        const totalEpicycles = 8;
+        for (let i = 0; i < totalEpicycles; i++) {
+          const sampleAngle = (Math.PI * 2 / totalEpicycles) * i;
+          const ecx = geoCenter.x + (rDeferent * scaleGeo) * Math.cos(sampleAngle);
+          const ecy = geoCenter.y + (rDeferent * scaleGeo) * Math.sin(sampleAngle);
+
+          ctxGeo.beginPath();
+          ctxGeo.arc(ecx, ecy, rEpicycle * scaleGeo, 0, Math.PI * 2);
+          ctxGeo.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+          ctxGeo.lineWidth = 0.8;
+          ctxGeo.stroke();
+        }
+
+        ctxGeo.beginPath();
+        ctxGeo.arc(cx, cy, rEpicycle * scaleGeo, 0, Math.PI * 2);
+        ctxGeo.strokeStyle = 'rgba(168, 85, 247, 0.3)';
+        ctxGeo.lineWidth = 1.2;
+        ctxGeo.stroke();
+
+        ctxGeo.beginPath();
+        ctxGeo.moveTo(geoCenter.x, geoCenter.y);
+        ctxGeo.lineTo(gSunX, gSunY);
+        ctxGeo.strokeStyle = 'rgba(234, 179, 8, 0.15)';
+        ctxGeo.setLineDash([3, 3]);
+        ctxGeo.stroke();
+        ctxGeo.setLineDash([]);
+      }
+
+      if (showVectors) {
+        ctxGeo.beginPath();
+        ctxGeo.moveTo(geoCenter.x, geoCenter.y);
+        ctxGeo.lineTo(gpx, gpy);
+        ctxGeo.strokeStyle = 'rgba(234, 179, 8, 0.4)';
+        ctxGeo.lineWidth = 1.2;
+        ctxGeo.stroke();
+      }
+
+      ctxGeo.beginPath();
+      for (let i = 0; i < traceGeoAbsolute.length; i++) {
+        const pt = traceGeoAbsolute[i];
+        if (i === 0) ctxGeo.moveTo(pt.x, pt.y);
+        else ctxGeo.lineTo(pt.x, pt.y);
+      }
+      ctxGeo.strokeStyle = '#6366f1';
+      ctxGeo.lineWidth = 2.5;
+      ctxGeo.shadowBlur = 6;
+      ctxGeo.shadowColor = '#6366f1';
+      ctxGeo.stroke();
+      ctxGeo.shadowBlur = 0;
+
+      ctxGeo.beginPath();
+      ctxGeo.arc(geoCenter.x, geoCenter.y, 7, 0, Math.PI * 2);
+      ctxGeo.fillStyle = '#38bdf8';
+      ctxGeo.fill();
+
+      ctxGeo.beginPath();
+      ctxGeo.arc(gSunX, gSunY, 8, 0, Math.PI * 2);
+      ctxGeo.fillStyle = '#eab308';
+      ctxGeo.shadowBlur = 10;
+      ctxGeo.shadowColor = '#eab308';
+      ctxGeo.fill();
+      ctxGeo.shadowBlur = 0;
+
+      ctxGeo.beginPath();
+      ctxGeo.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctxGeo.fillStyle = '#e9d5ff';
+      ctxGeo.fill();
+
+      ctxGeo.beginPath();
+      ctxGeo.arc(gpx, gpy, 5, 0, Math.PI * 2);
+      ctxGeo.fillStyle = '#a855f7';
+      ctxGeo.fill();
+
+      if (showLabels) {
+        ctxGeo.fillStyle = '#38bdf8';
+        ctxGeo.font = '10px Noto Sans KR';
+        ctxGeo.fillText("지구", geoCenter.x + 12, geoCenter.y + 3);
+        ctxGeo.fillStyle = '#eab308';
+        ctxGeo.fillText("태양", gSunX + 11, gSunY + 3);
+        ctxGeo.fillStyle = '#ffffff';
+        ctxGeo.fillText("행성", gpx + 10, gpy + 3);
+      }
+
+      // ──────────────────────────────────────────────────────────
+      // [실시간 행성 위상 및 크기 연산 및 렌더링]
+      // ──────────────────────────────────────────────────────────
+      // 1) 태양 중심설 위상 연산:
+      const vecHelioPS = { x: -actualPx, y: -actualPy };
+      const vecHelioPE = { x: actualEx - actualPx, y: actualEy - actualPy };
+      
+      const angleHelioPS = Math.atan2(vecHelioPS.y, vecHelioPS.x);
+      const angleHelioPE = Math.atan2(vecHelioPE.y, vecHelioPE.x);
+      const helioPhaseAngle = angleHelioPS - angleHelioPE;
+      const helioPhaseFraction = (1 + Math.cos(helioPhaseAngle)) / 2;
+      
+      const helioDist = Math.sqrt(vecHelioPE.x * vecHelioPE.x + vecHelioPE.y * vecHelioPE.y) / scaleHelio;
+      const baseDistHelio = 100;
+      const helioDistRatio = helioDist / baseDistHelio;
+
+      // 2) 지구 중심설 위상 연산:
+      const localGP = { x: gpx - geoCenter.x, y: gpy - geoCenter.y };
+      const localGS = { x: gSunX - geoCenter.x, y: gSunY - geoCenter.y };
+
+      const vecGeoPS = { x: localGS.x - localGP.x, y: localGS.y - localGP.y };
+      const vecGeoPE = { x: -localGP.x, y: -localGP.y };
+
+      const angleGeoPS = Math.atan2(vecGeoPS.y, vecGeoPS.x);
+      const angleGeoPE = Math.atan2(vecGeoPE.y, vecGeoPE.x);
+      const geoPhaseAngle = angleGeoPS - angleGeoPE;
+      const geoPhaseFraction = (1 + Math.cos(geoPhaseAngle)) / 2;
+
+      const geoDist = Math.sqrt(vecGeoPE.x * vecGeoPE.x + vecGeoPE.y * vecGeoPE.y) / scaleGeo;
+      const baseDistGeo = 100;
+      const geoDistRatio = geoDist / baseDistGeo;
+
+      // 실시간 위상 캔버스 렌더링
+      drawPlanetPhase(canvasPhaseHelio, ctxPhaseHelio, helioPhaseAngle, p.color, helioDistRatio);
+      drawPlanetPhase(canvasPhaseGeo, ctxPhaseGeo, geoPhaseAngle, p.color, geoDistRatio);
+
+      // 실시간 통계 텍스트 업데이트
+      phaseTextHelio.innerText = `${getPhaseName(helioPhaseFraction)} (${(helioPhaseFraction * 100).toFixed(0)}% 빛남)`;
+      distTextHelio.innerText = `겉보기 지름 비율: ${(1 / (helioDistRatio || 1)).toFixed(2)}x`;
+
+      phaseTextGeo.innerText = `${getPhaseName(geoPhaseFraction)} (${(geoPhaseFraction * 100).toFixed(0)}% 빛남)`;
+      distTextGeo.innerText = `겉보기 지름 비율: ${(1 / (geoDistRatio || 1)).toFixed(2)}x`;
+
+      requestAnimationFrame(animate);
+    }
+
+    // 우주 배경 가상 스타필드 렌더링 함수
+    function drawStarfield(ctx, w, h) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      const stars = [
+        {x: 0.1, y: 0.2}, {x: 0.3, y: 0.1}, {x: 0.8, y: 0.15}, {x: 0.9, y: 0.3},
+        {x: 0.15, y: 0.75}, {x: 0.25, y: 0.85}, {x: 0.75, y: 0.7}, {x: 0.85, y: 0.8},
+        {x: 0.5, y: 0.05}, {x: 0.95, y: 0.6}, {x: 0.05, y: 0.5}, {x: 0.45, y: 0.92}
+      ];
+      stars.forEach(s => {
+        ctx.fillRect(s.x * w, s.y * h, 1.5, 1.5);
+      });
+    }
+
+    // --- 8. 초기 스타트업 세팅 ---
+    window.onload = function() {
+      initPlanetSelectors();
+      resizeCanvases();
+      selectPlanet('venus'); // 시작 행성을 금성으로 변경하여 결정적 증거를 바로 관측하도록 유도
+      animate();
+    };
+  </script>
+</body>
+</html>

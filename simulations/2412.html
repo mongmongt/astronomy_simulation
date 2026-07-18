@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D 우주 역학 시뮬레이터: 3단 추진 자유/고정 스윙바이</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons for UI -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js 및 OrbitControls CDN 정식 연동 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            background-color: #030712;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Custom scrollbar for control panel */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body class="text-gray-100 flex flex-col md:flex-row h-screen w-screen overflow-hidden">
+
+    <!-- 좌측 사이드바: 컨트롤러 및 대시보드 -->
+    <div class="w-full md:w-96 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 flex flex-col h-[40vh] md:h-full z-10 shadow-2xl overflow-y-auto shrink-0">
+        <!-- 헤더 -->
+        <div class="p-4 border-b border-gray-800 bg-gray-950/50">
+            <h1 class="text-lg md:text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-500 flex items-center gap-2">
+                <i class="fa-solid fa-shuttle-space animate-pulse text-cyan-400"></i>
+                STAGE-3 SLINGSHOT
+            </h1>
+            <p class="text-[10px] md:text-xs text-gray-400 mt-0.5">3D 카메라 정렬 & 실시간 자동 예측 정렬</p>
+        </div>
+
+        <!-- 계측기 대시보드 -->
+        <div class="p-4 border-b border-gray-800 bg-gray-950/20 grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-gray-800/40 p-2 rounded-lg border border-gray-800">
+                <span class="text-[9px] text-gray-400 block uppercase font-bold tracking-wider">로켓 속도</span>
+                <span id="speed-val" class="text-base font-mono font-bold text-emerald-400">0.00</span> <span class="text-[9px] text-gray-500">km/s</span>
+            </div>
+            <div class="bg-gray-800/40 p-2 rounded-lg border border-gray-800">
+                <span class="text-[9px] text-gray-400 block uppercase font-bold tracking-wider">최대 속도</span>
+                <span id="max-speed-val" class="text-base font-mono font-bold text-amber-400">0.00</span> <span class="text-[9px] text-gray-500">km/s</span>
+            </div>
+            <div class="bg-gray-800/40 p-2 rounded-lg border border-gray-800">
+                <span class="text-[9px] text-gray-400 block uppercase font-bold tracking-wider">지구-로켓 거리</span>
+                <span id="dist-earth-val" class="text-sm font-mono font-bold text-blue-400">0.00</span> <span class="text-[9px] text-gray-500">k-km</span>
+            </div>
+            <div class="bg-gray-800/40 p-2 rounded-lg border border-gray-800">
+                <span class="text-[9px] text-gray-400 block uppercase font-bold tracking-wider">달-로켓 거리</span>
+                <span id="dist-moon-val" class="text-sm font-mono font-bold text-gray-300">0.00</span> <span class="text-[9px] text-gray-500">k-km</span>
+            </div>
+        </div>
+
+        <!-- 시뮬레이션 제어 컨트롤 패널 -->
+        <div class="p-4 flex-1 space-y-4">
+            <!-- 3단 추진 통제 센터 -->
+            <div class="bg-gray-950/60 p-3 rounded-xl border border-cyan-500/30 shadow-inner space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-cyan-500 animate-ping inline-block"></span>
+                        LAUNCH & STAGE STATUS
+                    </span>
+                    <span id="status-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">READY TO LAUNCH</span>
+                </div>
+
+                <!-- 자동/수동 모드 토글 전환기 -->
+                <div class="bg-gray-900/80 p-2 rounded-lg border border-gray-800 flex items-center justify-between">
+                    <span class="text-xs font-bold text-gray-300 flex items-center gap-1">
+                        <i class="fa-solid fa-gears text-cyan-400"></i> 추진 제어 모드
+                    </span>
+                    <div class="flex bg-gray-950 p-0.5 rounded-md border border-gray-800 text-[10px] font-bold">
+                        <button id="mode-manual-btn" onclick="setThrustMode('manual')" class="px-2.5 py-1 rounded bg-indigo-600 text-white transition-all">수동</button>
+                        <button id="mode-auto-btn" onclick="setThrustMode('auto')" class="px-2.5 py-1 rounded text-gray-400 hover:text-white transition-all">자동</button>
+                    </div>
+                </div>
+
+                <!-- Z-축 고정 ON/OFF 토글 버튼 -->
+                <div class="bg-gray-900/80 p-2 rounded-lg border border-gray-800 flex items-center justify-between">
+                    <span class="text-xs font-bold text-gray-300 flex items-center gap-1">
+                        <i class="fa-solid fa-lock text-cyan-400 animate-pulse"></i> Z축 평면 시야 고정
+                    </span>
+                    <div class="flex bg-gray-950 p-0.5 rounded-md border border-gray-800 text-[10px] font-bold">
+                        <button id="zlock-off-btn" onclick="setZLock(false)" class="px-2.5 py-1 rounded text-gray-400 hover:text-white transition-all">OFF (3D)</button>
+                        <button id="zlock-on-btn" onclick="setZLock(true)" class="px-2.5 py-1 rounded bg-indigo-600 text-white transition-all">ON (2D)</button>
+                    </div>
+                </div>
+
+                <!-- 발사 상태에 따른 추진 버튼의 동적 레이아웃 -->
+                <div class="space-y-2">
+                    <button id="main-launch-btn" onclick="launchRocket()" class="w-full py-3 px-4 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-orange-900/30 text-sm tracking-wider uppercase border border-orange-400/30 active:scale-95">
+                        <i class="fa-solid fa-fire-flame-curved text-lg animate-bounce"></i> 지구 초기 점화 발사 (STAGE 1)
+                    </button>
+                    
+                    <!-- 2단, 3단 수동 분리/가속 추진 트리거 -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-stage2" onclick="activateBooster(2)" class="py-2.5 px-2 bg-gray-800 border border-gray-700 text-gray-500 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-not-allowed" disabled>
+                            <i class="fa-solid fa-angles-up"></i> 2단 엔진 점화
+                        </button>
+                        <button id="btn-stage3" onclick="activateBooster(3)" class="py-2.5 px-2 bg-gray-800 border border-gray-700 text-gray-500 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-not-allowed" disabled>
+                            <i class="fa-solid fa-rocket"></i> 3단 탐사선 분리
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 부스터 스테이지 수동 연료 바 -->
+                <div class="space-y-1.5 pt-1 text-[11px] text-gray-400">
+                    <div class="flex justify-between font-mono">
+                        <span>STAGE 2 연료</span>
+                        <span id="fuel-stage2">100%</span>
+                    </div>
+                    <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                        <div id="bar-stage2" class="bg-cyan-500 h-full w-full transition-all duration-150"></div>
+                    </div>
+                    <div class="flex justify-between font-mono mt-1">
+                        <span>STAGE 3 연료</span>
+                        <span id="fuel-stage3">100%</span>
+                    </div>
+                    <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                        <div id="bar-stage3" class="bg-amber-500 h-full w-full transition-all duration-150"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 시뮬레이션 속도(시간 흐름 배속) 슬라이더 -->
+            <div class="bg-gray-950/40 p-3 rounded-xl border border-gray-800 space-y-2">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i> 시간 흐름 배속
+                    </span>
+                    <span id="sim-speed-text" class="font-mono text-cyan-400 font-bold">1.00x (보통)</span>
+                </div>
+                <input type="range" id="sim-speed" min="0.1" max="2.0" step="0.1" value="1.0" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                <div class="flex justify-between text-[9px] text-gray-500 font-mono">
+                    <span>0.1x (슬로우)</span>
+                    <span>1.0x (보통)</span>
+                    <span>2.0x (빠르게)</span>
+                </div>
+            </div>
+
+            <!-- 시나리오 프리셋 -->
+            <div>
+                <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">3D 시나리오 프리셋</label>
+                <div class="grid grid-cols-2 gap-1.5 text-xs">
+                    <button id="btn-preset-accelerate" onclick="loadPreset('accelerate')" class="preset-btn px-2 py-1.5 bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 rounded hover:bg-indigo-600/40 transition font-medium flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-angles-up"></i> 3D 입체 가속
+                    </button>
+                    <button id="btn-preset-decelerate" onclick="loadPreset('decelerate')" class="preset-btn px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded hover:bg-gray-700 transition font-medium flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-angles-down"></i> 3D 입체 감속
+                    </button>
+                    <button id="btn-preset-capture" onclick="loadPreset('capture')" class="preset-btn px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded hover:bg-gray-700 transition font-medium flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-circle-notch"></i> 달 중력 포획
+                    </button>
+                    <button id="btn-preset-crash" onclick="loadPreset('crash')" class="preset-btn px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded hover:bg-gray-700 transition font-medium flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-burst"></i> 달 충돌 궤도
+                    </button>
+                </div>
+            </div>
+
+            <!-- 미세 조정 컨트롤 -->
+            <div class="space-y-3 pt-2 border-t border-gray-800 text-xs text-gray-300">
+                <div class="flex justify-between items-center pt-2">
+                    <span class="font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                        1단 엔진 출력 (V_launch) <i class="fa-solid fa-circle-info text-cyan-400 cursor-help" title="70 km/s 내외가 최적의 스윙바이 궤도 조건입니다"></i>
+                    </span>
+                    <span id="initial-v-text" class="font-mono text-cyan-400">70.00</span>
+                </div>
+                <input type="range" id="initial-v" min="40" max="100" step="0.5" value="70" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                <div class="flex justify-between text-[9px] text-gray-500 font-mono">
+                    <span>최소 출력 (40)</span>
+                    <span class="text-cyan-400 font-bold">최적값 (70)</span>
+                    <span>최대 출력 (100)</span>
+                </div>
+
+                <div class="flex justify-between items-center mt-2">
+                    <span class="font-semibold text-gray-400 uppercase tracking-wider">발사 각도 (위도 θ)</span>
+                    <span id="initial-pitch-text" class="font-mono text-cyan-400">0.0°</span>
+                </div>
+                <input type="range" id="initial-pitch" min="-90" max="90" step="0.5" value="0" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+
+                <div class="flex justify-between items-center">
+                    <span class="font-semibold text-gray-400 uppercase tracking-wider">발사 방향 (경도 φ)</span>
+                    <span id="initial-yaw-text" class="font-mono text-cyan-400">-50.0°</span>
+                </div>
+                <input type="range" id="initial-yaw" min="-180" max="180" step="0.5" value="-50" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                
+                <div class="flex justify-between items-center">
+                    <span class="font-semibold text-gray-400 uppercase tracking-wider">달 질량 (M_moon)</span>
+                    <span id="moon-mass-text" class="font-mono text-cyan-400">40.0</span>
+                </div>
+                <input type="range" id="moon-mass" min="10" max="150" step="1" value="40" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <!-- 시뮬레이션 제어 버튼 -->
+            <div class="pt-3 border-t border-gray-800 flex flex-col gap-2">
+                <div class="flex gap-2">
+                    <button id="play-pause-btn" onclick="togglePause()" class="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 text-xs">
+                        <i id="play-pause-icon" class="fa-solid fa-pause"></i> 일시정지
+                    </button>
+                    <button onclick="resetSimulation()" class="py-2 px-3 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-bold transition flex items-center justify-center gap-2 text-xs">
+                        <i class="fa-solid fa-arrow-rotate-right"></i> 발사대 정렬 리셋
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 설명 및 범례 -->
+        <div class="p-4 bg-gray-950/60 text-[10px] md:text-xs text-gray-400 space-y-1 border-t border-gray-800 mt-auto">
+            <h3 class="font-semibold text-gray-300">💡 3D 탑다운 샌드박스</h3>
+            <p>1. **평면 시야 고정(ON)**: 화면 회전이 잠기고 탑다운 형태의 패닝/배율 계측 조작이 가동됩니다.</p>
+            <p>2. **3D 자유 시동(OFF)**: 우주 전체를 드래그하여 다각도 입체 궤도를 회전 관측할 수 있습니다.</p>
+            <div class="flex gap-4 pt-1 font-semibold">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>지구</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-400 inline-block"></span>달</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500 inline-block"></span>로켓</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 우측 3D 캔버스 영역 -->
+    <div class="flex-1 relative h-[60vh] md:h-full flex flex-col bg-slate-950" id="canvas-wrapper">
+        <div id="canvas-container"></div>
+        
+        <!-- 실시간 상태 오버레이 플로팅 패널 -->
+        <div class="absolute top-4 left-4 p-4 rounded-xl bg-gray-950/80 backdrop-blur-md border border-gray-800 max-w-sm pointer-events-none hidden lg:block z-20">
+            <div class="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-1">HYBRID ORBITAL CONTROLLER</div>
+            <p class="text-xs text-gray-300 leading-relaxed">
+                시간 배속이 극히 느린 상황에서도 탈출 속도가 정교하게 적용됩니다. 지도를 드래그하여 드래깅 패닝을 해보세요.
+            </p>
+        </div>
+
+        <!-- 하단 인터랙티브 안내 바 -->
+        <div class="absolute bottom-4 left-4 right-4 py-2 px-4 rounded-xl bg-gray-950/80 backdrop-blur-md border border-gray-800 flex flex-wrap gap-2 items-center justify-between text-[11px] md:text-xs text-gray-400 z-20 pointer-events-none">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-camera text-cyan-400 animate-bounce"></i>
+                <span id="interactive-hint-text">좌측의 시야 고정 스위치 조작을 통해 평면 계측과 3D 자유 각도 관찰을 자유롭게 넘나드세요!</span>
+            </div>
+            <div class="text-cyan-300 font-medium">하이브리드 시점 제어계</div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Three.js 및 렌더링 컨텍스트 선언 ---
+        let scene, camera, renderer, controls;
+        let wrapper = document.getElementById('canvas-wrapper');
+        let container = document.getElementById('canvas-container');
+
+        // 물리 상수 설정
+        const G = 1000;
+        const dt = 0.08;
+        let isPaused = false;
+        let timeMultiplier = 1.0; 
+
+        // 상태값 정의
+        const STATE_READY = 'READY';
+        const STATE_FLYING = 'FLYING';
+        let rocketState = STATE_READY;
+
+        // 3단 추진 연료 시스템 변수
+        let currentStage = 1; 
+        let fuelRemaining = { 2: 100, 3: 100 }; 
+        let autoThrustMode = false; 
+
+        // 시점 고정 변수 (기본 ON)
+        let isZLocked = true; 
+
+        // 물리 상태 변수
+        let bodies = [];
+        let earth, moon, rocket;
+        let maxRocketSpeed = 0;
+        let escapeFrameCount = 0;
+
+        // 자동 분사 계산을 위한 상태 기록 변수들
+        let lastMoonDist = 99999;
+        let isApproachingMoon = false;
+
+        // 3D 비주얼 메쉬 및 라인
+        let earthMesh, moonMesh, rocketMesh;
+        let moonOrbitLine, aimGuideLine;
+        let trajectoryPath = [];
+        let trajectoryLine;
+
+        // 입체 추진 화염 파티클 시스템
+        let thrustParticles = [];
+        const particleCount = 40;
+
+        // UI 캐싱
+        const vSlider = document.getElementById('initial-v');
+        const vText = document.getElementById('initial-v-text');
+        const pitchSlider = document.getElementById('initial-pitch');
+        const pitchText = document.getElementById('initial-pitch-text');
+        const yawSlider = document.getElementById('initial-yaw');
+        const yawText = document.getElementById('initial-yaw-text');
+        const moonMassSlider = document.getElementById('moon-mass');
+        const moonMassText = document.getElementById('moon-mass-text');
+        const speedSlider = document.getElementById('sim-speed');
+        const speedText = document.getElementById('sim-speed-text');
+
+        // 프리셋 수치 정의
+        const presets = {
+            accelerate: { v: 70.0, pitch: 0.0, yaw: -50.0, mass: 40 },
+            decelerate: { v: 66.0, pitch: 0.0, yaw: -88.0, mass: 40 },
+            capture:    { v: 63.5, pitch: 0.0, yaw: -45.0, mass: 55 },
+            crash:      { v: 61.0, pitch: 0.0, yaw: -55.0, mass: 40 }
+        };
+
+        let currentPresetKey = 'accelerate';
+        let isUserManuallyOverridingMoon = false;
+
+        // --- 2. Three.js 초기화 및 안전 영역 보증 설계 ---
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020617, 0.0005);
+
+            // [핵심 해결] 컨테이너 크기가 레이아웃 지연으로 0이 되는 것을 방어하기 위한 강력한 크기 확보
+            let width = wrapper.clientWidth;
+            let height = wrapper.clientHeight;
+            if (!width || width === 0) width = window.innerWidth - (window.innerWidth >= 768 ? 384 : 0);
+            if (!height || height === 0) height = window.innerHeight * 0.58;
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 1, 4000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x020617, 1);
+            
+            container.innerHTML = "";
+            container.appendChild(renderer.domElement);
+
+            // OrbitControls를 먼저 선언해야 카메라 up 벡터 오작동을 막을 수 있음
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 2500;
+            controls.minDistance = 50;
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
+            dirLight.position.set(200, 600, 200);
+            scene.add(dirLight);
+
+            const ambientLight = new THREE.AmbientLight(0x334155, 0.8);
+            scene.add(ambientLight);
+
+            createStarfield();
+
+            const particleGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+            for(let i=0; i < particleCount; i++) {
+                const particleMat = new THREE.MeshBasicMaterial({
+                    color: 0xff5500,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const mesh = new THREE.Mesh(particleGeo, particleMat);
+                mesh.visible = false;
+                scene.add(mesh);
+                thrustParticles.push({ mesh: mesh, life: 0, maxLife: 30, vx: 0, vy: 0, vz: 0 });
+            }
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createStarfield() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsCount = 1500;
+            const starPositions = new Float32Array(starsCount * 3);
+
+            for (let i = 0; i < starsCount * 3; i++) {
+                starPositions[i] = (Math.random() - 0.5) * 3000;
+            }
+
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 1.2,
+                transparent: true,
+                opacity: 0.8
+            });
+            const starfield = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(starfield);
+        }
+
+        class Body3D {
+            constructor(name, x, y, z, vx, vy, vz, mass, radius, color, isFixed = false) {
+                this.name = name;
+                this.x = x; this.y = y; this.z = z;
+                this.vx = vx; this.vy = vy; this.vz = vz;
+                this.mass = mass;
+                this.radius = radius;
+                this.color = color;
+                this.isFixed = isFixed;
+            }
+        }
+
+        function resetSimulation() {
+            maxRocketSpeed = 0;
+            rocketState = STATE_READY;
+            escapeFrameCount = 0;
+            
+            currentStage = 1;
+            fuelRemaining[2] = 100;
+            fuelRemaining[3] = 100;
+            lastMoonDist = 99999;
+            isApproachingMoon = false;
+            updateStatusUI();
+
+            if (earthMesh) scene.remove(earthMesh);
+            if (moonMesh) scene.remove(moonMesh);
+            if (rocketMesh) scene.remove(rocketMesh);
+            if (moonOrbitLine) scene.remove(moonOrbitLine);
+            if (aimGuideLine) scene.remove(aimGuideLine);
+            if (trajectoryLine) scene.remove(trajectoryLine);
+
+            trajectoryPath = [];
+
+            const earthRadius = 24;
+            earth = new Body3D("Earth", 0, 0, 0, 0, 0, 0, 350, earthRadius, 0x3b82f6, true);
+
+            const earthGeo = new THREE.SphereGeometry(earthRadius, 32, 32);
+            const earthMat = new THREE.MeshPhongMaterial({
+                color: 0x2563eb,
+                emissive: 0x1d4ed8,
+                specular: 0x93c5fd,
+                shininess: 40
+            });
+            earthMesh = new THREE.Mesh(earthGeo, earthMat);
+            scene.add(earthMesh);
+
+            const moonDist = 420;
+            const moonSpeed = Math.sqrt(G * earth.mass / moonDist); 
+            const moonMass = parseFloat(moonMassSlider.value);
+            const moonRadius = 10;
+            
+            // 공전각 수동 설정을 없애고, 입력 발사 조건에 완벽히 락온 대응하는 각도로 자동 배치
+            let targetMoonAngleRad = calculateOptimalMoonLaunchAngle(moonDist, moonSpeed);
+            
+            moon = new Body3D("Moon", moonDist * Math.cos(targetMoonAngleRad), 0, moonDist * Math.sin(targetMoonAngleRad), 0, 0, 0, moonMass, moonRadius, 0xd1d5db);
+            moon.vx = -moonSpeed * Math.sin(targetMoonAngleRad);
+            moon.vz = moonSpeed * Math.cos(targetMoonAngleRad);
+
+            const moonGeo = new THREE.SphereGeometry(moonRadius, 24, 24);
+            const moonMat = new THREE.MeshPhongMaterial({
+                color: 0x9ca3af,
+                emissive: 0x374151,
+                shininess: 10
+            });
+            moonMesh = new THREE.Mesh(moonGeo, moonMat);
+            scene.add(moonMesh);
+
+            const circleGeo = new THREE.BufferGeometry();
+            const points = [];
+            for (let i = 0; i <= 64; i++) {
+                const theta = (i / 64) * Math.PI * 2;
+                points.push(new THREE.Vector3(Math.cos(theta) * moonDist, 0, Math.sin(theta) * moonDist));
+            }
+            circleGeo.setFromPoints(points);
+            const circleMat = new THREE.LineBasicMaterial({ color: 0x4b5563, transparent: true, opacity: 0.25 });
+            moonOrbitLine = new THREE.Line(circleGeo, circleMat);
+            scene.add(moonOrbitLine);
+
+            recreateRocketMesh();
+
+            const trajGeo = new THREE.BufferGeometry();
+            const trajMat = new THREE.LineBasicMaterial({ color: 0xf97316, linewidth: 2 });
+            trajectoryLine = new THREE.Line(trajGeo, trajMat);
+            scene.add(trajectoryLine);
+
+            bodies = [earth, moon, rocket];
+
+            updateAimGuide();
+        }
+
+        function calculateOptimalMoonLaunchAngle(moonDist, moonSpeed) {
+            const rocketV = parseFloat(vSlider.value);
+            const pitchRad = parseFloat(pitchSlider.value) * Math.PI / 180;
+            const yawRad = parseFloat(yawSlider.value) * Math.PI / 180;
+
+            const launchR = earth.radius + 1.5;
+            
+            let rx = launchR * Math.cos(pitchRad) * Math.cos(yawRad);
+            let ry = launchR * Math.sin(pitchRad);
+            let rz = launchR * Math.cos(pitchRad) * Math.sin(yawRad);
+
+            let r_vx = rocketV * Math.cos(pitchRad) * Math.cos(yawRad);
+            let r_vy = rocketV * Math.sin(pitchRad);
+            let r_vz = rocketV * Math.cos(pitchRad) * Math.sin(yawRad);
+
+            let virtualSteps = 0;
+            const maxVirtualSteps = 1200;
+
+            for (let i = 0; i < maxVirtualSteps; i++) {
+                const distSq = rx*rx + ry*ry + rz*rz;
+                const dist = Math.sqrt(distSq);
+                if (dist >= moonDist) { virtualSteps = i; break; }
+                if (i > 15 && dist < earth.radius + 2) break; 
+
+                const forceMag = (G * earth.mass) / distSq;
+                r_vx += -forceMag * (rx / dist) * dt;
+                r_vy += -forceMag * (ry / dist) * dt;
+                r_vz += -forceMag * (rz / dist) * dt;
+                rx += r_vx * dt;
+                ry += r_vy * dt;
+                rz += r_vz * dt;
+            }
+
+            const finalRocketAngle = Math.atan2(rz, rx);
+            const moonDisplacedAngle = (moonSpeed / moonDist) * (virtualSteps * dt);
+
+            let offsetAngle = 0;
+            if (currentPresetKey === 'accelerate') offsetAngle = 0.28; 
+            else if (currentPresetKey === 'decelerate') offsetAngle = -0.32;
+            else if (currentPresetKey === 'capture') offsetAngle = 0.08;
+
+            return finalRocketAngle - moonDisplacedAngle + offsetAngle;
+        }
+
+        function recreateRocketMesh() {
+            if (rocketMesh) scene.remove(rocketMesh);
+            const pitchRad = parseFloat(pitchSlider.value) * Math.PI / 180;
+            const yawRad = parseFloat(yawSlider.value) * Math.PI / 180;
+            const launchR = earth.radius + 1.5; 
+            const rx = launchR * Math.cos(pitchRad) * Math.cos(yawRad);
+            const ry = launchR * Math.sin(pitchRad);
+            const rz = launchR * Math.cos(pitchRad) * Math.sin(yawRad);
+
+            if (!rocket) rocket = new Body3D("Rocket", rx, ry, rz, 0, 0, 0, 0.001, 3.5, 0xf97316);
+
+            rocketMesh = new THREE.Group();
+            const tipGeo = new THREE.ConeGeometry(2.5, 5, 8);
+            tipGeo.rotateX(Math.PI / 2);
+            tipGeo.translate(0, 0, 4);
+            rocketMesh.add(new THREE.Mesh(tipGeo, new THREE.MeshPhongMaterial({ color: 0xef4444, shininess: 30 })));
+
+            if (currentStage <= 2) {
+                const stage2Geo = new THREE.CylinderGeometry(2.5, 2.5, 5, 8);
+                stage2Geo.rotateX(Math.PI / 2);
+                stage2Geo.translate(0, 0, -1);
+                rocketMesh.add(new THREE.Mesh(stage2Geo, new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 20 })));
+            }
+            if (currentStage === 1) {
+                const stage1Geo = new THREE.CylinderGeometry(2.8, 2.8, 6, 8);
+                stage1Geo.rotateX(Math.PI / 2);
+                stage1Geo.translate(0, 0, -6.5);
+                rocketMesh.add(new THREE.Mesh(stage1Geo, new THREE.MeshPhongMaterial({ color: 0x3b82f6, shininess: 20 })));
+            }
+
+            rocketMesh.position.set(rocket.x, rocket.y, rocket.z);
+            scene.add(rocketMesh);
+        }
+
+        function resetToReady() {
+            rocketState = STATE_READY;
+            currentStage = 1;
+            fuelRemaining[2] = 100;
+            fuelRemaining[3] = 100;
+            lastMoonDist = 99999;
+            isApproachingMoon = false;
+            escapeFrameCount = 0;
+            updateStatusUI();
+            maxRocketSpeed = 0;
+
+            const pitchRad = parseFloat(pitchSlider.value) * Math.PI / 180;
+            const yawRad = parseFloat(yawSlider.value) * Math.PI / 180;
+            const launchR = earth.radius + 1.5;
+            rocket.x = launchR * Math.cos(pitchRad) * Math.cos(yawRad);
+            rocket.y = launchR * Math.sin(pitchRad);
+            rocket.z = launchR * Math.cos(pitchRad) * Math.sin(yawRad);
+            rocket.vx = 0; rocket.vy = 0; rocket.vz = 0;
+
+            const moonDist = 420;
+            const moonSpeed = Math.sqrt(G * earth.mass / moonDist);
+            
+            // 달 공전각 강제 자동 예측 모드
+            let targetMoonAngleRad = calculateOptimalMoonLaunchAngle(moonDist, moonSpeed);
+            
+            moon.x = moonDist * Math.cos(targetMoonAngleRad);
+            moon.z = moonDist * Math.sin(targetMoonAngleRad);
+            moon.vx = -moonSpeed * Math.sin(targetMoonAngleRad);
+            moon.vz = moonSpeed * Math.cos(targetMoonAngleRad);
+
+            recreateRocketMesh();
+            trajectoryPath = [];
+            trajectoryLine.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([]), 3));
+            updateAimGuide();
+        }
+
+        function updateAimGuide() {
+            if (aimGuideLine) scene.remove(aimGuideLine);
+            if (rocketState !== STATE_READY) return;
+
+            const pitchRad = parseFloat(pitchSlider.value) * Math.PI / 180;
+            const yawRad = parseFloat(yawSlider.value) * Math.PI / 180;
+            const guideLength = 80;
+
+            const dirX = Math.cos(pitchRad) * Math.cos(yawRad);
+            const dirY = Math.sin(pitchRad);
+            const dirZ = Math.cos(pitchRad) * Math.sin(yawRad);
+
+            const guideGeo = new THREE.BufferGeometry();
+            guideGeo.setFromPoints([
+                new THREE.Vector3(rocket.x, rocket.y, rocket.z),
+                new THREE.Vector3(rocket.x + dirX * guideLength, rocket.y + dirY * guideLength, rocket.z + dirZ * guideLength)
+            ]);
+
+            aimGuideLine = new THREE.Line(guideGeo, new THREE.LineDashedMaterial({ color: 0x22d3ee, dashSize: 4, gapSize: 4 }));
+            aimGuideLine.computeLineDistances(); 
+            scene.add(aimGuideLine);
+        }
+
+        function launchRocket() {
+            if (rocketState === STATE_FLYING) return;
+            rocketState = STATE_FLYING;
+            currentStage = 1;
+            lastMoonDist = 99999;
+            isApproachingMoon = false;
+            escapeFrameCount = 0; 
+            updateStatusUI();
+
+            if (aimGuideLine) scene.remove(aimGuideLine);
+
+            const rocketV = parseFloat(vSlider.value);
+            const pitchRad = parseFloat(pitchSlider.value) * Math.PI / 180;
+            const yawRad = parseFloat(yawSlider.value) * Math.PI / 180;
+
+            rocket.vx = rocketV * Math.cos(pitchRad) * Math.cos(yawRad);
+            rocket.vy = rocketV * Math.sin(pitchRad);
+            rocket.vz = rocketV * Math.cos(pitchRad) * Math.sin(yawRad);
+
+            createThrustFlameEffect(rocket.x, rocket.y, rocket.z, -rocket.vx * 0.1, -rocket.vy * 0.1, -rocket.vz * 0.1, 0xffaa00);
+        }
+
+        function activateBooster(stageNum) {
+            if (rocketState !== STATE_FLYING) return;
+            if (currentStage >= stageNum) return; 
+
+            currentStage = stageNum;
+            recreateRocketMesh(); 
+            updateStatusUI();
+
+            const currentSpeed = Math.sqrt(rocket.vx * rocket.vx + rocket.vy * rocket.vy + rocket.vz * rocket.vz);
+            if (currentSpeed < 1) return;
+
+            const dirX = rocket.vx / currentSpeed;
+            const dirY = rocket.vy / currentSpeed;
+            const dirZ = rocket.vz / currentSpeed;
+
+            const deltaV = stageNum === 2 ? 8.5 : 12.0; 
+
+            rocket.vx += dirX * deltaV;
+            rocket.vy += dirY * deltaV;
+            rocket.vz += dirZ * deltaV;
+
+            fuelRemaining[stageNum] = 0;
+            const bar = document.getElementById(`bar-stage${stageNum}`);
+            const text = document.getElementById(`fuel-stage${stageNum}`);
+            if (bar && text) {
+                bar.style.width = '0%';
+                text.innerText = '0% (소모완료)';
+            }
+            createThrustFlameEffect(rocket.x, rocket.y, rocket.z, -dirX * 5, -dirY * 5, -dirZ * 5, stageNum === 2 ? 0x00ffff : 0xffaa00);
+        }
+
+        function setThrustMode(mode) {
+            autoThrustMode = (mode === 'auto');
+            document.getElementById('mode-auto-btn').className = autoThrustMode ? "px-2.5 py-1 rounded bg-indigo-600 text-white transition-all" : "px-2.5 py-1 rounded text-gray-400 hover:text-white transition-all";
+            document.getElementById('mode-manual-btn').className = !autoThrustMode ? "px-2.5 py-1 rounded bg-indigo-600 text-white transition-all" : "px-2.5 py-1 rounded text-gray-400 hover:text-white transition-all";
+            updateStatusUI();
+        }
+
+        // [신규 기능 추가]: 수치 텍스트 실시간 갱신 함수 정의 복구 완료 (해결 완료)
+        function updateSliderTexts() {
+            if (vText && vSlider) vText.innerText = parseFloat(vSlider.value).toFixed(2);
+            if (pitchText && pitchSlider) pitchText.innerText = parseFloat(pitchSlider.value).toFixed(1) + '°';
+            if (yawText && yawSlider) yawText.innerText = parseFloat(yawSlider.value).toFixed(1) + '°';
+            if (moonMassText && moonMassSlider) moonMassText.innerText = parseFloat(moonMassSlider.value).toFixed(1);
+        }
+
+        // [복구 완료]: 누락되었던 전반적인 비행 상태 제어 인터페이스 UI 동적 정형화 함수
+        function updateStatusUI() {
+            const statusBadge = document.getElementById('status-badge');
+            const mainLaunchBtn = document.getElementById('main-launch-btn');
+            const btnS2 = document.getElementById('btn-stage2');
+            const btnS3 = document.getElementById('btn-stage3');
+            const barS2 = document.getElementById('bar-stage2');
+            const fuelS2 = document.getElementById('fuel-stage2');
+            const barS3 = document.getElementById('bar-stage3');
+            const fuelS3 = document.getElementById('fuel-stage3');
+
+            if (!statusBadge || !mainLaunchBtn || !btnS2 || !btnS3 || !barS2 || !fuelS2 || !barS3 || !fuelS3) return;
+
+            if (rocketState === STATE_READY) {
+                statusBadge.innerText = "READY TO LAUNCH";
+                statusBadge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold";
+                mainLaunchBtn.className = "w-full py-3 px-4 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-orange-900/30 text-sm tracking-wider uppercase border border-orange-400/30 active:scale-95";
+                mainLaunchBtn.disabled = false;
+                btnS2.className = "py-2.5 px-2 bg-gray-800 border border-gray-700 text-gray-500 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-not-allowed";
+                btnS2.disabled = true;
+                btnS3.className = "py-2.5 px-2 bg-gray-800 border border-gray-700 text-gray-500 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-not-allowed";
+                btnS3.disabled = true;
+                barS2.style.width = '100%'; fuelS2.innerText = '100% (대기)';
+                barS3.style.width = '100%'; fuelS3.innerText = '100% (대기)';
+            } else {
+                statusBadge.innerText = `STAGE ${currentStage} FLIGHT` + (autoThrustMode ? " (AUTO)" : "");
+                statusBadge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold";
+                mainLaunchBtn.className = "w-full py-3 px-4 bg-gray-800 text-gray-500 rounded-lg font-extrabold transition-all duration-300 flex items-center justify-center gap-2 text-sm tracking-wider uppercase border border-gray-700/30 cursor-not-allowed";
+                mainLaunchBtn.disabled = true;
+
+                if (autoThrustMode) {
+                    btnS2.className = "py-2.5 px-2 bg-gray-800 border border-gray-700 text-gray-600 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-not-allowed";
+                    btnS2.disabled = true;
+                    btnS3.className = "py-2.5 px-2 bg-gray-800 border border-gray-700 text-gray-600 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-not-allowed";
+                    btnS3.disabled = true;
+                } else {
+                    if (currentStage < 2) {
+                        btnS2.className = "py-2.5 px-2 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white hover:from-cyan-500 hover:to-cyan-600 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-lg shadow-cyan-900/20";
+                        btnS2.disabled = false;
+                    } else {
+                        btnS2.className = "py-2.5 px-2 bg-gray-800 border border-gray-700 text-gray-600 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-not-allowed";
+                        btnS2.disabled = true;
+                    }
+                    if (currentStage === 2) {
+                        btnS3.className = "py-2.5 px-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-400 hover:to-orange-500 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-lg shadow-amber-900/20";
+                        btnS3.disabled = false;
+                    } else {
+                        btnS3.className = "py-2.5 px-2 bg-gray-800 border border-gray-700 text-gray-600 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-not-allowed";
+                        btnS3.disabled = true;
+                    }
+                }
+            }
+        }
+
+        // [복구 완료]: 누락되었던 2D/3D 일시정지 제어 함수 수선 정의
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('play-pause-btn');
+            if (!btn) return;
+            if (isPaused) {
+                btn.classList.replace('bg-emerald-600', 'bg-amber-600');
+                btn.classList.replace('hover:bg-emerald-500', 'hover:bg-amber-500');
+                btn.innerHTML = '<i id="play-pause-icon" class="fa-solid fa-play"></i> 재생';
+            } else {
+                btn.classList.replace('bg-amber-600', 'bg-emerald-600');
+                btn.classList.replace('hover:bg-amber-500', 'hover:bg-emerald-500');
+                btn.innerHTML = '<i id="play-pause-icon" class="fa-solid fa-pause"></i> 일시정지';
+            }
+        }
+
+        // 프리셋 로딩 함수
+        function loadPreset(name) {
+            currentPresetKey = name; 
+            isUserManuallyOverridingMoon = false;
+            
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600/20', 'border-indigo-500/30', 'text-indigo-300');
+                btn.classList.add('bg-gray-800', 'border-gray-700', 'text-gray-300');
+            });
+            
+            const activeBtn = document.getElementById(`btn-preset-${name}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-indigo-600/20', 'border-indigo-500/30', 'text-indigo-300');
+                activeBtn.classList.remove('bg-gray-800', 'border-gray-700', 'text-gray-300');
+            }
+            
+            const p = presets[name];
+            vSlider.value = p.v; 
+            pitchSlider.value = p.pitch; 
+            yawSlider.value = p.yaw; 
+            moonMassSlider.value = p.mass;
+            
+            updateSliderTexts();
+            resetSimulation();
+        }
+
+        // Gimbal Lock 및 NaN 무반응 버그 방지 설계
+        function setZLock(enable) {
+            isZLocked = enable;
+            const offBtn = document.getElementById('zlock-off-btn');
+            const onBtn = document.getElementById('zlock-on-btn');
+
+            if (isZLocked) {
+                onBtn.className = "px-2.5 py-1 rounded bg-indigo-600 text-white transition-all";
+                offBtn.className = "px-2.5 py-1 rounded text-gray-400 hover:text-white transition-all";
+
+                controls.enableRotate = false; 
+                camera.up.set(0, 1, 0); // 항상 Y-up 표준 유지 (매우 중요)
+                camera.position.set(0, 800, 0.001); // 0.001 오프셋으로 수직 특이점 완벽 회피
+                controls.target.set(0, 0, 0);
+            } else {
+                offBtn.className = "px-2.5 py-1 rounded bg-indigo-600 text-white transition-all";
+                onBtn.className = "px-2.5 py-1 rounded text-gray-400 hover:text-white transition-all";
+
+                controls.enableRotate = true; 
+                camera.up.set(0, 1, 0);
+                camera.position.set(0, 500, 750); 
+                controls.target.set(0, 0, 0);
+            }
+            controls.update();
+        }
+
+        function runAutoThrustLogic() {
+            if (rocketState !== STATE_FLYING || !autoThrustMode) return;
+            const dx = rocket.x - moon.x;
+            const dy = rocket.y - moon.y;
+            const dz = rocket.z - moon.z;
+            const distToMoon = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (distToMoon < 150) {
+                if (distToMoon < lastMoonDist) isApproachingMoon = true;
+                else if (isApproachingMoon) {
+                    if (currentStage === 1) activateBooster(2);
+                    else if (currentStage === 2) activateBooster(3);
+                    isApproachingMoon = false; 
+                }
+            }
+            lastMoonDist = distToMoon;
+        }
+
+        function createThrustFlameEffect(px, py, pz, baseVx, baseVy, baseVz, color) {
+            let activeIdx = 0;
+            for(let i=0; i < particleCount; i++) {
+                const p = thrustParticles[i];
+                if (p.life <= 0) {
+                    p.mesh.position.set(px, py, pz);
+                    p.mesh.material.color.setHex(color);
+                    p.mesh.visible = true;
+                    p.life = p.maxLife;
+                    p.vx = baseVx + (Math.random() - 0.5) * 3;
+                    p.vy = baseVy + (Math.random() - 0.5) * 3;
+                    p.vz = baseVz + (Math.random() - 0.5) * 3;
+                    activeIdx++;
+                    if(activeIdx > 15) break; 
+                }
+            }
+        }
+
+        function updateParticles() {
+            for(let i=0; i < particleCount; i++) {
+                const p = thrustParticles[i];
+                if (p.life > 0) {
+                    p.mesh.position.x += p.vx * timeMultiplier; 
+                    p.mesh.position.y += p.vy * timeMultiplier;
+                    p.mesh.position.z += p.vz * timeMultiplier;
+                    p.life -= 1 * timeMultiplier; 
+                    p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
+                    p.mesh.scale.setScalar(Math.max(0.1, p.life / p.maxLife * 1.5));
+                    if (p.life <= 0) p.mesh.visible = false;
+                }
+            }
+        }
+
+        function computeAccelerations(states) {
+            const accels = new Map();
+            for (const b of bodies) accels.set(b, { ax: 0, ay: 0, az: 0 });
+
+            for (let i = 0; i < bodies.length; i++) {
+                const b1 = bodies[i];
+                if (b1.isFixed) continue;
+                const state1 = states.get(b1);
+                let ax = 0, ay = 0, az = 0;
+
+                for (let j = 0; j < bodies.length; j++) {
+                    if (i === j) continue;
+                    const b2 = bodies[j];
+                    const state2 = states.get(b2);
+
+                    const dx = state2.x - state1.x;
+                    const dy = state2.y - state1.y;
+                    const dz = state2.z - state1.z;
+                    const distSq = dx * dx + dy * dy + dz * dz;
+                    const dist = Math.sqrt(distSq);
+                    const minDist = b1.radius + b2.radius;
+
+                    if (b1.name === 'Rocket' && b2.name === 'Earth') {
+                        if (escapeFrameCount < 18) continue;
+                        if (dist < minDist + 2) continue;
+                    }
+                    if (dist < minDist * 0.4) continue;
+
+                    const forceMag = (G * b2.mass) / distSq;
+                    ax += forceMag * (dx / dist);
+                    ay += forceMag * (dy / dist);
+                    az += forceMag * (dz / dist);
+                }
+                accels.set(b1, { ax, ay, az });
+            }
+            return accels;
+        }
+
+        function stepRK4(stepSize) {
+            const states = new Map();
+            for (const b of bodies) states.set(b, { x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz });
+
+            const accels1 = computeAccelerations(states);
+            const k1 = new Map();
+            for (const b of bodies) {
+                const s = states.get(b);
+                const a = accels1.get(b);
+                k1.set(b, { dx: s.vx, dy: s.vy, dz: s.vz, dvx: a.ax, dvy: a.ay, dvz: a.az });
+            }
+
+            const states2 = new Map();
+            for (const b of bodies) {
+                const s = states.get(b);
+                const k = k1.get(b);
+                states2.set(b, {
+                    x: s.x + k.dx * stepSize / 2, y: s.y + k.dy * stepSize / 2, z: s.z + k.dz * stepSize / 2,
+                    vx: s.vx + k.dvx * stepSize / 2, vy: s.vy + k.dvy * stepSize / 2, vz: s.vz + k.dvz * stepSize / 2
+                });
+            }
+            const accels2 = computeAccelerations(states2);
+            const k2 = new Map();
+            for (const b of bodies) {
+                const s = states2.get(b);
+                const a = accels2.get(b);
+                k2.set(b, { dx: s.vx, dy: s.vy, dz: s.vz, dvx: a.ax, dvy: a.ay, dvz: a.az });
+            }
+
+            const states3 = new Map();
+            for (const b of bodies) {
+                const s = states.get(b);
+                const k = k2.get(b);
+                states3.set(b, {
+                    x: s.x + k.dx * stepSize / 2, y: s.y + k.dy * stepSize / 2, z: s.z + k.dz * stepSize / 2,
+                    vx: s.vx + k.dvx * stepSize / 2, vy: s.vy + k.dvy * stepSize / 2, vz: s.vz + k.dvz * stepSize / 2
+                });
+            }
+            const accels3 = computeAccelerations(states3);
+            const k3 = new Map();
+            for (const b of bodies) {
+                const s = states3.get(b);
+                const a = accels3.get(b);
+                k3.set(b, { dx: s.vx, dy: s.vy, dz: s.vz, dvx: a.ax, dvy: a.ay, dvz: a.az });
+            }
+
+            const states4 = new Map();
+            for (const b of bodies) {
+                const s = states.get(b);
+                const k = k3.get(b);
+                states4.set(b, {
+                    x: s.x + k.dx * stepSize, y: s.y + k.dy * stepSize, z: s.z + k.dz * stepSize,
+                    vx: s.vx + k.dvx * stepSize, vy: s.vy + k.dvy * stepSize, vz: s.vz + k.dvz * stepSize
+                });
+            }
+            const accels4 = computeAccelerations(states4);
+            const k4 = new Map();
+            for (const b of bodies) {
+                const s = states4.get(b);
+                const a = accels4.get(b);
+                k4.set(b, { dx: s.vx, dy: s.vy, dz: s.vz, dvx: a.ax, dvy: a.ay, dvz: a.az });
+            }
+
+            for (const b of bodies) {
+                const s = states.get(b);
+                const _k1 = k1.get(b);
+                const _k2 = k2.get(b);
+                const _k3 = k3.get(b);
+                const _k4 = k4.get(b);
+
+                if (!b.isFixed) {
+                    b.x = s.x + (stepSize / 6) * (_k1.dx + 2 * _k2.dx + 2 * _k3.dx + _k4.dx);
+                    b.y = s.y + (stepSize / 6) * (_k1.dy + 2 * _k2.dy + 2 * _k3.dy + _k4.dy);
+                    b.z = s.z + (stepSize / 6) * (_k1.dz + 2 * _k2.dz + 2 * _k3.dz + _k4.dz);
+
+                    b.vx = s.vx + (stepSize / 6) * (_k1.dvx + 2 * _k2.dvx + 2 * _k3.dvx + _k4.dvx);
+                    b.vy = s.vy + (stepSize / 6) * (_k1.dvy + 2 * _k2.dvy + 2 * _k3.dvy + _k4.dvy);
+                    b.vz = s.vz + (stepSize / 6) * (_k1.dvz + 2 * _k2.dvz + 2 * _k3.dvz + _k4.dvz);
+                } else {
+                    b.x = s.x + b.vx * stepSize;
+                    b.y = s.y + b.vy * stepSize;
+                    b.z = s.z + b.vz * stepSize;
+                }
+            }
+            if (rocketState === STATE_FLYING) escapeFrameCount++;
+        }
+
+        function checkBoundsAndReset() {
+            if (!rocket || !earth || rocketState === STATE_READY) return;
+            const margin = 1500;
+            const dxMoon = rocket.x - moon.x; const dyMoon = rocket.y - moon.y; const dzMoon = rocket.z - moon.z;
+            const distMoon = Math.sqrt(dxMoon * dxMoon + dyMoon * dyMoon + dzMoon * dzMoon);
+            const crashedOnMoon = distMoon < (rocket.radius + moon.radius);
+
+            const dxEarth = rocket.x - earth.x; const dyEarth = rocket.y - earth.y; const dzEarth = rocket.z - earth.z;
+            const distEarth = Math.sqrt(dxEarth * dxEarth + dyEarth * dyEarth + dzEarth * dzEarth);
+            const crashedOnEarth = escapeFrameCount > 30 && distEarth < (rocket.radius + earth.radius);
+
+            if (Math.abs(rocket.x) > margin || Math.abs(rocket.y) > margin || Math.abs(rocket.z) > margin || crashedOnMoon || crashedOnEarth) {
+                resetToReady();
+            }
+        }
+
+        function updateDashboard() {
+            if (!rocket || !earth || !moon) return;
+            const rocketSpeed = Math.sqrt(rocket.vx * rocket.vx + rocket.vy * rocket.vy + rocket.vz * rocket.vz);
+            if (rocketState === STATE_FLYING && rocketSpeed > maxRocketSpeed) maxRocketSpeed = rocketSpeed;
+
+            const distEarth = Math.sqrt(rocket.x * rocket.x + rocket.y * rocket.y + rocket.z * rocket.z);
+            const dxMoon = rocket.x - moon.x; const dyMoon = rocket.y - moon.y; const dzMoon = rocket.z - moon.z;
+            const distMoon = Math.sqrt(dxMoon * dxMoon + dyMoon * dyMoon + dzMoon * dzMoon);
+
+            document.getElementById('speed-val').innerText = (rocketSpeed * 1.5).toFixed(2);
+            document.getElementById('max-speed-val').innerText = (maxRocketSpeed * 1.5).toFixed(2);
+            document.getElementById('dist-earth-val').innerText = (distEarth * 4.2).toFixed(1);
+            document.getElementById('dist-moon-val').innerText = (distMoon * 4.2).toFixed(1);
+        }
+
+        function onWindowResize() {
+            if (!wrapper) return;
+            let width = wrapper.clientWidth;
+            let height = wrapper.clientHeight;
+            if (width === 0 || height === 0) return; 
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!isPaused && earth && moon && rocket) {
+                const substeps = 5;
+                const scaledDt = (dt * timeMultiplier) / substeps;
+
+                for (let step = 0; step < substeps; step++) {
+                    if (rocketState === STATE_FLYING) {
+                        stepRK4(scaledDt);
+                        runAutoThrustLogic();
+                        trajectoryPath.push(new THREE.Vector3(rocket.x, rocket.y, rocket.z));
+                        if (trajectoryPath.length > 1000) trajectoryPath.shift();
+                    }
+                }
+                checkBoundsAndReset();
+            }
+
+            updateParticles();
+
+            if (earthMesh) earthMesh.rotation.y += 0.001 * timeMultiplier;
+            if (moonMesh) {
+                moonMesh.position.set(moon.x, moon.y, moon.z);
+                moonMesh.rotation.y += 0.002 * timeMultiplier;
+            }
+            if (rocketMesh) {
+                rocketMesh.position.set(rocket.x, rocket.y, rocket.z);
+                if (rocketState === STATE_FLYING) {
+                    const dir = new THREE.Vector3(rocket.vx, rocket.vy, rocket.vz).normalize();
+                    rocketMesh.lookAt(new THREE.Vector3().copy(rocketMesh.position).add(dir));
+                    if (Math.random() < 0.25 * timeMultiplier) {
+                        createThrustFlameEffect(rocket.x, rocket.y, rocket.z, -dir.x * 2, -dir.y * 2, -dir.z * 2, 0xff5500);
+                    }
+                } else {
+                    const pitchRad = parseFloat(pitchSlider.value) * Math.PI / 180;
+                    const yawRad = parseFloat(yawSlider.value) * Math.PI / 180;
+                    const normDir = new THREE.Vector3(
+                        Math.cos(pitchRad) * Math.cos(yawRad),
+                        Math.sin(pitchRad),
+                        Math.cos(pitchRad) * Math.sin(yawRad)
+                    ).normalize();
+                    const targetPos = new THREE.Vector3().copy(rocketMesh.position).add(normDir);
+                    rocketMesh.lookAt(targetPos);
+                }
+            }
+
+            if (rocketState === STATE_FLYING && trajectoryPath.length > 1) {
+                trajectoryLine.geometry.setFromPoints(trajectoryPath);
+            }
+
+            updateDashboard();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- 9. 시작 진입점 설정 ---
+        window.onload = function () {
+            initThree(); 
+            setZLock(true); // 수치적으로 완전 무결하게 gimbal lock을 해결한 탑다운 뷰 고정 적용
+            loadPreset('accelerate'); 
+            animate(); 
+        };
+
+        // 슬라이더 변경 시 자동 갱신 리스너들
+        vSlider.addEventListener('input', () => { updateSliderTexts(); resetToReady(); });
+        pitchSlider.addEventListener('input', () => { updateSliderTexts(); resetToReady(); });
+        yawSlider.addEventListener('input', () => { updateSliderTexts(); resetToReady(); });
+        moonMassSlider.addEventListener('input', () => { updateSliderTexts(); resetToReady(); });
+
+    </script>
+</body>
+</html>

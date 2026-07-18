@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쌍성계 공전 운동 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons for UI styling -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        canvas {
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="border-b border-gray-800 bg-gray-900 bg-opacity-70 backdrop-blur px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                <i class="fa-solid fa-orbit-galaxy text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+                    쌍성계 공전 운동 시뮬레이터
+                </h1>
+                <p class="text-xs text-gray-400">Binary Star System Simulation</p>
+            </div>
+        </div>
+        <div class="text-xs text-gray-500 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700 hidden sm:block">
+            <span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>물리 시뮬레이션 엔진 활성화
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Simulation Canvas Panel -->
+        <div class="lg:col-span-8 flex flex-col bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
+            <div class="relative flex-1 min-h-[480px] bg-[#05070c] flex items-center justify-center overflow-hidden">
+                <canvas id="simCanvas" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                
+                <!-- On-canvas Information Overlay -->
+                <div class="absolute top-4 left-4 bg-gray-950 bg-opacity-90 backdrop-blur-md rounded-xl p-4 border border-indigo-500/20 text-xs space-y-2 pointer-events-none max-w-xs z-10">
+                    <div class="flex items-center justify-between space-x-4">
+                        <span class="text-gray-400 font-semibold">공통질량중심 (CM):</span>
+                        <span class="text-purple-400 font-bold">초점(Focus) 고정</span>
+                    </div>
+                    <div class="border-t border-gray-800 my-1"></div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-orange-500 inline-block"></span>
+                        <span class="text-gray-300">별 A (Star A): 질량 $M_1$ (가변)</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-cyan-400 inline-block"></span>
+                        <span class="text-gray-300">별 B (Star B): 질량 $M_2$ (가변)</span>
+                    </div>
+                    <div class="border-t border-gray-800 my-1"></div>
+                    <div class="text-[11px] text-gray-400 italic leading-relaxed">
+                        * 드래그로 화면 이동이 가능하며, 마우스 휠로 확대/축소할 수 있습니다.
+                        <br><span class="text-amber-400 font-semibold">* 타원 궤도 시 CM(초점)에 가까울 때 빨라집니다.</span>
+                    </div>
+                </div>
+
+                <!-- Simulation Info Badges -->
+                <div class="absolute top-4 right-4 flex flex-col space-y-2 z-10">
+                    <div class="bg-gray-950/90 backdrop-blur-md border border-gray-800 px-3 py-1.5 rounded-lg text-xs flex items-center space-x-2">
+                        <span class="text-gray-400 font-medium">공전 주기:</span>
+                        <span id="periodBadge" class="text-indigo-400 font-mono font-bold">1.00 yr</span>
+                    </div>
+                    <button id="resetViewBtn" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded-md text-xs transition border border-gray-700 flex items-center justify-center space-x-1">
+                        <i class="fa-solid fa-arrows-to-eye"></i>
+                        <span>화면 중앙 정렬</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Playback Control Bar -->
+            <div class="bg-gray-900 border-t border-gray-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-2">
+                    <button id="playPauseBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg shadow-indigo-600/30 active:scale-95 focus:outline-none">
+                        <i id="playIcon" class="fa-solid fa-pause text-lg"></i>
+                    </button>
+                    <button id="resetBtn" class="bg-gray-800 hover:bg-gray-700 text-gray-300 w-10 h-10 rounded-full flex items-center justify-center transition border border-gray-700 active:scale-95 focus:outline-none" title="초기화">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-4 bg-gray-950 px-4 py-2 rounded-xl border border-gray-800">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        <span class="text-xs text-gray-400">시뮬레이션 배속:</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="speedDnBtn" class="text-gray-400 hover:text-white transition px-2 py-0.5 bg-gray-900 rounded border border-gray-800 text-xs font-bold">-</button>
+                        <span id="speedVal" class="text-xs font-mono font-bold text-gray-200 min-w-[32px] text-center">1.0x</span>
+                        <button id="speedUpBtn" class="text-gray-400 hover:text-white transition px-2 py-0.5 bg-gray-900 rounded border border-gray-800 text-xs font-bold">+</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center space-x-2 cursor-pointer text-xs text-gray-300">
+                        <input type="checkbox" id="showOrbits" checked class="rounded bg-gray-950 border-gray-800 text-indigo-600 focus:ring-0 focus:ring-offset-0">
+                        <span>공전 궤도선</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer text-xs text-gray-300">
+                        <input type="checkbox" id="showVectors" checked class="rounded bg-gray-950 border-gray-800 text-indigo-600 focus:ring-0 focus:ring-offset-0">
+                        <span>중력 벡터</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Sidebar -->
+        <div class="lg:col-span-4 flex flex-col space-y-6">
+            
+            <!-- Hybrid Control Panel -->
+            <div class="bg-gray-900 rounded-2xl border border-gray-800 p-6 shadow-2xl space-y-6">
+                <h3 class="text-lg font-semibold text-gray-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i>
+                    <span>조절 패널</span>
+                </h3>
+
+                <!-- Star A Mass Hybrid Control -->
+                <div class="space-y-3 bg-gray-950/40 p-3 rounded-xl border border-gray-800/60">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-300">별 A 질량 ($M_1$)</span>
+                        <span id="star1MassVal" class="text-sm font-mono font-bold text-orange-400 bg-orange-950/40 px-2.5 py-0.5 rounded border border-orange-900/30">1.00 M_☉</span>
+                    </div>
+                    <!-- Quick Presets -->
+                    <div class="grid grid-cols-4 gap-1.5" id="star1MassGroup">
+                        <button data-value="0.5" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">0.5</button>
+                        <button data-value="1.0" class="py-1 rounded bg-orange-600 text-[11px] font-mono text-white transition border border-orange-500 font-bold shadow-lg shadow-orange-500/20">1.0</button>
+                        <button data-value="2.0" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">2.0</button>
+                        <button data-value="4.0" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">4.0</button>
+                    </div>
+                    <!-- Fine adjustment Slider -->
+                    <div class="pt-1 flex items-center space-x-2">
+                        <span class="text-[10px] text-gray-500">미세조절</span>
+                        <input type="range" id="star1MassSlider" min="0.2" max="4.0" step="0.05" value="1.0" class="flex-1 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                    </div>
+                </div>
+
+                <!-- Star B Mass Hybrid Control -->
+                <div class="space-y-3 bg-gray-950/40 p-3 rounded-xl border border-gray-800/60">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-300">별 B 질량 ($M_2$)</span>
+                        <span id="star2MassVal" class="text-sm font-mono font-bold text-cyan-400 bg-cyan-950/40 px-2.5 py-0.5 rounded border border-cyan-900/30">1.00 M_☉</span>
+                    </div>
+                    <!-- Quick Presets -->
+                    <div class="grid grid-cols-4 gap-1.5" id="star2MassGroup">
+                        <button data-value="0.5" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">0.5</button>
+                        <button data-value="1.0" class="py-1 rounded bg-cyan-600 text-[11px] font-mono text-white transition border border-cyan-500 font-bold shadow-lg shadow-cyan-500/20">1.0</button>
+                        <button data-value="2.0" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">2.0</button>
+                        <button data-value="4.0" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">4.0</button>
+                    </div>
+                    <!-- Fine adjustment Slider -->
+                    <div class="pt-1 flex items-center space-x-2">
+                        <span class="text-[10px] text-gray-500">미세조절</span>
+                        <input type="range" id="star2MassSlider" min="0.2" max="4.0" step="0.05" value="1.0" class="flex-1 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+                    </div>
+                </div>
+
+                <!-- Distance Hybrid Control -->
+                <div class="space-y-3 bg-gray-950/40 p-3 rounded-xl border border-gray-800/60">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-300">궤도 긴반지름 ($a$)</span>
+                        <span id="distanceVal" class="text-sm font-mono font-bold text-indigo-400 bg-indigo-950/40 px-2.5 py-0.5 rounded border border-indigo-900/30">1.00 AU</span>
+                    </div>
+                    <!-- Quick Presets -->
+                    <div class="grid grid-cols-3 gap-1.5" id="distanceGroup">
+                        <button data-value="0.5" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">0.5</button>
+                        <button data-value="1.0" class="py-1 rounded bg-indigo-600 text-[11px] font-mono text-white transition border border-indigo-500 font-bold shadow-lg shadow-indigo-500/20">1.0</button>
+                        <button data-value="2.0" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">2.0</button>
+                    </div>
+                    <!-- Fine adjustment Slider -->
+                    <div class="pt-1 flex items-center space-x-2">
+                        <span class="text-[10px] text-gray-500">미세조절</span>
+                        <input type="range" id="distanceSlider" min="0.3" max="3.0" step="0.05" value="1.0" class="flex-1 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    </div>
+                </div>
+
+                <!-- NEW: Eccentricity (이심률) Hybrid Control -->
+                <div class="space-y-3 bg-gray-950/40 p-3 rounded-xl border border-gray-800/60">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-300 flex items-center space-x-1">
+                            <span>이심률 ($e$)</span>
+                            <span class="text-[10px] text-gray-500 font-normal">(0: 원, 1에 가까울수록 납작)</span>
+                        </span>
+                        <span id="eccVal" class="text-sm font-mono font-bold text-purple-400 bg-purple-950/40 px-2.5 py-0.5 rounded border border-purple-900/30">0.00</span>
+                    </div>
+                    <!-- Quick Presets -->
+                    <div class="grid grid-cols-4 gap-1.5" id="eccGroup">
+                        <button data-value="0.0" class="py-1 rounded bg-purple-600 text-[11px] font-mono text-white transition border border-purple-500 font-bold shadow-lg shadow-purple-500/20">0.0</button>
+                        <button data-value="0.2" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">0.2</button>
+                        <button data-value="0.5" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">0.5</button>
+                        <button data-value="0.7" class="py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700">0.7</button>
+                    </div>
+                    <!-- Fine adjustment Slider -->
+                    <div class="pt-1 flex items-center space-x-2">
+                        <span class="text-[10px] text-gray-500">미세조절</span>
+                        <input type="range" id="eccSlider" min="0.0" max="0.8" step="0.05" value="0.0" class="flex-1 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                    </div>
+                </div>
+
+                <!-- Live Status Parameters -->
+                <div class="border-t border-gray-800 pt-4 text-xs text-gray-400 space-y-2">
+                    <p class="font-semibold text-gray-300">실시간 물리 상태 데이터:</p>
+                    <div class="grid grid-cols-2 gap-2 mt-2 font-mono">
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800">
+                            <p class="text-[10px] text-gray-500">계산된 질량비 ($q$)</p>
+                            <p id="massRatioVal" class="text-xs text-indigo-400 font-bold">1.00</p>
+                        </div>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800">
+                            <p class="text-[10px] text-gray-500">총 질량 ($M_1 + M_2$)</p>
+                            <p id="totalMassVal" class="text-xs text-purple-400 font-bold">2.00 M_☉</p>
+                        </div>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800">
+                            <p class="text-[10px] text-gray-500">별 A 공전궤도 ($a_1$)</p>
+                            <p id="r1Info" class="text-xs text-orange-300">0.50 AU</p>
+                        </div>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800">
+                            <p class="text-[10px] text-gray-500">별 B 공전궤도 ($a_2$)</p>
+                            <p id="r2Info" class="text-xs text-cyan-300">0.50 AU</p>
+                        </div>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800">
+                            <p class="text-[10px] text-gray-500">별 A 실시간 속도 ($v_1$)</p>
+                            <p id="v1Info" class="text-xs text-orange-400 font-bold">22.35 km/s</p>
+                        </div>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800">
+                            <p class="text-[10px] text-gray-500">별 B 실시간 속도 ($v_2$)</p>
+                            <p id="v2Info" class="text-xs text-cyan-400 font-bold">22.35 km/s</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theory Panel -->
+            <div class="bg-gray-900 rounded-2xl border border-gray-800 p-6 shadow-2xl space-y-4">
+                <h3 class="text-sm font-semibold text-gray-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-graduation-cap text-indigo-400"></i>
+                    <span>쌍성계 역학 공식</span>
+                </h3>
+                <div class="text-xs text-gray-400 space-y-3 leading-relaxed">
+                    <p>
+                        <strong>공통질량중심 ($CM$):</strong> 두 천체는 항상 질량중심을 하나의 공통 **초점(Focus)**으로 공유합니다. 질량이 큰 무거운 별일수록 궤도가 작아져 안쪽에서 공전합니다.
+                    </p>
+                    <p>
+                        <strong>케플러 제3법칙 (공전 주기):</strong> 
+                        <span class="block my-1 text-center font-mono text-gray-300 bg-gray-950 py-1 rounded border border-gray-800">
+                            $T = \sqrt{\frac{a^3}{M_1 + M_2}}$ (단위: 년)
+                        </span>
+                        여기서 $a$는 궤도의 장반경(가장 긴 반지름)입니다.
+                    </p>
+                    <p>
+                        <strong>실시간 공전 속도 (활력수식, Vis-Viva Equation):</strong>
+                        타원 궤도 상에서의 순시 속도는 중심(CM)과의 실시간 거리 $r_{inst}$에 따라 동적으로 변화합니다.
+                        <span class="block my-1 text-center font-mono text-gray-300 bg-gray-950 py-1 rounded border border-gray-800">
+                            $v^2 = G(M_1 + M_2) \left( \frac{2}{r_{inst}} - \frac{1}{a} \right)$
+                        </span>
+                        이로 인해 초점 근처인 근일점(Periapsis)에서 가장 빨라지고 원일점(Apoapsis)에서 가장 느려집니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 bg-gray-950 px-6 py-4 text-center text-xs text-gray-500">
+        <p>© 2026 쌍성계 궤도 역학 시뮬레이터. Created with pure physics principles.</p>
+    </footer>
+
+    <!-- MATHJAX for LaTeX formatting -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$']],
+                displayMath: [['$$', '$$']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- Simulation Code -->
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedUpBtn = document.getElementById('speedUpBtn');
+        const speedDnBtn = document.getElementById('speedDnBtn');
+        const speedVal = document.getElementById('speedVal');
+        const resetViewBtn = document.getElementById('resetViewBtn');
+
+        const star1MassSlider = document.getElementById('star1MassSlider');
+        const star2MassSlider = document.getElementById('star2MassSlider');
+        const distanceSlider = document.getElementById('distanceSlider');
+        const eccSlider = document.getElementById('eccSlider');
+
+        const star1MassVal = document.getElementById('star1MassVal');
+        const star2MassVal = document.getElementById('star2MassVal');
+        const distanceVal = document.getElementById('distanceVal');
+        const eccVal = document.getElementById('eccVal');
+        
+        const massRatioVal = document.getElementById('massRatioVal');
+        const totalMassVal = document.getElementById('totalMassVal');
+        const r1Info = document.getElementById('r1Info');
+        const r2Info = document.getElementById('r2Info');
+        const v1Info = document.getElementById('v1Info');
+        const v2Info = document.getElementById('v2Info');
+        const periodBadge = document.getElementById('periodBadge');
+
+        const showOrbitsCheckbox = document.getElementById('showOrbits');
+        const showVectorsCheckbox = document.getElementById('showVectors');
+
+        // UI Button Styling Classes
+        const activeStar1Class = "py-1 rounded bg-orange-600 text-[11px] font-mono text-white transition border border-orange-500 font-bold shadow-lg shadow-orange-500/20";
+        const activeStar2Class = "py-1 rounded bg-cyan-600 text-[11px] font-mono text-white transition border border-cyan-500 font-bold shadow-lg shadow-cyan-500/20";
+        const activeDistClass = "py-1 rounded bg-indigo-600 text-[11px] font-mono text-white transition border border-indigo-500 font-bold shadow-lg shadow-indigo-500/20";
+        const activeEccClass = "py-1 rounded bg-purple-600 text-[11px] font-mono text-white transition border border-purple-500 font-bold shadow-lg shadow-purple-500/20";
+        const inactiveClass = "py-1 rounded bg-gray-800 hover:bg-gray-700 text-[11px] font-mono text-gray-300 transition border border-gray-700 hover:border-gray-600";
+
+        // Physics Constants & Simulation State
+        let M1 = 1.0;   // 별 A 질량 (기본값: 1.0)
+        let M2 = 1.0;   // 별 B 질량 (기본값: 1.0)
+        let r = 1.0;    // 두 별 사이 궤도 긴반지름 a (기본값: 1.0 AU)
+        let ecc = 0.0;  // 궤도 이심률 e (기본값: 0.0 -> 원 궤도)
+
+        let isPlaying = true;
+        let simSpeed = 1.0;    // 사용자 설정 배속 배율
+        let meanAnomaly = 0;   // 평균근점이각 M (시간에 따라 등속 증가)
+
+        // View transformation parameters (Panning and Zooming)
+        let zoom = 1.0;
+        const defaultBaseScale = 140; // 1 AU 당 픽셀 크기
+        let baseScale = defaultBaseScale;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        // Colors
+        const COLOR_BG = '#05070c';
+        const COLOR_GRID = '#0e1525';
+        const COLOR_CM = '#a855f7';     // 질량중심 보라색
+        const COLOR_STAR1 = '#f97316';  // 별 A (오렌지색)
+        const COLOR_STAR2 = '#22d3ee';  // 별 B (청록색)
+
+        // Stars visual sizes parameters
+        const minStarRadius = 8;
+        const maxStarRadius = 24;
+
+        // Initialize Canvas Size
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            draw();
+        });
+
+        // 특정 그룹 내 버튼 활성화 유틸리티
+        function syncButtonState(groupId, value, activeStyle) {
+            const container = document.getElementById(groupId);
+            const buttons = container.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (Math.abs(parseFloat(btn.dataset.value) - value) < 0.01) {
+                    btn.className = activeStyle;
+                } else {
+                    btn.className = inactiveClass;
+                }
+            });
+        }
+
+        // 1. 별 A 질량 셀렉터 버튼 및 슬라이더 이벤트
+        function setupStar1MassControls() {
+            const container = document.getElementById('star1MassGroup');
+            const buttons = container.querySelectorAll('button');
+            
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    buttons.forEach(b => b.className = inactiveClass);
+                    btn.className = activeStar1Class;
+                    M1 = parseFloat(btn.dataset.value);
+                    star1MassSlider.value = M1;
+                    star1MassVal.textContent = M1.toFixed(2) + ' M_☉';
+                    updatePhysicsOutputs();
+                });
+            });
+
+            star1MassSlider.addEventListener('input', (e) => {
+                M1 = parseFloat(e.target.value);
+                star1MassVal.textContent = M1.toFixed(2) + ' M_☉';
+                syncButtonState('star1MassGroup', M1, activeStar1Class);
+                updatePhysicsOutputs();
+            });
+        }
+
+        // 2. 별 B 질량 셀렉터 버튼 및 슬라이더 이벤트
+        function setupStar2MassControls() {
+            const container = document.getElementById('star2MassGroup');
+            const buttons = container.querySelectorAll('button');
+            
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    buttons.forEach(b => b.className = inactiveClass);
+                    btn.className = activeStar2Class;
+                    M2 = parseFloat(btn.dataset.value);
+                    star2MassSlider.value = M2;
+                    star2MassVal.textContent = M2.toFixed(2) + ' M_☉';
+                    updatePhysicsOutputs();
+                });
+            });
+
+            star2MassSlider.addEventListener('input', (e) => {
+                M2 = parseFloat(e.target.value);
+                star2MassVal.textContent = M2.toFixed(2) + ' M_☉';
+                syncButtonState('star2MassGroup', M2, activeStar2Class);
+                updatePhysicsOutputs();
+            });
+        }
+
+        // 3. 두 별 사이 거리 셀렉터 버튼 및 슬라이더 이벤트
+        function setupDistanceControls() {
+            const container = document.getElementById('distanceGroup');
+            const buttons = container.querySelectorAll('button');
+            
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    buttons.forEach(b => b.className = inactiveClass);
+                    btn.className = activeDistClass;
+                    r = parseFloat(btn.dataset.value);
+                    distanceSlider.value = r;
+                    distanceVal.textContent = r.toFixed(2) + ' AU';
+                    updatePhysicsOutputs();
+                });
+            });
+
+            distanceSlider.addEventListener('input', (e) => {
+                r = parseFloat(e.target.value);
+                distanceVal.textContent = r.toFixed(2) + ' AU';
+                syncButtonState('distanceGroup', r, activeDistClass);
+                updatePhysicsOutputs();
+            });
+        }
+
+        // 4. 이심률(Eccentricity) 셀렉터 버튼 및 슬라이더 이벤트 (NEW)
+        function setupEccControls() {
+            const container = document.getElementById('eccGroup');
+            const buttons = container.querySelectorAll('button');
+
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    buttons.forEach(b => b.className = inactiveClass);
+                    btn.className = activeEccClass;
+                    ecc = parseFloat(btn.dataset.value);
+                    eccSlider.value = ecc;
+                    eccVal.textContent = ecc.toFixed(2);
+                    updatePhysicsOutputs();
+                });
+            });
+
+            eccSlider.addEventListener('input', (e) => {
+                ecc = parseFloat(e.target.value);
+                eccVal.textContent = ecc.toFixed(2);
+                syncButtonState('eccGroup', ecc, activeEccClass);
+                updatePhysicsOutputs();
+            });
+        }
+
+        // Kepler Solver: M = E - e*sin(E) 수치해석적으로 풀기 (Newton-Raphson 법)
+        function solveKepler(M, eVal) {
+            let E = M; // 초깃값 가정
+            const tolerance = 1e-6;
+            for (let i = 0; i < 100; i++) {
+                let delta = (E - eVal * Math.sin(E) - M) / (1 - eVal * Math.cos(E));
+                E -= delta;
+                if (Math.abs(delta) < tolerance) break;
+            }
+            return E;
+        }
+
+        // Play/Pause button
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.className = 'fa-solid fa-pause text-lg';
+                playPauseBtn.classList.add('bg-indigo-600');
+                playPauseBtn.classList.remove('bg-amber-600');
+            } else {
+                playIcon.className = 'fa-solid fa-play text-lg';
+                playPauseBtn.classList.remove('bg-indigo-600');
+                playPauseBtn.classList.add('bg-amber-600');
+            }
+        });
+
+        // Reset button
+        resetBtn.addEventListener('click', () => {
+            meanAnomaly = 0;
+            M1 = 1.0;
+            M2 = 1.0;
+            r = 1.0;
+            ecc = 0.0;
+            simSpeed = 1.0;
+            isPlaying = true;
+            
+            star1MassVal.textContent = '1.00 M_☉';
+            star2MassVal.textContent = '1.00 M_☉';
+            distanceVal.textContent = '1.00 AU';
+            eccVal.textContent = '0.00';
+            speedVal.textContent = '1.0x';
+            
+            star1MassSlider.value = 1.0;
+            star2MassSlider.value = 1.0;
+            distanceSlider.value = 1.0;
+            eccSlider.value = 0.0;
+
+            playIcon.className = 'fa-solid fa-pause text-lg';
+            playPauseBtn.className = 'bg-indigo-600 hover:bg-indigo-500 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg shadow-indigo-600/30 active:scale-95 focus:outline-none';
+            
+            // 버튼 상태 원상복구
+            syncButtonState('star1MassGroup', 1.0, activeStar1Class);
+            syncButtonState('star2MassGroup', 1.0, activeStar2Class);
+            syncButtonState('distanceGroup', 1.0, activeDistClass);
+            syncButtonState('eccGroup', 0.0, activeEccClass);
+
+            resetViewport();
+            updatePhysicsOutputs();
+        });
+
+        // Speed adjustment
+        speedUpBtn.addEventListener('click', () => {
+            if (simSpeed < 5) {
+                simSpeed = parseFloat((simSpeed + 0.5).toFixed(1));
+                speedVal.textContent = simSpeed + 'x';
+            }
+        });
+
+        speedDnBtn.addEventListener('click', () => {
+            if (simSpeed > 0.5) {
+                simSpeed = parseFloat((simSpeed - 0.5).toFixed(1));
+                speedVal.textContent = simSpeed + 'x';
+            }
+        });
+
+        // Reset View adjustments
+        resetViewBtn.addEventListener('click', resetViewport);
+
+        function resetViewport() {
+            zoom = 1.0;
+            offsetX = 0;
+            offsetY = 0;
+            draw();
+        }
+
+        // Calculation variables based on Physics
+        let a1 = 0.5;
+        let a2 = 0.5;
+        let T = 1.0; // 공전 주기 (년 단위)
+
+        function updatePhysicsOutputs() {
+            // 각 별의 장반경 계산 (공통질량중심 공식 적용)
+            a1 = r * (M2 / (M1 + M2));
+            a2 = r * (M1 / (M1 + M2));
+
+            // 케플러 제3법칙을 적용하여 실제 물리적인 궤도 공전 주기 계산
+            T = Math.sqrt(Math.pow(r, 3) / (M1 + M2));
+
+            // 질량비 계산 (q = M2 / M1)
+            const q = M2 / M1;
+            const totalMass = M1 + M2;
+
+            // 우측 상태 패널 텍스트 업데이트 (속도는 실시간 애니메이션 중에 업데이트)
+            massRatioVal.textContent = q.toFixed(2);
+            totalMassVal.textContent = totalMass.toFixed(2) + ' M_☉';
+            r1Info.textContent = a1.toFixed(2) + ' AU';
+            r2Info.textContent = a2.toFixed(2) + ' AU';
+            periodBadge.textContent = T.toFixed(2) + ' yr';
+        }
+
+        // Draw Stars and background grids
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = COLOR_BG;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2 + offsetX;
+            const centerY = canvas.height / 2 + offsetY;
+            const scale = baseScale * zoom;
+
+            // Draw background grid lines
+            drawGrid(centerX, centerY, scale);
+
+            // Draw center of mass (CM) - 초점에 해당
+            drawCenterOfMass(centerX, centerY);
+
+            // 1. 케플러 방정식 풀기
+            const E = solveKepler(meanAnomaly, ecc);
+
+            // 2. 공통질량중심(Focus) 기준 타원 궤도 상의 좌표 구하기
+            // 천체 역학 타원 좌표 공식: x = a*(cos(E) - e), y = a*sqrt(1-e^2)*sin(E)
+            const x_rel = r * (Math.cos(E) - ecc);
+            const y_rel = r * Math.sqrt(1 - ecc * ecc) * Math.sin(E);
+
+            // 별 A의 상대적 위치 (CM 초점 기준으로 B의 정반대편 벡터)
+            const x1 = centerX - (M2 / (M1 + M2)) * x_rel * scale;
+            const y1 = centerY - (M2 / (M1 + M2)) * y_rel * scale;
+
+            // 별 B의 상대적 위치 (CM 초점 기준)
+            const x2 = centerX + (M1 / (M1 + M2)) * x_rel * scale;
+            const y2 = centerY + (M1 / (M1 + M2)) * y_rel * scale;
+
+            // 3. 실시간 순시 거리 및 순시 공전 속도 계산 (Vis-Viva Equation)
+            const inst_r = r * (1 - ecc * Math.cos(E)); // 두 별 간의 실시간 분리 거리
+            const totalMass = M1 + M2;
+            
+            // v^2 = G * M_total * (2/r - 1/a)
+            // G = 4*pi^2 (AU^3 / M_☉ * yr^2) 표준 천문단위 상수를 사용
+            const v_rel = 2 * Math.PI * Math.sqrt(totalMass * Math.abs(2 / inst_r - 1 / r));
+            
+            // 각 별의 질량중심 기준 순시 속도 배분
+            const v1 = (M2 / totalMass) * v_rel;
+            const v2 = (M1 / totalMass) * v_rel;
+            const kmPerSecFactor = 4.74372; // AU/yr -> km/s 단위 변환 인자
+            
+            const v1_kms = v1 * kmPerSecFactor;
+            const v2_kms = v2 * kmPerSecFactor;
+
+            // 속도 텍스트 실시간 업데이트
+            v1Info.textContent = v1_kms.toFixed(2) + ' km/s';
+            v2Info.textContent = v2_kms.toFixed(2) + ' km/s';
+
+            // 4. 타원 궤도선 그리기
+            if (showOrbitsCheckbox.checked) {
+                // 타원의 중심(Center)은 질량중심(Focus)에서 외쪽/오른쪽으로 ecc * semi-major axis 만큼 비껴나 있습니다.
+                // 별 A의 타원 그리기
+                const b1 = a1 * Math.sqrt(1 - ecc * ecc);
+                ctx.strokeStyle = COLOR_STAR1;
+                ctx.globalAlpha = 0.22;
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                // 중심점 X가 초점에서 ecc * a1 만큼 오른쪽으로 편향됨
+                ctx.ellipse(centerX + ecc * a1 * scale, centerY, a1 * scale, b1 * scale, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 별 B의 타원 그리기
+                const b2 = a2 * Math.sqrt(1 - ecc * ecc);
+                ctx.strokeStyle = COLOR_STAR2;
+                ctx.beginPath();
+                // 중심점 X가 초점에서 ecc * a2 만큼 왼쪽으로 편향됨
+                ctx.ellipse(centerX - ecc * a2 * scale, centerY, a2 * scale, b2 * scale, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.setLineDash([]);
+                ctx.globalAlpha = 1.0;
+            }
+
+            // 중력 및 방향 벡터
+            if (showVectorsCheckbox.checked) {
+                drawForceVectors(x1, y1, x2, y2);
+            }
+
+            // 별의 시각적 크기 구하기
+            const size1 = getStarVisualRadius(M1);
+            const size2 = getStarVisualRadius(M2);
+
+            // 별 그리기
+            drawStar(x1, y1, size1, COLOR_STAR1, "별 A (Star A)");
+            drawStar(x2, y2, size2, COLOR_STAR2, "별 B (Star B)");
+        }
+
+        function drawGrid(cx, cy, scale) {
+            ctx.strokeStyle = COLOR_GRID;
+            ctx.lineWidth = 1;
+            
+            const interval = 0.5 * scale;
+            const startX = cx % interval;
+            const startY = cy % interval;
+
+            for (let x = startX; x < canvas.width; x += interval) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            for (let y = startY; y < canvas.height; y += interval) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // 1.0 AU 기준 격자 스케일 바
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            const refLength = scale; 
+            const refX = canvas.width - refLength - 20;
+            const refY = canvas.height - 20;
+
+            if (refX > 0) {
+                ctx.beginPath();
+                ctx.moveTo(refX, refY - 5);
+                ctx.lineTo(refX, refY + 5);
+                ctx.moveTo(refX, refY);
+                ctx.lineTo(refX + refLength, refY);
+                ctx.moveTo(refX + refLength, refY - 5);
+                ctx.lineTo(refX + refLength, refY + 5);
+                ctx.stroke();
+
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('1.0 AU', refX + refLength / 2, refY - 8);
+            }
+        }
+
+        function drawCenterOfMass(cx, cy) {
+            ctx.strokeStyle = COLOR_CM;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = COLOR_CM;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillStyle = '#a855f7';
+            ctx.textAlign = 'left';
+            ctx.fillText('공통질량중심 (CM / 초점)', cx + 10, cy - 6);
+        }
+
+        function drawForceVectors(x1, y1, x2, y2) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            const angleLine = Math.atan2(y2 - y1, x2 - x1);
+            const vectorLength = 40;
+
+            // 두 천체가 상호작용하는 중력 벡터 화살표
+            drawArrow(x1, y1, angleLine, vectorLength, COLOR_STAR1);
+            drawArrow(x2, y2, angleLine + Math.PI, vectorLength, COLOR_STAR2);
+        }
+
+        function drawArrow(startX, startY, angle, length, color) {
+            const endX = startX + length * Math.cos(angle);
+            const endY = startY + length * Math.sin(angle);
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.8;
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            const arrowHeadSize = 6;
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - arrowHeadSize * Math.cos(angle - Math.PI / 6), endY - arrowHeadSize * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(endX - arrowHeadSize * Math.cos(angle + Math.PI / 6), endY - arrowHeadSize * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawStar(x, y, radius, color, label) {
+            const gradient = ctx.createRadialGradient(x, y, radius * 0.1, x, y, radius * 2.5);
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.2, color);
+            gradient.addColorStop(0.5, color + '33'); 
+            gradient.addColorStop(1, 'transparent');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#e5e7eb';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x, y - radius - 8);
+        }
+
+        function getStarVisualRadius(mass) {
+            const baseMultiplier = Math.pow(mass, 0.4);
+            const rBase = 12 * baseMultiplier;
+            return Math.max(minStarRadius, Math.min(maxStarRadius, rBase));
+        }
+
+        // Realtime Simulation Loop
+        let lastTime = 0;
+        function update(time) {
+            if (lastTime === 0) lastTime = time;
+            const dt = (time - lastTime) / 1000; 
+            lastTime = time;
+
+            if (isPlaying) {
+                // 평균 각속도(omega = 2*pi / T) 계산
+                const omega = (2 * Math.PI) / T;
+                const speedScale = (2 * Math.PI) / 18.0; // 1.0x 기준 부드러운 회전을 위한 스케일링
+                
+                // 타원 궤도에서는 평균근점이각(M)이 시간에 비례해 선형적으로 증가합니다.
+                meanAnomaly += omega * speedScale * dt * simSpeed;
+                
+                if (meanAnomaly >= Math.PI * 2) {
+                    meanAnomaly -= Math.PI * 2;
+                }
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        // Mouse and Touch Interaction handlers
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragStartX = e.clientX - offsetX;
+            dragStartY = e.clientY - offsetY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX = e.clientX - dragStartX;
+                offsetY = e.clientY - dragStartY;
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                dragStartX = e.touches[0].clientX - offsetX;
+                dragStartY = e.touches[0].clientY - offsetY;
+            }
+        });
+
+        window.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length === 1) {
+                offsetX = e.touches[0].clientX - dragStartX;
+                offsetY = e.touches[0].clientY - dragStartY;
+                e.preventDefault(); 
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomIntensity = 0.1;
+            const beforeZoomX = (e.clientX - canvas.getBoundingClientRect().left - canvas.width / 2 - offsetX) / zoom;
+            const beforeZoomY = (e.clientY - canvas.getBoundingClientRect().top - canvas.height / 2 - offsetY) / zoom;
+
+            if (e.deltaY < 0) {
+                zoom = Math.min(3.0, zoom + zoomIntensity);
+            } else {
+                zoom = Math.max(0.4, zoom - zoomIntensity);
+            }
+
+            const afterZoomX = beforeZoomX * zoom;
+            const afterZoomY = beforeZoomY * zoom;
+            offsetX += (beforeZoomX * zoom - afterZoomX);
+            offsetY += (beforeZoomY * zoom - afterZoomY);
+        }, { passive: false });
+
+        window.onload = function() {
+            resizeCanvas();
+            M1 = 1.0;
+            M2 = 1.0;
+            r = 1.0;
+            ecc = 0.0;
+            
+            setupStar1MassControls();
+            setupStar2MassControls();
+            setupDistanceControls();
+            setupEccControls();
+            
+            updatePhysicsOutputs();
+            requestAnimationFrame(update);
+        };
+    </script>
+</body>
+</html>

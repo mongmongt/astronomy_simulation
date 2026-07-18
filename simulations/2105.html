@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>파울리의 경고! 적색거성의 시한폭탄: 헬륨 섬광</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons (for UI icons) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #030508;
+            color: #f3f4f6;
+        }
+        /* 커스텀 슬라이더 스타일 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #111827;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+            border: 2px solid #030508;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- STREAMING_CHUNK: 헤더 및 레이아웃 정의 -->
+    <!-- Header -->
+    <header class="border-b border-gray-950 bg-gray-950/80 backdrop-blur px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-red-500/10 text-red-500 rounded-xl border border-red-500/20">
+                    <i data-lucide="bomb" class="w-6 h-6 animate-bounce" style="animation-duration: 3s;"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight text-white">파울리의 경고! 적색거성의 시한폭탄: 헬륨 섬광</h1>
+                    <p class="text-xs text-gray-400">교과 물리 메커니즘: 극소 질량 한계, 온도 비선형 폭주 및 대팽창 안정화 정밀 분석기</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs bg-gray-900/95 px-3.5 py-2 rounded-xl text-gray-300 border border-gray-800">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                <span class="font-semibold text-gray-400">물리 모형:</span>
+                <span class="text-emerald-400 font-bold" id="calibrationLabel">정밀 궤적 정합 완료</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- STREAMING_CHUNK: 조종판 및 제어 버튼 구현 -->
+        <!-- Left Side: Control Panel (조작변인) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            <!-- 조종판 카드 -->
+            <div class="bg-gray-950 border border-gray-900 rounded-2xl p-5 flex flex-col gap-5 shadow-2xl">
+                <div class="flex items-center gap-2 pb-3 border-b border-gray-900">
+                    <i data-lucide="sliders-horizontal" class="w-5 h-5 text-red-500"></i>
+                    <h2 class="text-base font-bold text-white">항성 핵 제어판</h2>
+                </div>
+
+                <!-- 조작 변인 1: 초기 질량 -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <label for="mass" class="text-xs font-semibold text-gray-400 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            항성 초기 질량 ($M/M_\odot$)
+                        </label>
+                        <span id="massVal" class="text-xs font-black text-blue-400 bg-blue-950/40 px-2 py-0.5 rounded border border-blue-900/50">1.00 M_⊙</span>
+                    </div>
+                    <input type="range" id="mass" min="0.1" max="4.0" step="0.05" value="1.0" class="w-full">
+                    <div class="flex justify-between text-[10px] text-gray-600 px-0.5">
+                        <span class="text-red-400 font-bold">0.5 미만(연소불가)</span>
+                        <span>2.25 (비축퇴 경계)</span>
+                        <span>4.0 (중질량)</span>
+                    </div>
+                </div>
+
+                <!-- 조작 변인 2: 초기 축퇴 경향성 -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <label for="degeneracy" class="text-xs font-semibold text-gray-400 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            기본 축퇴 한계 설정 ($\psi$)
+                        </label>
+                        <span id="degenVal" class="text-xs font-black text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-900/50">85%</span>
+                    </div>
+                    <input type="range" id="degeneracy" min="0" max="100" step="1" value="85" class="w-full">
+                    <div class="flex justify-between text-[10px] text-gray-600 px-0.5">
+                        <span>0% (이상기체)</span>
+                        <span>50% (부분축퇴)</span>
+                        <span>100% (완전 축퇴)</span>
+                    </div>
+                </div>
+
+                <!-- 조작 변인 3: 내부 온도 (수동 및 실시간 디스플레이 전용) -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <label for="temp" class="text-xs font-semibold text-gray-400 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                            중심 점착 온도 ($T_c$)
+                        </label>
+                        <span id="tempVal" class="text-xs font-black text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-900/50">0.80 × 10⁸ K</span>
+                    </div>
+                    <input type="range" id="temp" min="0.1" max="2.5" step="0.01" value="0.8" class="w-full">
+                    <div class="flex justify-between text-[10px] text-gray-600 px-0.5">
+                        <span>0.1 (수소연소)</span>
+                        <span>1.0 (3α 한계선)</span>
+                        <span>2.5 (초고온 상태)</span>
+                    </div>
+                </div>
+
+                <!-- 제어 컨트롤러 -->
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button id="btnPlay" class="flex items-center justify-center gap-2 py-2.5 px-4 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs font-bold rounded-xl transition duration-150">
+                        <i data-lucide="play" class="w-4 h-4"></i>
+                        <span id="playText">에너지 연소 개시</span>
+                    </button>
+                    <button id="btnReset" class="flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-900 hover:bg-gray-800 text-gray-300 text-xs font-bold rounded-xl border border-gray-800 transition duration-150">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        물리 설정 복원
+                    </button>
+                </div>
+            </div>
+
+            <!-- 고정밀 연동 실시간 계측 대시보드 -->
+            <div class="bg-gray-950 border border-gray-900 rounded-2xl p-5 shadow-2xl flex flex-col gap-4">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider pb-2 border-b border-gray-900">실시간 이론 물리 데이터</h3>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-900">
+                        <span class="text-[10px] text-gray-400 block">중심핵 압력 평형</span>
+                        <span id="pressureType" class="text-xs font-black text-amber-500 mt-1 block">-</span>
+                    </div>
+                    <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-900">
+                        <span class="text-[10px] text-gray-400 block">3α 반응 민감도</span>
+                        <span id="sensitivity" class="text-xs font-black text-red-500 mt-1 block">-</span>
+                    </div>
+                    <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-900 col-span-2">
+                        <span class="text-[10px] text-gray-400 block">헬륨 섬광 거동 판정 결과</span>
+                        <span id="flashResult" class="text-xs font-black text-blue-400 mt-1 block">-</span>
+                    </div>
+                </div>
+
+                <!-- 정밀 물리 메커니즘 설명 상자 -->
+                <div id="sciExplanation" class="text-xs bg-red-950/10 border border-red-950/40 p-3.5 rounded-xl text-red-200/85 leading-relaxed">
+                    초기 항성의 질량과 축퇴도를 기반으로 하여 헬륨 핵심의 물리 거동 양상이 실시간으로 계산됩니다.
+                </div>
+            </div>
+        </section>
+
+        <!-- STREAMING_CHUNK: 시뮬레이션 캔버스 뷰포트 구현 -->
+        <!-- Right Side: Visualization Panel -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            <!-- 시뮬레이션 캔버스 영역 -->
+            <div class="bg-gray-950 border border-gray-900 rounded-2xl p-5 shadow-2xl flex flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-gray-900 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="compass" class="text-red-500 w-5 h-5 animate-pulse"></i>
+                        <h2 class="text-sm font-bold text-white">항성 고정밀 물리 내부 시각화 (적색거성 가득 찬 스케일 고해상도)</h2>
+                    </div>
+                    <div class="text-xs text-gray-500 font-medium" id="currentPhaseLabel">
+                        물리적 평형 상태 계측 중
+                    </div>
+                </div>
+
+                <!-- 캔버스 컨테이너 (실제 입자 렌더링 물리 시뮬레이터) -->
+                <div class="relative w-full aspect-[16/9] bg-[#020305] rounded-xl overflow-hidden border border-gray-900">
+                    <canvas id="stellarCanvas" class="w-full h-full block"></canvas>
+                    
+                    <!-- 헬륨 섬광 경고 배너 -->
+                    <div id="flashOverlay" class="absolute top-4 right-4 pointer-events-none opacity-0 transform translate-x-2 transition-all duration-300">
+                        <div class="bg-red-950/95 border-2 border-red-500 text-red-200 px-4 py-2.5 rounded-xl flex items-center gap-2.5 shadow-2xl max-w-sm">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                            <div class="text-[11px]">
+                                <p class="font-extrabold text-red-400 uppercase tracking-widest leading-none" id="flashTitle">Helium Flash Runaway</p>
+                                <p class="text-gray-300 mt-0.5 font-medium" id="flashDesc">최심부 중심에서 핵융합 폭주 진행 중</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STREAMING_CHUNK: H-R도 및 설명 영역 -->
+            <!-- 하단 격자 레이아웃: HR도와 과학적 이론 한계 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- HR 도 (H-R Diagram) 실시간 매핑 -->
+                <div class="bg-gray-950 border border-gray-900 rounded-2xl p-5 shadow-2xl flex flex-col gap-3">
+                    <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <i data-lucide="activity" class="w-4 h-4 text-emerald-500"></i>
+                        물리적 H-R도 상의 상태 좌표 매핑
+                    </h3>
+                    <div class="relative w-full aspect-square bg-[#020306] rounded-xl border border-gray-900 overflow-hidden">
+                        <canvas id="hrCanvas" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+
+                <!-- 교과 핵심 이론 정리 정보판 (수행평가 보고서 연계용) -->
+                <div class="bg-gray-950 border border-gray-900 rounded-2xl p-5 shadow-2xl flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-xs font-bold text-white flex items-center gap-1.5 mb-3">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-blue-400"></i>
+                            교과 정확한 천문 이론 체크
+                        </h3>
+                        <ul class="text-[11px] text-gray-400 flex flex-col gap-2.5 leading-relaxed">
+                            <li class="flex gap-1.5">
+                                <strong class="text-red-500">1. 질량 임계점 규명:</strong>
+                                <span>$0.5 M_\odot$ 미만의 항성은 중심 온도가 헬륨 연소 조건인 1억 K에 닿지 못하고 식어버려 헬륨 백색왜성(He WD)으로 수축 종료됩니다.</span>
+                            </li>
+                            <li class="flex gap-1.5">
+                                <strong class="text-amber-500">2. 비선형 열폭주 궤적:</strong>
+                                <span>헬륨 섬광 발화 시 온도는 일직선으로 증가하지 않고 기하급수적으로 폭주하다가, 축퇴가 해제(Lifted)되는 순간 중심핵이 팽창하면서 급냉각을 겪습니다.</span>
+                            </li>
+                            <li class="flex gap-1.5">
+                                <strong class="text-emerald-500">3. 점진적 축퇴 전이:</strong>
+                                <span>수소 연소 및 수축 초기($T_c \le 0.3$)에는 가스 가속도가 낮아 입자가 오렌지색(이상기체)을 띠다가 수축이 극대화되며 파란색(축퇴 상태)으로 냉각 전이됩니다.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="pt-3 border-t border-gray-900 text-[9px] text-gray-600 text-right">
+                        고급지구과학 교과서 III단원 '우주의 종말과 밀집성' 단원 연계
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-900 bg-gray-950/40 py-3.5 px-6 text-center text-[10px] text-gray-600">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>고급지구과학(몽T) 수행평가 전용 물리 연구 시뮬레이터</span>
+            <span>Gemini 2.5 Flash Engine - 물리 법칙 준수 모델</span>
+        </div>
+    </footer>
+
+    <!-- STREAMING_CHUNK: 물리 시뮬레이션 알고리즘 및 렌더러 로직 -->
+    <!-- Script Block -->
+    <script>
+        // Lucide 아이콘 로드
+        lucide.createIcons();
+
+        // DOM 바인딩
+        const massInput = document.getElementById('mass');
+        const massVal = document.getElementById('massVal');
+        const degenInput = document.getElementById('degeneracy');
+        const degenVal = document.getElementById('degenVal');
+        const tempInput = document.getElementById('temp');
+        const tempVal = document.getElementById('tempVal');
+        
+        const pressureType = document.getElementById('pressureType');
+        const sensitivity = document.getElementById('sensitivity');
+        const flashResult = document.getElementById('flashResult');
+        const sciExplanation = document.getElementById('sciExplanation');
+        const currentPhaseLabel = document.getElementById('currentPhaseLabel');
+        const calibrationLabel = document.getElementById('calibrationLabel');
+        
+        const btnPlay = document.getElementById('btnPlay');
+        const playText = document.getElementById('playText');
+        const btnReset = document.getElementById('btnReset');
+        const flashOverlay = document.getElementById('flashOverlay');
+        const flashTitle = document.getElementById('flashTitle');
+        const flashDesc = document.getElementById('flashDesc');
+
+        const stellarCanvas = document.getElementById('stellarCanvas');
+        const ctxS = stellarCanvas.getContext('2d');
+        const hrCanvas = document.getElementById('hrCanvas');
+        const ctxH = hrCanvas.getContext('2d');
+
+        // 입자(파티클) 시뮬레이션용 데이터 구조
+        let particles = [];
+        let carbonNuclei = []; // 새로 합성되는 탄소-12 원자핵 입자들
+        let gammaBursts = [];  // 감마선 전파 파동 효과용 배열
+
+        // 초기 상태 값
+        let mass = parseFloat(massInput.value);
+        let degen = parseFloat(degenInput.value) / 100; // 0 ~ 1 범위
+        let temp = parseFloat(tempInput.value);
+        let isSimulating = false;
+        let animationFrameId = null;
+
+        // 실제 헬륨핵의 다이내믹 반지름 상태 (헬륨 섬광 이후 축퇴 해제 팽창 묘사용)
+        let currentCoreRadius = 60; 
+        let targetCoreRadius = 60;
+
+        // 비선형 애니메이션 타임라인 제어 상태 기기
+        let playState = 'IDLE'; // 'CONTRACTION', 'RUNAWAY', 'EXPANSION_COOLING', 'STABLE_HB', 'WD_COOLING'
+        let playProgress = 0;
+
+        // 헬륨-4(알파 입자) 초기화
+        function initPhysicsParticles(cx, cy, radius) {
+            particles = [];
+            carbonNuclei = [];
+            gammaBursts = [];
+            currentCoreRadius = radius;
+            targetCoreRadius = radius;
+            
+            const count = 90; // 직관적인 입자 관찰을 위해 밀도 균형 유지
+            for (let i = 0; i < count; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let r = Math.sqrt(Math.random()) * radius * 0.95; 
+                particles.push({
+                    x: cx + Math.cos(angle) * r,
+                    y: cy + Math.sin(angle) * r,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: (Math.random() - 0.5) * 1.5,
+                    radius: 3.2, // 입자 크기 유지
+                    type: "He4"
+                });
+            }
+        }
+
+        // 물리 연산 판정용 함수
+        function computeStellarPhysics(M, D, T) {
+            let pState = {
+                isDegenerate: D > 0.45 && M <= 2.25, // 위키백과 기준: 질량 2.25 이하에서 축퇴 조건 충족
+                pressureName: "",
+                sensitivityFactor: "",
+                judgment: "",
+                desc: "",
+                flashCoreActive: false,
+                isLifted: false, // 축퇴 탈출(Expansion) 여부
+                isWD: M < 0.5   // 0.5 M_solar 미만 헬륨 백색왜성 분기 여부
+            };
+
+            // 1. 극소 질량체 한계에 따른 물리 제어 판정
+            if (pState.isWD) {
+                pState.pressureName = `전자 축퇴압 지배적 ($P \\propto \\rho^{5/3}$)`;
+                pState.sensitivityFactor = "에너지 연소 한계 미달";
+                pState.judgment = "❄️ 헬륨 백색왜성(He WD)으로 수축 및 냉각 종료";
+                pState.desc = `항성의 초기 질량이 <strong>${M.toFixed(2)} M_⊙</strong>로 헬륨 연소 한계점($0.5 M_⊙$)보다 낮습니다. 중력 수축 에너지가 부족하여 중심핵은 1억 K에 절대 도달할 수 없으며, 차갑게 식어가며 백색왜성으로 수축 정지합니다.`;
+                pState.flashCoreActive = false;
+                return pState;
+            }
+
+            // 2. 이상 기체 및 축퇴 조건에 따른 특성 제어
+            if (pState.isDegenerate) {
+                if (T >= 1.5) {
+                    // 가열되어 축퇴가 풀리는 시점
+                    pState.isLifted = true;
+                    pState.pressureName = `열압력 복원 ($P \\propto \\rho T$)`;
+                    pState.sensitivityFactor = "핵 팽창 및 냉각 기작";
+                    pState.judgment = "✨ 축퇴 해제 및 중심핵 안정 대팽창";
+                    pState.desc = `온도가 <strong>${(T*100).toFixed(0)}백만 K</strong>를 돌파하며 열압력이 마침내 축퇴압을 압도했습니다. <strong>축퇴 상태를 완벽히 벗어나며</strong> 중심핵이 대팽창하여 에너지를 소산하고 온도가 안정적인 HB 연소 수준으로 하강합니다.`;
+                } else {
+                    pState.pressureName = `전자 축퇴압 ($P \\propto \\rho^{5/3}$)`;
+                    pState.sensitivityFactor = "온도 독립성 ($T^0$)";
+                }
+            } else {
+                pState.pressureName = `이상 기체 상태 가스압 ($P \\propto \\rho T$)`;
+                pState.sensitivityFactor = "자발적 열 피드백 ($T^1$)";
+            }
+
+            // 3. 온도 영역별 핵반응 메커니즘
+            if (T < 1.0) {
+                pState.judgment = "3중 알파 개시 한계 온도 미달 (적색거성가지)";
+                pState.desc = `현재 온도는 약 <strong>${(T * 100).toFixed(0)}백만 K</strong>입니다. 수소각 연소에서 헬륨 폐기물이 계속 쌓이고 있으나, 3중 알파 반응 개시 온도인 <strong>1억 K</strong> 미만이므로 안정된 헬륨층으로 존재합니다.`;
+                pState.flashCoreActive = false;
+            } else if (T >= 1.0 && T < 1.5) {
+                if (pState.isDegenerate) {
+                    pState.judgment = "🔥 헬륨 섬광 중심 점화!! (Thermal Runaway 폭주)";
+                    pState.desc = `온도가 <strong>1억 K</strong>를 돌파했습니다! 온도가 올라도 핵이 팽창하지 않기 때문에 반응 속도가 수초 만에 1,000억 배로 치솟는 폭주가 발생하며, 은하 전체 광도와 맞먹는 에너지가 정중앙에서 방출됩니다.`;
+                    pState.flashCoreActive = true;
+                } else {
+                    pState.judgment = "안정적인 헬륨 연소 단계 (질량대 2.25 M_⊙ 초과)";
+                    pState.desc = `온도가 <strong>1억 K</strong>를 돌파했지만, 축퇴되지 않은 충분히 무거운 질량이므로 이상기체 열압력이 정상 작동해 핵융합열이 발생하자마자 헬륨 중심핵을 안정적으로 부드럽게 팽창·냉각시킵니다.`;
+                    pState.flashCoreActive = false;
+                }
+            } else {
+                if (!pState.isLifted) {
+                    pState.judgment = "안정적인 고온 헬륨 핵 연소 (Horizontal Branch)";
+                    pState.desc = `현재 중심 온도는 <strong>1.5억 K 초과</strong>입니다. 축퇴가 애초에 형성되지 않았던 안정한 조건이므로 규칙적인 3중 알파 과정이 평형 상태를 유지하며 지속됩니다.`;
+                    pState.flashCoreActive = false;
+                }
+            }
+
+            return pState;
+        }
+
+        // 입력 값 변경 핸들러
+        function updateSimulation() {
+            mass = parseFloat(massInput.value);
+            degen = parseFloat(degenInput.value) / 100;
+            temp = parseFloat(tempInput.value);
+
+            massVal.textContent = `${mass.toFixed(2)} M_⊙`;
+            degenVal.textContent = `${(degen * 100).toFixed(0)}%`;
+            tempVal.textContent = `${temp.toFixed(2)} × 10⁸ K`;
+
+            const phys = computeStellarPhysics(mass, degen, temp);
+
+            // 대시보드 데이터 연동
+            pressureType.textContent = phys.isWD ? "백색왜성 축퇴 고정" : (phys.isDegenerate ? (phys.isLifted ? "이상기체 복원됨" : "축퇴 가스층 점유") : "이상기체 가스 지배적");
+            pressureType.className = `text-xs font-black mt-1 block ${phys.isWD ? 'text-red-400' : (phys.isDegenerate ? (phys.isLifted ? 'text-emerald-400' : 'text-amber-500') : 'text-emerald-400')}`;
+            
+            sensitivity.textContent = phys.isWD ? "에너지 생성 없음" : phys.sensitivityFactor;
+            sensitivity.className = `text-xs font-black mt-1 block ${phys.flashCoreActive ? 'text-red-500 animate-pulse' : 'text-blue-400'}`;
+
+            flashResult.textContent = phys.judgment;
+            currentPhaseLabel.textContent = `항성 물리 상태 판정: ${phys.judgment}`;
+            sciExplanation.innerHTML = phys.desc;
+
+            // 알림 배너 연출
+            if (phys.flashCoreActive) {
+                flashTitle.textContent = "Helium Flash Runaway";
+                flashDesc.textContent = "최심부 중심에서 핵융합 폭주 진행 중";
+                flashOverlay.classList.remove('opacity-0', 'translate-x-2');
+                flashOverlay.classList.add('opacity-100', 'translate-x-0');
+            } else if (phys.isWD && isSimulating && temp < 0.3) {
+                flashTitle.textContent = "He White Dwarf Cooling";
+                flashDesc.textContent = "수소연소 종료 후 헬륨 백색왜성으로 냉각 중";
+                flashOverlay.classList.remove('opacity-0', 'translate-x-2');
+                flashOverlay.classList.add('opacity-100', 'translate-x-0');
+            } else {
+                flashOverlay.classList.remove('opacity-100', 'translate-x-0');
+                flashOverlay.classList.add('opacity-0', 'translate-x-2');
+            }
+
+            // 다이내믹 헬륨핵 크기 조절
+            const maxRadius = Math.min(stellarCanvas.width, stellarCanvas.height) * 0.46;
+            let baseCoreRadius = maxRadius * 0.28; 
+
+            if (phys.isWD) {
+                // 백색왜성 분기: 극단적으로 작고 단단하게 수축 (반경 축소 고정)
+                let wdScale = Math.max(0.4, 1.0 - (0.8 - temp) * 0.5); // 식어갈수록 압축
+                targetCoreRadius = baseCoreRadius * 0.4 * wdScale;
+            } else if (phys.isLifted) {
+                // 대팽창 애니메이션 적용
+                targetCoreRadius = baseCoreRadius * 1.6; 
+            } else {
+                targetCoreRadius = baseCoreRadius;
+            }
+
+            // 궤정 보정 상태 배너 갱신
+            if (phys.isWD) {
+                calibrationLabel.textContent = "백색왜성 분기 동작 중";
+                calibrationLabel.className = "text-blue-400 font-bold animate-pulse";
+            } else {
+                calibrationLabel.textContent = "헬륨 섬광 물리 연동 활성";
+                calibrationLabel.className = "text-emerald-400 font-bold";
+            }
+
+            drawHRDiagram();
+        }
+
+        // 반응형 캔버스 크기 맞춤
+        function resizeCanvas() {
+            const rectS = stellarCanvas.parentElement.getBoundingClientRect();
+            stellarCanvas.width = rectS.width;
+            stellarCanvas.height = rectS.height;
+            
+            const rectH = hrCanvas.parentElement.getBoundingClientRect();
+            hrCanvas.width = rectH.width;
+            hrCanvas.height = rectH.height;
+
+            const maxRadius = Math.min(stellarCanvas.width, stellarCanvas.height) * 0.46;
+            const initCoreRadius = maxRadius * 0.28; 
+            initPhysicsParticles(stellarCanvas.width / 2, stellarCanvas.height / 2, initCoreRadius);
+
+            updateSimulation();
+        }
+
+        // 고정밀 물리 파티클 충돌 & 중력 연산 엔진
+        function updatePhysicsParticles(cx, cy, pState) {
+            let speedMultiplier = 0.4 + temp * 1.5; 
+
+            // 중심핵 반지름 팽창 애니메이션 보간 공식 (대팽창 효과 실감나게 반영)
+            currentCoreRadius += (targetCoreRadius - currentCoreRadius) * 0.05;
+
+            // 헬륨-4(알파 입자) 색상 및 성상 전이 제어 (수소연소 단계에서는 이상기체 오렌지색, 수축하며 축퇴 파란색)
+            let particleColor = '#6366f1'; // 기본 파란색 (축퇴)
+            if (pState.isWD) {
+                // 백색왜성은 극한으로 압축된 완전 축퇴 상태이므로 차가운 백색/하늘색 색상으로 연출
+                particleColor = '#93c5fd';
+            } else if (temp <= 0.35) {
+                // 수소연소 극초기 단계: 아직 밀도가 완벽히 수축되지 않아 이상기체 지배적 (오렌지색)
+                particleColor = '#f97316';
+            } else if (temp < 1.0) {
+                // 점진적으로 밀도가 차가워지며 축퇴 가스로 변화 (오렌지색에서 파란색으로 그라데이션)
+                let blendRatio = (temp - 0.35) / 0.65;
+                let r = Math.round(249 * (1 - blendRatio) + 99 * blendRatio);
+                let g = Math.round(115 * (1 - blendRatio) + 102 * blendRatio);
+                let b = Math.round(22 * (1 - blendRatio) + 241 * blendRatio);
+                particleColor = `rgb(${r}, ${g}, ${b})`;
+            } else {
+                // 섬광 및 축퇴 해제 단계
+                particleColor = pState.isLifted ? '#f97316' : '#6366f1';
+            }
+
+            // 1. 헬륨-4(알파 입자) 운동 연산 및 실시간 헬륨핵 내부 완전 구속 (고정밀 칼가두기 장벽 구현!)
+            particles.forEach(p => {
+                // 백색왜성 냉각 단계에서는 운동속도가 영온도에 도달하여 수축 정지하는 효과 묘사
+                let activeSpeed = pState.isWD && temp < 0.4 ? speedMultiplier * (temp / 0.4) : speedMultiplier;
+                p.x += p.vx * activeSpeed;
+                p.y += p.vy * activeSpeed;
+
+                let dx = p.x - cx;
+                let dy = p.y - cy;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+
+                // 물리 법칙: 입자들은 절대로 바깥 대류층으로 나가지 못하고, 헬륨핵 내부(currentCoreRadius)에 가두어 구속됩니다.
+                if (dist > currentCoreRadius - p.radius) {
+                    let nx = dx / dist;
+                    let ny = dy / dist;
+                    let dot = p.vx * nx + p.vy * ny;
+                    p.vx = (p.vx - 2 * dot * nx) * 0.98;
+                    p.vy = (p.vy - 2 * dot * ny) * 0.98;
+                    
+                    p.x = cx + nx * (currentCoreRadius - p.radius - 0.5);
+                    p.y = cy + ny * (currentCoreRadius - p.radius - 0.5);
+                }
+            });
+
+            // 2. 탄소-12(${}^{12}\text{C}$) 고정밀 중력 침강(Settling) 및 구속 연산
+            carbonNuclei.forEach((c, idx) => {
+                let dx = c.x - cx;
+                let dy = c.y - cy;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+
+                // 탄소는 헬륨보다 무거우므로 중심 정중앙 탄소안착층(C-O core)으로 가파르게 수축 가속합니다.
+                let gravityPull = 0.15 * speedMultiplier; 
+                if (dist > 1.0) {
+                    c.vx -= (dx / dist) * gravityPull;
+                    c.vy -= (dy / dist) * gravityPull;
+                }
+
+                // 축퇴가스가 열전도를 시키며 밀집된 저항으로 서서히 침강
+                c.vx *= 0.88;
+                c.vy *= 0.88;
+
+                c.x += c.vx * speedMultiplier;
+                c.y += c.vy * speedMultiplier;
+
+                // 물리 장벽: 탄소는 극도로 무거우므로 헬륨핵 내부에서도 최안쪽 45% 반경 내부로 강력 구속
+                let carbonBoundLimit = currentCoreRadius * 0.45;
+                if (dist > carbonBoundLimit - c.radius) {
+                    let nx = dx / dist;
+                    let ny = dy / dist;
+                    let dot = c.vx * nx + c.vy * ny;
+                    c.vx = (c.vx - 2 * dot * nx) * 0.3; 
+                    c.vy = (c.vy - 2 * dot * ny) * 0.3;
+                    c.x = cx + nx * (carbonBoundLimit - c.radius - 0.5);
+                    c.y = cy + ny * (carbonBoundLimit - c.radius - 0.5);
+                }
+
+                // 서서히 가라앉아 쌓이는 시간 연착륙 조율
+                c.alphaTime -= 0.003; 
+                if (c.alphaTime <= 0) {
+                    carbonNuclei.splice(idx, 1);
+                }
+            });
+
+            // 3. 국소 점화성 3중 알파($3\alpha$) 합성 연산 (임계온도 1.0 돌파 시 최심부 정중앙에서만)
+            // *He 백색왜성 분기($M < 0.5$)에서는 3중 알파가 전면 정지됩니다.*
+            if (temp >= 1.0 && !pState.isWD) {
+                let fusionProbability = 0.0015 * Math.pow(temp, 4.5);
+                if (pState.isDegenerate && !pState.isLifted) {
+                    fusionProbability *= 12.0; // 열폭주 시 반응속도 폭증
+                }
+
+                for (let i = 0; i < particles.length; i++) {
+                    let p1 = particles[i];
+                    let dx1 = p1.x - cx;
+                    let dy1 = p1.y - cy;
+                    let distFromCenter = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+
+                    // 위키백과 물리적 원리: 헬륨 섬광 조건 시 최심부 좁은 정중앙 (헬륨핵의 20% 이내 국소 스팟)에서만 반응 발생
+                    let activeZoneLimit = pState.flashCoreActive ? (currentCoreRadius * 0.2) : (currentCoreRadius * 0.65);
+
+                    if (distFromCenter < activeZoneLimit && Math.random() < fusionProbability) {
+                        let neighbors = [];
+                        for (let j = 0; j < particles.length; j++) {
+                            if (i !== j) {
+                                let p2 = particles[j];
+                                let gapX = p1.x - p2.x;
+                                let gapY = p1.y - p2.y;
+                                let gapDist = Math.sqrt(gapX * gapX + gapY * gapY);
+                                if (gapDist < 14) { 
+                                    neighbors.push(j);
+                                    if (neighbors.length === 2) break;
+                                }
+                            }
+                        }
+
+                        if (neighbors.length === 2) {
+                            let idx1 = neighbors[0];
+                            let idx2 = neighbors[1];
+
+                            let mergeX = (p1.x + particles[idx1].x + particles[idx2].x) / 3;
+                            let mergeY = (p1.y + particles[idx1].y + particles[idx2].y) / 3;
+
+                            particles.splice(i, 1);
+                            let sortedIndices = [idx1, idx2].sort((a, b) => b - a);
+                            particles.splice(sortedIndices[0], 1);
+                            particles.splice(sortedIndices[1], 1);
+
+                            // 합성된 탄소-12
+                            carbonNuclei.push({
+                                x: mergeX,
+                                y: mergeY,
+                                vx: (Math.random() - 0.5) * 0.8,
+                                vy: (Math.random() - 0.5) * 0.8,
+                                radius: 5.5, 
+                                alphaTime: 1.0
+                            });
+
+                            // 감마선 전파 충격파 방출
+                            gammaBursts.push({
+                                cx: mergeX,
+                                cy: mergeY,
+                                r: 0.3,
+                                maxR: 18,
+                                opacity: 1.0
+                            });
+
+                            break; 
+                        }
+                    }
+                }
+            }
+
+            // 감마 파동 업데이트
+            gammaBursts.forEach((g, idx) => {
+                g.r += 1.5;
+                g.opacity -= 0.06;
+                if (g.opacity <= 0) {
+                    gammaBursts.splice(idx, 1);
+                }
+            });
+
+            // 소모 입자 재생성 공식 (백색왜성 분기에서는 소모가 없어 재생성이 원할하며 밀도가 높게 수축됨)
+            let targetParticleCount = pState.isLifted ? 130 : (pState.isWD ? 110 : 90);
+            while (particles.length < targetParticleCount) {
+                let angle = Math.random() * Math.PI * 2;
+                let r = (0.75 + Math.random() * 0.23) * currentCoreRadius; 
+                particles.push({
+                    x: cx + Math.cos(angle) * r,
+                    y: cy + Math.sin(angle) * r,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: (Math.random() - 0.5) * 1.5,
+                    radius: 3.5, // 처음 입자 크기 유지
+                    type: "He4"
+                });
+            }
+
+            // 파티클 전체에 실시간 동적 구별 색상 동기화
+            particles.forEach(p => {
+                p.color = particleColor;
+            });
+        }
+
+        // 메인 렌더링 프레임 함수
+        function drawStellarView() {
+            const w = stellarCanvas.width;
+            const h = stellarCanvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            
+            const maxRadius = Math.min(w, h) * 0.46;
+            
+            // 물리적 한계점 반영: 만약 백색왜성 분기($M < 0.5$)면 외각 적색 수소 Envelope가 서서히 상실 및 냉각됨
+            const pState = computeStellarPhysics(mass, degen, temp);
+            let extEnvelopeScale = pState.isWD ? Math.max(0.3, 1.0 - (0.8 - temp) * 1.2) : 1.0;
+            const extRadius = maxRadius * (3.8 + Math.min(temp * 0.1, 0.25)) * extEnvelopeScale; 
+
+            updatePhysicsParticles(cx, cy, pState);
+
+            ctxS.clearRect(0, 0, w, h);
+            ctxS.fillStyle = '#020305';
+            ctxS.fillRect(0, 0, w, h);
+
+            // 1단계: 화면 전체를 꽉 채우는 부풀어 오른 수소 대류 가스층 (Convective Envelope)
+            if (extRadius > currentCoreRadius + 5) {
+                let extGrad = ctxS.createRadialGradient(cx, cy, currentCoreRadius, cx, cy, extRadius);
+                // 백색왜성 냉각 단계에서는 가스층이 흐릿하게 식어가며 푸른 빛으로 가라앉는 효과 묘사
+                if (pState.isWD) {
+                    extGrad.addColorStop(0, 'rgba(59, 130, 246, 0.12)');
+                    extGrad.addColorStop(0.5, 'rgba(30, 41, 59, 0.05)');
+                    extGrad.addColorStop(1, 'rgba(3, 5, 8, 0)');
+                } else {
+                    extGrad.addColorStop(0, 'rgba(180, 20, 20, 0.5)'); 
+                    extGrad.addColorStop(0.3, 'rgba(239, 68, 68, 0.15)');
+                    extGrad.addColorStop(0.7, 'rgba(249, 115, 22, 0.08)');
+                    extGrad.addColorStop(1, 'rgba(5, 5, 8, 0)');
+                }
+                
+                ctxS.fillStyle = extGrad;
+                ctxS.beginPath();
+                ctxS.arc(cx, cy, extRadius, 0, Math.PI * 2);
+                ctxS.fill();
+
+                // 대류 세포 흐름 묘사
+                ctxS.strokeStyle = pState.isWD ? 'rgba(59, 130, 246, 0.02)' : 'rgba(239, 68, 68, 0.04)';
+                ctxS.lineWidth = 1;
+                for(let rScale = 0.5; rScale < 1.0; rScale += 0.15) {
+                    ctxS.beginPath();
+                    ctxS.arc(cx, cy, extRadius * rScale, 0, Math.PI * 2);
+                    ctxS.stroke();
+                }
+            }
+
+            // 2단계: 수소 연소 껍질층 (H-Shell Burning Zone)
+            // *He 백색왜성 분기에서는 수소 연소 껍질이 소멸되어 거의 보이지 않게 처리됩니다.*
+            if (!pState.isWD) {
+                let shellThickness = currentCoreRadius * 0.45 + 10; 
+                let shellInner = Math.max(0.1, currentCoreRadius - 1.2);
+                let shellGrad = ctxS.createRadialGradient(cx, cy, shellInner, cx, cy, currentCoreRadius + shellThickness);
+                shellGrad.addColorStop(0, 'rgba(251, 146, 60, 0.9)');
+                shellGrad.addColorStop(0.4, 'rgba(254, 240, 138, 0.95)');
+                shellGrad.addColorStop(0.8, 'rgba(249, 115, 22, 0.35)');
+                shellGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+
+                ctxS.fillStyle = shellGrad;
+                ctxS.beginPath();
+                ctxS.arc(cx, cy, currentCoreRadius + shellThickness, 0, Math.PI * 2);
+                ctxS.fill();
+            }
+
+            // 3단계: 중심 헬륨핵 Background 렌더링
+            let coreGrad = ctxS.createRadialGradient(cx, cy, 0, cx, cy, currentCoreRadius);
+            if (pState.isWD) {
+                // 헬륨 백색왜성 분기: 서서히 고밀도로 차갑게 식어가는 창백한 청백색 렌더링
+                let coolIntensity = Math.max(0.2, (temp / 0.8));
+                coreGrad.addColorStop(0, `rgba(255, 255, 255, ${coolIntensity})`);
+                coreGrad.addColorStop(0.4, `rgba(147, 197, 253, ${coolIntensity * 0.8})`);
+                coreGrad.addColorStop(1, 'rgba(15, 23, 42, 0.9)');
+            } else if (pState.isDegenerate) {
+                if (pState.isLifted) {
+                    // 축퇴 해제 팽창
+                    coreGrad.addColorStop(0, '#3f1101');
+                    coreGrad.addColorStop(0.7, '#732704');
+                    coreGrad.addColorStop(1, '#942b08');
+                } else if (pState.flashCoreActive) {
+                    // 폭주 헬륨 섬광
+                    coreGrad.addColorStop(0, '#ffffff');
+                    coreGrad.addColorStop(0.2, '#ffe4e6');
+                    coreGrad.addColorStop(0.7, '#f43f5e');
+                    coreGrad.addColorStop(1, '#2c0c29');
+                } else {
+                    // 일반 축퇴
+                    coreGrad.addColorStop(0, '#0a0d17');
+                    coreGrad.addColorStop(0.6, '#0f0e2b');
+                    coreGrad.addColorStop(1, '#1b1542');
+                }
+            } else {
+                // 이상기체 가스 헬륨핵
+                coreGrad.addColorStop(0, '#311001');
+                coreGrad.addColorStop(0.7, '#5e2307');
+                coreGrad.addColorStop(1, '#802609');
+            }
+
+            ctxS.fillStyle = coreGrad;
+            ctxS.beginPath();
+            ctxS.arc(cx, cy, currentCoreRadius, 0, Math.PI * 2);
+            ctxS.fill();
+
+            // 중심핵 경계 구조선 강조
+            ctxS.strokeStyle = pState.isWD ? 'rgba(147, 197, 253, 0.6)' : (pState.isDegenerate ? 'rgba(99, 102, 241, 0.5)' : 'rgba(234, 88, 12, 0.4)');
+            ctxS.lineWidth = pState.isWD ? 1.5 : 1.0;
+            ctxS.beginPath();
+            ctxS.arc(cx, cy, currentCoreRadius, 0, Math.PI * 2);
+            ctxS.stroke();
+
+            // 탄소 안착 한계선 (백색왜성 분기에서는 표기 생략)
+            if (!pState.isWD) {
+                ctxS.strokeStyle = 'rgba(16, 185, 129, 0.1)';
+                ctxS.lineWidth = 0.6;
+                ctxS.setLineDash([2, 3]);
+                ctxS.beginPath();
+                ctxS.arc(cx, cy, currentCoreRadius * 0.45, 0, Math.PI * 2);
+                ctxS.stroke();
+                ctxS.setLineDash([]);
+            }
+
+            // 4단계: 극소 부위 정중앙 발화 스팟
+            if (pState.flashCoreActive) {
+                let flashLocalRadius = currentCoreRadius * 0.2; 
+                let flashGrad = ctxS.createRadialGradient(cx, cy, 0, cx, cy, flashLocalRadius);
+                flashGrad.addColorStop(0, '#ffffff');
+                flashGrad.addColorStop(0.4, 'rgba(254, 205, 211, 0.95)'); 
+                flashGrad.addColorStop(1, 'rgba(244, 63, 94, 0)');
+
+                ctxS.fillStyle = flashGrad;
+                ctxS.beginPath();
+                ctxS.arc(cx, cy, flashLocalRadius, 0, Math.PI * 2);
+                ctxS.fill();
+            }
+
+            // 5단계: 미세 헬륨-4 입자($^4\text{He}$)의 역동적 열운동 렌더링 (이중 가두기 장벽이 적용된 파티클!)
+            particles.forEach(p => {
+                ctxS.fillStyle = p.color;
+
+                // 발화구역 근처 백광화
+                let dx = p.x - cx;
+                let dy = p.y - cy;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (pState.flashCoreActive && dist < currentCoreRadius * 0.2) {
+                    ctxS.fillStyle = '#ffffff'; 
+                }
+
+                ctxS.beginPath();
+                ctxS.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctxS.fill();
+            });
+
+            // 6단계: 합성된 탄소-12(${}^{12}\text{C}$) 중력 침강 침전 렌더링
+            carbonNuclei.forEach(c => {
+                ctxS.save();
+                ctxS.shadowColor = '#10b981';
+                ctxS.shadowBlur = 2;
+                ctxS.fillStyle = `rgba(52, 211, 153, ${c.alphaTime * 0.9})`; 
+                ctxS.beginPath();
+                ctxS.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+                ctxS.fill();
+                
+                ctxS.fillStyle = `rgba(255, 255, 255, ${c.alphaTime * 0.8})`;
+                ctxS.font = 'bold 4px Noto Sans KR';
+                ctxS.fillText("C", c.x - 1.2, c.y + 1.2);
+                ctxS.restore();
+            });
+
+            // 7단계: 방출되는 감마선 복사 파동
+            gammaBursts.forEach(g => {
+                ctxS.strokeStyle = `rgba(255, 255, 255, ${g.opacity})`;
+                ctxS.lineWidth = 0.6;
+                ctxS.beginPath();
+                ctxS.arc(g.cx, g.cy, g.r, 0, Math.PI * 2);
+                ctxS.stroke();
+            });
+
+            // 정밀 지시선 주석 렌더링
+            ctxS.font = '10px Noto Sans KR';
+            ctxS.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            
+            // 수소 연소각 레이블
+            if (!pState.isWD) {
+                ctxS.beginPath();
+                ctxS.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctxS.lineWidth = 1;
+                ctxS.moveTo(cx + currentCoreRadius + 5, cy - 8);
+                ctxS.lineTo(cx + currentCoreRadius + 50, cy - 35);
+                ctxS.lineTo(cx + currentCoreRadius + 140, cy - 35);
+                ctxS.stroke();
+                ctxS.fillText("수소 연소 껍질 (맹렬히 타는 H-Shell)", cx + currentCoreRadius + 50, cy - 41);
+            }
+
+            // 헬륨핵 내부 지시선 (핵이 지나치게 작아 지시선 좌표 정밀 튜닝)
+            ctxS.beginPath();
+            ctxS.moveTo(cx - 10, cy + 8);
+            ctxS.lineTo(cx - 50, cy + 90);
+            ctxS.lineTo(cx - 145, cy + 90);
+            ctxS.stroke();
+            
+            let coreDegenLabel = pState.isWD ? "차가운 헬륨 백색왜성 결정핵" : (pState.isDegenerate ? (pState.isLifted ? "대팽창 후 안정 연소 상태의 헬륨핵" : "극소 압축된 전자가스 전자 축퇴핵") : "이상기체 안정성 헬륨핵");
+            ctxS.fillText(coreDegenLabel, cx - 145, cy + 82);
+            ctxS.fillText(pState.isWD ? "동결 상태의 헬륨입자(⁴He)" : "알파 입자(⁴He) 전용 활동구역", cx - 145, cy + 102);
+
+            // 최심부 국소 발화 주석
+            if (pState.flashCoreActive) {
+                ctxS.beginPath();
+                ctxS.strokeStyle = '#f43f5e';
+                ctxS.moveTo(cx + 2, cy - 2);
+                ctxS.lineTo(cx + 35, cy - 70);
+                ctxS.lineTo(cx + 120, cy - 70);
+                ctxS.stroke();
+                ctxS.fillStyle = '#fecdd3';
+                ctxS.fillText("중심 최심부 국소 점화지", ctxS - 145, cy - 77); // 수정: 주석 위치가 잘리지 않도록 정렬
+                ctxS.fillText("Helium Flash Runaway", cx + 35, cy - 61);
+            }
+
+            if (isSimulating) {
+                animationFrameId = requestAnimationFrame(drawStellarView);
+            } else {
+                requestAnimationFrame(() => drawStellarView());
+            }
+        }
+
+        // H-R도 그리기
+        function drawHRDiagram() {
+            const w = hrCanvas.width;
+            const h = hrCanvas.height;
+            const pad = 40;
+
+            ctxH.clearRect(0, 0, w, h);
+            ctxH.fillStyle = '#020408';
+            ctxH.fillRect(0, 0, w, h);
+
+            ctxH.strokeStyle = '#1f2937';
+            ctxH.lineWidth = 1.5;
+            ctxH.beginPath();
+            ctxH.moveTo(pad, pad);
+            ctxH.lineTo(pad, h - pad);
+            ctxH.lineTo(w - pad, h - pad);
+            ctxH.stroke();
+
+            ctxH.fillStyle = '#6b7280';
+            ctxH.font = '9px Noto Sans KR';
+            ctxH.fillText("고온 (O, B)", pad + 10, h - pad + 15);
+            ctxH.fillText("저온 (M형 거성, Eff. Temp)", w - pad - 120, h - pad + 15);
+            
+            ctxH.save();
+            ctxH.translate(pad - 12, h/2);
+            ctxH.rotate(-Math.PI/2);
+            ctxH.fillText("광도 (Luminosity, L/L_⊙)", -45, 0);
+            ctxH.restore();
+
+            // 주계열선 가이드
+            ctxH.beginPath();
+            ctxH.strokeStyle = 'rgba(31, 41, 55, 0.8)';
+            ctxH.setLineDash([3, 3]);
+            ctxH.moveTo(pad + 40, pad + 120);
+            ctxH.bezierCurveTo(pad + 80, pad + 140, w - pad - 80, h - pad - 40, w - pad - 40, h - pad - 20);
+            ctxH.stroke();
+
+            // 적색거성가지 (RGB) 가이드라인 라인
+            ctxH.beginPath();
+            ctxH.strokeStyle = 'rgba(239, 68, 68, 0.35)';
+            ctxH.setLineDash([]);
+            let rgbX1 = w - pad - 120;
+            let rgbY1 = h - pad - 80;
+            let rgbX2 = w - pad - 100;
+            let rgbY2 = pad + 40; 
+            ctxH.moveTo(rgbX1, rgbY1);
+            ctxH.quadraticCurveTo(rgbX2 - 40, rgbY1 - 20, rgbX2, rgbY2);
+            ctxH.stroke();
+
+            // He 백색왜성 분기 냉각선 가이드 (왼쪽 하단으로 수축 강하하는 가이드 추가)
+            ctxH.beginPath();
+            ctxH.strokeStyle = 'rgba(99, 102, 241, 0.25)';
+            ctxH.setLineDash([2, 4]);
+            ctxH.moveTo(rgbX1, rgbY1 + 10);
+            ctxH.quadraticCurveTo(pad + 100, h - pad - 60, pad + 60, h - pad - 15);
+            ctxH.stroke();
+            ctxH.setLineDash([]);
+
+            if (mass <= 2.25 && mass >= 0.5) {
+                ctxH.fillStyle = 'rgba(220, 38, 38, 0.12)';
+                ctxH.beginPath();
+                ctxH.arc(rgbX2, rgbY2, 16, 0, Math.PI * 2);
+                ctxH.fill();
+                ctxH.strokeStyle = '#ef4444';
+                ctxH.setLineDash([2, 4]);
+                ctxH.beginPath();
+                ctxH.arc(rgbX2, rgbY2, 16, 0, Math.PI * 2);
+                ctxH.stroke();
+                ctxH.setLineDash([]);
+                ctxH.fillStyle = '#f87171';
+                ctxH.fillText("헬륨 섬광 점화 구역", rgbX2 - 100, rgbY2 - 5);
+            } else if (mass < 0.5) {
+                ctxH.fillStyle = 'rgba(99, 102, 241, 0.1)';
+                ctxH.beginPath();
+                ctxH.arc(pad + 60, h - pad - 15, 14, 0, Math.PI * 2);
+                ctxH.fill();
+                ctxH.fillStyle = '#93c5fd';
+                ctxH.fillText("He WD 동결 구역", pad + 15, h - pad - 35);
+            }
+
+            let targetX, targetY;
+
+            if (mass < 0.5) {
+                // 극소 질량: 헬륨 점화 실패, 백색왜성 분기로 가라앉는 경로 매핑
+                let ratio = Math.min(1.0, temp / 0.8);
+                if (temp < 0.75) {
+                    targetX = rgbX1;
+                    targetY = rgbY1 + (h - pad - 80 - rgbY1) * (temp / 0.75) * 0.4;
+                } else {
+                    // 냉각되어 백색왜성 분기로 급속 하강
+                    let coolRatio = (temp - 0.75) / 1.75;
+                    targetX = rgbX1 - (rgbX1 - (pad + 60)) * coolRatio;
+                    targetY = rgbY1 + (h - pad - 15 - rgbY1) * coolRatio;
+                }
+            } else {
+                if (temp < 1.0) {
+                    let ratio = (temp - 0.1) / 0.9;
+                    targetX = rgbX1 + (rgbX2 - rgbX1) * ratio;
+                    targetY = rgbY1 + (rgbY2 - rgbY1) * ratio;
+                } else {
+                    if (mass <= 2.25 && degen > 0.45) {
+                        if (temp >= 1.5) {
+                            targetX = rgbX2 - 110;
+                            targetY = rgbY2 + 65;
+                        } else {
+                            targetX = rgbX2;
+                            targetY = rgbY2;
+                        }
+                    } else {
+                        targetX = rgbX2 - 50;
+                        targetY = rgbY2 - 15;
+                    }
+                }
+            }
+
+            ctxH.shadowBlur = 15;
+            let isFlashActive = temp >= 1.0 && mass <= 2.25 && degen > 0.45 && mass >= 0.5;
+            ctxH.shadowColor = isFlashActive ? '#ef4444' : (mass < 0.5 ? '#60a5fa' : '#3b82f6');
+            ctxH.fillStyle = isFlashActive ? '#f43f5e' : (mass < 0.5 ? '#93c5fd' : '#3b82f6');
+            ctxH.beginPath();
+            ctxH.arc(targetX, targetY, 6, 0, Math.PI * 2);
+            ctxH.fill();
+            ctxH.shadowBlur = 0; 
+
+            ctxH.strokeStyle = '#ffffff';
+            ctxH.lineWidth = 1.5;
+            ctxH.beginPath();
+            ctxH.arc(targetX, targetY, 6, 0, Math.PI * 2);
+            ctxH.stroke();
+
+            ctxH.fillStyle = '#ffffff';
+            ctxH.fillText("현재 위치", targetX + 10, targetY + 3);
+        }
+
+        // 실제 물리학적 '비선형 열폭주 전이 타임라인' 엔진 구동
+        function stepAnimation() {
+            if (!isSimulating) return;
+
+            let curTemp = parseFloat(tempInput.value);
+            let nextTemp = curTemp;
+
+            // 1. 극소 질량체 분기 ($M < 0.5$): 온도가 0.75까지만 오르고 그 이후론 동결 냉각 하강 돌입
+            if (mass < 0.5) {
+                if (playState !== 'WD_COOLING') {
+                    playState = 'CONTRACTION';
+                    nextTemp = curTemp + 0.005; // 서서히 기계적 온도 증가
+                    if (nextTemp >= 0.75) {
+                        playState = 'WD_COOLING';
+                        nextTemp = 0.75;
+                    }
+                } else {
+                    // 한계에 다다른 He WD: 온도 가파르게 강하 및 동결 돌입
+                    nextTemp = curTemp - 0.007;
+                    if (nextTemp <= 0.1) {
+                        nextTemp = 0.1;
+                        isSimulating = false;
+                        playText.textContent = "에너지 연소 개시";
+                        playState = 'IDLE';
+                        lucide.createIcons();
+                    }
+                }
+            } else {
+                // 2. 정상 항성 분기 ($M \ge 0.5$)
+                if (curTemp < 1.0) {
+                    playState = 'CONTRACTION';
+                    nextTemp = curTemp + 0.006; // 완만한 수축 가열 단계
+                } else if (curTemp >= 1.0 && curTemp < 1.8) {
+                    // 축퇴된 경우에만 폭주식 연쇄 점화 (Exponential Shoot-up!)
+                    if (degen > 0.45 && mass <= 2.25) {
+                        playState = 'RUNAWAY';
+                        nextTemp = curTemp + 0.07; // 기하급수적 열폭주! (온도 수치 스펙트럼 폭증)
+                    } else {
+                        // 비축퇴 이상기체의 경우: 점진적 가속 후 평형HB로 완만 이동
+                        playState = 'STABLE_HB';
+                        nextTemp = curTemp + 0.012;
+                    }
+                } else if (curTemp >= 1.8 && playState === 'RUNAWAY') {
+                    // 축퇴압 한계 이탈: 열압력 복원으로 인한 대팽창 및 순간 냉각 (Expansion Cooling)
+                    playState = 'EXPANSION_COOLING';
+                }
+
+                if (playState === 'EXPANSION_COOLING') {
+                    nextTemp = curTemp - 0.05; // 팽창에 의한 순간적인 냉각 하강 처리
+                    if (nextTemp <= 1.25) {
+                        nextTemp = 1.25;
+                        playState = 'STABLE_HB';
+                        isSimulating = false; // 수평가지 평형 연소 도달 시 완착 종료
+                        playText.textContent = "에너지 연소 개시";
+                        lucide.createIcons();
+                    }
+                } else if (playState === 'STABLE_HB') {
+                    // 수평가지 단계: 1.25 내외에서 안정 연소
+                    nextTemp = 1.25;
+                    isSimulating = false;
+                    playText.textContent = "에너지 연소 개시";
+                    lucide.createIcons();
+                } else {
+                    nextTemp = Math.min(2.5, nextTemp);
+                    if (nextTemp >= 2.5) {
+                        isSimulating = false;
+                        playText.textContent = "에너지 연소 개시";
+                        lucide.createIcons();
+                    }
+                }
+            }
+
+            tempInput.value = nextTemp.toFixed(2);
+            updateSimulation();
+
+            if (isSimulating) {
+                animationFrameId = requestAnimationFrame(stepAnimation);
+            }
+        }
+
+        btnPlay.addEventListener('click', () => {
+            if (isSimulating) {
+                isSimulating = false;
+                playText.textContent = "에너지 연소 개시";
+                cancelAnimationFrame(animationFrameId);
+                playState = 'IDLE';
+            } else {
+                let startTemp = parseFloat(tempInput.value);
+                if (startTemp >= 2.4 || playState === 'STABLE_HB' || (mass < 0.5 && startTemp <= 0.15)) {
+                    tempInput.value = 0.1;
+                }
+                isSimulating = true;
+                playText.textContent = "일시 정지";
+                playState = 'CONTRACTION';
+                stepAnimation();
+                drawStellarView(); 
+            }
+            lucide.createIcons();
+        });
+
+        btnReset.addEventListener('click', () => {
+            isSimulating = false;
+            cancelAnimationFrame(animationFrameId);
+            massInput.value = 1.0;
+            degenInput.value = 85;
+            tempInput.value = 0.8;
+            playState = 'IDLE';
+            playText.textContent = "에너지 연소 개시";
+            updateSimulation();
+            drawStellarView();
+            lucide.createIcons();
+        });
+
+        massInput.addEventListener('input', () => {
+            updateSimulation();
+            drawStellarView();
+        });
+        degenInput.addEventListener('input', () => {
+            updateSimulation();
+            drawStellarView();
+        });
+        tempInput.addEventListener('input', () => {
+            updateSimulation();
+            drawStellarView();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            drawStellarView();
+        });
+    </script>
+</body>
+</html>

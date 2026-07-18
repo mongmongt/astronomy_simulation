@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>별의 흑체복사 시뮬레이션</title>
+  <!-- Tailwind CSS CDN 사용 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 폰트 적용 및 기본 스타일 정의 */
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+    }
+    /* 슬라이더 커스텀 스타일링 */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 9999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      transition: background 0.15s ease-in-out;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #60a5fa;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 flex flex-col justify-between">
+
+  <!-- 헤더 영역 -->
+  <header class="mb-4 text-center md:text-left border-b border-gray-800 pb-3">
+    <h1 class="text-2xl md:text-3xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 bg-clip-text text-transparent">
+      별의 흑체복사 및 H-R도 시뮬레이션
+    </h1>
+    <p class="text-xs md:text-sm text-gray-400 mt-1">
+      표면 온도와 반지름에 따른 별의 스펙트럼, 물리량, 그리고 H-R도 상의 위치 변화를 실시간으로 확인하세요.
+    </p>
+  </header>
+
+  <!-- 메인 레이아웃 Grid -->
+  <main class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-grow">
+    
+    <!-- 1. 좌측: 조작 및 수치 패널 (lg:col-span-3) -->
+    <section class="lg:col-span-3 flex flex-col justify-between bg-slate-900/60 p-5 rounded-2xl border border-slate-800 backdrop-blur-sm gap-4">
+      <div>
+        <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-blue-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          조작 변인 설정
+        </h2>
+        
+        <!-- 온도 슬라이더 -->
+        <div class="mb-5">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium text-gray-300">표면 온도 (T)</span>
+            <span class="text-base font-mono font-bold text-yellow-400" id="temp-val">5,778 K</span>
+          </div>
+          <input type="range" id="temp-slider" min="3000" max="30000" step="100" value="5778" class="w-full">
+          <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+            <span>3,000 K</span>
+            <span>15,000 K</span>
+            <span>30,000 K</span>
+          </div>
+        </div>
+
+        <!-- 반지름 슬라이더 (정밀 로그 스케일 업그레이드: 0.1 ~ 1000 R☉) -->
+        <div class="mb-5">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium text-gray-300">반지름 (R)</span>
+            <span class="text-base font-mono font-bold text-cyan-400" id="radius-val">1.0 R☉</span>
+          </div>
+          <input type="range" id="radius-slider" min="-1" max="3" step="0.01" value="0" class="w-full">
+          <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+            <span>0.1 R☉</span>
+            <span>1.0 R☉</span>
+            <span>10 R☉</span>
+            <span>100 R☉</span>
+            <span>1000 R☉</span>
+          </div>
+        </div>
+
+        <!-- 거리 슬라이더 (로그 스케일: 1 ~ 10,000 pc) -->
+        <div class="mb-5">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium text-gray-300">거리 (d)</span>
+            <span class="text-base font-mono font-bold text-emerald-400" id="distance-val">10 pc</span>
+          </div>
+          <!-- value 범위는 0.0 (10^0 = 1 pc) ~ 4.0 (10^4 = 10,000 pc), 기본값은 1.0 (10 pc) -->
+          <input type="range" id="distance-slider" min="0" max="4" step="0.01" value="1" class="w-full">
+          <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+            <span>1 pc</span>
+            <span>10 pc</span>
+            <span>100 pc</span>
+            <span>1k pc</span>
+            <span>10k pc</span>
+          </div>
+        </div>
+
+        <!-- 유명한 별 비교 빠른 선택 패널 -->
+        <div class="mb-2 pt-3 border-t border-slate-800">
+          <span class="text-xs text-slate-400 block mb-2 font-semibold flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            우주의 유명한 별 선택
+          </span>
+          <div class="grid grid-cols-2 gap-1.5 text-xs">
+            <button onclick="applyPreset(3500, 887, 197)" class="px-2 py-1.5 bg-slate-800/80 hover:bg-red-950/40 border border-slate-700 hover:border-red-500/50 rounded-lg text-left transition-all">
+              <span class="font-bold block text-red-400">베텔게우스</span>
+              <span class="text-[10px] text-slate-400">197 pc (초거성)</span>
+            </button>
+            <button onclick="applyPreset(12000, 78, 264)" class="px-2 py-1.5 bg-slate-800/80 hover:bg-blue-950/40 border border-slate-700 hover:border-blue-400/50 rounded-lg text-left transition-all">
+              <span class="font-bold block text-blue-300">리겔</span>
+              <span class="text-[10px] text-slate-400">264 pc (초거성)</span>
+            </button>
+            <button onclick="applyPreset(9940, 1.71, 2.64)" class="px-2 py-1.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 hover:border-slate-400 rounded-lg text-left transition-all col-span-1">
+              <span class="font-bold block text-slate-200">시리우스 A</span>
+              <span class="text-[10px] text-slate-400">2.64 pc (주계열성)</span>
+            </button>
+            <button onclick="applyPreset(5778, 1.0, 10.0)" class="px-2 py-1.5 bg-slate-800/80 hover:bg-yellow-950/40 border border-slate-700 hover:border-yellow-500/50 rounded-lg text-left transition-all">
+              <span class="font-bold block text-yellow-400">태양 (☉)</span>
+              <span class="text-[10px] text-slate-400">10 pc (기준 거리)</span>
+            </button>
+            <button onclick="applyPreset(3042, 0.15, 1.3)" class="px-2 py-1.5 bg-slate-800/80 hover:bg-amber-950/40 border border-slate-700 hover:border-amber-700/50 rounded-lg text-left transition-all col-span-2 text-center">
+              <span class="font-bold text-amber-500">프록시마 센타우리</span>
+              <span class="text-[10px] text-slate-400 ml-1">1.3 pc (가장 가까운 별)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 물리 공식 간단 설명 -->
+      <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-gray-400 space-y-1">
+        <div class="font-semibold text-gray-300 border-b border-gray-800 pb-1">핵심 과학 원리</div>
+        <p><span class="text-yellow-400 font-bold">빈의 법칙:</span> $\lambda_{\text{max}} = \frac{2.898 \times 10^6}{\text{T}}$ (nm)</p>
+        <p><span class="text-cyan-400 font-bold">슈테판-볼츠만:</span> $\text{L} \propto \text{R}^2 \text{T}^4$</p>
+        <p><span class="text-emerald-400 font-bold">거리 지수:</span> $m = M + 5\log_{10}(d/10)$</p>
+      </div>
+    </section>
+
+    <!-- 2. 중앙: 스펙트럼 곡선 그래프 (lg:col-span-5) -->
+    <section class="lg:col-span-5 flex flex-col bg-slate-900/60 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm relative">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-bold flex items-center gap-2 text-purple-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          흑체복사 스펙트럼 곡선
+        </h2>
+        
+        <!-- 스펙트럼 곡선 고정 버튼 및 비교 표식 -->
+        <button id="pin-btn" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-lg border border-indigo-400/30 shadow-md active:scale-95 transition-all flex items-center gap-1">
+          <span>현재 곡선 고정 📌</span>
+        </button>
+      </div>
+      
+      <div class="relative flex-grow min-h-[300px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+        <!-- 캔버스로 정확한 수식 그래프 드로잉 -->
+        <canvas id="spectrum-canvas" class="w-full h-full absolute inset-0"></canvas>
+      </div>
+      <div class="mt-2 text-center text-xs text-gray-500">
+        색상 밴드: 가시광선 영역 (380 nm ~ 750 nm)
+      </div>
+    </section>
+
+    <!-- 3. 우측: 별 시각화 & H-R도 (lg:col-span-4) -->
+    <section class="lg:col-span-4 flex flex-col gap-4">
+      
+      <!-- 우측 상단: 별 그림 및 수치 출력 -->
+      <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col md:flex-row lg:flex-col gap-4 items-center justify-between">
+        <!-- 별 캔버스 -->
+        <div class="text-center w-full flex-1">
+          <span class="text-xs text-gray-400 block mb-2 font-medium">별의 크기와 색상 (가상 시각화)</span>
+          <div class="w-full aspect-square max-w-[200px] mx-auto bg-slate-950 rounded-xl overflow-hidden border border-slate-800 relative flex items-center justify-center">
+            <canvas id="star-canvas" class="w-full h-full"></canvas>
+          </div>
+        </div>
+
+        <!-- 실시간 물리량 출력 수치판 -->
+        <div class="w-full flex-1 space-y-3 font-mono">
+          <!-- 최대 파장 박스 -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 relative">
+            <span class="text-[10px] text-gray-500 block uppercase">최대 방출 파장 (&lambda;<sub>max</sub>)</span>
+            <div class="flex items-baseline justify-between">
+              <span class="text-2xl font-bold text-yellow-400" id="lmax-val">501.6</span>
+              <span class="text-xs text-gray-400">nm</span>
+            </div>
+            <span class="text-[10px] text-gray-400 block" id="spectral-class">분류: G형 주계열성</span>
+            
+            <!-- 극단값 경고 문구 오버레이 레이아웃 -->
+            <div id="extreme-warning" class="hidden mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-500 text-[9.5px] leading-relaxed transition-all">
+              ⚠ 슬라이더 한계값입니다. 실제 천체 범위를 벗어날 수 있습니다.
+            </div>
+          </div>
+
+          <!-- 광도 박스 -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-gray-500 block uppercase">총 광도 (L / L<sub>☉</sub>)</span>
+            <div class="flex items-baseline justify-between">
+              <span class="text-2xl font-bold text-cyan-400" id="luminosity-val">1.00</span>
+              <span class="text-xs text-gray-400">L<sub>☉</sub></span>
+            </div>
+            <span class="text-[10px] text-gray-400" id="luminosity-watts">W: ~3.83 &times; 10<sup>26</sup> W</span>
+          </div>
+
+          <!-- 겉보기 등급 수치판 -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-gray-500 block uppercase">겉보기 등급 (m) / 절대 등급 (M)</span>
+            <div class="flex items-baseline justify-between">
+              <span class="text-2xl font-bold text-emerald-400" id="apparent-mag-val">4.83</span>
+              <span class="text-xs text-gray-400" id="absolute-mag-val">M: 4.83</span>
+            </div>
+            <span class="text-[10px] text-gray-400" id="magnitude-desc">태양을 10 pc 거리에 둔 기준 등급</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 우측 하단: 미니 H-R도 -->
+      <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm flex-grow flex flex-col justify-between">
+        <h3 class="text-sm font-bold mb-2 flex items-center gap-2 text-rose-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"/></svg>
+          미니 헤르츠스프룽-러셀 (H-R)도
+        </h3>
+        <div class="relative w-full h-[180px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+          <canvas id="hr-canvas" class="w-full h-full absolute inset-0"></canvas>
+        </div>
+        <div class="flex justify-between text-[10px] text-gray-500 px-1 mt-1 font-mono">
+          <span>O (30k K)</span>
+          <span>B</span>
+          <span>A</span>
+          <span>F</span>
+          <span>G</span>
+          <span>K</span>
+          <span>M (3k K)</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 하단 제어 및 상태 표시 -->
+  <footer class="mt-4 pt-3 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
+    <div class="flex items-center gap-2">
+      <span class="relative flex h-2 w-2">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+      </span>
+      <span>물리 가상화 엔진 가동 중 (실시간 슈테판-볼츠만 & 플랑크 곡선 정밀 매핑)</span>
+    </div>
+    
+    <!-- 푸터 초기화 버튼 및 안내 문구 -->
+    <div class="flex items-center gap-3 w-full sm:w-auto">
+      <button id="reset-btn" class="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-semibold rounded-xl border border-slate-700 transition duration-150 flex items-center justify-center gap-2 text-xs">
+        <svg class="w-3.5 h-3.5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15H18M9 11l3-3 3 3m-3-3v12"/></svg>
+        태양 값으로 초기화 (T: 5,778K, R: 1.0R☉, d: 10pc)
+      </button>
+      <div class="text-slate-500 hidden md:block">
+        * 본 시뮬레이션은 실제 물리 정수를 기초로 설계되었습니다.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // --- 글로벌 과학 상수 정의 ---
+    const h = 6.62607015e-34; // 플랑크 상수 (J s)
+    const c = 299792458;      // 진공 속 빛의 속도 (m/s)
+    const k = 1.380649e-23;   // 볼츠만 상수 (J/K)
+    const sigma = 5.670374e-8; // 슈테판-볼츠만 상수 (W/m^2/K^4)
+    const Wien_const = 2.8977719e-3; // 빈의 변위 상수 (m K)
+    
+    // 태양의 표준 수치
+    const T_sun = 5778; // 태양 표면온도 (K)
+    const R_sun = 6.9634e8; // 태양 반지름 (m)
+    const L_sun = 3.828e26; // 태양 광도 (W)
+    const M_sun = 4.83;     // 태양의 절대 등급
+
+    // 유명한 천체 데이터 세트 (H-R도에 항시 회색 마커로 맵핑용)
+    const famousStars = [
+      { name: "베텔게우스", t: 3500, r: 887, code: "Betelgeuse" },
+      { name: "리겔", t: 12000, r: 78, code: "Rigel" },
+      { name: "시리우스 A", t: 9940, r: 1.71, code: "SiriusA" },
+      { name: "태양", t: 5778, r: 1.0, code: "Sun" },
+      { name: "프록시마 센타우리", t: 3042, r: 0.15, code: "Proxima" }
+    ];
+
+    // 스펙트럼 곡선 고정 상태 변수
+    let pinnedTemp = null;
+
+    // DOM 요소 캐싱
+    const tempSlider = document.getElementById('temp-slider');
+    const radiusSlider = document.getElementById('radius-slider');
+    const distanceSlider = document.getElementById('distance-slider');
+    
+    const tempVal = document.getElementById('temp-val');
+    const radiusVal = document.getElementById('radius-val');
+    const distanceVal = document.getElementById('distance-val');
+    
+    const lmaxVal = document.getElementById('lmax-val');
+    const luminosityVal = document.getElementById('luminosity-val');
+    const luminosityWatts = document.getElementById('luminosity-watts');
+    const apparentMagVal = document.getElementById('apparent-mag-val');
+    const absoluteMagVal = document.getElementById('absolute-mag-val');
+    const magnitudeDesc = document.getElementById('magnitude-desc');
+    const spectralClass = document.getElementById('spectral-class');
+    const extremeWarning = document.getElementById('extreme-warning');
+    
+    const pinBtn = document.getElementById('pin-btn');
+    const resetBtn = document.getElementById('reset-btn');
+
+    // 캔버스 요소 및 컨텍스트 설정
+    const spectrumCanvas = document.getElementById('spectrum-canvas');
+    const spectrumCtx = spectrumCanvas.getContext('2d');
+
+    const starCanvas = document.getElementById('star-canvas');
+    const starCtx = starCanvas.getContext('2d');
+
+    const hrCanvas = document.getElementById('hr-canvas');
+    const hrCtx = hrCanvas.getContext('2d');
+
+    // --- 컬러 테이블 정의 및 계산 ---
+    function getStarColor(T) {
+      let r, g, b;
+      let temp = T / 100;
+
+      // 빨강 채널 계산
+      if (temp <= 66) {
+        r = 255;
+      } else {
+        r = temp - 60;
+        r = 329.698727446 * Math.pow(r, -0.1332047592);
+        if (r < 0) r = 0;
+        if (r > 255) r = 255;
+      }
+
+      // 초록 채널 계산
+      if (temp <= 66) {
+        g = temp;
+        g = 99.4708025861 * Math.log(g) - 161.1195681661;
+        if (g < 0) g = 0;
+        if (g > 255) g = 255;
+      } else {
+        g = temp - 60;
+        g = 288.1221695283 * Math.pow(g, -0.0755148492);
+        if (g < 0) g = 0;
+        if (g > 255) g = 255;
+      }
+
+      // 파랑 채널 계산
+      if (temp >= 66) {
+        b = 255;
+      } else if (temp <= 19) {
+        b = 0;
+      } else {
+        b = temp - 10;
+        b = 138.5177312231 * Math.log(b) - 305.0447927307;
+        if (b < 0) b = 0;
+        if (b > 255) b = 255;
+      }
+
+      return {
+        r: Math.round(r),
+        g: Math.round(g),
+        b: Math.round(b),
+        rgbString: `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
+      };
+    }
+
+    // --- 유명한 별 프리셋 제어 스크립트 (거리값 d 포함 확대) ---
+    function applyPreset(t, r, d) {
+      tempSlider.value = t;
+      // 로그 슬라이더에 맞춘 반지름 역산: log10(r)
+      radiusSlider.value = Math.log10(r);
+      // 로그 슬라이더에 맞춘 거리 역산: log10(d)
+      distanceSlider.value = Math.log10(d);
+      updateSimulation();
+    }
+
+    // --- 스펙트럼 고정 버튼 클릭 이벤트 리스너 ---
+    pinBtn.addEventListener('click', () => {
+      if (pinnedTemp === null) {
+        pinnedTemp = parseInt(tempSlider.value);
+        pinBtn.innerHTML = `<span>고정 해제 ✕</span>`;
+        pinBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+        pinBtn.classList.add('bg-rose-600', 'hover:bg-rose-500');
+      } else {
+        pinnedTemp = null;
+        pinBtn.innerHTML = `<span>현재 곡선 고정 📌</span>`;
+        pinBtn.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+        pinBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+      }
+      updateSimulation();
+    });
+
+    // --- 물리값 계산 메인 함수 ---
+    function calculatePhysics(T, R_ratio) {
+      // 1. 최대 방출 파장 (빈의 변위 법칙)
+      const lambda_max_m = Wien_const / T; // (m)
+      const lambda_max_nm = lambda_max_m * 1e9; // (nm)
+
+      // 2. 광도 계산 (L = 4 * pi * R^2 * sigma * T^4)
+      const R_m = R_ratio * R_sun;
+      const L_watts = 4 * Math.PI * Math.pow(R_m, 2) * sigma * Math.pow(T, 4);
+      const L_ratio = L_watts / L_sun; // 태양 광도 배수
+
+      // 3. 분광형 판정
+      let sClass = "M형 적색왜성/적색초거성";
+      if (T >= 30000) sClass = "O형 청색고온성";
+      else if (T >= 10000) sClass = "B형 청색거성/초거성";
+      else if (T >= 7500) sClass = "A형 백색성 (직녀성/시리우스형)";
+      else if (T >= 6000) sClass = "F형 황백색성";
+      else if (T >= 5200) sClass = "G형 황색성 (태양형 항성)";
+      else if (T >= 3700) sClass = "K형 오렌지색 왜성/거성";
+
+      return {
+        lambdaMax: lambda_max_nm,
+        luminosityRatio: L_ratio,
+        luminosityWatts: L_watts,
+        spectralClass: sClass
+      };
+    }
+
+    // 파장에 따른 플랑크 법칙 세기 계산 B(lambda, T)
+    function planck(lambda_nm, T) {
+      const lambda_m = lambda_nm * 1e-9;
+      const c1 = 2 * h * Math.pow(c, 2);
+      const exponent = (h * c) / (lambda_m * k * T);
+      
+      if (exponent > 100) return 0; 
+      
+      return c1 / (Math.pow(lambda_m, 5) * (Math.exp(exponent) - 1));
+    }
+
+    // 파장을 가시광선 영역의 간이 RGB로 치환하는 렌더링 헬퍼 (스펙트럼 배경용)
+    function waveLengthToRGB(wavelength) {
+      let r, g, b, factor;
+      if ((wavelength >= 380) && (wavelength < 440)) {
+        r = -(wavelength - 440) / (440 - 380); g = 0.0; b = 1.0;
+      } else if ((wavelength >= 440) && (wavelength < 490)) {
+        r = 0.0; g = (wavelength - 440) / (490 - 440); b = 1.0;
+      } else if ((wavelength >= 490) && (wavelength < 510)) {
+        r = 0.0; g = 1.0; b = -(wavelength - 510) / (510 - 490);
+      } else if ((wavelength >= 510) && (wavelength < 580)) {
+        r = (wavelength - 510) / (580 - 510); g = 1.0; b = 0.0;
+      } else if ((wavelength >= 580) && (wavelength < 645)) {
+        r = 1.0; g = -(wavelength - 645) / (645 - 580); b = 0.0;
+      } else if ((wavelength >= 645) && (wavelength < 781)) {
+        r = 1.0; g = 0.0; b = 0.0;
+      } else {
+        r = 0.0; g = 0.0; b = 0.0;
+      }
+
+      if ((wavelength >= 380) && (wavelength < 420)) {
+        factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+      } else if ((wavelength >= 700) && (wavelength < 781)) {
+        factor = 0.3 + 0.7 * (780 - wavelength) / (780 - 700);
+      } else {
+        factor = 1.0;
+      }
+
+      return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${factor * 0.45})`;
+    }
+
+    // 그리기 함수 1: 플랑크 곡선 스펙트럼 (공통 피크 정규화 적용)
+    function drawSpectrum(T, lambda_max) {
+      const width = spectrumCanvas.width;
+      const height = spectrumCanvas.height;
+      
+      // 배경색 초기화
+      spectrumCtx.fillStyle = '#020617';
+      spectrumCtx.fillRect(0, 0, width, height);
+
+      const paddingLeft = 60;
+      const paddingBottom = 45;
+      const paddingTop = 30; // 상단 여유 증가
+      const paddingRight = 20;
+      
+      const graphWidth = width - paddingLeft - paddingRight;
+      const graphHeight = height - paddingTop - paddingBottom;
+
+      // 파장 범위 (X축): 100nm ~ 2000nm
+      const minW = 100;
+      const maxW = 2000;
+
+      // 1. 그리드 격자선 및 가이드 레이블 그리기
+      spectrumCtx.strokeStyle = '#1e293b';
+      spectrumCtx.lineWidth = 1;
+      spectrumCtx.fillStyle = '#94a3b8';
+      spectrumCtx.font = '10px monospace';
+      spectrumCtx.textAlign = 'center';
+
+      // X축 파장 눈금 (200nm 단위)
+      for (let w = 200; w <= 2000; w += 200) {
+        const x = paddingLeft + ((w - minW) / (maxW - minW)) * graphWidth;
+        spectrumCtx.beginPath();
+        spectrumCtx.moveTo(x, paddingTop);
+        spectrumCtx.lineTo(x, height - paddingBottom);
+        spectrumCtx.stroke();
+
+        spectrumCtx.fillText(`${w}`, x, height - paddingBottom + 15);
+      }
+
+      // 정규화 축을 기준으로 Y축에 1.0, 0.5, 0.0 눈금 그리기
+      const yTicks = [1.0, 0.5, 0.0];
+      spectrumCtx.textAlign = 'right';
+      yTicks.forEach((val) => {
+        const y = paddingTop + (1 - val) * graphHeight;
+        spectrumCtx.beginPath();
+        spectrumCtx.moveTo(paddingLeft - 4, y);
+        spectrumCtx.lineTo(paddingLeft + graphWidth, y);
+        spectrumCtx.stroke();
+
+        spectrumCtx.fillText(val.toFixed(1), paddingLeft - 8, y + 3);
+      });
+
+      // 가시광선 구역 베이스 레인보우 그라데이션 채우기
+      for (let x = 0; x < graphWidth; x++) {
+        const w = minW + (x / graphWidth) * (maxW - minW);
+        if (w >= 380 && w <= 750) {
+          spectrumCtx.fillStyle = waveLengthToRGB(w);
+          spectrumCtx.fillRect(paddingLeft + x, paddingTop, 1, graphHeight);
+        }
+      }
+
+      // 현재 곡선 피크 에너지 탐색
+      let maxEnergy = 0;
+      for (let x = 0; x < graphWidth; x++) {
+        const w = minW + (x / graphWidth) * (maxW - minW);
+        const energy = planck(w, T);
+        if (energy > maxEnergy) maxEnergy = energy;
+      }
+
+      let pinnedMaxEnergy = 0;
+      if (pinnedTemp !== null) {
+        // 고정 곡선 피크 에너지 탐색
+        for (let x = 0; x < graphWidth; x++) {
+          const w = minW + (x / graphWidth) * (maxW - minW);
+          const energy = planck(w, pinnedTemp);
+          if (energy > pinnedMaxEnergy) pinnedMaxEnergy = energy;
+        }
+      }
+
+      // 두 곡선 중 물리적 최대 피크값을 공통 정규화 장벽으로 삼기
+      const globalMax = (pinnedTemp !== null) ? Math.max(maxEnergy, pinnedMaxEnergy) : maxEnergy;
+
+      // 2. 고정된 비교 곡선이 있을 때 그리기
+      if (pinnedTemp !== null) {
+        const pinnedPoints = [];
+        for (let x = 0; x < graphWidth; x++) {
+          const w = minW + (x / graphWidth) * (maxW - minW);
+          const energy = planck(w, pinnedTemp);
+          pinnedPoints.push({ x: paddingLeft + x, val: energy });
+        }
+
+        spectrumCtx.beginPath();
+        spectrumCtx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+        spectrumCtx.lineWidth = 2;
+        spectrumCtx.setLineDash([3, 4]); // 점선 표시
+
+        pinnedPoints.forEach((p, index) => {
+          // 공통 최대값(globalMax)을 기준으로 정규화하여 비율대로 축소
+          const normVal = globalMax > 0 ? p.val / globalMax : 0;
+          const y = height - paddingBottom - normVal * graphHeight;
+          if (index === 0) {
+            spectrumCtx.moveTo(p.x, y);
+          } else {
+            spectrumCtx.lineTo(p.x, y);
+          }
+        });
+        spectrumCtx.stroke();
+        spectrumCtx.setLineDash([]); // 대시 원복
+
+        // [수정] 비교 안내 문구 출력 (위치: 그래프 영역 내부 좌측 상단, textAlign: 'left')
+        spectrumCtx.fillStyle = '#64748b';
+        spectrumCtx.font = 'bold 10px sans-serif';
+        spectrumCtx.textAlign = 'left';
+        spectrumCtx.fillText(`비교 중 (고정): T = ${pinnedTemp.toLocaleString()}K`, paddingLeft + 10, paddingTop + 15);
+      }
+
+      // 3. 현재 곡선 포인트 구하고 그리기
+      const points = [];
+      for (let x = 0; x < graphWidth; x++) {
+        const w = minW + (x / graphWidth) * (maxW - minW);
+        const energy = planck(w, T);
+        points.push({ x: paddingLeft + x, val: energy });
+      }
+
+      spectrumCtx.beginPath();
+      spectrumCtx.strokeStyle = '#ec4899';
+      spectrumCtx.lineWidth = 3;
+      
+      points.forEach((p, index) => {
+        // 공통 최대값(globalMax)을 기준으로 정규화
+        const normalizedVal = globalMax > 0 ? p.val / globalMax : 0;
+        const y = height - paddingBottom - normalizedVal * graphHeight;
+        if (index === 0) {
+          spectrumCtx.moveTo(p.x, y);
+        } else {
+          spectrumCtx.lineTo(p.x, y);
+        }
+      });
+      spectrumCtx.stroke();
+
+      // 최대 방출 파장 λmax 점선 및 지표 마킹
+      const xMax = paddingLeft + ((lambda_max - minW) / (maxW - minW)) * graphWidth;
+      if (xMax >= paddingLeft && xMax <= width - paddingRight) {
+        spectrumCtx.strokeStyle = '#eab308';
+        spectrumCtx.setLineDash([4, 4]);
+        spectrumCtx.lineWidth = 1.5;
+        spectrumCtx.beginPath();
+        spectrumCtx.moveTo(xMax, paddingTop);
+        spectrumCtx.lineTo(xMax, height - paddingBottom);
+        spectrumCtx.stroke();
+        spectrumCtx.setLineDash([]); // 대시 원복
+
+        // 현재 곡선의 실제 상대적인 높이에 맞춰 피크 노란 마커 배치
+        const currentPeakEnergy = planck(lambda_max, T);
+        const normalizedPeakY = globalMax > 0 ? currentPeakEnergy / globalMax : 0;
+        const yMax = height - paddingBottom - normalizedPeakY * graphHeight;
+        
+        spectrumCtx.beginPath();
+        spectrumCtx.arc(xMax, yMax, 5, 0, Math.PI * 2);
+        spectrumCtx.fillStyle = '#f59e0b';
+        spectrumCtx.fill();
+        spectrumCtx.strokeStyle = '#ffffff';
+        spectrumCtx.stroke();
+
+        // 경계 이탈 방지 안전 조절 알고리즘 적용 라벨 출력
+        spectrumCtx.fillStyle = '#eab308';
+        spectrumCtx.font = 'bold 11px monospace';
+        
+        const labelText = `λmax = ${Math.round(lambda_max)} nm`;
+        const labelWidth = spectrumCtx.measureText(labelText).width;
+        
+        let textX = xMax + 8;
+        let textAlign = 'left';
+
+        if (xMax + 8 + labelWidth > width - paddingRight) {
+          textX = xMax - 8;
+          textAlign = 'right';
+        } 
+        else if (xMax - 8 < paddingLeft || xMax < paddingLeft + 30) {
+          textX = paddingLeft + 10;
+          textAlign = 'left';
+        }
+
+        spectrumCtx.textAlign = textAlign;
+        // 마커가 가리지 않도록 Y 위치 살짝 위로 오프셋 조정
+        spectrumCtx.fillText(labelText, textX, yMax - 8);
+      }
+
+      // X축, Y축 외곽 테두리선
+      spectrumCtx.strokeStyle = '#475569';
+      spectrumCtx.lineWidth = 1.5;
+      spectrumCtx.beginPath();
+      spectrumCtx.moveTo(paddingLeft, paddingTop);
+      spectrumCtx.lineTo(paddingLeft, height - paddingBottom);
+      spectrumCtx.lineTo(width - paddingRight, height - paddingBottom);
+      spectrumCtx.stroke();
+
+      // 가로축 축명 라벨
+      spectrumCtx.fillStyle = '#94a3b8';
+      spectrumCtx.font = 'bold 11px sans-serif';
+      spectrumCtx.textAlign = 'center';
+      spectrumCtx.fillText('파장 (nm)', paddingLeft + graphWidth / 2, height - 10);
+
+      // Y축 세로 방향 정규화 축명 표기
+      spectrumCtx.save();
+      spectrumCtx.translate(15, paddingTop + graphHeight / 2);
+      spectrumCtx.rotate(-Math.PI / 2);
+      spectrumCtx.fillText('정규화된 복사 세기 (최대=1)', 0, 0);
+      spectrumCtx.restore();
+    }
+
+    // 그리기 함수 2: 별 그래픽 가상 구현
+    function drawStar(T, R_ratio) {
+      const width = starCanvas.width;
+      const height = starCanvas.height;
+      const starColor = getStarColor(T);
+
+      starCtx.clearRect(0, 0, width, height);
+      starCtx.fillStyle = '#020617';
+      starCtx.fillRect(0, 0, width, height);
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      const baseRadius = 6;
+      const maxRadius = 75;
+      
+      const logR = Math.log10(R_ratio);
+      const ratio = (logR - (-1)) / (3 - (-1)); // 0.0 ~ 1.0 범위
+      const pixelRadius = baseRadius + ratio * (maxRadius - baseRadius);
+
+      // 코로나/광휘 이펙트
+      const gradient = starCtx.createRadialGradient(
+        centerX, centerY, pixelRadius * 0.1,
+        centerX, centerY, pixelRadius * 2.5
+      );
+      
+      gradient.addColorStop(0, `rgba(${starColor.r}, ${starColor.g}, ${starColor.b}, 1)`);
+      gradient.addColorStop(0.2, `rgba(${starColor.r}, ${starColor.g}, ${starColor.b}, 0.8)`);
+      gradient.addColorStop(0.6, `rgba(${starColor.r}, ${starColor.g}, ${starColor.b}, 0.25)`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      starCtx.fillStyle = gradient;
+      starCtx.beginPath();
+      starCtx.arc(centerX, centerY, pixelRadius * 2.5, 0, Math.PI * 2);
+      starCtx.fill();
+
+      // 항성 핵심부 코어
+      starCtx.beginPath();
+      starCtx.arc(centerX, centerY, pixelRadius, 0, Math.PI * 2);
+      starCtx.fillStyle = '#ffffff';
+      starCtx.fill();
+
+      // 홍염 가장자리 보정 레이어
+      const edgeGradient = starCtx.createRadialGradient(
+        centerX, centerY, pixelRadius * 0.6,
+        centerX, centerY, pixelRadius
+      );
+      edgeGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      edgeGradient.addColorStop(1, `rgba(${starColor.r}, ${starColor.g}, ${starColor.b}, 1)`);
+      
+      starCtx.beginPath();
+      starCtx.arc(centerX, centerY, pixelRadius, 0, Math.PI * 2);
+      starCtx.fillStyle = edgeGradient;
+      starCtx.fill();
+    }
+
+    // 그리기 함수 3: 미니 H-R도
+    function drawHR(T, L_ratio) {
+      const width = hrCanvas.width;
+      const height = hrCanvas.height;
+
+      // 초기화
+      hrCtx.fillStyle = '#020617';
+      hrCtx.fillRect(0, 0, width, height);
+
+      const padLeft = 45;
+      const padRight = 15;
+      const padTop = 15;
+      const padBottom = 20;
+
+      const hrW = width - padLeft - padRight;
+      const hrH = height - padTop - padBottom;
+
+      // H-R 가로축 온도 맵: 역대수 (30,000K ~ 3,000K)
+      const minTemp = 3000;
+      const maxTemp = 30000;
+      function getX(temp) {
+        const logMin = Math.log10(minTemp);
+        const logMax = Math.log10(maxTemp);
+        const clampedT = Math.max(minTemp, Math.min(maxTemp, temp));
+        const logVal = Math.log10(clampedT);
+        const ratio = (logVal - logMin) / (logMax - logMin);
+        return padLeft + hrW - (ratio * hrW);
+      }
+
+      // H-R 세로축 광도 맵: 대수 (10^-5 ~ 10^7 L☉ 범위 확장)
+      const minLum = 1e-5;
+      const maxLum = 1e7;
+      function getY(lum) {
+        const logMin = Math.log10(minLum);
+        const logMax = Math.log10(maxLum);
+        const clampedL = Math.max(minLum, Math.min(maxLum, lum));
+        const logVal = Math.log10(clampedL);
+        const ratio = (logVal - logMin) / (logMax - logMin);
+        return padTop + hrH - (ratio * hrH);
+      }
+
+      // 1단계. 거성 영역 및 백색왜성 영역 반투명 색상 블롭 그리기
+      
+      // A. 거성 및 초거성 영역 블롭
+      hrCtx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+      hrCtx.beginPath();
+      hrCtx.moveTo(getX(30000), getY(1e4));
+      hrCtx.lineTo(getX(3000), getY(1e6));
+      hrCtx.lineTo(getX(3000), getY(1e1));
+      hrCtx.lineTo(getX(8000), getY(1e1));
+      hrCtx.lineTo(getX(15000), getY(1e3));
+      hrCtx.closePath();
+      hrCtx.fill();
+      
+      // B. 백색왜성 영역 블롭
+      hrCtx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+      hrCtx.beginPath();
+      hrCtx.moveTo(getX(25000), getY(1e-2));
+      hrCtx.lineTo(getX(8000), getY(1e-3));
+      hrCtx.lineTo(getX(7000), getY(1e-5));
+      hrCtx.lineTo(getX(20000), getY(1e-5));
+      hrCtx.closePath();
+      hrCtx.fill();
+
+      // 경계 테두리
+      hrCtx.strokeStyle = '#1e293b';
+      hrCtx.lineWidth = 1.2;
+      hrCtx.beginPath();
+      hrCtx.rect(padLeft, padTop, hrW, hrH);
+      hrCtx.stroke();
+
+      // 세로 그리드선 및 광도 눈금 레이블
+      hrCtx.fillStyle = '#475569';
+      hrCtx.font = '8px monospace';
+      hrCtx.textAlign = 'right';
+      
+      const yTicks = [1e-4, 1e-2, 1, 100, 10000, 1000000];
+      const yLabels = ["10⁻⁴", "10⁻²", "1", "10²", "10⁴", "10⁶"];
+
+      yTicks.forEach((yt, i) => {
+        const y = getY(yt);
+        hrCtx.strokeStyle = '#0f172a';
+        hrCtx.beginPath();
+        hrCtx.moveTo(padLeft, y);
+        hrCtx.lineTo(padLeft + hrW, y);
+        hrCtx.stroke();
+
+        hrCtx.fillText(yLabels[i], padLeft - 6, y + 3);
+      });
+
+      // 주계열 대각선 가이드 패스
+      hrCtx.beginPath();
+      hrCtx.strokeStyle = '#1e293b';
+      hrCtx.setLineDash([2, 4]);
+      
+      const msLine = [
+        {t: 28000, l: 50000}, {t: 15000, l: 1500}, {t: 9500, l: 30},
+        {t: 7200, l: 3}, {t: 5800, l: 1}, {t: 4500, l: 0.08}, {t: 3000, l: 0.001}
+      ];
+      msLine.forEach((pt, idx) => {
+        const px = getX(pt.t);
+        const py = getY(pt.l);
+        if (idx === 0) hrCtx.moveTo(px, py);
+        else hrCtx.lineTo(px, py);
+      });
+      hrCtx.stroke();
+      hrCtx.setLineDash([]);
+
+      // 영역 설명 텍스트 기입
+      hrCtx.fillStyle = 'rgba(239, 68, 68, 0.6)';
+      hrCtx.font = 'bold 8px sans-serif';
+      hrCtx.fillText("거성 & 초거성대", getX(3300), getY(50000));
+
+      hrCtx.fillStyle = 'rgba(96, 165, 250, 0.7)';
+      hrCtx.fillText("백색왜성 영역", getX(16000), getY(1e-4));
+
+      // 2단계. 유명 고정 비교 천체 점 및 레이블 상시 렌더링
+      famousStars.forEach(star => {
+        const starPhys = calculatePhysics(star.t, star.r);
+        const sx = getX(star.t);
+        const sy = getY(starPhys.luminosityRatio);
+
+        hrCtx.beginPath();
+        hrCtx.arc(sx, sy, 3, 0, Math.PI * 2);
+        hrCtx.fillStyle = '#64748b';
+        hrCtx.fill();
+
+        hrCtx.fillStyle = '#94a3b8';
+        hrCtx.font = '8px sans-serif';
+        hrCtx.textAlign = 'left';
+        
+        let offsetOffsetX = 5;
+        let offsetOffsetY = 3;
+        if (star.name === "베텔게우스") {
+          hrCtx.textAlign = 'right';
+          offsetOffsetX = -5;
+          offsetOffsetY = 8;
+        } else if (star.name === "리겔") {
+          offsetOffsetY = -4;
+        } else if (star.name === "태양") {
+          offsetOffsetY = 8;
+        }
+        
+        hrCtx.fillText(star.name, sx + offsetOffsetX, sy + offsetOffsetY);
+      });
+
+      // 3단계. 현재 사용자가 커스터마이징 중인 별의 위치 실시간 타겟 마킹
+      const currentX = getX(T);
+      const currentY = getY(L_ratio);
+      const starColor = getStarColor(T);
+      
+      hrCtx.beginPath();
+      hrCtx.arc(currentX, currentY, 8, 0, Math.PI * 2);
+      hrCtx.fillStyle = `rgba(${starColor.r}, ${starColor.g}, ${starColor.b}, 0.35)`;
+      hrCtx.fill();
+
+      hrCtx.beginPath();
+      hrCtx.arc(currentX, currentY, 3.5, 0, Math.PI * 2);
+      hrCtx.fillStyle = '#ffffff';
+      hrCtx.fill();
+      hrCtx.strokeStyle = starColor.rgbString;
+      hrCtx.lineWidth = 2;
+      hrCtx.stroke();
+    }
+
+    // --- 화면 해상도 고대비 스케일 설정 패치 (모니터 흐릿함 해결) ---
+    function setupCanvasDPI(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+    }
+
+    function initAllCanvases() {
+      setupCanvasDPI(spectrumCanvas);
+      setupCanvasDPI(starCanvas);
+      setupCanvasDPI(hrCanvas);
+    }
+
+    // --- 데이터 실시간 렌더링 총괄 제어기 ---
+    function updateSimulation() {
+      const temp = parseInt(tempSlider.value);
+      
+      // 슬라이더 값을 로그 스케일에서 실제 자연수 비율 값으로 역산 변환
+      const sliderLogVal = parseFloat(radiusSlider.value);
+      const radius = Math.pow(10, sliderLogVal); // 10^value 
+
+      // 거리 슬라이더 값을 로그 스케일에서 실제 파색(pc) 값으로 역산 변환
+      const distanceLogVal = parseFloat(distanceSlider.value);
+      const distance = Math.pow(10, distanceLogVal); // 10^value
+
+      // UI 문자열 출력 업데이트 (온도, 반지름, 거리)
+      tempVal.textContent = temp.toLocaleString() + " K";
+      
+      if (radius >= 10) {
+        radiusVal.textContent = radius.toFixed(0) + " R☉";
+      } else {
+        radiusVal.textContent = radius.toFixed(2) + " R☉";
+      }
+
+      // 거리 표출 가동
+      if (distance >= 1000) {
+        distanceVal.textContent = (distance / 1000).toFixed(2) + "k pc";
+      } else if (distance >= 10) {
+        distanceVal.textContent = distance.toFixed(0) + " pc";
+      } else {
+        distanceVal.textContent = distance.toFixed(1) + " pc";
+      }
+
+      // 물리 엔진 연산 실행
+      const results = calculatePhysics(temp, radius);
+
+      // 등급(Magnitude) 계산
+      // 절대등급 M = M_sun - 2.5 * log10(L/L_sun)
+      const absMag = M_sun - 2.5 * Math.log10(results.luminosityRatio);
+      // 겉보기등급 m = M + 5 * log10(d / 10)
+      const appMag = absMag + 5 * Math.log10(distance / 10);
+
+      // 결과 수치 주입
+      lmaxVal.innerHTML = results.lambdaMax.toFixed(1);
+      
+      if (results.luminosityRatio >= 100) {
+        luminosityVal.textContent = results.luminosityRatio.toLocaleString(undefined, {maximumFractionDigits: 0});
+      } else if (results.luminosityRatio >= 0.01) {
+        luminosityVal.textContent = results.luminosityRatio.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      } else {
+        luminosityVal.textContent = results.luminosityRatio.toLocaleString(undefined, {minimumFractionDigits: 5, maximumFractionDigits: 5});
+      }
+      
+      // 등급 수치판 렌더링
+      apparentMagVal.textContent = appMag.toFixed(2);
+      absoluteMagVal.textContent = `M: ${absMag.toFixed(2)}`;
+
+      // 등급에 대한 부연설명 동적 처리
+      if (appMag < -26.7) {
+        magnitudeDesc.textContent = "태양보다 밤하늘에서 훨씬 밝게 관측됨";
+      } else if (appMag <= -1.5) {
+        magnitudeDesc.textContent = "시리우스보다 밤하늘에서 밝게 관측됨";
+      } else if (appMag <= 6.0) {
+        magnitudeDesc.textContent = "맨눈으로 충분히 관측할 수 있는 한계치 내";
+      } else {
+        magnitudeDesc.textContent = "맨눈 관측 불가 (망원경이 필요한 어두운 별)";
+      }
+      
+      // 실 와트 단위 변형 표기
+      const sciPower = Math.floor(Math.log10(results.luminosityWatts));
+      const sciBase = results.luminosityWatts / Math.pow(10, sciPower);
+      luminosityWatts.innerHTML = `W: ~${sciBase.toFixed(2)} &times; 10<sup>${sciPower}</sup> W`;
+
+      // 성간 분광 상태 지수
+      spectralClass.textContent = `분류: ${results.spectralClass}`;
+
+      // 극단값 경고 시스템 구동
+      const isExtremeTemp = (temp === 3000 || temp === 30000);
+      const isExtremeRadius = (Math.abs(radius - 0.1) < 0.005 || Math.abs(radius - 1000) < 5);
+
+      if (isExtremeTemp || isExtremeRadius) {
+        extremeWarning.classList.remove('hidden');
+      } else {
+        extremeWarning.classList.add('hidden');
+      }
+
+      // 드로잉 호출
+      drawSpectrum(temp, results.lambdaMax);
+      drawStar(temp, radius);
+      drawHR(temp, results.luminosityRatio);
+    }
+
+    // --- 초기화 이벤트 리스너 등록 ---
+    tempSlider.addEventListener('input', updateSimulation);
+    radiusSlider.addEventListener('input', updateSimulation);
+    distanceSlider.addEventListener('input', updateSimulation);
+
+    // 하단 푸터 초기화 버튼 클릭 시 태양 값 주입 및 거리 디폴트(10 pc) 초기화
+    resetBtn.addEventListener('click', () => {
+      tempSlider.value = 5778;
+      radiusSlider.value = 0; // 10^0 = 1.0 R☉
+      distanceSlider.value = 1; // 10^1 = 10 pc (m = M 이 되는 기준 거리)
+      
+      // 고정 곡선 초기화
+      pinnedTemp = null;
+      pinBtn.innerHTML = `<span>현재 곡선 고정 📌</span>`;
+      pinBtn.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+      pinBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+
+      updateSimulation();
+    });
+
+    // 브라우저 리사이징 시 캔버스 폭 유지 조정
+    window.addEventListener('resize', () => {
+      initAllCanvases();
+      updateSimulation();
+    });
+
+    // 앱 실행 최초 시점 구동 트리거
+    window.onload = function() {
+      initAllCanvases();
+      updateSimulation();
+    };
+  </script>
+</body>
+</html>

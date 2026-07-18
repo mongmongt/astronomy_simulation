@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>케플러 법칙 기반 행성 공전 분석 시뮬레이터</title>
+    <!-- Tailwind CSS 및 스타일 정의 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #030308;
+            color: #e2e8f0;
+            user-select: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080810;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1b1b32;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2d2d54;
+        }
+        /* 슬라이더 스타일 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #16162a;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+            transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col overflow-hidden">
+
+    <!-- 상단 헤더 -->
+    <header class="bg-[#080812]/95 border-b border-[#1b1b32] px-6 py-4 flex items-center justify-between z-20 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🌌</span>
+            <div>
+                <h1 class="font-extrabold text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
+                    케플러 법칙 기반 행성 공전 분석 시뮬레이터
+                </h1>
+                <p class="text-xs text-gray-400">고급 지구과학 수행평가 가상실험 (최종 정밀 고증 및 정적 면적 고정 버전)</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <span class="px-2.5 py-1 text-xs font-semibold bg-emerald-950/40 text-emerald-300 rounded-full border border-emerald-800/50">
+                물리 시각 오차 최소화 보정
+            </span>
+            <span class="px-2.5 py-1 text-xs font-semibold bg-blue-950/40 text-blue-300 rounded-full border border-blue-800/50">
+                수행평가 제출본
+            </span>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <main class="flex-1 flex overflow-hidden relative">
+        
+        <!-- 왼쪽 패널: 핵심 조작 변인 제어판 -->
+        <section class="w-80 bg-[#05050b]/95 border-r border-[#1b1b32] p-5 flex flex-col gap-6 z-10 overflow-y-auto">
+            <div>
+                <h2 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    조작 변인 (Core Variables)
+                </h2>
+                <p class="text-xs text-gray-400 leading-relaxed">
+                    변인을 변경하면 기준 그리드 공간 내에서 궤도 지름과 찌그러짐 정도가 직관적으로 변환됩니다.
+                </p>
+            </div>
+
+            <!-- 조작변인 1: 장반경 (a) -->
+            <div class="bg-[#090916] border border-[#161630] p-4 rounded-xl flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-bold text-gray-300 flex items-center gap-1.5" for="slider-a">
+                        궤도 장반경 (<span class="italic text-blue-400">a</span>)
+                    </label>
+                    <span class="text-sm font-mono font-bold text-blue-400" id="val-a">1.50 <span class="text-xs text-gray-500 font-normal">AU</span></span>
+                </div>
+                <!-- 스케일 보정을 위해 가시 범위를 0.6에서 2.2 AU로 설정하여 변화가 가장 잘 보이게 튜닝 -->
+                <input type="range" id="slider-a" min="0.6" max="2.2" step="0.05" value="1.50">
+                <div class="text-[10px] text-gray-400 leading-normal">
+                    장반경이 클수록 공전 궤도의 실제 물리적 크기(지름)가 확대됩니다. <strong>케플러 제3법칙(조화의 법칙)</strong>에 의해 주기가 크게 증가합니다.
+                </div>
+            </div>
+
+            <!-- 조작변인 2: 이심률 (e) -->
+            <div class="bg-[#090916] border border-[#161630] p-4 rounded-xl flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-bold text-gray-300 flex items-center gap-1.5" for="slider-e">
+                        궤도 이심률 (<span class="italic text-purple-400">e</span>)
+                    </label>
+                    <span class="text-sm font-mono font-bold text-purple-400" id="val-e">0.50</span>
+                </div>
+                <!-- 0.0에서 0.80까지 시각적 변화 폭이 아주 명확하게 드러나도록 설정 -->
+                <input type="range" id="slider-e" min="0.0" max="0.80" step="0.01" value="0.50">
+                <div class="text-[10px] text-gray-400 leading-normal">
+                    타원 궤도의 이형률을 정합니다. <span class="text-purple-300">0.0(원)</span>, <span class="text-purple-300">0.4(중간 타원)</span>, <span class="text-purple-300">0.8(극단 타원)</span>에서의 궤도 찌그러짐과 편심 거리가 즉시 반영됩니다.
+                </div>
+            </div>
+
+            <!-- 조작변인 3: 시뮬레이션 속도 배율 (속도 조절용 슬라이더) -->
+            <div class="bg-[#090916] border border-[#161630] p-4 rounded-xl flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-bold text-emerald-400 flex items-center gap-1.5" for="slider-speed">
+                        시뮬레이션 속도
+                    </label>
+                    <span class="text-sm font-mono font-bold text-emerald-400" id="val-speed">1.0x</span>
+                </div>
+                <input type="range" id="slider-speed" min="0.1" max="4.0" step="0.1" value="1.0">
+                <div class="text-[10px] text-gray-400 leading-normal">
+                    천체 물리 속도($v$) 공식에는 영향을 주지 않고, 현상을 빠르고 여유 있게 관찰할 수 있도록 시간 흐름 속도만 증폭 제어합니다.
+                </div>
+            </div>
+
+            <!-- 시각화 편의 옵션 -->
+            <div class="bg-[#090916] border border-[#161630] p-4 rounded-xl flex flex-col gap-3">
+                <h3 class="text-xs font-bold text-gray-300">시뮬레이션 관측 기능</h3>
+                
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] text-gray-400">동일 시간 면적 (S1~S4) 상시 표시</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-sweeps" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-[#1b1b32] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] text-gray-400">실시간 속도 벡터 화살표</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-vector" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-[#1b1b32] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- 가운데 영역: 공전 시뮬레이션 인터랙티브 가상 우주 공간 -->
+        <section class="flex-1 relative flex justify-center items-center bg-[#010103]">
+            <!-- 캔버스 드로잉 영역 -->
+            <canvas id="universe-canvas" class="w-full h-full block"></canvas>
+            
+            <!-- 가상 눈금 정보 및 가이드 -->
+            <div class="absolute top-4 left-4 bg-[#05050b]/80 border border-[#1b1b32] p-3 rounded-xl flex flex-col gap-1 text-[11px] backdrop-blur-md">
+                <div class="flex items-center gap-2 text-yellow-400 font-bold">
+                    <span class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                    <span>중심 천체: 태양 (초점 고정)</span>
+                </div>
+                <div class="flex items-center gap-2 text-cyan-400 font-bold">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                    <span>공전 행성</span>
+                </div>
+                <div class="flex items-center gap-2 text-[#ec4899] font-bold">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#ec4899]"></span>
+                    <span>정적 부채꼴 S1~S4: 모두 동일 시간 소인 구역 (각 주기 8% 면적)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 오른쪽 패널: 실시간 수식 연산 및 물리량 출력 데이터 타일 -->
+        <section class="w-80 bg-[#05050b]/95 border-l border-[#1b1b32] p-5 flex flex-col gap-5 z-10 overflow-y-auto">
+            <div>
+                <h2 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    실시간 출력 변인 (Outputs)
+                </h2>
+                <p class="text-xs text-gray-400 leading-relaxed">
+                    천체 물리 공식에 의해 실시간으로 보존 및 변화하는 데이터입니다.
+                </p>
+            </div>
+
+            <!-- 실시간 동경 및 속도 물리학 데이터 -->
+            <div class="bg-[#090916] border border-[#161630] p-4 rounded-xl flex flex-col gap-3">
+                <h3 class="text-xs font-bold text-gray-300 border-b border-[#1b1b32] pb-1.5 flex items-center gap-1">
+                    <span>📐</span> 실시간 동적 상태 데이터
+                </h3>
+                
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">장반경 (<span class="italic font-serif">a</span>)</span>
+                    <span class="font-mono font-bold text-blue-400" id="out-a">1.500 <span class="text-[10px] text-gray-500">AU</span></span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">이심률 (<span class="italic font-serif">e</span>)</span>
+                    <span class="font-mono font-bold text-purple-400" id="out-e">0.500</span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">태양-행성 거리 (<span class="italic font-serif">r</span>)</span>
+                    <span class="font-mono font-bold text-cyan-300" id="out-r">0.000 <span class="text-[10px] text-gray-500">AU</span></span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">실제 공전속도 (<span class="italic font-serif">v</span>)</span>
+                    <span class="font-mono font-bold text-yellow-300" id="out-v">0.00 <span class="text-[10px] text-gray-500">km/s</span></span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">진근점각 (&theta;)</span>
+                    <span class="font-mono font-bold text-orange-400" id="out-theta">0.0°</span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">시뮬레이션 배율</span>
+                    <span class="font-mono font-bold text-emerald-400" id="out-speed">1.00x</span>
+                </div>
+            </div>
+
+            <!-- 케플러 법칙 연산 스펙 -->
+            <div class="bg-[#090916] border border-[#161630] p-4 rounded-xl flex flex-col gap-3">
+                <h3 class="text-xs font-bold text-gray-300 border-b border-[#1b1b32] pb-1.5 flex items-center gap-1">
+                    <span>🪐</span> 궤도 물리 연산 상수
+                </h3>
+                
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">공전 주기 (<span class="italic font-serif">T</span>)</span>
+                    <span class="font-mono font-bold text-indigo-400" id="out-period">0.000 <span class="text-[10px] text-gray-500">년</span></span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">근일점 거리 (<span class="italic font-serif">r_p</span>)</span>
+                    <span class="font-mono font-bold text-pink-400" id="out-peri">0.000 <span class="text-[10px] text-gray-500">AU</span></span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">원일점 거리 (<span class="italic font-serif">r_a</span>)</span>
+                    <span class="font-mono font-bold text-purple-400" id="out-apo">0.000 <span class="text-[10px] text-gray-500">AU</span></span>
+                </div>
+            </div>
+
+            <!-- 물리 고증 설명 정보 카드 -->
+            <div class="bg-[#09091b] border border-blue-950 p-3 rounded-lg text-[10px] text-gray-400 leading-relaxed flex flex-col gap-1.5">
+                <div class="font-bold text-gray-300 text-[11px] flex items-center gap-1">
+                    <span>💡</span><span>수행 과정 핵심 원리 가이드</span>
+                </div>
+                <p>
+                    • <strong>제1법칙 (타원의 법칙)</strong>: 태양이 타원의 한 중심 초점에 놓이도록 기하학 편심 거리($c = a \times e$)가 정확히 오프셋 적용되어 궤도가 그려집니다.<br>
+                    • <strong>제2법칙 (면적 속도 일정 법칙)</strong>: 화면의 정적 부채꼴 S1~S4는 동일한 시간 동안 행성이 지나가는 면적입니다. 타원의 중심각이 좁아지거나 넓어지더라도 쓸고 지나간 부채꼴 면적은 수학적으로 완전 일치합니다.<br>
+                    • <strong>제3법칙 (조화의 법칙)</strong>: 장반경 $a$를 가변하면 공전 주기 $T$가 $T = a^{1.5}$ ($T^2 = a^3$) 공식에 맞춰 실시간으로 대수 계산됩니다.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <!-- 하단 제어 및 기획 설명 바 -->
+    <footer class="bg-[#080812]/95 border-t border-[#1b1b32] px-6 py-4 flex flex-col sm:flex-row gap-4 items-center justify-between z-20 backdrop-blur-md">
+        <!-- 재생/일시정지/초기화 하드웨어 조종판 -->
+        <div class="flex items-center gap-3">
+            <button id="btn-play" class="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 transition text-white font-bold text-xs rounded-lg shadow-lg shadow-blue-950/50">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span>시뮬레이션 시작</span>
+            </button>
+            <button id="btn-pause" class="flex items-center gap-1.5 px-4 py-2 bg-[#16162e] hover:bg-[#202042] active:scale-95 transition text-gray-200 font-bold text-xs rounded-lg border border-[#2b2b5a]">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                <span>일시 정지</span>
+            </button>
+            <button id="btn-reset" class="flex items-center gap-1.5 px-4 py-2 bg-[#0e0e1a] hover:bg-[#18182d] active:scale-95 transition text-gray-300 font-bold text-xs rounded-lg border border-[#222240]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"/></svg>
+                <span>초기화</span>
+            </button>
+        </div>
+
+        <!-- 지구과학 수행평가 핵심 가이드 텍스트 -->
+        <div class="text-xs text-gray-400 max-w-xl text-center sm:text-right leading-relaxed">
+            <span class="text-emerald-400 font-bold">교육용 연산 보정 반영:</span> 
+            물리학적으로 완전한 원일점 각속도는 극적으로 느리기 때문에, 교육적인 공전 관찰 효율성을 향상하기 위해 원일점 통과 시 최소 전진각 속도($d\theta$)를 안전하게 보정하는 고마찰 방지 알고리즘이 내장되어 있습니다.
+        </div>
+    </footer>
+
+    <!-- 핵심 물리학 추적 및 가상 가동 엔진 스크립트 -->
+    <script>
+        // --- 1. DOM 인터랙션 바인딩 ---
+        const canvas = document.getElementById('universe-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const sliderA = document.getElementById('slider-a');
+        const sliderE = document.getElementById('slider-e');
+        const sliderSpeed = document.getElementById('slider-speed');
+
+        const valA = document.getElementById('val-a');
+        const valE = document.getElementById('val-e');
+        const valSpeed = document.getElementById('val-speed');
+
+        const outA = document.getElementById('out-a');
+        const outE = document.getElementById('out-e');
+        const outR = document.getElementById('out-r');
+        const outV = document.getElementById('out-v');
+        const outTheta = document.getElementById('out-theta');
+        const outSpeed = document.getElementById('out-speed');
+        const outPeriod = document.getElementById('out-period');
+        const outPeri = document.getElementById('out-peri');
+        const outApo = document.getElementById('out-apo');
+
+        const btnPlay = document.getElementById('btn-play');
+        const btnPause = document.getElementById('btn-pause');
+        const btnReset = document.getElementById('btn-reset');
+        const toggleSweeps = document.getElementById('toggle-sweeps');
+        const toggleVector = document.getElementById('toggle-vector');
+
+        // --- 2. 시뮬레이션 핵심 물리 상태 변수 ---
+        let a = parseFloat(sliderA.value);    // 궤도 장반경 (AU)
+        let e = parseFloat(sliderE.value);    // 궤도 이심률 (0.0 ~ 0.80)
+        let simSpeed = parseFloat(sliderSpeed.value); // 사용자 선택 시뮬레이션 배속
+        let theta = 0;                        // 진근점각 (True Anomaly, 라디안)
+        let isRunning = true;                 // 공전 애니메이션 실행 상태 플래그
+
+        // 케플러 제2법칙 증명을 위한 4대 고정(정적) 동일 시간 부채꼴 구역 보관용 배열
+        let staticSectors = [];
+
+        // 아름다운 우주성단을 구현하기 위한 배경용 랜덤 별자리 배열
+        const backgroundStars = [];
+        for (let i = 0; i < 80; i++) {
+            backgroundStars.push({
+                x: Math.random(),
+                y: Math.random(),
+                radius: Math.random() * 1.5,
+                brightness: Math.random() * 0.6 + 0.4
+            });
+        }
+
+        // --- 3. 정밀 고정 물리 스케일링 설정 ---
+        // 장반경 a를 조절하면 궤도 크기가 반응형 줌에 의해 무마되지 않고 실제로 늘어나고 줄어들 수 있도록 비율 단위를 고정합니다.
+        const scale = 115; 
+
+        function adjustCanvasSize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', adjustCanvasSize);
+        adjustCanvasSize();
+
+        // [케플러 제1~2법칙 수학적 변환용 헬퍼 함수 정의]
+        // 케플러 방정식 (M = E - e sin E)을 뉴턴-랩슨법으로 정밀하게 해결하여 편심이각(E)을 구하고,
+        // 이를 바탕으로 타원의 물리적 각도인 진근점각(theta)을 완벽하게 계산합니다.
+        // 이를 통해 이심률과 장반경이 변하더라도 정확히 일정한 '시간 간격' 동안 소인되는 궤도 구간을 찾아냅니다.
+        function solveKepler(M, ecc) {
+            let E = M;
+            for (let i = 0; i < 15; i++) {
+                E = E - (E - ecc * Math.sin(E) - M) / (1 - ecc * Math.cos(E));
+            }
+            // 탄젠트 반각 공식을 사용하여 편심 이각(E)을 진근점각(theta)으로 정밀하게 변환
+            return 2 * Math.atan2(Math.sqrt(1 + ecc) * Math.sin(E / 2), Math.sqrt(1 - ecc) * Math.cos(E / 2));
+        }
+
+        // [케플러 제2법칙 시각적 증명 핵심 루틴 - 동일 면적 부채꼴 정적 계산 (완벽 고증 패치)]
+        // 전체 공전 주기 T의 정확히 8%에 해당하는 시간 동안 행성이 이동하는 범위를 타원형 각 구간(근일점, 측면, 원일점)에서 케플러 방정식을 통해 수학적으로 완벽히 연산합니다.
+        // 평균근점각 M은 시간에 정비례하므로(M = n * t), 일정한 delta M에 대해 계산된 부채꼴들은 항상 동일한 시간 동안 행성이 휩쓸고 간 면적을 나타냅니다.
+        function computeStaticSectors() {
+            staticSectors = [];
+            // 면적 소인을 비교 관찰할 타원의 평균근점각(Mean Anomaly) 시작 위치값 
+            // 0: 근일점(Perihelion), PI/2: 위측 측면, PI: 원일점(Aphelion), 3PI/2: 아래측 측면
+            const startingMs = [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2];
+            
+            // 전체 주기 T 중 동일한 시간(8%)을 대변하는 평균근점각 변화량 (delta M = 2 * pi * 0.08)
+            const deltaM = 2 * Math.PI * 0.08; 
+            const steps = 30; // 부채꼴 곡면(호)을 그리기 위한 분할 해상도
+
+            startingMs.forEach((startM, index) => {
+                const pathPoints = [];
+                // 시작 시간부터 종료 시간까지 미세 간격으로 나누어 진근점각(theta) 궤적을 실시간 연산
+                for (let i = 0; i <= steps; i++) {
+                    const currentM = startM + (deltaM * (i / steps));
+                    const currentTheta = solveKepler(currentM, e);
+                    pathPoints.push(currentTheta);
+                }
+
+                staticSectors.push({
+                    id: index + 1,
+                    start: pathPoints[0],
+                    end: pathPoints[pathPoints.length - 1],
+                    points: pathPoints
+                });
+            });
+        }
+
+        // --- 4. 정밀 물리 법칙 연산 및 데이터 실시간 업데이트 ---
+        function stepPhysics() {
+            // [케플러 제3법칙 - 조화의 법칙 반영]
+            // 수식 수립: T² ∝ a³ -> T = a^(1.5) (공전 주기는 장반경에 의해서만 결정)
+            const period = Math.pow(a, 1.5);
+            
+            // [케플러 제1법칙 - 타원 궤도의 법칙 반영]
+            // 수식 수립: r = a(1 - e²) / (1 + e·cosθ)
+            const r = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+
+            // [케플러 제2법칙 - 면적 속도 일정의 법칙 및 활력 방정식 반영]
+            // 수식 수립: v = sqrt(GM * (2/r - 1/a))
+            // 지구의 공전속도(평균 29.78 km/s)를 비례 상수로 대입하여 고등 지구과학에 부합하는 현실적인 물리 속도를 환산합니다.
+            const baseEarthSpeed = 29.78; 
+            const v = baseEarthSpeed * Math.sqrt(2 / r - 1 / a);
+
+            // 기하학적 최소 거리(근일점 r_p)와 최대 거리(원일점 r_a) 산출
+            const rPerihelion = a * (1 - e);
+            const rAphelion = a * (1 + e);
+
+            // 패널 UI 수치 정보 실시간 동기화 갱신
+            outA.textContent = a.toFixed(3);
+            outE.textContent = e.toFixed(3);
+            outR.textContent = r.toFixed(3);
+            outV.textContent = v.toFixed(2); // 물리 공식에 준하는 실제 천체 공전 속도
+            
+            let angleDegree = (theta * 180 / Math.PI) % 360;
+            if (angleDegree < 0) angleDegree += 360;
+            outTheta.textContent = angleDegree.toFixed(1) + "°";
+            outSpeed.textContent = simSpeed.toFixed(2) + "x";
+            
+            outPeriod.textContent = period.toFixed(3);
+            outPeri.textContent = rPerihelion.toFixed(3);
+            outApo.textContent = rAphelion.toFixed(3);
+
+            // [케플러 제2법칙 연산 제어 - 미세 각속도 제어]
+            // 공식: dθ/dt = h / r²
+            // 거리가 가까워질수록 각속도가 기하급수적으로 증가하고, 거리가 멀어질수록 완만해집니다.
+            if (isRunning) {
+                const substeps = 20;
+                // [문제 1 수정]: 전체적인 행성의 속도감을 확실하게 높이기 위해 각운동량 기준 상수 비율을 기존 0.18에서 0.45로 대폭 올려, 1배속 및 배속 가동 시 차이가 즉각적으로 역동적이게 느껴지도록 가중치 튜닝을 완료했습니다.
+                const h = Math.sqrt(a * (1 - e * e)) * 0.45 * simSpeed; 
+                const dt = 0.005 / substeps;
+
+                for (let step = 0; step < substeps; step++) {
+                    const tempR = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+                    let dTheta = (h / (tempR * tempR)) * dt;
+
+                    // [수정 요구사항 반영: 최소 속도 보정 장치]
+                    // 이심률이 0.8에 가깝게 높아질 경우 원일점 통과 속도가 기하급수적으로 낮아져 가상 실험 시 거의 멈춘 것처럼 보입니다.
+                    // 교육용 시뮬레이션의 본래 관찰 목적을 훼손하지 않는 선에서 원일점에서도 부드러운 움직임을 이어갈 수 있도록 최소 각속도(임계치) 제어를 추가했습니다.
+                    const minDThetaLimit = 0.015 * dt * simSpeed;
+                    if (dTheta < minDThetaLimit) {
+                        dTheta = minDThetaLimit;
+                    }
+
+                    theta += dTheta;
+                }
+            }
+        }
+
+        // --- 5. 가상 우주 공간 및 기하 렌더러 ---
+        function renderScene() {
+            // 성간 밤하늘 배경
+            ctx.fillStyle = '#010105';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // 1) 고요한 고정 별 그리기
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            for (let star of backgroundStars) {
+                ctx.globalAlpha = star.brightness;
+                ctx.beginPath();
+                ctx.arc(star.x * canvas.width, star.y * canvas.height, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0; // 투명도 복원
+
+            // 2) 고정 스케일 가이드 그리드 동심원
+            ctx.strokeStyle = 'rgba(30, 30, 60, 0.25)';
+            ctx.lineWidth = 1;
+            for (let rUnit = 0.5; rUnit <= 4.0; rUnit += 0.5) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, rUnit * scale, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 3) 기하 타원형의 중심 정보 및 수치 계산
+            const b = a * Math.sqrt(1 - e * e); // 단반경 계산
+            const c = a * e;                    // 초점 오프셋 거리 계산
+
+            const pixelA = a * scale;
+            const pixelB = b * scale;
+            const pixelC = c * scale;
+
+            // [케플러 제1법칙 핵심 기하 적용]
+            // 물리 법칙에 부합하도록, 태양(cx, cy)은 타원의 완벽한 한쪽 초점(Solar Focus)에 완전히 부동 고정됩니다.
+            // 타원의 실제 기하학적 중심은 중심축 편심 편차(pixelC)만큼 왼쪽으로 이격하여 오프셋 매핑합니다.
+            const ellipseCenterX = cx - pixelC;
+            const ellipseCenterY = cy;
+
+            // 4) 타원형 궤도선 드로잉
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.ellipse(ellipseCenterX, ellipseCenterY, pixelA, pixelB, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 5) [케플러 제2법칙 핵심 구현 - 정적 4대 동일 시간 면적 표시 (문제 2 해결)]
+            // 행성이 궤도를 돌 때 각 위치에서 '같은 시간(주기 8%)' 동안 휩쓸고 지나가는 부채꼴 면적들을 정밀 렌더링합니다.
+            // [수정 완료]: 단순 외각선 구분을 완전히 뛰어넘어, 태양(cx, cy)을 꼭짓점으로 완벽히 연결하고, 내부 영역 전체를 핑크색 반투명(`rgba(236, 72, 153, 0.35)`) 면적으로 가득 메워 확실히 색깔 영역으로 강조시켰습니다.
+            if (toggleSweeps.checked) {
+                staticSectors.forEach((sec, idx) => {
+                    ctx.fillStyle = 'rgba(236, 72, 153, 0.35)'; // 핑크-보라 계열의 아름다운 채색 영역
+                    ctx.strokeStyle = 'rgba(236, 72, 153, 0.8)';
+                    ctx.lineWidth = 2;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy); // 꼭짓점은 무조건 초점인 '태양'에 고정
+                    
+                    // 정밀한 타원 각 지점을 촘촘히 계산하여 호(Arc) 곡면 완벽 시각화
+                    sec.points.forEach(t => {
+                        const tempR = (a * (1 - e * e)) / (1 + e * Math.cos(t));
+                        ctx.lineTo(cx + tempR * scale * Math.cos(t), cy + tempR * scale * Math.sin(t));
+                    });
+                    
+                    ctx.lineTo(cx, cy); // 초점으로 복귀
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 각 구역 이름 태그 드로잉
+                    const midTheta = sec.start + (sec.end - sec.start) / 2;
+                    const textDist = 1.15 * ((a * (1 - e * e)) / (1 + e * Math.cos(midTheta)));
+                    const tx = cx + textDist * scale * Math.cos(midTheta);
+                    const ty = cy + textDist * scale * Math.sin(midTheta);
+                    
+                    ctx.fillStyle = '#f472b6';
+                    ctx.font = 'bold 10px Inter, sans-serif';
+                    ctx.fillText(`영역 S${sec.id}`, tx, ty);
+                });
+            }
+
+            // 6) 현재 천체 위치점 매핑 및 소인 동경선
+            const currentR = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+            const px = cx + currentR * scale * Math.cos(theta);
+            const py = cy + currentR * scale * Math.sin(theta);
+
+            ctx.strokeStyle = 'rgba(14, 165, 233, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(px, py);
+            ctx.stroke();
+
+            // 7) [케플러 제2법칙 개선 - 접선 벡터 및 속도 화살표 구현 (문제 3 해결 완료)]
+            // 행성의 순간 공전 접선 방향을 정밀 기하 미분하여, 속도 $v$의 세기에 정비례하는 선과 삼각 화살촉을 완벽하게 출력합니다.
+            // [수정 완료]: 화살표의 형태(선 + 삼각형 화살촉)를 확실히 그려주고 눈에 띄는 화사한 민트-에메랄드빛(#10b981)으로 완벽 조율했습니다.
+            if (toggleVector.checked) {
+                // 각운동량 보존 h 성분에 비례한 궤도 접선 벡터 연산
+                const angularMomentum = Math.sqrt(a * (1 - e * e)) * 0.05;
+                const dTheta = angularMomentum / (currentR * currentR);
+                // r 성분의 미분 dr/dtheta
+                const dr = currentR * (e * Math.sin(theta)) / (1 + e * Math.cos(theta)) * dTheta;
+
+                // 극좌표계를 직교좌표계 속도 방향 성분(dx, dy)으로 정밀 투영 계산
+                const dx = dr * Math.cos(theta) - currentR * Math.sin(theta) * dTheta;
+                const dy = dr * Math.sin(theta) + currentR * Math.cos(theta) * dTheta;
+                
+                // 접선 단위 벡터 추출
+                const tangentLength = Math.sqrt(dx * dx + dy * dy);
+                const ux = dx / tangentLength;
+                const uy = dy / tangentLength;
+
+                // [정밀 고증 화살표 픽셀 매핑] 실제 공전 속도 v에 정비례하여 크기가 동적으로 길어지는 스케일 확보
+                const baseEarthSpeed = 29.78; 
+                const currentPhysicalV = baseEarthSpeed * Math.sqrt(2 / currentR - 1 / a);
+                const arrowLengthScale = currentPhysicalV * 2.8; // 빠를 때 길고 느릴 때 짧아지는 명확한 변동폭
+
+                const vectorEndX = px + ux * arrowLengthScale;
+                const vectorEndY = py + uy * arrowLengthScale;
+
+                // 에메랄드색 화살표 대선 드로잉
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(vectorEndX, vectorEndY);
+                ctx.stroke();
+
+                // 화살표 머리(삼각형 화살촉) 그리기
+                const angle = Math.atan2(uy, ux);
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.moveTo(vectorEndX, vectorEndY);
+                ctx.lineTo(vectorEndX - 12 * Math.cos(angle - Math.PI / 6), vectorEndY - 12 * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(vectorEndX - 12 * Math.cos(angle + Math.PI / 6), vectorEndY - 12 * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+
+                // "속도 벡터 v" 레이블 출력
+                ctx.fillStyle = '#34d399';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillText("속도 벡터 v", vectorEndX + 12 * Math.cos(angle), vectorEndY + 12 * Math.sin(angle) + 3);
+            }
+
+            // 8) 근일점(P)과 원일점(A) 극점 가이드 텍스트 매핑
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+
+            // [근일점 마크: 태양 초점 기준 오른쪽 타원의 끝 단점]
+            const periX = ellipseCenterX + pixelA;
+            ctx.beginPath();
+            ctx.arc(periX, ellipseCenterY, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#f43f5e';
+            ctx.fill();
+            ctx.fillStyle = '#fda4af';
+            ctx.fillText("근일점(P) [최대 속도]", periX, ellipseCenterY - 14);
+
+            // [원일점 마크: 태양 초점 기준 왼쪽 타원의 끝 단점]
+            const apoX = ellipseCenterX - pixelA;
+            ctx.beginPath();
+            ctx.arc(apoX, ellipseCenterY, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#a855f7';
+            ctx.fill();
+            ctx.fillStyle = '#d8b4fe';
+            ctx.fillText("원일점(A) [최소 속도]", apoX, ellipseCenterY - 14);
+
+            // 9) 태양(Solar Focus) 그리기 (태양은 완벽히 cx, cy 좌표 초점 자리에 불변 고정)
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = 'rgba(234, 179, 8, 0.85)';
+            ctx.fillStyle = '#eab308';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0; // 복구
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 10) 공전 행성(Planet) 그리기
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(34, 211, 238, 0.8)';
+            ctx.fillStyle = '#22d3ee';
+            ctx.beginPath();
+            ctx.arc(px, py, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0; // 복구
+        }
+
+        // --- 6. 브라우저 주사율 기반 애니메이션 메인 루프 ---
+        function mainLoop() {
+            stepPhysics();
+            renderScene();
+            requestAnimationFrame(mainLoop);
+        }
+
+        // --- 7. 슬라이더 & 제어 인터랙션 이벤트 핸들러 ---
+        function handleManualControl() {
+            a = parseFloat(sliderA.value);
+            valA.textContent = a.toFixed(2);
+
+            e = parseFloat(sliderE.value);
+            if (e > 0.80) e = 0.80; // 방어 한계선 설정
+            valE.textContent = e.toFixed(2);
+
+            simSpeed = parseFloat(sliderSpeed.value);
+            valSpeed.textContent = simSpeed.toFixed(1) + "x";
+
+            // 타원의 주요 특징점이 변경될 때마다 정적 4대 부채꼴 정밀 재연산 가동
+            computeStaticSectors();
+
+            // 조작 즉시 일시정지 상태여도 궤도 형태 및 수치 즉시 갱신
+            stepPhysics();
+            renderScene();
+        }
+
+        sliderA.addEventListener('input', handleManualControl);
+        sliderE.addEventListener('input', handleManualControl);
+        sliderSpeed.addEventListener('input', handleManualControl);
+
+        btnPlay.addEventListener('click', () => { isRunning = true; });
+        btnPause.addEventListener('click', () => { isRunning = false; });
+        btnReset.addEventListener('click', () => {
+            theta = 0;
+            sliderA.value = "1.50";
+            sliderE.value = "0.50";
+            sliderSpeed.value = "1.0";
+            a = 1.50;
+            e = 0.50;
+            simSpeed = 1.0;
+            valA.textContent = "1.50";
+            valE.textContent = "0.50";
+            valSpeed.textContent = "1.0x";
+            
+            isRunning = false;
+            computeStaticSectors();
+            stepPhysics();
+            renderScene();
+        });
+
+        // 초기 시작 가동 순서
+        computeStaticSectors();
+        stepPhysics();
+        mainLoop();
+    </script>
+</body>
+</html>

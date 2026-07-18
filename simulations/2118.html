@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로슈 한계 조건에 따른 위성 붕괴와 고리 형성 시뮬레이션</title>
+    <!-- Tailwind CSS 탑재 (모던하고 세련된 UI 스타일링) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1f2937;
+            height: 6px;
+            border-radius: 9999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 md:p-6 gap-6">
+
+    <!-- [상단] 헤더 영역 -->
+    <header class="text-center border-b border-gray-800 pb-3">
+        <h1 class="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r bg-blue-400 to-indigo-300">
+            로슈 한계 조건에 따른 위성 붕괴와 고리 형성 시뮬레이션
+        </h1>
+        <p class="text-xs md:text-sm text-gray-400 mt-1">지구과학 II 천문학 수행평가 - 4차시 최종 제출본</p>
+    </header>
+
+    <!-- [중앙] 메인 대시보드 (사용자 조작 및 실시간 관측용 - 스크롤 억제 레이아웃) -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch max-w-7xl mx-auto w-full">
+        
+        <!-- 왼쪽 패널: 슬라이더 컨트롤러 -->
+        <section class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-xl p-5 flex flex-col justify-between shadow-lg">
+            <div>
+                <h2 class="text-base font-semibold text-blue-400 mb-4 flex items-center gap-2">
+                    <span>⚙️</span> 물리 변수 제어판
+                </h2>
+
+                <!-- 행성 질량 -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="planetMass" class="text-xs font-medium text-gray-300">🪐 행성 질량 (M)</label>
+                        <span id="planetMassVal" class="text-xs font-mono text-blue-400 font-bold">1.0 M_J</span>
+                    </div>
+                    <input type="range" id="planetMass" min="0.1" max="5.0" step="0.1" value="1.0" class="w-full text-blue-500">
+                </div>
+
+                <!-- 위성 밀도 -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="moonDensity" class="text-xs font-medium text-gray-300">🌑 위성 밀도 (ρ<sub>m</sub>)</label>
+                        <span id="moonDensityVal" class="text-xs font-mono text-blue-400 font-bold">1.5 g/cm³</span>
+                    </div>
+                    <input type="range" id="moonDensity" min="0.5" max="8.0" step="0.1" value="1.5" class="w-full">
+                </div>
+
+                <!-- 행성-위성 거리 -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="orbitRadius" class="text-xs font-medium text-gray-300">📏 행성-위성 거리 (r)</label>
+                        <span id="orbitRadiusVal" class="text-xs font-mono text-blue-400 font-bold">180 px</span>
+                    </div>
+                    <input type="range" id="orbitRadius" min="50" max="300" step="1" value="180" class="w-full">
+                </div>
+            </div>
+
+            <!-- 간단 퀵 가이드 -->
+            <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 text-3xs text-gray-400 leading-relaxed">
+                <span class="text-2xs font-semibold text-yellow-500 block mb-0.5">💡 실시간 관측 팁</span>
+                행성-위성 거리(r)가 로슈 한계(d)보다 작아지면 위성의 자체 중력 붕괴가 일어나며 입자들이 원반형 고리로 서서히 정렬됩니다.
+            </div>
+        </section>
+
+        <!-- 중앙 패널: 500x500 고정 캔버스 영역 (정렬 최적화 및 삐져나옴 방지 스타일 적용) -->
+        <section class="lg:col-span-2 bg-gray-950 border border-gray-800 rounded-xl flex flex-col items-center justify-center p-4 relative shadow-inner overflow-hidden">
+            <div class="absolute top-3 left-3 bg-gray-900/70 border border-gray-800 px-3 py-1 rounded-full text-2xs text-gray-400 tracking-wide z-10">
+                궤도 평면 시뮬레이터 (2D TOP-DOWN VIEW)
+            </div>
+
+            <!-- 시뮬레이션 캔버스 (물리 좌표 500x500 보존하되, 웹 브라우저 내 반응형 축소 지원) -->
+            <div class="w-full flex items-center justify-center">
+                <canvas id="simCanvas" class="bg-transparent border border-gray-900 rounded-lg shadow-2xl" style="width: 100%; max-width: 400px; aspect-ratio: 1/1;"></canvas>
+            </div>
+        </section>
+
+        <!-- 오른쪽 패널: 실시간 수치 및 요약 설명창 (가로 세로 비율 및 텍스트 과부하 최소화) -->
+        <section class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-xl p-5 flex flex-col justify-between shadow-lg">
+            <div>
+                <h2 class="text-base font-semibold text-blue-400 mb-4 flex items-center gap-2">
+                    <span>📊</span> 실시간 분석 보고서
+                </h2>
+
+                <!-- 상태 표시 뱃지 -->
+                <div class="mb-4">
+                    <span class="text-2xs text-gray-400 block mb-1">현재 상태 판정</span>
+                    <div id="statusBadge" class="text-center font-bold text-sm py-2 px-3 rounded-lg transition-all duration-300">
+                        계산 중...
+                    </div>
+                </div>
+
+                <!-- 데이터 수치 출력 (표준 텍스트 표기법 r, d 유지) -->
+                <div class="space-y-3 mb-4">
+                    <div class="flex justify-between items-center bg-gray-950 p-2 rounded border border-gray-800">
+                        <span class="text-2xs text-gray-400">현재 위성 거리 (r)</span>
+                        <span id="currentDistData" class="text-xs font-mono font-bold text-white">0 px</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-950 p-2 rounded border border-gray-800">
+                        <span class="text-2xs text-gray-400">로슈 한계 거리 (d)</span>
+                        <span id="rocheLimitData" class="text-xs font-mono font-bold text-red-400">0 px</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-950 p-2 rounded border border-gray-800">
+                        <span class="text-2xs text-gray-400">진입 비율 (r / d)</span>
+                        <span id="ratioData" class="text-xs font-mono font-bold text-yellow-400">0.00</span>
+                    </div>
+                </div>
+
+                <!-- 요약 설명 박스 (가독성 증대를 위한 핵심 3줄 요약 구성) -->
+                <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 min-h-[100px] flex flex-col justify-center">
+                    <span class="text-2xs font-semibold text-gray-300 block mb-1">상태 요약 설명</span>
+                    <p id="statusDesc" class="text-2xs text-gray-400 leading-relaxed">
+                        슬라이더를 조작해 실시간 천체 기조 역학 분석 결과를 확인하세요.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 하단 간략 공식 가이드 (LaTeX 완전 배제형 마크업 적용) -->
+            <div class="mt-3 border-t border-gray-800 pt-2 text-3xs text-gray-500">
+                <span class="block font-semibold">유체 로슈 한계 공식</span>
+                <p class="italic text-blue-400 text-xs font-semibold mt-0.5">
+                    d = 2.44 × R<sub>p</sub> × (ρ<sub>p</sub> / ρ<sub>m</sub>)<sup>1/3</sup>
+                </p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- [하단] 학술 백그라운드 & 개발노트 섹션 (3개 카드 형태 배치) -->
+    <section class="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-800 pt-5">
+        
+        <!-- 카드 1: 공식 상세 분석 -->
+        <article class="bg-gray-900/50 border border-gray-800/80 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+            <div>
+                <h3 class="text-xs font-bold text-blue-400 flex items-center gap-1 mb-2">
+                    <span>📓</span> 1. 로슈 한계 공식 분석
+                </h3>
+                <p class="text-3xs text-gray-400 leading-relaxed">
+                    로슈 한계 거리(d)는 행성의 반지름(R<sub>p</sub>), 행성의 밀도(ρ<sub>p</sub>), 위성의 밀도(ρ<sub>m</sub>)의 관계식으로 결정됩니다.
+                    위성이 이 경계 내부로 도달하는 순간, 행성에 가까운 면에 작용하는 만유인력과 먼 면에 작용하는 인력의 편차(기조력)가 위성의 수축 복원력보다 커져 부서지게 됩니다.
+                </p>
+            </div>
+        </article>
+
+        <!-- 카드 2: 변인과 결과의 역학적 인과관계 -->
+        <article class="bg-gray-900/50 border border-gray-800/80 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+            <div>
+                <h3 class="text-xs font-bold text-emerald-400 flex items-center gap-1 mb-2">
+                    <span>⚖️</span> 2. 조작변인과 결과 관계
+                </h3>
+                <ul class="list-disc pl-3 text-3xs text-gray-400 space-y-1 leading-relaxed">
+                    <li><strong>행성 질량(M) 증가</strong>: 행성 평균밀도(ρ<sub>p</sub>)의 상승을 유발하여 조석 왜곡력을 강화하고, 이로 인해 로슈 한계 d가 바깥쪽으로 이동합니다.</li>
+                    <li><strong>위성 밀도(ρ<sub>m</sub>) 증가</strong>: 위성 중심부로 끌어당기는 자체 응집력이 상승하여 분해에 더 강하게 저항하므로 로슈 한계 d가 안쪽으로 수축합니다.</li>
+                </ul>
+            </div>
+        </article>
+
+        <!-- 카드 3: 개발 보고서용 과학적 가정 및 한계 (최종 제출용으로 세밀한 구조 조정) -->
+        <article class="bg-gray-900/50 border border-gray-800/80 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+            <div>
+                <h3 class="text-xs font-bold text-amber-500 flex items-center gap-1 mb-2">
+                    <span>⚠️</span> 3. 과학적 단순화 가정과 한계
+                </h3>
+                <ul class="list-disc pl-3 text-3xs text-gray-500 space-y-0.5 leading-relaxed">
+                    <li>행성과 위성은 조석 팽창 압착 전까지 완전한 기하구형이라고 단순화했습니다.</li>
+                    <li>타 천체(예: 태양)와의 다체 외력 간섭 및 행성 자체 자전은 무시했습니다.</li>
+                    <li>행성 반지름 R<sub>p</sub>를 화면 상에 가독성 있게 고정했으며, 질량 M 증가 시 밀도 ρ<sub>p</sub>가 비례해서 커지도록 수식을 연계하는 한계가 있습니다.</li>
+                    <li>파편 알갱이 간 중력적 재결합 및 궤도 섭동 연산은 배제하고, 동심원 고리에 정렬되어 회전하는 케플러 역학만을 반영했습니다.</li>
+                </ul>
+            </div>
+        </article>
+
+    </section>
+
+    <!-- [하단] 제어 패널 및 저작권 정보 -->
+    <footer class="max-w-7xl mx-auto w-full border-t border-gray-800 pt-4 pb-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <!-- 재생 제어 버튼들 -->
+        <div class="flex items-center gap-3">
+            <button id="btnPlay" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-md transition-all">
+                <span>▶</span> 재생
+            </button>
+            <button id="btnPause" class="bg-gray-800 hover:bg-gray-700 text-white font-semibold text-sm px-5 py-2.5 rounded-lg flex items-center gap-2 border border-gray-700 transition-all">
+                <span>⏸</span> 정지
+            </button>
+            <button id="btnReset" class="bg-gray-800 hover:bg-red-950/40 text-red-400 font-semibold text-sm px-5 py-2.5 rounded-lg flex items-center gap-2 border border-gray-800 hover:border-red-900 transition-all">
+                <span>🔄</span> 초기화
+            </button>
+        </div>
+
+        <div class="text-xs text-gray-500 text-center sm:text-right">
+            <span>고급지구과학 II 천문학 수행평가 • 4차시 제출용 최종 버전</span>
+        </div>
+    </footer>
+
+    <!-- 시뮬레이션 그래픽 및 역학 스크립트 -->
+    <script>
+        // --- 1. DOM 구조 연결 ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const planetMassSlider = document.getElementById('planetMass');
+        const moonDensitySlider = document.getElementById('moonDensity');
+        const orbitRadiusSlider = document.getElementById('orbitRadius');
+
+        const planetMassVal = document.getElementById('planetMassVal');
+        const moonDensityVal = document.getElementById('moonDensityVal');
+        const orbitRadiusVal = document.getElementById('orbitRadiusVal');
+
+        const statusBadge = document.getElementById('statusBadge');
+        const currentDistData = document.getElementById('currentDistData');
+        const rocheLimitData = document.getElementById('rocheLimitData');
+        const ratioData = document.getElementById('ratioData');
+        const statusDesc = document.getElementById('statusDesc');
+
+        const btnPlay = document.getElementById('btnPlay');
+        const btnPause = document.getElementById('btnPause');
+        const btnReset = document.getElementById('btnReset');
+
+        // --- 2. 기본 물리 및 환경 변수 설정 (500x500 고정 해상도 및 안정성 보장) ---
+        let width = 500;
+        let height = 500;
+        canvas.width = width;
+        canvas.height = height;
+
+        // [과학적 단순화 모델] 행성의 반지름(Rp) 크기를 웹 캔버스 좌표계에 맞게 45px로 고정했습니다.
+        const planetRadius = 45; 
+        const planetDensityConstant = 1.2; // 계산 상 밀도 조율을 위한 계수
+
+        let isRunning = true;         
+        let orbitAngle = 0;           
+        let isDestroyed = false;      
+        let debrisParticles = [];
+        const maxParticles = 400; // 정렬된 먼지 고리 띠의 안정적 시각화를 위한 총 입자 수
+
+        // --- 3. 로슈 한계 계산 알고리즘 ---
+        function calculateRocheLimit() {
+            const M = parseFloat(planetMassSlider.value);  
+            const rhom = parseFloat(moonDensitySlider.value); 
+            
+            // [과학적 단순화 모델] 질량이 늘어남에 따라 행성의 가상 밀도(rhoP)도 함께 상승한다고 가정해
+            // 질량 슬라이더 변경 시 조석력 변동 및 로슈 한계 거리 d가 실시간 변동하도록 묶었습니다.
+            const rhoP = M * planetDensityConstant; 
+
+            // 유체 로슈 한계 공식 연산
+            const d = 2.44 * planetRadius * Math.pow((rhoP / rhom), 1/3);
+            return d;
+        }
+
+        // --- 4. 얇은 회색조 원반형 고리 파편 초기화 함수 ---
+        function initializeRingDebris(currentRadius, currentAngle) {
+            debrisParticles = [];
+            for (let i = 0; i < maxParticles; i++) {
+                // [과학적 단순화 모델] 폭이 일정한 얇은 고리(Ring) 형태로 시각적 단순화하기 위해,
+                // 무질서한 확산을 억제하고 위성의 파괴 궤도 주변 ±8px 내에 수렴 배치시켰습니다.
+                const radiusOffset = (Math.random() - 0.5) * 16; 
+                const pRadius = currentRadius + radiusOffset;
+                
+                // 파편들이 고리 전방향(360도)에 골고루 정렬되도록 각도 분배
+                const pAngle = currentAngle + (Math.random() * Math.PI * 2);
+                
+                // [과학적 단순화 모델] 케플러 제3법칙을 모방하여 중심 행성 거리에 비례하여 
+                // 회전속도가 다르게 작동하도록(안쪽 입자는 빠르게, 바깥쪽은 느리게) 회전 속도를 차등 분산 부여했습니다.
+                const baseSpeed = 0.15 * Math.sqrt(100 / pRadius); 
+
+                debrisParticles.push({
+                    angle: pAngle,
+                    radius: pRadius,
+                    speed: baseSpeed * (0.95 + Math.random() * 0.1), // 정밀 정렬을 유지하기 위해 오차 분산 범위 제약
+                    size: 1.0 + Math.random() * 1.5, // 가시성이 우수한 미세 알갱이 스펙트럼
+                    color: `rgba(209, 213, 219, ${0.3 + Math.random() * 0.5})` // 밝은 먼지색(회색조)
+                });
+            }
+        }
+
+        // --- 5. 실시간 상태 판정 및 자연스러운 텍스트 연동 (4차시용 컴팩트 3줄 요약) ---
+        function updateUIAnalysis() {
+            const currentDist = parseFloat(orbitRadiusSlider.value);
+            const rocheLimit = calculateRocheLimit();
+            const ratio = currentDist / rocheLimit;
+
+            currentDistData.textContent = `${currentDist.toFixed(1)} px`;
+            rocheLimitData.textContent = `${rocheLimit.toFixed(1)} px`;
+            ratioData.textContent = ratio.toFixed(2);
+
+            // 상태 변화에 따른 유기적 핵심 텍스트 요약 메시지
+            if (ratio > 1.2) {
+                // [안정 상태]
+                statusBadge.textContent = "안정 상태 (Stable)";
+                statusBadge.className = "text-center font-bold text-xs py-1.5 px-3 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800 transition-all duration-300";
+                statusDesc.innerHTML = "위성이 안전 거리에 머물러 있습니다. 기조력에 비해 <strong>자체 응집용 중력이 매우 우세</strong>하여 원형 궤도를 일정하게 유지합니다.";
+                isDestroyed = false;
+            } else if (ratio >= 1.0 && ratio <= 1.2) {
+                // [위험 접근 상태]
+                statusBadge.textContent = "위험 접근 (Critical)";
+                statusBadge.className = "text-center font-bold text-xs py-1.5 px-3 rounded-lg bg-yellow-950 text-yellow-400 border border-yellow-800 animate-pulse transition-all duration-300";
+                statusDesc.innerHTML = "조석 불안정화 돌입! 행성-위성 간 인력 차이로 인해 <strong>위성이 행성 방향 타원체로 심하게 찌그러지며</strong> 인장됩니다.";
+                isDestroyed = false;
+            } else {
+                // [위성 붕괴 상태]
+                statusBadge.textContent = "위성 붕괴 (Disruption)";
+                statusBadge.className = "text-center font-bold text-xs py-1.5 px-3 rounded-lg bg-red-950 text-red-400 border border-red-800 transition-all duration-300";
+                statusDesc.innerHTML = "로슈 장벽 파괴 완료! <strong>조석 외력이 위성 결합 중력을 격파</strong>하여 위성이 먼지 고리로 서서히 정렬 및 소멸하기 시작합니다.";
+                
+                // 붕괴 순간 고리 입자 최초 1회 배열화
+                if (!isDestroyed) {
+                    isDestroyed = true;
+                    initializeRingDebris(currentDist, orbitAngle);
+                }
+            }
+        }
+
+        // --- 6. 그래픽 및 애니메이션 동적 렌더링 ---
+        function render() {
+            // 밤하늘 우주 공간
+            ctx.fillStyle = '#070a13';
+            ctx.fillRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // 은은한 동심원 가이드라인
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            for(let r = 80; r < 280; r += 50) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // [A] 로슈 한계 영역선 렌더링 (붉은색 점선 표시)
+            const rocheLimit = calculateRocheLimit();
+            ctx.save();
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)'; 
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 6]); 
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, rocheLimit, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+            ctx.font = '11px sans-serif';
+            ctx.fillText("로슈 한계선 (d)", centerX - 40, centerY - rocheLimit - 8);
+
+            // [B] 중앙 행성 그리기
+            const mVal = parseFloat(planetMassSlider.value);
+            // [과학적 단순화 모델] 행성 질량 변화를 시각적으로 보여주기 위해 그리기 반지름 크기도 약간 변동하도록 처리
+            const displayPlanetRadius = planetRadius + (mVal - 1.0) * 2.5; 
+
+            let planetGrad = ctx.createRadialGradient(centerX - 10, centerY - 10, 5, centerX, centerY, displayPlanetRadius);
+            planetGrad.addColorStop(0, '#bae6fd'); 
+            planetGrad.addColorStop(0.5, '#3b82f6'); 
+            planetGrad.addColorStop(1, '#1e3a8a'); 
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, displayPlanetRadius, 0, Math.PI * 2);
+            ctx.fillStyle = planetGrad;
+            ctx.shadowColor = '#3b82f6';
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            ctx.shadowBlur = 0; 
+
+            // [C] 위성 또는 파편 고리 렌더링 연산 분기
+            const currentDist = parseFloat(orbitRadiusSlider.value);
+
+            if (!isDestroyed) {
+                // --- 안정/위험 상태: 정상적인 단일 위성 공전 ---
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, currentDist, 0, Math.PI * 2);
+                ctx.stroke();
+
+                if (isRunning) {
+                    const speedFactor = 0.015 * Math.pow(180 / currentDist, 1.5);
+                    orbitAngle += speedFactor;
+                }
+
+                const moonX = centerX + Math.cos(orbitAngle) * currentDist;
+                const moonY = centerY + Math.sin(orbitAngle) * currentDist;
+
+                const ratio = currentDist / rocheLimit;
+                ctx.save();
+                ctx.translate(moonX, moonY);
+                ctx.rotate(orbitAngle); 
+
+                let moonGrad = ctx.createRadialGradient(-2, -2, 1, 0, 0, 7);
+                if (ratio <= 1.2) {
+                    // 위험 접근 시 인장에 의한 타원 찌그러짐 연출 (황색 경보색)
+                    moonGrad.addColorStop(0, '#fef08a');
+                    moonGrad.addColorStop(1, '#ca8a04');
+                    ctx.fillStyle = moonGrad;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 12, 7, 0, 0, Math.PI * 2);
+                } else {
+                    // 안정 시 정상 구형 위성 (청백색)
+                    moonGrad.addColorStop(0, '#f9fafb');
+                    moonGrad.addColorStop(1, '#4b5563');
+                    ctx.fillStyle = moonGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 7, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                ctx.restore();
+
+            } else {
+                // --- 붕괴 상태: 얇은 회색 먼지 고리(Dust Ring) 흐름 연출 ---
+                debrisParticles.forEach(p => {
+                    if (isRunning) {
+                        p.angle += p.speed;
+                    }
+
+                    const px = centerX + Math.cos(p.angle) * p.radius;
+                    const py = centerY + Math.sin(p.angle) * p.radius;
+
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(px, py, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        }
+
+        // --- 7. 메인 루프 실행 엔진 ---
+        function loop() {
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        // --- 8. 동기화 및 바인딩 장치 ---
+        function onSliderInput() {
+            planetMassVal.textContent = `${parseFloat(planetMassSlider.value).toFixed(1)} M_J`;
+            moonDensityVal.textContent = `${parseFloat(moonDensitySlider.value).toFixed(1)} g/cm³`;
+            orbitRadiusVal.textContent = `${orbitRadiusSlider.value} px`;
+
+            updateUIAnalysis();
+        }
+
+        planetMassSlider.addEventListener('input', onSliderInput);
+        moonDensitySlider.addEventListener('input', onSliderInput);
+        orbitRadiusSlider.addEventListener('input', onSliderInput);
+
+        btnPlay.addEventListener('click', () => {
+            isRunning = true;
+            btnPlay.classList.add('bg-blue-700');
+            btnPause.classList.remove('bg-gray-700');
+        });
+
+        btnPause.addEventListener('click', () => {
+            isRunning = false;
+            btnPlay.classList.remove('bg-blue-700');
+            btnPause.classList.add('bg-gray-700');
+        });
+
+        btnReset.addEventListener('click', () => {
+            planetMassSlider.value = "1.0";
+            moonDensitySlider.value = "1.5";
+            orbitRadiusSlider.value = "180";
+            
+            orbitAngle = 0;
+            isDestroyed = false;
+            debrisParticles = [];
+            isRunning = true;
+
+            onSliderInput();
+        });
+
+        // 초기 기동부
+        window.onload = function() {
+            onSliderInput();
+            loop();
+        };
+    </script>
+</body>
+</html>

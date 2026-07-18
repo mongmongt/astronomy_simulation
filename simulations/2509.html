@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R.A.O.N - 실시간 천체 관측 시뮬레이션 Console</title>
+    <!-- Tailwind CSS for Premium UI Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-[#0f1424] px-6 py-4 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-600 rounded-lg text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                </div>
+                <div>
+                    <!-- 서비스 명칭 R.A.O.N 및 설명 반영 -->
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        R.A.O.N <span class="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded border border-blue-500/30">v2.5 PRO</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Realistic Astronomical Observation.Net (성취기준 03-01 연계)</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/60 text-slate-300">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>가상 센서 실시간 피드 활성화됨</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto p-4 lg:p-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+        
+        <!-- Left Sidebar: Controls (5 Cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-5">
+            
+            <!-- 1. 망원경 구조 및 하층대기 -->
+            <div class="bg-[#12182d] border border-slate-800 rounded-xl p-5 shadow-md hover:border-slate-700/80 transition-colors">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <span class="text-blue-500 font-bold text-lg">01</span>
+                    <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider">망원경 구조 및 하층 대기 (Local Seeing)</h2>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1.5 font-medium">망원경 광학계 형식</label>
+                        <select id="telescopeType" class="w-full bg-[#1b233f] border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors">
+                            <option value="reflector">Newtonian Reflector (바람 통풍형 개방식 경통)</option>
+                            <option value="refractor">Apochromatic Refractor (밀폐식 굴절 경통)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-medium">지표/망원경 온도차 (하층 난기류)</span>
+                            <span id="tempDeltaVal" class="text-sm font-bold text-blue-400 mono">3.0°C</span>
+                        </div>
+                        <input type="range" id="tempDelta" min="0" max="30" step="0.5" value="3.0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        <p class="text-[11px] text-slate-500 mt-1">경통 주변 및 내부의 열평형 불일치로 인한 난기류 발생 강도</p>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800/60">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-medium">망원경 관측 배율 (Magnification)</span>
+                            <span id="magnificationVal" class="text-sm font-bold text-blue-400 mono">1.0x</span>
+                        </div>
+                        <input type="range" id="magnification" min="1.0" max="5.0" step="0.2" value="1.0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        <p class="text-[11px] text-slate-500 mt-1">배율이 높아질수록 시야각(FOV)이 좁아져, 동일한 기류 흔들림도 극대화되어 별상이 쉽게 이탈합니다.</p>
+                    </div>
+
+                    <!-- 초점 조절 슬라이더 -->
+                    <div class="pt-2 border-t border-slate-800/60">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-medium">초점 조절 장치 (Focus Offset)</span>
+                            <span id="focusOffsetVal" class="text-sm font-bold text-blue-400 mono">0.00 mm</span>
+                        </div>
+                        <input type="range" id="focusOffset" min="-5.0" max="5.0" step="0.1" value="0.0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        <p class="text-[11px] text-slate-500 mt-1">초점이 비정상(0이 아님)일 때 회절 퍼짐이 발생하며, 반사경통은 독특한 도넛 회절 패턴을 그립니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 상층 대기 환경 -->
+            <div class="bg-[#12182d] border border-slate-800 rounded-xl p-5 shadow-md hover:border-slate-700/80 transition-colors">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <span class="text-emerald-500 font-bold text-lg">02</span>
+                    <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider">지구 대기 환경 (Atmospheric Physics)</h2>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-medium">상층 대기질 (Seeing, 시상)</span>
+                            <span id="seeingVal" class="text-sm font-bold text-emerald-400 mono">1.5"</span>
+                        </div>
+                        <input type="range" id="seeing" min="1.0" max="5.0" step="0.1" value="1.5" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                        <p class="text-[11px] text-slate-500 mt-1">제트기류 등 상층대기 흔들림. 값이 작을수록 대기가 투명하고 안정됨</p>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-medium">대기 소광 (Extinction)</span>
+                            <span id="extinctionVal" class="text-sm font-bold text-emerald-400 mono">0.20 mag</span>
+                        </div>
+                        <input type="range" id="extinction" min="0.0" max="2.0" step="0.05" value="0.2" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                        <p class="text-[11px] text-slate-500 mt-1">대기 중 수증기/에어로졸에 의한 파장 흡수 및 산란(광량 손실)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 관측 대상 및 센서 설정 -->
+            <div class="bg-[#12182d] border border-slate-800 rounded-xl p-5 shadow-md hover:border-slate-700/80 transition-colors">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <span class="text-pink-500 font-bold text-lg">03</span>
+                    <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider">관측 대상 및 센서 설정 (Target & Sensor)</h2>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1.5 font-medium">관측 타겟 선택 (Target Celestial Body)</label>
+                        <select id="targetSelect" class="w-full bg-[#1b233f] border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-pink-500 transition-colors">
+                            <option value="sirius">🌟 시리우스 (Sirius - 초고광도 주계열성)</option>
+                            <option value="vega">⭐ 직녀성 (Vega - 표준 0등급 천도 기준성)</option>
+                            <option value="jupiter">🪐 목성 (Jupiter - 표면 줄무늬 면광원 행성)</option>
+                            <option value="m31">🌌 안드로메다 은하 (M31 - 심우주 나선 은하 디스크)</option>
+                            <option value="orion">☁️ 오리온 대성운 (M42 - 다채로운 가스 분자 구름)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1.5 font-medium">사용 관측 카메라 모델</label>
+                        <select id="cameraSelect" class="w-full bg-[#1b233f] border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-pink-500 transition-colors">
+                            <option value="iphone15pro">Apple iPhone 15 Pro (CMOS)</option>
+                            <option value="canon800d">Canon EOS 800D (DSLR)</option>
+                            <option value="zwo120mc">ZWO ASI120MC-S (Planetary CMOS)</option>
+                            <option value="zwo294mc">ZWO ASI294MC Pro (Cooled CMOS)</option>
+                            <option value="sbig16803">SBIG STX-16803 (Deep-Cooling CCD)</option>
+                        </select>
+                    </div>
+
+                    <!-- Dynamic Camera Spec HUD -->
+                    <div class="bg-[#0b0f19] border border-slate-800/80 rounded-lg p-3 text-xs">
+                        <div class="grid grid-cols-2 gap-y-2 gap-x-4">
+                            <div>
+                                <span class="text-slate-500 block">센서 쿨러 온도</span>
+                                <span id="hudTemp" class="font-bold text-pink-400">상온 (+35°C)</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block">판독 잡음 (Read Noise)</span>
+                                <span id="hudRead" class="font-bold text-slate-200 mono">~2.5 e⁻</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block">센서 규격</span>
+                                <span id="hudSize" class="font-bold text-slate-200">1/1.28 inch</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block">타겟 분류</span>
+                                <span id="hudUse" class="font-bold text-blue-400">행성/일반 관측</span>
+                            </div>
+                        </div>
+                        <div class="mt-2.5 pt-2 border-t border-slate-800/60 text-slate-400 text-[11px] leading-relaxed">
+                            <span class="font-semibold text-slate-300">특징: </span><span id="hudDesc">모바일 탑재 CMOS 센서로 고온 구동 시 열잡음이 매우 높습니다.</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-medium">센서 노출 시간 (Exposure)</span>
+                            <span id="exposureVal" class="text-sm font-bold text-pink-400 mono">0.10 s</span>
+                        </div>
+                        <input type="range" id="exposure" min="0.05" max="10" step="0.05" value="0.1" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500">
+                        <p class="text-[11px] text-slate-500 mt-1">빛을 누적하는 시간. 노출이 길어질수록 무작위 센서 잡음이 상쇄됩니다 (SNR 법칙)</p>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right: Viewport & Live Science Statistics (7 Cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-5">
+            
+            <!-- Live Viewport Container -->
+            <div class="bg-[#12182d] border border-slate-800 rounded-xl p-5 flex flex-col items-center shadow-md relative">
+                <div class="w-full flex justify-between items-center mb-3">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                        Sensor Focal Plane Real-time Render
+                    </span>
+                    
+                    <!-- 조준선 온오프 스위치 토글 탑재 -->
+                    <label class="inline-flex items-center cursor-pointer gap-2 bg-[#1b233f] border border-slate-700/50 px-2.5 py-1 rounded text-[11px] font-medium text-slate-300 hover:border-slate-600 transition-colors select-none">
+                        <input type="checkbox" id="gridToggle" class="sr-only peer" checked>
+                        <span class="w-2 h-2 rounded-full bg-slate-500 peer-checked:bg-cyan-400 transition-colors"></span>
+                        <span>레티클 조준선 격자</span>
+                    </label>
+                </div>
+                
+                <div class="relative w-full aspect-square max-w-[450px] bg-black rounded-lg border border-slate-800 overflow-hidden shadow-inner">
+                    <canvas id="astroCanvas" width="450" height="450" class="w-full h-full cursor-crosshair"></canvas>
+                    
+                    <div class="absolute inset-0 pointer-events-none border border-slate-700/10 flex items-center justify-center">
+                        <div class="w-10 h-10 border border-dashed border-sky-500/20 rounded-full"></div>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-slate-500 mt-3 text-center">가상 초점면 렌더링. 마우스를 대어 움직이면 센서 시뮬레이션이 지속 반응합니다.</p>
+            </div>
+
+            <!-- Scientific Telemetry & Analysis (SNR Display) -->
+            <div class="bg-[#12182d] border border-slate-800 rounded-xl p-5 shadow-md">
+                <h3 class="text-sm font-bold text-slate-300 mb-4 uppercase tracking-wider flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2zm12-5a2 2 0 00-2-2h-2a2 2 0 00-2 2v3a2 2 0 002 2h2a2 2 0 002-2v-3zm0 0V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                    </svg>
+                    관측 화질 분석 패널 (Telemetry & SNR Analyzer)
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="bg-[#0b0f19] p-3 rounded-lg border border-slate-800/80">
+                        <span class="text-[11px] text-slate-500 block font-medium">대기 광투과율 (Transmission)</span>
+                        <span id="telTransmission" class="text-lg font-bold text-emerald-400 mono">100%</span>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                            <div id="barTransmission" class="bg-emerald-500 h-full rounded-full" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0b0f19] p-3 rounded-lg border border-slate-800/80">
+                        <span class="text-[11px] text-slate-500 block font-medium">누적 신호 세기 (Raw Signal)</span>
+                        <span id="telSignal" class="text-lg font-bold text-yellow-400 mono">120 ADU</span>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                            <div id="barSignal" class="bg-yellow-500 h-full rounded-full" style="width: 20%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0b0f19] p-3 rounded-lg border border-slate-800/80">
+                        <span class="text-[11px] text-slate-500 block font-medium">센서 배경 잡음 (Background Noise)</span>
+                        <span id="telNoise" class="text-lg font-bold text-red-400 mono">15.4 ADU</span>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                            <div id="barNoise" class="bg-red-500 h-full rounded-full" style="width: 40%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-[#1b233f] border border-blue-900/40 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <span class="text-xs font-bold uppercase tracking-wider text-blue-400">신호 대 잡음비 (SNR, Signal-to-Noise Ratio)</span>
+                        </div>
+                        <p class="text-xs text-slate-400">SNR이 높을수록 노이즈 간섭 없이 미세 광원을 추적할 수 있으며, 깨끗한 천체 사진 판독이 가능합니다.</p>
+                    </div>
+                    <div class="text-center min-w-[120px] bg-[#0b0f19] px-4 py-2.5 rounded-lg border border-blue-800/30">
+                        <span class="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Computed SNR</span>
+                        <span id="telSNR" class="text-2xl font-black text-sky-400 mono">0.00</span>
+                        <span id="telSNRRating" class="text-[10px] font-bold block text-red-500 mt-0.5">화질 극히 불량</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-900 bg-[#070912] px-6 py-4 mt-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>© 2026 R.A.O.N Project. All Rights Reserved.</span>
+            <span class="text-[11px]">Designed under National Science Curriculum Standard (03-01 Alignment)</span>
+        </div>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('astroCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Selectors
+        const sliders = {
+            telescopeType: document.getElementById('telescopeType'),
+            tempDelta: document.getElementById('tempDelta'),
+            seeing: document.getElementById('seeing'),
+            extinction: document.getElementById('extinction'),
+            exposure: document.getElementById('exposure'),
+            cameraSelect: document.getElementById('cameraSelect'),
+            magnification: document.getElementById('magnification'),
+            targetSelect: document.getElementById('targetSelect'),
+            focusOffset: document.getElementById('focusOffset')
+        };
+
+        const vals = {
+            tempDelta: document.getElementById('tempDeltaVal'),
+            seeing: document.getElementById('seeingVal'),
+            extinction: document.getElementById('extinctionVal'),
+            exposure: document.getElementById('exposureVal'),
+            magnification: document.getElementById('magnificationVal'),
+            focusOffset: document.getElementById('focusOffsetVal'),
+            
+            // Camera Specs HUD
+            hudTemp: document.getElementById('hudTemp'),
+            hudRead: document.getElementById('hudRead'),
+            hudSize: document.getElementById('hudSize'),
+            hudUse: document.getElementById('hudUse'),
+            hudDesc: document.getElementById('hudDesc'),
+
+            // Telemetry Outputs
+            telTransmission: document.getElementById('telTransmission'),
+            telSignal: document.getElementById('telSignal'),
+            telNoise: document.getElementById('telNoise'),
+            telSNR: document.getElementById('telSNR'),
+            telSNRRating: document.getElementById('telSNRRating'),
+
+            // Dynamic Progress Bars
+            barTransmission: document.getElementById('barTransmission'),
+            barSignal: document.getElementById('barSignal'),
+            barNoise: document.getElementById('barNoise')
+        };
+
+        // Real Camera Database
+        const cameraSpecs = {
+            iphone15pro: {
+                name: "Apple iPhone 15 Pro",
+                temp: "상온 (+35°C 발열 포함)",
+                read: "~2.5 e⁻ (모바일)",
+                size: "1/1.28인치",
+                use: "일상 및 달 촬영용",
+                desc: "센서 크기가 작아 주변부 수광량이 작으며, 지속적인 AP 연산 모바일 발열로 장시간 촬영 시 심각한 열잡음(R/G/B 컬러 노이즈)이 화면을 가득 채웁니다.",
+                noiseValue: 80,
+                isCooled: false
+            },
+            canon800d: {
+                name: "Canon EOS 800D (DSLR)",
+                temp: "주변 대기 온도 (+20°C)",
+                read: "~1.4 e⁻ (우수함)",
+                size: "APS-C 크롭 (22.3mm)",
+                use: "입문용 천체 성야 촬영",
+                desc: "널리 보급된 상용 크롭 카메라로 뛰어난 하드웨어 수광력을 가집니다. 그러나 열 차단 설계 및 냉각 쿨러 부재로 오랜 셔터 유지 시 센서 가열로 열잡음이 차오릅니다.",
+                noiseValue: 42,
+                isCooled: false
+            },
+            zwo120mc: {
+                name: "ZWO ASI120MC-S (천체용)",
+                temp: "주변 대기 온도 (+18°C)",
+                read: "~4.0 e⁻ (보통)",
+                size: "1/3인치 소형",
+                use: "행성 관측 및 자동 추적(Guide)",
+                desc: "비냉각 천체 전용 행성/가이드 카메라입니다. 초고속 프레임 레코딩이 우수하여 고속 촬영에는 노이즈 영향이 적지만, 딥스카이 장노출에는 쿨링 성능 부재로 불리합니다.",
+                noiseValue: 24,
+                isCooled: false
+            },
+            zwo294mc: {
+                name: "ZWO ASI294MC Pro (냉각)",
+                temp: "영하 -15°C (TEC 강제 냉각)",
+                read: "~1.2 e⁻ (극상)",
+                size: "4/3인치 포서드",
+                use: "딥스카이 성운/은하 촬영",
+                desc: "열전반도체(TEC) 및 냉각 팬 기술을 탑재하여 외부 온도 대비 최대 35도까지 센서 온도를 강하시킵니다. 열잡음 발생 인자를 근본적으로 차단하는 보급형 명기입니다.",
+                noiseValue: 6,
+                isCooled: true
+            },
+            sbig16803: {
+                name: "SBIG STX-16803 (연구용)",
+                temp: "영하 -40°C (정밀 심냉각)",
+                read: "~9.0 e⁻ (하드웨어 고정)",
+                size: "36x36mm 대형 풀프레임",
+                use: "대학/기관 정밀 우주 관측",
+                desc: "천문대 및 연구소의 표준형 정밀 심냉각 천체 관측 CCD입니다. 센서를 극저온 상태로 완벽 제어하여 우주 배경으로부터 오는 미광을 흔들림 없이 수집 및 정밀 데이터화합니다.",
+                noiseValue: 1.5,
+                isCooled: true
+            }
+        };
+
+        // Real Targets Database (수식 및 렌더링에 직접 영향)
+        const targets = {
+            sirius: {
+                type: 'star',
+                signalMult: 2.2,
+                color: 'rgba(215, 235, 255, ',
+                coreColor: '#ffffff',
+                classification: "항성 관측 (A형)",
+                desc: "밤하늘에서 겉보기 등급이 가장 밝은 항성입니다. 수광량이 넘쳐 짧은 노출에서도 쉽게 센서 포화 상태에 도달합니다."
+            },
+            vega: {
+                type: 'star',
+                signalMult: 1.0,
+                color: 'rgba(230, 240, 255, ',
+                coreColor: '#ffffff',
+                classification: "항성 관측 (A형 표준)",
+                desc: "거문고자리의 0등급 주계열성입니다. 오랜 기간 동안 모든 천체 측정 광학 장비의 영점 기준선으로 전 세계 천문대가 활용해 왔습니다."
+            },
+            jupiter: {
+                type: 'planet',
+                signalMult: 1.3,
+                color: 'rgba(240, 220, 190, ',
+                coreColor: '#fbf0e0',
+                classification: "태양계 가스 행성",
+                desc: "점광원이 아닌 크기(면적)를 가진 구형 가스 구체입니다. 시상이 우수하고 온도차가 낮을 때만 표면 대적점과 가로 줄무늬 구조가 흐릿하지 않고 선명하게 노출됩니다."
+            },
+            m31: {
+                type: 'galaxy',
+                signalMult: 0.35,
+                color: 'rgba(200, 210, 255, ',
+                coreColor: 'rgba(255, 255, 255, 0.9)',
+                classification: "메시에 성표 은하 (DSO)",
+                desc: "핵심 중심부는 밝지만 외곽 나선팔 영역은 매우 어두워 대기 소광이나 기기 잡음에 매우 취약합니다. 고성능 CCD 및 장노출 합성이 동반되어야 나선 띠가 검출됩니다."
+            },
+            orion: {
+                type: 'nebula',
+                signalMult: 0.5,
+                color: 'rgba(255, 120, 180, ',
+                coreColor: 'rgba(255, 255, 255, 0.95)',
+                classification: "메시에 성표 발광 성운",
+                desc: "붉은 수소 가스 구름과 중심부의 푸른 반사광이 어우러진 가스 벌집입니다. 중심부에는 항성들이 막 태어나는 사중성 성단(Trapezium)이 존재합니다."
+            }
+        };
+
+        let cosmicRays = [];
+
+        function updateHUD() {
+            const currentCam = cameraSpecs[sliders.cameraSelect.value];
+            const currentTarget = targets[sliders.targetSelect.value];
+            
+            vals.tempDelta.textContent = parseFloat(sliders.tempDelta.value).toFixed(1) + "°C";
+            vals.seeing.textContent = parseFloat(sliders.seeing.value).toFixed(1) + '"';
+            vals.extinction.textContent = parseFloat(sliders.extinction.value).toFixed(2) + " mag";
+            vals.exposure.textContent = parseFloat(sliders.exposure.value).toFixed(2) + " s";
+            vals.magnification.textContent = parseFloat(sliders.magnification.value).toFixed(1) + "x";
+            vals.focusOffset.textContent = parseFloat(sliders.focusOffset.value).toFixed(2) + " mm";
+
+            vals.hudTemp.textContent = currentCam.temp;
+            vals.hudRead.textContent = currentCam.read;
+            vals.hudSize.textContent = currentCam.size;
+            vals.hudUse.textContent = currentTarget.classification; 
+            vals.hudDesc.textContent = `${currentCam.desc} [타겟 정보] ${currentTarget.desc}`;
+
+            if (currentCam.isCooled) {
+                vals.hudTemp.className = "font-bold text-sky-400";
+            } else {
+                vals.hudTemp.className = "font-bold text-pink-400";
+            }
+        }
+
+        function tick() {
+            updateHUD();
+
+            const type = sliders.telescopeType.value;
+            const tempDelta = parseFloat(sliders.tempDelta.value);
+            const seeing = parseFloat(sliders.seeing.value);
+            const extinction = parseFloat(sliders.extinction.value);
+            const exposure = parseFloat(sliders.exposure.value);
+            const magnification = parseFloat(sliders.magnification.value);
+            const focusOffset = parseFloat(sliders.focusOffset.value); 
+            const activeTarget = targets[sliders.targetSelect.value]; 
+            
+            const currentCam = cameraSpecs[sliders.cameraSelect.value];
+            const baseNoiseVal = currentCam.noiseValue;
+
+            const time = Date.now() / 1000;
+            const absFocus = Math.abs(focusOffset);
+
+            // 1. Clear Frame
+            ctx.fillStyle = '#020205';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Scientific Telemetry Calculations
+            const transmission = Math.pow(10, -0.4 * extinction);
+            const transmissionPercentage = Math.round(transmission * 100);
+            const rawSignal = transmission * exposure * 150 * activeTarget.signalMult; 
+            
+            let tubeBlur = 0;
+            let jitterX = 0;
+            let jitterY = 0;
+
+            if (tempDelta > 0 && exposure < 3.0) {
+                if (type === 'reflector') {
+                    jitterX = (Math.random() - 0.5) * tempDelta * 22;
+                    jitterY = (Math.random() - 0.5) * tempDelta * 22;
+                    tubeBlur = tempDelta * (Math.random() * 0.8 + 1.2);
+                } else {
+                    tubeBlur = tempDelta * Math.abs(Math.sin(time * 2.8)) * 3;
+                    jitterX = Math.cos(time * 1.8) * tempDelta * 12;
+                    jitterY = Math.sin(time * 1.3) * tempDelta * 12;
+                }
+            }
+
+            // 배율에 따라 흔들림 범위 배가
+            jitterX *= magnification;
+            jitterY *= magnification;
+
+            const guideDampening = Math.max(0.04, 1.0 / (exposure * 4.5));
+            jitterX *= guideDampening;
+            jitterY *= guideDampening;
+
+            // 3. Draw Point Spread Function (PSF) or Target Image
+            let cx = canvas.width / 2 + jitterX;
+            let cy = canvas.height / 2 + jitterY;
+
+            // 초점 상태에 따른 디포커스 블러 추가
+            const focusBlur = absFocus * 6 * magnification;
+            const currentBlur = (((seeing * 3.2) + tubeBlur) * magnification) + focusBlur;
+            const expSpread = Math.log10(exposure + 1) * 14 * magnification;
+            const totalRadius = currentBlur + expSpread;
+
+            const maxOpacity = Math.min(1.0, rawSignal * 0.08);
+
+            // 타겟 종류별 드로잉 물리 분기 시작
+            if (activeTarget.type === 'star') {
+                ctx.save();
+                ctx.filter = `blur(${currentBlur}px)`;
+
+                let starGrad;
+                if (absFocus > 0.8) {
+                    const defocRadius = totalRadius * (1 + absFocus * 0.3);
+                    starGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, defocRadius);
+                    
+                    if (type === 'reflector') {
+                        // 뉴턴식 반사망원경: 부경 차폐그림자 묘사
+                        starGrad.addColorStop(0, 'rgba(0,0,0,0)');
+                        starGrad.addColorStop(0.28, 'rgba(0,0,0,0)'); 
+                        starGrad.addColorStop(0.55, `${activeTarget.color}${Math.min(1.0, maxOpacity * 3.2)})`);
+                        starGrad.addColorStop(0.72, `${activeTarget.color}${Math.min(1.0, maxOpacity * 2.2)})`);
+                        starGrad.addColorStop(0.9, 'rgba(0,0,0,0)');
+                    } else {
+                        // 굴절망원경: 속이 찬 부드러운 원반 구조
+                        starGrad.addColorStop(0, `${activeTarget.color}${Math.min(1.0, maxOpacity * 2.2)})`);
+                        starGrad.addColorStop(0.75, `${activeTarget.color}${Math.min(0.8, maxOpacity * 1.5)})`);
+                        starGrad.addColorStop(0.92, 'rgba(0,0,0,0)');
+                    }
+                } else {
+                    // 표준 가우시안 PSF
+                    starGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, totalRadius * 2);
+                    starGrad.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1.0, maxOpacity * 2.5)})`);
+                    starGrad.addColorStop(0.25, `${activeTarget.color}${Math.min(1.0, maxOpacity * 1.2)})`);
+                    starGrad.addColorStop(0.65, `${activeTarget.color}${Math.min(0.4, maxOpacity * 0.15)})`);
+                    starGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                }
+
+                ctx.fillStyle = starGrad;
+                ctx.beginPath();
+                ctx.arc(cx, cy, totalRadius * 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } 
+            else if (activeTarget.type === 'planet') {
+                // 목성 (면광원 디스크 및 대기 물리 붕괴)
+                ctx.save();
+                ctx.filter = `blur(${currentBlur}px)`;
+                
+                const diskRadius = 35 * magnification * (1 + absFocus * 0.15);
+                const brightnessFactor = Math.max(0.12, 1 / (1 + absFocus * 0.9));
+                ctx.globalAlpha = brightnessFactor;
+
+                // 1. 목성 본체 기본 그라데이션 구체 그리기
+                const planetGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, diskRadius);
+                planetGrad.addColorStop(0, '#fff5ea');
+                planetGrad.addColorStop(0.5, '#e3cbb1');
+                planetGrad.addColorStop(1, '#8c7358');
+
+                ctx.fillStyle = planetGrad;
+                ctx.beginPath();
+                ctx.arc(cx, cy, diskRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 2. 대기 띠와 대적점이 구체 밖으로 삐져나가지 않도록 클리핑 마스크 생성
+                ctx.beginPath();
+                ctx.arc(cx, cy, diskRadius, 0, Math.PI * 2);
+                ctx.clip();
+
+                // 대기 줄무늬의 시각 투명도 계산
+                const stripesOpacity = Math.max(0.0, (0.75 - (seeing - 1.0) * 0.15 - (tempDelta / 15) - (absFocus * 0.2)) * brightnessFactor);
+                
+                if (stripesOpacity > 0) {
+                    // 적도 벨트 레이어 생성
+                    const stripes = [
+                        { yOffset: -0.55, height: 0.12, color: `rgba(115, 75, 50, ${stripesOpacity * 0.85})` }, 
+                        { yOffset: -0.25, height: 0.18, color: `rgba(145, 90, 60, ${stripesOpacity})` },       
+                        { yOffset: 0.15, height: 0.16, color: `rgba(155, 95, 65, ${stripesOpacity * 1.1})` },   
+                        { yOffset: 0.45, height: 0.10, color: `rgba(120, 80, 55, ${stripesOpacity * 0.8})` }    
+                    ];
+
+                    stripes.forEach(s => {
+                        const sY = cy + s.yOffset * diskRadius;
+                        const sH = s.height * diskRadius;
+                        ctx.fillStyle = s.color;
+                        ctx.fillRect(cx - diskRadius, sY - sH / 2, diskRadius * 2, sH);
+                    });
+
+                    // 3. 목성의 '대적점(Great Red Spot)' 타원 렌더링
+                    const grsX = cx + 0.35 * diskRadius;
+                    const grsY = cy + 0.22 * diskRadius;
+                    const grsRX = 0.22 * diskRadius;
+                    const grsRY = 0.14 * diskRadius;
+
+                    ctx.fillStyle = `rgba(175, 45, 25, ${stripesOpacity * 1.25})`;
+                    ctx.beginPath();
+                    ctx.ellipse(grsX, grsY, grsRX, grsRY, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = `rgba(235, 110, 60, ${stripesOpacity * 1.25})`;
+                    ctx.beginPath();
+                    ctx.ellipse(grsX, grsY, grsRX * 0.55, grsRY * 0.55, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+
+                // 4. 가시 대기 광염 산란광 효과 그리기
+                ctx.save();
+                ctx.filter = `blur(${currentBlur + 3}px)`;
+                const haloGrad = ctx.createRadialGradient(cx, cy, diskRadius, cx, cy, diskRadius + totalRadius);
+                haloGrad.addColorStop(0, 'rgba(235, 216, 191, 0.22)');
+                haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = haloGrad;
+                ctx.beginPath();
+                ctx.arc(cx, cy, diskRadius + totalRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } 
+            else if (activeTarget.type === 'galaxy') {
+                // M31 안드로메다 은하 (초점 이탈 시 대비 감소 반영)
+                ctx.save();
+                ctx.filter = `blur(${currentBlur * 1.2}px)`; 
+                
+                ctx.translate(cx, cy);
+                ctx.rotate(-Math.PI / 6); 
+
+                const brightnessFactor = Math.max(0.08, 1 / (1 + absFocus * 1.5));
+                ctx.globalAlpha = brightnessFactor;
+
+                const galaxyGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, totalRadius * 3.5);
+                galaxyGrad.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1.0, maxOpacity * 2.5)})`);
+                galaxyGrad.addColorStop(0.15, `${activeTarget.color}${Math.min(1.0, maxOpacity * 1.5)})`);
+                galaxyGrad.addColorStop(0.5, `${activeTarget.color}${Math.min(0.4, maxOpacity * 0.4)})`);
+                galaxyGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
+                ctx.fillStyle = galaxyGrad;
+                ctx.scale(2.5, 1.0); 
+                ctx.beginPath();
+                ctx.arc(0, 0, totalRadius * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+            else if (activeTarget.type === 'nebula') {
+                // 오리온 대성운 (디포커스 매핑 연동)
+                ctx.save();
+                
+                const brightnessFactor = Math.max(0.08, 1 / (1 + absFocus * 1.5));
+                ctx.globalAlpha = brightnessFactor;
+
+                // 1. 발광 수소 핑크 가스 성운 필드
+                ctx.filter = `blur(${currentBlur * 1.6}px)`;
+                const gasPink = ctx.createRadialGradient(cx - 20, cy + 15, 0, cx - 20, cy + 15, totalRadius * 4.5);
+                gasPink.addColorStop(0, `rgba(255, 80, 150, ${maxOpacity * 0.6})`);
+                gasPink.addColorStop(0.5, `rgba(200, 50, 100, ${maxOpacity * 0.2})`);
+                gasPink.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = gasPink;
+                ctx.beginPath();
+                ctx.arc(cx - 20, cy + 15, totalRadius * 4.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 2. 고온 전리 산소 가스 푸른 필드
+                const gasBlue = ctx.createRadialGradient(cx + 30, cy - 10, 0, cx + 30, cy - 10, totalRadius * 3.8);
+                gasBlue.addColorStop(0, `rgba(40, 140, 255, ${maxOpacity * 0.55})`);
+                gasBlue.addColorStop(0.6, `rgba(30, 80, 200, ${maxOpacity * 0.15})`);
+                gasBlue.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = gasBlue;
+                ctx.beginPath();
+                ctx.arc(cx + 30, cy - 10, totalRadius * 3.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 3. 성운 중심 트라페지움 사중성 성단 (Trapezium)
+                ctx.filter = `blur(${currentBlur}px)`;
+                ctx.fillStyle = '#ffffff';
+                const dist = 4 * magnification;
+                const starRadius = 2.2 * magnification * (1 + absFocus * 0.18); 
+                const trapStars = [
+                    {x: cx - dist, y: cy - dist},
+                    {x: cx + dist * 1.3, y: cy - dist * 0.7},
+                    {x: cx - dist * 0.5, y: cy + dist * 1.5},
+                    {x: cx + dist * 1.5, y: cy + dist * 1.2}
+                ];
+                trapStars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, starRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                ctx.restore();
+            }
+
+            // 4. Capture Canvas state to apply Sensor Pixel Noise
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+
+            const snrReduction = Math.max(0.35, 1.0 / Math.sqrt(exposure));
+            const calculatedSensorNoise = baseNoiseVal * snrReduction;
+
+            for (let i = 0; i < data.length; i += 4) {
+                let u = 0, v = 0;
+                while(u === 0) u = Math.random();
+                while(v === 0) v = Math.random();
+                let randVal = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+                
+                const noiseFactor = randVal * calculatedSensorNoise;
+
+                const rNoise = noiseFactor * (currentCam.isCooled ? 1.0 : 1.1);
+                const gNoise = noiseFactor * (currentCam.isCooled ? 1.0 : 0.9);
+                const bNoise = noiseFactor * (currentCam.isCooled ? 1.0 : 1.4);
+
+                data[i]     = Math.min(255, Math.max(0, data[i] + rNoise));
+                data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + gNoise));
+                data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + bNoise));
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            // 5. Cosmic Rays Overlay
+            if (baseNoiseVal > 10 && Math.random() < 0.05 * (exposure * 0.8 + 0.5)) {
+                cosmicRays.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    length: Math.random() * 15 + 5,
+                    angle: Math.random() * Math.PI * 2,
+                    alpha: 1.0
+                });
+            }
+
+            if (cosmicRays.length > 0) {
+                ctx.save();
+                for (let j = cosmicRays.length - 1; j >= 0; j--) {
+                    const ray = cosmicRays[j];
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${ray.alpha})`;
+                    ctx.lineWidth = Math.random() * 1.5 + 0.8;
+                    ctx.beginPath();
+                    ctx.moveTo(ray.x, ray.y);
+                    ctx.lineTo(
+                        ray.x + Math.cos(ray.angle) * ray.length, 
+                        ray.y + Math.sin(ray.angle) * ray.length
+                    );
+                    ctx.stroke();
+
+                    ray.alpha -= 0.15;
+                    if (ray.alpha <= 0) {
+                        cosmicRays.splice(j, 1);
+                    }
+                }
+                ctx.restore();
+            }
+
+            // 6. 조준선 격자 가이드 선 그리기
+            const showGrid = document.getElementById('gridToggle').checked;
+            if (showGrid) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(34, 211, 238, 0.25)'; 
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+
+                // 중앙 십자선
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, 0);
+                ctx.lineTo(canvas.width / 2, canvas.height);
+                ctx.moveTo(0, canvas.height / 2);
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                const concentricRings = [50, 100, 150];
+                concentricRings.forEach(radius => {
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.fillStyle = 'rgba(34, 211, 238, 0.45)';
+                    ctx.font = '9px monospace';
+                    ctx.fillText(`${(radius / 30).toFixed(1)}"`, canvas.width / 2 + radius + 4, canvas.height / 2 - 4);
+                });
+                ctx.restore();
+            }
+
+            // 7. Scientific Statistics output
+            const finalSignalValue = Math.round(rawSignal);
+            const finalNoiseValue = parseFloat(calculatedSensorNoise).toFixed(1);
+            const computedSNR = finalNoiseValue > 0 ? (finalSignalValue / finalNoiseValue) : 0;
+
+            vals.telTransmission.textContent = `${transmissionPercentage}%`;
+            vals.telSignal.textContent = `${finalSignalValue} ADU`;
+            vals.telNoise.textContent = `${finalNoiseValue} ADU`;
+            vals.telSNR.textContent = parseFloat(computedSNR).toFixed(2);
+
+            vals.barTransmission.style.width = `${transmissionPercentage}%`;
+            vals.barSignal.style.width = `${Math.min(100, finalSignalValue / 4)}%`;
+            vals.barNoise.style.width = `${Math.min(100, finalNoiseValue * 1.5)}%`;
+
+            if (transmissionPercentage < 50) {
+                vals.barTransmission.className = "bg-red-500 h-full rounded-full transition-all duration-300";
+            } else if (transmissionPercentage < 80) {
+                vals.barTransmission.className = "bg-yellow-500 h-full rounded-full transition-all duration-300";
+            } else {
+                vals.barTransmission.className = "bg-emerald-500 h-full rounded-full transition-all duration-300";
+            }
+
+            let snrText = "";
+            let snrColor = "";
+            if (computedSNR < 1.5) {
+                snrText = "CRITICAL (데이터 판독 불가)";
+                snrColor = "text-red-500 font-bold";
+            } else if (computedSNR < 5) {
+                snrText = "POOR (노이즈 간섭 심함)";
+                snrColor = "text-orange-500 font-bold";
+            } else if (computedSNR < 15) {
+                snrText = "ACCEPTABLE (기본 측정 가능)";
+                snrColor = "text-yellow-500 font-bold";
+            } else if (computedSNR < 35) {
+                snrText = "GOOD (준수한 데이터 품질)";
+                snrColor = "text-emerald-400 font-bold";
+            } else {
+                snrText = "EXCELLENT (초정밀 연구용)";
+                snrColor = "text-sky-400 font-black animate-pulse";
+            }
+            vals.telSNRRating.textContent = snrText;
+            vals.telSNRRating.className = `text-[10px] block mt-0.5 ${snrColor}`;
+        }
+
+        setInterval(tick, 25);
+        Object.values(sliders).forEach(el => el.addEventListener('input', updateHUD));
+    </script>
+</body>
+</html>

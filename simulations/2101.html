@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행성 탈출 속도 및 역학적 에너지 보존 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX for Beautiful Scientific Math Formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        /* 깔끔한 컨트롤러용 슬라이더 디자인 */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #a855f7;
+            cursor: pointer;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 8px #a855f7;
+            transition: all 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px #c084fc;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col overflow-hidden selection:bg-purple-500 selection:text-white">
+
+    <!-- 상단 심플 헤더 -->
+    <header class="border-b border-slate-900 bg-slate-900/80 px-6 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-shuttle-space text-purple-500 text-lg"></i>
+            <h1 class="text-base font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
+                고급지구과학 수행평가 - 행성 탈출 속도 및 역학적 에너지 보존 시뮬레이터
+            </h1>
+        </div>
+        <div class="flex items-center gap-3 text-xs bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+            <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+            <span id="statusText" class="font-bold text-green-400">발사 대기 중</span>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 (스크롤 없이 한 화면에 알맞게 정렬) -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 max-h-[calc(100vh-60px)] overflow-hidden">
+        
+        <!-- 왼쪽: 조종판 (4/12) -->
+        <section class="lg:col-span-4 bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between shadow-xl">
+            <div class="space-y-3">
+                <div class="flex items-center gap-2 border-b border-slate-800 pb-1.5">
+                    <i class="fa-solid fa-sliders text-purple-500"></i>
+                    <h2 class="font-bold text-sm text-slate-200">변인 통제 조종판 (조작 변인)</h2>
+                </div>
+
+                <!-- 천체 선택 버튼 -->
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-globe text-indigo-400"></i> 천체 환경 대입 프리셋
+                    </label>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button onclick="setPreset('earth')" class="py-1.5 px-1 text-xs font-semibold rounded-lg border border-slate-800 hover:border-purple-500 bg-slate-950/40 text-slate-300 transition flex flex-col items-center hover:bg-purple-950/20">
+                            <span>🌍</span>지구
+                        </button>
+                        <button onclick="setPreset('mars')" class="py-1.5 px-1 text-xs font-semibold rounded-lg border border-slate-800 hover:border-purple-500 bg-slate-950/40 text-slate-300 transition flex flex-col items-center hover:bg-purple-950/20">
+                            <span>🪐</span>화성
+                        </button>
+                        <button onclick="setPreset('jupiter')" class="py-1.5 px-1 text-xs font-semibold rounded-lg border border-slate-800 hover:border-purple-500 bg-slate-950/40 text-slate-300 transition flex flex-col items-center hover:bg-purple-950/20">
+                            <span>🟠</span>목성
+                        </button>
+                        <button onclick="setPreset('moon')" class="py-1.5 px-1 text-xs font-semibold rounded-lg border border-slate-800 hover:border-purple-500 bg-slate-950/40 text-slate-300 transition flex flex-col items-center hover:bg-purple-950/20">
+                            <span>🌕</span>달
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800/60" />
+
+                <!-- 조작 변인 3가지 + 대기 환경 토글 -->
+                <div class="space-y-2.5">
+                    
+                    <!-- 1. 행성 질량 -->
+                    <div class="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/50">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-semibold text-slate-300 flex items-center gap-1">
+                                <span class="w-4 h-4 rounded bg-purple-500/10 text-purple-400 flex items-center justify-center text-[10px]">M</span>
+                                행성 질량 ($M$)
+                            </span>
+                            <span id="massValueText" class="font-mono text-purple-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">1.00 M⊕</span>
+                        </div>
+                        <input type="range" id="massInput" min="0.005" max="15.00" step="0.005" value="1.00" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer focus:outline-none">
+                    </div>
+
+                    <!-- 2. 행성 반지름 -->
+                    <div class="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/50">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-semibold text-slate-300 flex items-center gap-1">
+                                <span class="w-4 h-4 rounded bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-[10px]">R</span>
+                                행성 반지름 ($R$)
+                            </span>
+                            <span id="radiusValueText" class="font-mono text-indigo-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">1.00 R⊕</span>
+                        </div>
+                        <input type="range" id="radiusInput" min="0.10" max="4.00" step="0.01" value="1.00" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer focus:outline-none">
+                    </div>
+
+                    <!-- 3. 발사 속도 -->
+                    <div class="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/50">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-semibold text-slate-300 flex items-center gap-1">
+                                <span class="w-4 h-4 rounded bg-pink-500/10 text-pink-400 flex items-center justify-center text-[10px]">v</span>
+                                로켓 발사 초기 속도 ($v$)
+                            </span>
+                            <span id="velocityValueText" class="font-mono text-pink-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">11.20 km/s</span>
+                        </div>
+                        <input type="range" id="velocityInput" min="0.50" max="30.00" step="0.10" value="11.20" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer focus:outline-none">
+                    </div>
+
+                    <!-- 4. 대기 저항(마찰) 시뮬레이션 토글 -->
+                    <div class="space-y-1 bg-slate-950/50 p-2.5 rounded-xl border border-purple-900/30 flex items-center justify-between shadow-inner">
+                        <span class="font-semibold text-xs text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-wind text-sky-400 animate-pulse"></i>
+                            대기 마찰(공기 항력) 시뮬레이션
+                        </span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="dragToggle" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-850 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-slate-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 하단 작동 버튼 그룹 -->
+            <div class="space-y-2 mt-4">
+                <button id="launchBtn" class="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-rocket animate-bounce"></i> 로켓 발사 엔진 점화 (Launch)
+                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="pauseBtn" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-300 transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-pause"></i> 일시정지
+                    </button>
+                    <button id="resetBtn" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-300 transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-rotate-left"></i> 우주선 리셋
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 가운데: 정밀 로켓 모니터링 캔버스 (5/12) -->
+        <section class="lg:col-span-5 bg-slate-900/50 border border-slate-800/80 rounded-2xl p-3 flex flex-col shadow-xl relative min-h-[350px]">
+            <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <span><i class="fa-solid fa-satellite text-purple-400 mr-1"></i> 우주 발사 궤적 모니터</span>
+                <span class="text-[10px] text-slate-500">실시간 역학 비행 물리 해석</span>
+            </div>
+            
+            <!-- 실시간 시각화 캔버스 영역 -->
+            <div class="relative w-full flex-1 bg-slate-950 rounded-xl overflow-hidden border border-slate-900">
+                <canvas id="simCanvas" class="block w-full h-full"></canvas>
+                
+                <!-- 모니터 화면 내부 실시간 HUD 수치 정보 -->
+                <div class="absolute bottom-3 left-3 bg-slate-900/90 border border-slate-800 backdrop-blur px-2.5 py-1.5 rounded-lg text-[10px] font-mono flex flex-col gap-0.5 text-slate-300 max-w-[150px] pointer-events-none">
+                    <div class="text-purple-400 font-bold border-b border-slate-800 pb-0.5 mb-1 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-info"></i> 원격 측정 수치
+                    </div>
+                    <div class="flex justify-between gap-3"><span>고도:</span><span id="hudAltitude" class="text-white font-bold">0 km</span></div>
+                    <div class="flex justify-between gap-3"><span>속도:</span><span id="hudSpeed" class="text-white font-bold">0.00 km/s</span></div>
+                    <div class="flex justify-between gap-3"><span>중력가속도:</span><span id="hudAccel" class="text-white font-bold">0.00G</span></div>
+                </div>
+
+                <!-- 발사 성공 / 추락 경고창 -->
+                <div id="canvasOverlayMsg" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 px-4 text-center opacity-0 pointer-events-none transition-all duration-300 z-30">
+                    <div class="p-2.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-xl" id="overlayIconContainer">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h3 class="text-sm font-bold" id="overlayTitle">우주 탈출 실패!</h3>
+                    <p class="text-[11px] text-slate-400 max-w-xs leading-relaxed" id="overlayDesc">
+                        초기 발사 속도가 행성의 중력을 이겨낼 수 있는 속도보다 느립니다.
+                    </p>
+                    <button onclick="dismissOverlay()" class="mt-1 py-1 px-3 bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold rounded-lg transition-all border border-slate-700">
+                        돌아가기
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 오른쪽: 실시간 에너지 계산 및 데이터 로그 패널 (3/12) -->
+        <section class="lg:col-span-3 bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between shadow-xl overflow-hidden">
+            
+            <!-- 탭 헤더 전환기 -->
+            <div class="flex border-b border-slate-800 text-xs mb-3">
+                <button onclick="switchRightTab('realtime')" id="rightTabRealtime" class="flex-1 py-2 font-bold border-b-2 border-purple-500 text-slate-100 transition flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-chart-line"></i> 실시간 분석
+                </button>
+                <button onclick="switchRightTab('logs')" id="rightTabLogs" class="flex-1 py-2 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-list-check"></i> 실험 기록 데이터
+                </button>
+            </div>
+
+            <!-- TAB 1: 실시간 분석 내용 -->
+            <div id="tabContentRealtime" class="flex-1 flex flex-col justify-between overflow-hidden space-y-3">
+                <div class="space-y-3 flex-1 overflow-y-auto pr-1">
+                    <!-- 수식 정보 박스 -->
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800/60 space-y-1 shadow-inner">
+                        <div class="text-[10px] text-slate-400">행성 탈출 속도 공식 ($v_e$)</div>
+                        <div class="text-sm font-mono font-bold text-purple-400 py-1 rounded text-center" id="katexVeFormula">
+                            $$v_e = \sqrt{\frac{2GM}{R}}$$
+                        </div>
+                        <div class="text-[10px] text-slate-500 text-center pt-0.5">
+                            탈출 요구 속도: <span id="formulaCalcValue" class="text-purple-400 font-bold">11.18 km/s</span>
+                        </div>
+                    </div>
+
+                    <!-- 핵심 과학 수치 -->
+                    <div class="grid grid-cols-2 gap-2 text-[11px]">
+                        <div class="bg-slate-950/40 p-2 rounded-lg border border-slate-800/50">
+                            <div class="text-slate-500 font-medium">탈출 요구 에너지</div>
+                            <span id="potentialBarrierValue" class="font-mono text-purple-400 font-bold">-62.5 MJ/kg</span>
+                        </div>
+                        <div class="bg-slate-950/40 p-2 rounded-lg border border-slate-800/50">
+                            <div class="text-slate-500 font-medium">초기 운동 에너지</div>
+                            <span id="initialKineticValue" class="font-mono text-pink-400 font-bold">62.7 MJ/kg</span>
+                        </div>
+                    </div>
+
+                    <!-- 실시간 에너지 보존 바 차트 -->
+                    <div class="space-y-2 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/50">
+                        <div class="text-[10px] font-semibold text-slate-400">단위질량당 에너지 실시간 추이 (MJ/kg)</div>
+                        <div class="space-y-1.5 text-[10px] font-mono">
+                            <div>
+                                <div class="flex justify-between text-green-400"><span>운동에너지 ($E_k$)</span><span id="ekBarValue">0.00</span></div>
+                                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden"><div id="ekBar" class="h-full bg-green-500 transition-all duration-700" style="width: 50%;"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-red-400"><span>위치에너지 ($E_p$)</span><span id="epBarValue">0.00</span></div>
+                                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden"><div id="epBar" class="h-full bg-red-500 transition-all duration-700" style="width: 50%;"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-blue-400"><span>역학적 에너지 ($E$)</span><span id="etotBarValue">0.00</span></div>
+                                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden"><div id="etotBar" class="h-full bg-blue-500 transition-all duration-700" style="width: 50%;"></div></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 에너지 보존 여부 점검 라이트 (대기 마찰 연계) -->
+                        <div class="flex items-center justify-between text-[10px] mt-2 pt-1 border-t border-slate-800/50">
+                            <span class="text-slate-500">에너지 상태:</span>
+                            <span id="energyConserveStatus" class="font-bold text-green-400 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> 이상 진공 (보존)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 실시간 동적 그래프 (에너지-거리 변동 곡선) -->
+                <div class="bg-black/70 rounded-xl p-1.5 border border-slate-900">
+                    <canvas id="energyCurveCanvas" class="w-full h-[80px] block"></canvas>
+                    <div class="text-[9px] text-slate-500 text-center mt-1 font-mono">
+                        가로축: 중심거리 ($r$) | 세로축: 에너지 ($E$)
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: 실험 기록 데이터 리스트 -->
+            <div id="tabContentLogs" class="hidden flex-1 flex flex-col justify-between overflow-hidden">
+                <div class="flex-1 overflow-y-auto border border-slate-800/80 rounded-lg bg-slate-950/40">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950 text-[9px] uppercase tracking-wider text-slate-400 border-b border-slate-800/80">
+                                <th class="py-1.5 text-center">No</th>
+                                <th class="py-1.5 text-center">행성</th>
+                                <th class="py-1.5 text-center">v0 (km/s)</th>
+                                <th class="py-1.5 text-center">공기저항</th>
+                                <th class="py-1.5 text-center">최고고도</th>
+                                <th class="py-1.5 text-center">결과</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody" class="divide-y divide-slate-900">
+                            <tr>
+                                <td colspan="6" class="text-center py-10 text-slate-500 text-xs font-mono">기록된 비행 데이터가 없습니다.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-between items-center mt-3 pt-2 border-t border-slate-800">
+                    <span class="text-[9px] text-slate-500">완료 시 자동 로그가 보존됩니다.</span>
+                    <button onclick="clearLogs()" class="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 active:scale-[0.97] rounded text-[10px] text-red-400 font-bold border border-slate-700 transition flex items-center gap-1">
+                        <i class="fa-solid fa-trash-can"></i> 로그 리셋
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- JS 물리학 엔진 및 애니메이션 제어 -->
+    <script>
+        // 1. 물리 상수 설정
+        const G = 6.6743e-11; 
+        const EARTH_MASS = 5.972e24; 
+        const EARTH_RADIUS = 6.371e6; 
+
+        let isSimRunning = false;
+        let animationFrameId = null;
+        let flightLogs = []; // 실험 기록 전역 저장소
+        let maxAltitudeReached = EARTH_RADIUS; // 이번 발사의 최대 고도
+
+        let planet = {
+            mScale: 1.0, 
+            rScale: 1.0, 
+            get mass() { return this.mScale * EARTH_MASS; },
+            get radius() { return this.rScale * EARTH_RADIUS; },
+            get ve() { return Math.sqrt((2 * G * this.mass) / this.radius); }
+        };
+
+        let rocket = {
+            r: planet.radius, 
+            v: 11200,         
+            isLaunched: false,
+            initialV: 11200,   
+            trail: [], 
+            get alt() { return this.r - planet.radius; }, 
+            get gravity() { return (G * planet.mass) / (this.r * this.r); }, 
+            get ep() { return -(G * planet.mass) / this.r; }, 
+            get ek() { return 0.5 * this.v * this.v; },       
+            get etot() { return this.ek + this.ep; }          
+        };
+
+        const PRESETS = {
+            earth: { m: 1.0, r: 1.0, v: 11.2 },
+            mars: { m: 0.107, r: 0.532, v: 5.02 },
+            jupiter: { m: 10.0, r: 2.2, v: 24.0 }, 
+            moon: { m: 0.0123, r: 0.273, v: 2.38 }
+        };
+
+        // DOM Elements
+        const massInput = document.getElementById('massInput');
+        const radiusInput = document.getElementById('radiusInput');
+        const velocityInput = document.getElementById('velocityInput');
+        const massValueText = document.getElementById('massValueText');
+        const radiusValueText = document.getElementById('radiusValueText');
+        const velocityValueText = document.getElementById('velocityValueText');
+        
+        const launchBtn = document.getElementById('launchBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusText = document.getElementById('statusText');
+        const requiredVeText = document.getElementById('requiredVeText');
+        const formulaCalcValue = document.getElementById('formulaCalcValue');
+        
+        const hudAltitude = document.getElementById('hudAltitude');
+        const hudSpeed = document.getElementById('hudSpeed');
+        const hudAccel = document.getElementById('hudAccel');
+        
+        const canvasOverlayMsg = document.getElementById('canvasOverlayMsg');
+        const overlayIconContainer = document.getElementById('overlayIconContainer');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlayDesc = document.getElementById('overlayDesc');
+        
+        const potentialBarrierValue = document.getElementById('potentialBarrierValue');
+        const initialKineticValue = document.getElementById('initialKineticValue');
+        
+        const ekBar = document.getElementById('ekBar');
+        const epBar = document.getElementById('epBar');
+        const etotBar = document.getElementById('etotBar');
+        const ekBarValue = document.getElementById('ekBarValue');
+        const epBarValue = document.getElementById('epBarValue');
+        const etotBarValue = document.getElementById('etotBarValue');
+
+        const simCanvas = document.getElementById('simCanvas');
+        const simCtx = simCanvas.getContext('2d');
+        const energyCanvas = document.getElementById('energyCurveCanvas');
+        const energyCtx = energyCanvas.getContext('2d');
+
+        let stars = [];
+        let nebulaShow = true;
+        let crashParticles = [];
+        let smokeParticles = [];
+        let shakeTime = 0; // 엔진점화 화면 흔들림 효과 시간 변수
+
+        window.addEventListener('load', () => {
+            resizeCanvases();
+            generateStarfield();
+            updateInputsFromPlanet();
+            
+            // KaTeX 아름다운 수식 자동 렌더링
+            if (typeof renderMathInElement !== "undefined") {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError : false
+                });
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            resizeCanvases();
+            drawAll();
+        });
+
+        function resizeCanvases() {
+            const rectSim = simCanvas.parentElement.getBoundingClientRect();
+            simCanvas.width = rectSim.width;
+            simCanvas.height = rectSim.height;
+            
+            const rectEnergy = energyCanvas.parentElement.getBoundingClientRect();
+            energyCanvas.width = rectEnergy.width;
+            energyCanvas.height = rectEnergy.height;
+        }
+
+        function generateStarfield() {
+            stars = [];
+            for (let i = 0; i < 50; i++) {
+                stars.push({
+                    x: Math.random() * 800,
+                    y: Math.random() * 800,
+                    size: Math.random() * 1.5 + 0.5,
+                    opacity: Math.random() * 0.6 + 0.4
+                });
+            }
+        }
+
+        // 2. 조절 값 적용 및 동기화
+        massInput.addEventListener('input', updateSliders);
+        radiusInput.addEventListener('input', updateSliders);
+        velocityInput.addEventListener('input', updateSliders);
+        document.getElementById('dragToggle').addEventListener('change', () => {
+            updateUI();
+        });
+
+        function updateSliders() {
+            if (rocket.isLaunched) return;
+            planet.mScale = parseFloat(massInput.value);
+            planet.rScale = parseFloat(radiusInput.value);
+            rocket.v = parseFloat(velocityInput.value) * 1000; 
+            rocket.initialV = rocket.v;
+            rocket.r = planet.radius;
+            maxAltitudeReached = planet.radius;
+            updateUI();
+        }
+
+        function updateInputsFromPlanet() {
+            massInput.value = planet.mScale;
+            radiusInput.value = planet.rScale;
+            velocityInput.value = (rocket.v / 1000).toFixed(2);
+            updateUI();
+        }
+
+        function updateUI() {
+            massValueText.textContent = `${planet.mScale.toFixed(3)} M⊕`;
+            radiusValueText.textContent = `${planet.rScale.toFixed(2)} R⊕`;
+            velocityValueText.textContent = `${(rocket.v / 1000).toFixed(2)} km/s`;
+
+            const veKms = planet.ve / 1000;
+            requiredVeText.textContent = `${veKms.toFixed(2)} km/s`;
+            formulaCalcValue.textContent = `${veKms.toFixed(2)} km/s`;
+
+            if (!rocket.isLaunched) {
+                rocket.r = planet.radius;
+                rocket.initialV = rocket.v;
+                rocket.trail = [];
+                crashParticles = [];
+                smokeParticles = [];
+                maxAltitudeReached = planet.radius;
+            }
+
+            potentialBarrierValue.textContent = `${(planet.ve * planet.ve / 2 / 1e6).toFixed(1)} MJ/kg`;
+            initialKineticValue.textContent = `${(rocket.initialV * rocket.initialV / 2 / 1e6).toFixed(1)} MJ/kg`;
+
+            // 대기 마찰 유무에 따른 보존 상태 LED 전환
+            const conserveStatus = document.getElementById('energyConserveStatus');
+            const useDrag = document.getElementById('dragToggle').checked;
+            if (useDrag) {
+                conserveStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span> 마찰 열손실 발생 (비보존)`;
+                conserveStatus.className = "font-bold text-amber-400 flex items-center gap-1";
+            } else {
+                conserveStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> 진공 상태 보존 (보존)`;
+                conserveStatus.className = "font-bold text-green-400 flex items-center gap-1";
+            }
+
+            updateEnergyBars();
+            drawAll();
+        }
+
+        function updateEnergyBars() {
+            const maxEnergyRef = 0.5 * 30000 * 30000 / 1e6; 
+            let ekMJ = rocket.ek / 1e6;
+            let epMJ = rocket.ep / 1e6;
+            let etotMJ = rocket.etot / 1e6;
+
+            ekBarValue.textContent = `${ekMJ.toFixed(1)}`;
+            epBarValue.textContent = `${epMJ.toFixed(1)}`;
+            etotBarValue.textContent = `${etotMJ.toFixed(1)}`;
+
+            ekBar.style.width = `${Math.min(100, Math.max(0, (ekMJ / maxEnergyRef) * 100))}%`;
+            
+            const maxPotentialRef = (G * 15 * EARTH_MASS) / (0.1 * EARTH_RADIUS) / 1e6; 
+            epBar.style.width = `${Math.min(100, Math.max(0, (Math.abs(epMJ) / maxPotentialRef) * 100))}%`;
+            
+            const totalWidth = (etotMJ / maxEnergyRef) * 100;
+            if (etotMJ >= 0) {
+                etotBar.style.width = `${Math.min(100, Math.max(0, totalWidth))}%`;
+                etotBar.className = "h-full bg-blue-500 transition-all duration-300";
+            } else {
+                etotBar.style.width = `${Math.min(100, Math.max(0, Math.abs(totalWidth)))}%`;
+                etotBar.className = "h-full bg-amber-500 transition-all duration-300";
+            }
+        }
+
+        function setPreset(key) {
+            if (rocket.isLaunched) {
+                showWarning("로켓 발사 도중에는 행성을 교체할 수 없습니다.");
+                return;
+            }
+            const data = PRESETS[key];
+            massInput.value = data.m;
+            radiusInput.value = data.r;
+            velocityInput.value = data.v;
+            updateSliders();
+        }
+
+        // 3. 물리 엔진 프레임 루프 (공기 저항 계산 적용)
+        let lastTime = 0;
+        function updatePhysicsLoop(time) {
+            if (!isSimRunning) return;
+            if (lastTime === 0) lastTime = time;
+            
+            let dt = (time - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1;
+            
+            const speedFactor = 50.0; 
+            const steps = 30; 
+            const subDt = (dt * speedFactor) / steps;
+
+            const useDrag = document.getElementById('dragToggle').checked;
+
+            for (let i = 0; i < steps; i++) {
+                let r = rocket.r;
+                let gravityA = - (G * planet.mass) / (r * r);
+                
+                // 공기 마찰 저항 물리 모델링 (고도가 낮을 수록 대기 밀도 밀집)
+                let dragA = 0;
+                let atmosBoundary = planet.radius * 1.45;
+                if (useDrag && r < atmosBoundary) {
+                    let h = r - planet.radius;
+                    let scaleHeight = planet.radius * 0.08; // 대기 규모 고도
+                    let density = Math.exp(-h / scaleHeight); // 고도가 높아질수록 밀도 지수 감소
+
+                    // 공기 마찰 항력 상수
+                    let k = 0.00013 * (planet.mScale / planet.rScale); 
+                    dragA = - k * density * rocket.v * Math.abs(rocket.v);
+                }
+
+                // 가속도 합력 적용 (중력 + 대기항력)
+                let a = gravityA + dragA;
+                
+                rocket.v += a * subDt;
+                rocket.r += rocket.v * subDt;
+
+                // 최대 도달 고도 갱신
+                if (rocket.r > maxAltitudeReached) {
+                    maxAltitudeReached = rocket.r;
+                }
+
+                // 실시간 꼬리 잔상 기록
+                if (Math.random() < 0.2) {
+                    rocket.trail.push(rocket.r);
+                    if (rocket.trail.length > 50) rocket.trail.shift();
+                }
+
+                // 추락 판정 (로켓 하강 속도 v <= 0인 상태에서 고도가 표면에 닿는 순간만!)
+                if (rocket.v <= 0 && rocket.r <= planet.radius) {
+                    rocket.r = planet.radius;
+                    rocket.v = 0;
+                    isSimRunning = false;
+                    rocket.isLaunched = false;
+                    createCrashParticles();
+                    triggerCrashHUD();
+                    break;
+                }
+                
+                // 탈출 판정 (고도가 천체 반지름만큼 올라갔을 때 = r이 2.0배가 될 때 성공적으로 중력 경계 돌파!)
+                const limitBorder = planet.radius * 2.0;
+                if (rocket.r > limitBorder && rocket.etot >= 0) {
+                    isSimRunning = false;
+                    triggerEscapeHUD();
+                    break;
+                }
+            }
+
+            // 화면 흔들림 효과 감소 연산
+            if (shakeTime > 0) {
+                shakeTime -= dt;
+            }
+
+            lastTime = time;
+
+            syncHUD();
+            updateEnergyBars();
+            updateParticles();
+            drawAll();
+
+            if (isSimRunning) {
+                animationFrameId = requestAnimationFrame(updatePhysicsLoop);
+            }
+        }
+
+        function syncHUD() {
+            hudAltitude.textContent = `${(rocket.alt / 1000).toFixed(0)} km`;
+            hudSpeed.textContent = `${(rocket.v / 1000).toFixed(2)} km/s`;
+            hudAccel.textContent = `${(rocket.gravity / 9.8).toFixed(2)} G`;
+        }
+
+        function updateParticles() {
+            // 추락 폭발 파티클 업데이트
+            crashParticles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.02;
+            });
+            crashParticles = crashParticles.filter(p => p.alpha > 0);
+
+            // 추진 연기 파티클 업데이트
+            smokeParticles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.size += 0.2;
+                p.alpha -= 0.015;
+            });
+            smokeParticles = smokeParticles.filter(p => p.alpha > 0);
+        }
+
+        function createCrashParticles() {
+            crashParticles = [];
+            const w = simCanvas.width;
+            const h = simCanvas.height;
+            const planetCenterY = h - 20; 
+            const planetVisualRadius = 45 + 30 * planet.rScale;
+            const yImpact = planetCenterY - planetVisualRadius; // 실제 로켓이 지표면에 충돌하는 높이
+
+            for (let i = 0; i < 25; i++) {
+                const angle = Math.random() * Math.PI - Math.PI; 
+                const speed = Math.random() * 4 + 1.5;
+                crashParticles.push({
+                    x: w / 2,
+                    y: yImpact,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: Math.random() * 5 + 2,
+                    color: i % 2 === 0 ? '#ef4444' : '#f97316',
+                    alpha: 1.0
+                });
+            }
+        }
+
+        function createSmokeParticle(x, y) {
+            smokeParticles.push({
+                x: x + (Math.random() * 6 - 3),
+                y: y + 10,
+                vx: Math.random() * 1 - 0.5,
+                vy: Math.random() * 1.5 + 1.0, // 아래로 하강
+                size: Math.random() * 4 + 3,
+                alpha: 0.8,
+                color: Math.random() < 0.5 ? 'rgba(200, 200, 200, 0.4)' : 'rgba(150, 150, 150, 0.2)'
+            });
+        }
+
+        // 4. 고정 스케일 드로잉 렌더러 (로켓이 화면 위아래로 실제로 날아다님!)
+        function drawAll() {
+            drawCanvas();
+            drawEnergyGraph();
+        }
+
+        function drawCanvas() {
+            simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+            const w = simCanvas.width;
+            const h = simCanvas.height;
+
+            // 화면 흔들림 효과 연산 (Launch Screen Shake)
+            simCtx.save();
+            if (shakeTime > 0) {
+                const shakeIntensity = 4;
+                const dx = (Math.random() - 0.5) * shakeIntensity;
+                const dy = (Math.random() - 0.5) * shakeIntensity;
+                simCtx.translate(dx, dy);
+            }
+
+            // 우주 배경 그라데이션
+            const spaceGrad = simCtx.createRadialGradient(w/2, h/2, 10, w/2, h/2, w);
+            spaceGrad.addColorStop(0, '#090c15');
+            spaceGrad.addColorStop(1, '#020204');
+            simCtx.fillStyle = spaceGrad;
+            simCtx.fillRect(0, 0, w, h);
+
+            // 성운 이펙트
+            if (nebulaShow) {
+                const nebGrad = simCtx.createRadialGradient(w/2, h*0.8, 30, w/2, h*0.8, w*0.4);
+                nebGrad.addColorStop(0, 'rgba(124, 58, 237, 0.08)');
+                nebGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                simCtx.fillStyle = nebGrad;
+                simCtx.beginPath();
+                simCtx.arc(w/2, h*0.8, w*0.4, 0, Math.PI * 2);
+                simCtx.fill();
+            }
+
+            // 별그리기
+            simCtx.fillStyle = 'white';
+            stars.forEach(star => {
+                simCtx.globalAlpha = star.opacity;
+                simCtx.beginPath();
+                simCtx.arc(star.x * (w / 800), star.y * (h / 800), star.size, 0, Math.PI * 2);
+                simCtx.fill();
+            });
+            simCtx.globalAlpha = 1.0;
+
+            // ★ 고정 카메라 1:1 매핑 좌표설정 (카메라 줌아웃 오류 완전해결!)
+            const planetCenterY = h - 20; // 행성은 언제나 화면 맨 밑바닥에 배치
+            const planetVisualRadius = 45 + 30 * planet.rScale; // 행성 크기
+
+            const topLimitY = 50; // 우주선 비행 한계 높이 (최상단)
+            const travelHeight = (planetCenterY - planetVisualRadius) - topLimitY; // 로켓이 솟구칠 수 있는 총 픽셀 거리
+
+            // 중력권 경계선 점선 그리기 (하늘 위쪽 고정선)
+            simCtx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+            simCtx.lineWidth = 1.5;
+            simCtx.setLineDash([4, 4]);
+            simCtx.beginPath();
+            simCtx.moveTo(0, topLimitY);
+            simCtx.lineTo(w, topLimitY);
+            simCtx.stroke();
+            simCtx.setLineDash([]);
+            
+            simCtx.fillStyle = 'rgba(168, 85, 247, 0.9)';
+            simCtx.font = 'bold 10px font-mono';
+            simCtx.textAlign = 'center';
+            simCtx.fillText('🚀 중력 이탈 한계선 (Escape Horizon: 2.0 R)', w / 2, topLimitY - 8);
+
+            // 대기권 파란 안개 그리기
+            const atmosHeight = travelHeight * 0.4;
+            const atmosGrad = simCtx.createLinearGradient(0, planetCenterY - planetVisualRadius, 0, planetCenterY - planetVisualRadius - atmosHeight);
+            atmosGrad.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
+            atmosGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            simCtx.fillStyle = atmosGrad;
+            simCtx.fillRect(0, planetCenterY - planetVisualRadius - atmosHeight, w, atmosHeight);
+
+            // 행성 본체 그리기
+            let col1 = '#2563eb';
+            let col2 = '#38bdf8';
+            if (planet.mScale < 0.2) { col1 = '#9a3412'; col2 = '#f97316'; } 
+            else if (planet.mScale > 5.0) { col1 = '#5b21b6'; col2 = '#c084fc'; } 
+
+            const planetGrad = simCtx.createRadialGradient(w/2, planetCenterY - planetVisualRadius*0.2, planetVisualRadius*0.05, w/2, planetCenterY, planetVisualRadius);
+            planetGrad.addColorStop(0, col2);
+            planetGrad.addColorStop(0.7, col1);
+            planetGrad.addColorStop(1, '#05030b');
+            
+            simCtx.fillStyle = planetGrad;
+            simCtx.beginPath();
+            simCtx.arc(w/2, planetCenterY, planetVisualRadius, 0, Math.PI * 2);
+            simCtx.fill();
+
+            // 철제 발사대 기둥 연출 (출발 전 시각적 풍부함 추가)
+            if(!rocket.isLaunched) {
+                simCtx.strokeStyle = '#475569';
+                simCtx.lineWidth = 3;
+                simCtx.beginPath();
+                simCtx.moveTo(w/2 - 14, planetCenterY - planetVisualRadius);
+                simCtx.lineTo(w/2 - 14, planetCenterY - planetVisualRadius - 20);
+                simCtx.lineTo(w/2 - 5, planetCenterY - planetVisualRadius - 10);
+                simCtx.stroke();
+            }
+
+            // 궤적 선 그리기
+            if (rocket.trail.length > 1) {
+                simCtx.strokeStyle = 'rgba(34, 197, 94, 0.6)';
+                simCtx.lineWidth = 2.5;
+                simCtx.beginPath();
+                for (let idx = 0; idx < rocket.trail.length; idx++) {
+                    const altFrac = (rocket.trail[idx] - planet.radius) / planet.radius;
+                    const ty = (planetCenterY - planetVisualRadius) - Math.min(1.1, altFrac) * travelHeight;
+                    if (idx === 0) simCtx.moveTo(w / 2, ty);
+                    else simCtx.lineTo(w / 2, ty);
+                }
+                simCtx.stroke();
+            }
+
+            // ★ 실시간 로켓의 Y 좌표 연산 (고도 상승률을 0% ~ 100% 비례 매핑)
+            const altitudeFraction = (rocket.r - planet.radius) / planet.radius; 
+            const rocketPixelY = (planetCenterY - planetVisualRadius) - Math.min(1.1, altitudeFraction) * travelHeight;
+
+            // 배기구 흰색 연기 파티클 발생기
+            if (rocket.isLaunched && isSimRunning && rocket.v > 0) {
+                if (Math.random() < 0.4) {
+                    createSmokeParticle(w/2, rocketPixelY + 12);
+                }
+            }
+
+            // 배기 연기 파티클 드로잉
+            smokeParticles.forEach(p => {
+                simCtx.save();
+                simCtx.globalAlpha = p.alpha;
+                simCtx.fillStyle = p.color;
+                simCtx.beginPath();
+                simCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                simCtx.fill();
+                simCtx.restore();
+            });
+
+            // 로켓 분사 불꽃 드로잉
+            if (rocket.isLaunched && isSimRunning && rocket.v > 0) {
+                simCtx.save();
+                const flameGrad = simCtx.createLinearGradient(w/2, rocketPixelY + 12, w/2, rocketPixelY + 36);
+                flameGrad.addColorStop(0, '#f97316');
+                flameGrad.addColorStop(0.5, '#ef4444');
+                flameGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+                simCtx.fillStyle = flameGrad;
+                simCtx.beginPath();
+                simCtx.moveTo(w/2 - 5, rocketPixelY + 12);
+                simCtx.lineTo(w/2 + 5, rocketPixelY + 12);
+                simCtx.lineTo(w/2, rocketPixelY + 12 + Math.random() * 24);
+                simCtx.closePath();
+                simCtx.fill();
+                simCtx.restore();
+            }
+
+            // ★ 초대형 고해상도 로켓 그리기
+            const rW = 16;  
+            const rH = 34;  
+
+            simCtx.save();
+            simCtx.translate(w/2, rocketPixelY);
+            
+            // 로켓 동체
+            simCtx.fillStyle = '#ffffff';
+            simCtx.beginPath();
+            simCtx.roundRect(-rW/2, -rH/4, rW, rH*0.75, 4);
+            simCtx.fill();
+
+            // 빨간색 헤드 노즈콘
+            simCtx.fillStyle = '#ef4444';
+            simCtx.beginPath();
+            simCtx.moveTo(-rW/2, -rH/4);
+            simCtx.quadraticCurveTo(0, -rH, rW/2, -rH/4);
+            simCtx.closePath();
+            simCtx.fill();
+
+            // 날개
+            simCtx.fillStyle = '#3b82f6';
+            simCtx.beginPath();
+            simCtx.moveTo(-rW/2, rH/4);
+            simCtx.lineTo(-rW, rH/2);
+            simCtx.lineTo(-rW/2, rH/2);
+            simCtx.closePath();
+            simCtx.fill();
+
+            simCtx.beginPath();
+            simCtx.moveTo(rW/2, rH/4);
+            simCtx.lineTo(rW, rH/2);
+            simCtx.lineTo(rW/2, rH/2);
+            simCtx.closePath();
+            simCtx.fill();
+
+            // 조종석 둥근 원형 유리창 (노란색)
+            simCtx.fillStyle = '#facc15';
+            simCtx.beginPath();
+            simCtx.arc(0, -rH/12, rW/4, 0, Math.PI * 2);
+            simCtx.fill();
+            simCtx.strokeStyle = '#1e293b';
+            simCtx.lineWidth = 1.2;
+            simCtx.stroke();
+
+            simCtx.restore();
+
+            // 대기 마찰 플라즈마 보호막 오버레이 그리기 (대기 저항 적용 중일 때만)
+            const useDrag = document.getElementById('dragToggle').checked;
+            if (rocket.isLaunched && isSimRunning && rocket.v > 0 && useDrag && rocket.r < planet.radius * 1.45) {
+                let hVal = rocket.r - planet.radius;
+                let scaleHeight = planet.radius * 0.08;
+                let density = Math.exp(-hVal / scaleHeight);
+                
+                let plasmaIntensity = Math.min(1.0, (density * (rocket.v / 4000)));
+                if (plasmaIntensity > 0.05) {
+                    simCtx.save();
+                    simCtx.strokeStyle = `rgba(239, 68, 68, ${plasmaIntensity * 0.9})`;
+                    simCtx.lineWidth = 2 + plasmaIntensity * 4;
+                    simCtx.shadowBlur = 10;
+                    simCtx.shadowColor = '#ef4444';
+                    simCtx.beginPath();
+                    simCtx.arc(w / 2, rocketPixelY - 11, rW * 1.1, Math.PI, 2 * Math.PI);
+                    simCtx.stroke();
+                    simCtx.restore();
+                }
+            }
+
+            // 충돌 폭발 불꽃 파편 파티클 드로잉
+            crashParticles.forEach(p => {
+                simCtx.save();
+                simCtx.globalAlpha = p.alpha;
+                simCtx.fillStyle = p.color;
+                simCtx.beginPath();
+                simCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                simCtx.fill();
+                simCtx.restore();
+            });
+
+            simCtx.restore(); // Shake effect restore
+        }
+
+        function drawEnergyGraph() {
+            energyCtx.clearRect(0, 0, energyCanvas.width, energyCanvas.height);
+            const w = energyCanvas.width;
+            const h = energyCanvas.height;
+
+            energyCtx.strokeStyle = '#1e293b';
+            energyCtx.lineWidth = 1;
+            energyCtx.strokeRect(0, 0, w, h);
+
+            const zeroY = h * 0.4;
+            energyCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            energyCtx.beginPath();
+            energyCtx.moveTo(0, zeroY);
+            energyCtx.lineTo(w, zeroY);
+            energyCtx.stroke();
+
+            const rMin = planet.radius;
+            const rMax = planet.radius * 2.0; 
+            const energyScale = 0.5 * 30000 * 30000 / 1e6;
+
+            function getPixelY(energyValMJ) {
+                const normalizedVal = energyValMJ / energyScale;
+                return zeroY - normalizedVal * (h * 0.45);
+            }
+
+            function getPixelX(rVal) {
+                const fraction = (rVal - rMin) / (rMax - rMin);
+                return fraction * (w - 30) + 15;
+            }
+
+            // 위치 에너지 커브 (빨간색)
+            energyCtx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+            energyCtx.lineWidth = 1;
+            energyCtx.beginPath();
+            for (let x = 0; x < w; x++) {
+                const rVal = rMin + (x / w) * (rMax - rMin);
+                const epValMJ = (-(G * planet.mass) / rVal) / 1e6;
+                const py = getPixelY(epValMJ);
+                if (x === 0) energyCtx.moveTo(x, py);
+                else energyCtx.lineTo(x, py);
+            }
+            energyCtx.stroke();
+
+            // 역학적 에너지 총합선 (탈출 가능 시 청색, 불가능 시 주황색)
+            const etotMJ = rocket.etot / 1e6;
+            const etotPy = getPixelY(etotMJ);
+            energyCtx.strokeStyle = etotMJ >= 0 ? '#3b82f6' : '#f59e0b';
+            energyCtx.setLineDash([3, 3]);
+            energyCtx.beginPath();
+            energyCtx.moveTo(0, etotPy);
+            energyCtx.lineTo(w, etotPy);
+            energyCtx.stroke();
+            energyCtx.setLineDash([]);
+
+            // 현재 물리 연산 위치 점 찍기
+            const curX = getPixelX(rocket.r);
+            const curEpY = getPixelY(rocket.ep / 1e6);
+            if (curX >= 0 && curX <= w) {
+                // 현재 고도에서의 위치에너지 점
+                energyCtx.fillStyle = '#ef4444';
+                energyCtx.beginPath();
+                energyCtx.arc(curX, curEpY, 3.5, 0, Math.PI * 2);
+                energyCtx.fill();
+
+                // 현재 고도에서의 총합 에너지를 가리키는 점
+                energyCtx.fillStyle = etotMJ >= 0 ? '#3b82f6' : '#f59e0b';
+                energyCtx.beginPath();
+                energyCtx.arc(curX, etotPy, 3.5, 0, Math.PI * 2);
+                energyCtx.fill();
+            }
+        }
+
+        // 5. 제어 이벤트 핸들러
+        launchBtn.addEventListener('click', () => {
+            if (rocket.isLaunched) {
+                showWarning("이미 우주선이 발사 상태에 있습니다. 다시 발사하시려면 [우주선 리셋]을 클릭해 주세요.");
+                return;
+            }
+
+            rocket.isLaunched = true;
+            rocket.r = planet.radius;
+            rocket.v = parseFloat(velocityInput.value) * 1000;
+            rocket.initialV = rocket.v;
+            rocket.trail = [];
+            crashParticles = [];
+            smokeParticles = [];
+            maxAltitudeReached = planet.radius; // 최대 고도 탐지값 리셋
+            
+            // 엔진 점화 0.4초 흔들림 임팩트 가동
+            shakeTime = 0.4;
+
+            isSimRunning = true;
+            statusText.textContent = "상승 비행 중";
+            statusText.className = "font-bold text-amber-400";
+            dismissOverlay();
+
+            disableSliders(true);
+            lastTime = 0;
+            animationFrameId = requestAnimationFrame(updatePhysicsLoop);
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            if (!rocket.isLaunched) return;
+            isSimRunning = !isSimRunning;
+            if (isSimRunning) {
+                pauseBtn.innerHTML = `<i class="fa-solid fa-pause"></i> 일시정지`;
+                statusText.textContent = "상승 비행 중";
+                statusText.className = "font-bold text-amber-400";
+                lastTime = 0;
+                animationFrameId = requestAnimationFrame(updatePhysicsLoop);
+            } else {
+                pauseBtn.innerHTML = `<i class="fa-solid fa-play"></i> 비행재개`;
+                statusText.textContent = "비행 일시정지";
+                statusText.className = "font-bold text-slate-400";
+                cancelAnimationFrame(animationFrameId);
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            isSimRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            
+            rocket.isLaunched = false;
+            rocket.r = planet.radius;
+            rocket.v = parseFloat(velocityInput.value) * 1000;
+            rocket.initialV = rocket.v;
+            rocket.trail = [];
+            crashParticles = [];
+            smokeParticles = [];
+            shakeTime = 0;
+            maxAltitudeReached = planet.radius;
+            
+            statusText.textContent = "발사 대기 중";
+            statusText.className = "font-bold text-green-400";
+            pauseBtn.innerHTML = `<i class="fa-solid fa-pause"></i> 일시정지`;
+            
+            disableSliders(false);
+            dismissOverlay();
+            updateUI();
+        });
+
+        function disableSliders(disabled) {
+            massInput.disabled = disabled;
+            radiusInput.disabled = disabled;
+            velocityInput.disabled = disabled;
+            document.getElementById('dragToggle').disabled = disabled;
+            
+            const containers = [
+                massInput.parentElement,
+                radiusInput.parentElement,
+                velocityInput.parentElement,
+                document.getElementById('dragToggle').parentElement.parentElement
+            ];
+
+            if (disabled) {
+                containers.forEach(c => c.classList.add('opacity-45'));
+            } else {
+                containers.forEach(c => c.classList.remove('opacity-45'));
+            }
+        }
+
+        // 6. 데이터 로그 저장 및 뷰 기능
+        function logFlight() {
+            const useDrag = document.getElementById('dragToggle').checked;
+            let maxAltReach = (maxAltitudeReached - planet.radius) / 1000; // in km
+            
+            let logEntry = {
+                no: flightLogs.length + 1,
+                planetName: getPlanetName(),
+                mass: planet.mScale.toFixed(2),
+                radius: planet.rScale.toFixed(2),
+                v0: (rocket.initialV / 1000).toFixed(2),
+                drag: useDrag ? "적용" : "미적용",
+                maxAlt: maxAltReach > 100000 || (rocket.r > planet.radius * 1.95 && rocket.etot >= 0) ? "무한 (탈출)" : `${maxAltReach.toFixed(0)} km`,
+                result: rocket.v === 0 ? "추락 💥" : "탈출 🚀",
+                resultColor: rocket.v === 0 ? "text-red-400" : "text-green-400"
+            };
+            flightLogs.push(logEntry);
+            updateLogTable();
+        }
+
+        function updateLogTable() {
+            const tbody = document.getElementById('logTableBody');
+            tbody.innerHTML = '';
+            
+            if (flightLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-500 text-xs font-mono">기록된 비행 데이터가 없습니다.</td></tr>`;
+                return;
+            }
+            
+            // 최신 발사 실험이 위쪽에 오도록 역순 출력
+            for (let i = flightLogs.length - 1; i >= 0; i--) {
+                const entry = flightLogs[i];
+                const row = document.createElement('tr');
+                row.className = "border-b border-slate-900/60 hover:bg-slate-900/40 text-[10px] font-mono";
+                row.innerHTML = `
+                    <td class="py-2 text-slate-400 text-center">${entry.no}</td>
+                    <td class="py-2 text-slate-200 text-center font-semibold">${entry.planetName}</td>
+                    <td class="py-2 text-pink-400 text-center">${entry.v0}</td>
+                    <td class="py-2 text-slate-400 text-center">${entry.drag}</td>
+                    <td class="py-2 text-slate-300 text-center">${entry.maxAlt}</td>
+                    <td class="py-2 text-center font-bold ${entry.resultColor}">${entry.result}</td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        function clearLogs() {
+            flightLogs = [];
+            updateLogTable();
+        }
+
+        function getPlanetName() {
+            if (planet.mScale === 1.0 && planet.rScale === 1.0) return "지구";
+            if (planet.mScale === 0.107 && planet.rScale === 0.532) return "화성";
+            if (planet.mScale === 10.0 && planet.rScale === 2.2) return "목성";
+            if (planet.mScale === 0.0123 && planet.rScale === 0.273) return "달";
+            return "커스텀";
+        }
+
+        function switchRightTab(tabId) {
+            const tabRealtime = document.getElementById('rightTabRealtime');
+            const tabLogs = document.getElementById('rightTabLogs');
+            const contentRealtime = document.getElementById('tabContentRealtime');
+            const contentLogs = document.getElementById('tabContentLogs');
+
+            if (tabId === 'realtime') {
+                tabRealtime.className = "flex-1 py-2 font-bold border-b-2 border-purple-500 text-slate-100 transition flex items-center justify-center gap-1";
+                tabLogs.className = "flex-1 py-2 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1";
+                contentRealtime.classList.remove('hidden');
+                contentLogs.classList.add('hidden');
+            } else {
+                tabLogs.className = "flex-1 py-2 font-bold border-b-2 border-purple-500 text-slate-100 transition flex items-center justify-center gap-1";
+                tabRealtime.className = "flex-1 py-2 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1";
+                contentLogs.classList.remove('hidden');
+                contentRealtime.classList.add('hidden');
+                updateLogTable(); // 데이터 뷰 동기화
+            }
+        }
+
+        // 7. 결과 모달 팝업 가동
+        function triggerCrashHUD() {
+            overlayIconContainer.className = "p-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-xl";
+            overlayIconContainer.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>`;
+            overlayTitle.textContent = "지표면 추락 및 충돌!";
+            overlayTitle.className = "text-sm font-bold text-red-400";
+            
+            const maxAltInKms = (((G * planet.mass) / (G * planet.mass / planet.radius - 0.5 * rocket.initialV * rocket.initialV)) - planet.radius) / 1000;
+            let flightStatsText = `초기 발사 속도(${(rocket.initialV/1000).toFixed(2)} km/s)가 탈출 요구 속도(${(planet.ve/1000).toFixed(2)} km/s)에 못 미칩니다.<br><br>로켓은 역학적 에너지 한계에 의해 최고 고도 약 ${maxAltInKms > 0 ? maxAltInKms.toFixed(0) : '0'} km까지 상승한 뒤, 중력 가속도에 이끌려 다시 지표면으로 떨어져 낙하 충돌했습니다.`;
+            overlayDesc.innerHTML = flightStatsText;
+            
+            canvasOverlayMsg.classList.remove('opacity-0', 'pointer-events-none');
+            statusText.textContent = "추락 충돌함";
+            statusText.className = "font-bold text-red-500";
+
+            logFlight(); // 데이터 로그에 자동 저장
+        }
+
+        function triggerEscapeHUD() {
+            overlayIconContainer.className = "p-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-xl";
+            overlayIconContainer.innerHTML = `<i class="fa-solid fa-circle-check"></i>`;
+            overlayTitle.textContent = "중력 이탈 탈출 성공!";
+            overlayTitle.className = "text-sm font-bold text-green-400";
+            
+            const surplusVelocity = Math.sqrt(rocket.initialV * rocket.initialV - planet.ve * planet.ve) / 1000;
+            let flightStatsText = `성공! 초기 발사 속도(${(rocket.initialV/1000).toFixed(2)} km/s)가 요구 속도(${(planet.ve/1000).toFixed(2)} km/s)를 정상 돌파했습니다.<br><br>로켓의 총 역학적 에너지가 0보다 커서, 행성의 중력장을 완전히 벗어나 무한 공간으로 성공적으로 탈출하였습니다.`;
+            overlayDesc.innerHTML = flightStatsText;
+            
+            canvasOverlayMsg.classList.remove('opacity-0', 'pointer-events-none');
+            statusText.textContent = "행성 탈출 완료";
+            statusText.className = "font-bold text-indigo-400";
+
+            logFlight(); // 데이터 로그에 자동 저장
+        }
+
+        function dismissOverlay() {
+            canvasOverlayMsg.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function showWarning(message) {
+            overlayIconContainer.className = "p-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full text-xl";
+            overlayIconContainer.innerHTML = `<i class="fa-solid fa-circle-info"></i>`;
+            overlayTitle.textContent = "조종 경고";
+            overlayTitle.className = "text-sm font-bold text-amber-400";
+            overlayDesc.innerHTML = message;
+            canvasOverlayMsg.classList.remove('opacity-0', 'pointer-events-none');
+        }
+    </script>
+</body>
+</html>

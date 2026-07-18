@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행성이 쓸어간 면적 - 드래그 지원 버전</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0b0e14;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #container {
+            position: relative;
+            width: 1100px;
+            height: 650px;
+            background-color: #121824;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            border: 1px solid #232e45;
+            display: flex;
+        }
+        #canvas-container {
+            width: 750px;
+            height: 100%;
+            position: relative;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: default;
+        }
+        #right-panel {
+            width: 350px;
+            height: 100%;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-left: 1px solid #232e45;
+            background-color: #161f30;
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+        .top-group {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #4dabf7;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 5px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label {
+            font-size: 14px;
+            color: #a5b4fc;
+            font-weight: 600;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="range"] {
+            flex: 1;
+            accent-color: #4dabf7;
+            cursor: pointer;
+        }
+        .value-display {
+            width: 45px;
+            text-align: right;
+            font-family: monospace;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+        
+        /* 버튼 레이아웃 */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        #start-btn {
+            flex: 2;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+        }
+        #start-btn:hover {
+            background: linear-gradient(135deg, #4f46e5, #2563eb);
+            transform: translateY(-1px);
+        }
+        #pause-btn {
+            flex: 1;
+            background: linear-gradient(135deg, #64748b, #475569);
+            box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3);
+        }
+        #pause-btn:hover {
+            background: linear-gradient(135deg, #475569, #334155);
+        }
+        
+        /* 데이터 테이블 스타일 */
+        .table-container {
+            flex: 1;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border: 1px solid #232e45;
+            border-radius: 6px;
+            overflow-y: auto;
+            background-color: #0f172a;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #1e293b;
+            color: #38bdf8;
+            padding: 8px;
+            position: sticky;
+            top: 0;
+            font-weight: 600;
+        }
+        td {
+            padding: 8px;
+            color: #e2e8f0;
+            border-bottom: 1px solid #1e293b;
+        }
+        tr:nth-child(even) {
+            background-color: #131b2e;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div id="canvas-container">
+        <canvas id="simCanvas" width="750" height="650"></canvas>
+    </div>
+
+    <div id="right-panel">
+        <div class="top-group">
+            <h1>행성이 쓸어간 면적</h1>
+            
+            <div class="control-group">
+                <label for="eccentricity">이심률 (e)</label>
+                <div class="slider-container">
+                    <input type="range" id="eccentricity" min="0" max="0.8" step="0.01" value="0.5">
+                    <span id="e-val" class="value-display">0.50</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label for="deltaTime">시간 변화량 (Δt)</label>
+                <div class="slider-container">
+                    <input type="range" id="deltaTime" min="0.2" max="2.5" step="0.1" value="1.0">
+                    <span id="dt-val" class="value-display">1.0</span>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button id="start-btn">면적 측정 시작</button>
+                <button id="pause-btn">일시정지</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>회차</th>
+                        <th>이심률(e)</th>
+                        <th>시간(Δt)</th>
+                        <th>면적(au²)</th>
+                    </tr>
+                </thead>
+                <tbody id="data-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const eSlider = document.getElementById('eccentricity');
+    const dtSlider = document.getElementById('deltaTime');
+    const eVal = document.getElementById('e-val');
+    const dtVal = document.getElementById('dt-val');
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const dataBody = document.getElementById('data-body');
+
+    // 시뮬레이션 기본 스케일 설정
+    const centerX = 375; 
+    const centerY = 325; 
+    const a = 200;       
+
+    let e = parseFloat(eSlider.value);
+    let dt = parseFloat(dtSlider.value);
+    
+    let M = 0;           
+    let planetX = 0, planetY = 0;
+    let sunX = 0, sunY = 0;
+    let velX = 0, velY = 0; 
+
+    // 상태 변수
+    let isMeasuring = false;
+    let isPaused = false;
+    let isDragging = false; // 드래그 활성화 플래그
+    let measureStartTime = 0;
+    let measureDuration = 0; 
+    let sectorPoints = [];   
+    let measuredArea = 0;    
+    let experimentCount = 0; 
+
+    // 케플러 방정식 풀이
+    function solveKepler(M, e) {
+        let E = M;
+        const tolerance = 1e-6;
+        for (let i = 0; i < 20; i++) {
+            let diff = E - e * Math.sin(E) - M;
+            if (Math.abs(diff) < tolerance) break;
+            E = E - diff / (1 - e * Math.cos(E));
+        }
+        return E;
+    }
+
+    // 위치 및 속도 계산 함수
+    function calculatePositionAndVelocity(currentM) {
+        sunX = centerX + (a * e); 
+        sunY = centerY;
+
+        const E = solveKepler(currentM % (Math.PI * 2), e);
+        const b = a * Math.sqrt(1 - e * e); 
+
+        planetX = centerX + a * Math.cos(E);
+        planetY = centerY + b * Math.sin(E);
+
+        const factor = 40 / (1 - e * Math.cos(E)); 
+        velX = -a * Math.sin(E) * factor * 0.015;
+        velY = b * Math.cos(E) * factor * 0.015;
+    }
+
+    function updatePhysics() {
+        if (isPaused || isDragging) return; // 드래그 중이거나 일시정지면 물리를 업데이트하지 않음
+
+        if (!isMeasuring) {
+            M += 0.015; 
+            if (M > Math.PI * 2) M -= Math.PI * 2;
+            calculatePositionAndVelocity(M);
+        } else {
+            measureDuration += 0.015; 
+            let currentM = measureStartTime + measureDuration;
+
+            if (measureDuration >= dt) {
+                measureDuration = dt;
+                currentM = measureStartTime + measureDuration;
+                isMeasuring = false;
+                M = currentM % (Math.PI * 2); 
+                recordData();
+            }
+
+            calculatePositionAndVelocity(currentM);
+            sectorPoints.push({x: planetX, y: planetY});
+
+            const b = a * Math.sqrt(1 - e * e);
+            const totalArea = Math.PI * (a / 100) * (b / 100); 
+            measuredArea = totalArea * (measureDuration / (Math.PI * 2));
+        }
+    }
+
+    function recordData() {
+        experimentCount++;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${experimentCount}</td>
+            <td>${e.toFixed(2)}</td>
+            <td>${dt.toFixed(1)}</td>
+            <td style="color: #60a5fa; font-weight: bold;">${measuredArea.toFixed(2)}</td>
+        `;
+        dataBody.insertBefore(row, dataBody.firstChild);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const b = a * Math.sqrt(1 - e * e);
+
+        // 1. 주요 지점 명시
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#f87171';
+        ctx.fillText('근일점', centerX - a - 50, centerY + 4);
+        ctx.beginPath(); 
+        ctx.arc(centerX - a, centerY, 4, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('원일점', centerX + a + 15, centerY + 4);
+        ctx.beginPath(); 
+        ctx.arc(centerX + a, centerY, 4, 0, Math.PI*2);
+        ctx.fill();
+
+        // 2. 궤도 그리기
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = '#2d3748';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 3. 면적 채우기
+        if (sectorPoints.length > 0) {
+            ctx.beginPath();
+            ctx.moveTo(sunX, sunY);
+            for (let p of sectorPoints) {
+                ctx.lineTo(p.x, p.y);
+            }
+            ctx.lineTo(sunX, sunY);
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.25)';
+            ctx.fill();
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        // 4. 연결선
+        ctx.beginPath();
+        ctx.moveTo(sunX, sunY);
+        ctx.lineTo(planetX, planetY);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.stroke();
+
+        // 5. 태양 그리기
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 14, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ef4444';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 6. 속도 벡터 (드래그 중이 아닐 때만 노출)
+        if (!isDragging) {
+            const arrowLength = Math.sqrt(velX*velX + velY*velY);
+            if (arrowLength > 1) {
+                ctx.beginPath();
+                ctx.moveTo(planetX, planetY);
+                ctx.lineTo(planetX + velX, planetY + velY);
+                ctx.strokeStyle = '#60a5fa';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                const angle = Math.atan2(velY, velX);
+                ctx.beginPath();
+                ctx.moveTo(planetX + velX, planetY + velY);
+                ctx.lineTo(planetX + velX - 8 * Math.cos(angle - Math.PI/6), planetY + velY - 8 * Math.sin(angle - Math.PI/6));
+                ctx.lineTo(planetX + velX - 8 * Math.cos(angle + Math.PI/6), planetY + velY - 8 * Math.sin(angle + Math.PI/6));
+                ctx.fillStyle = '#60a5fa';
+                ctx.fill();
+            }
+        }
+
+        // 7. 행성 그리기 (마우스 오버나 드래그 시 반응형 연출)
+        ctx.beginPath();
+        ctx.arc(planetX, planetY, isDragging ? 11 : 8, 0, Math.PI * 2);
+        ctx.fillStyle = isDragging ? '#34d399' : '#10b981';
+        ctx.shadowBlur = isDragging ? 18 : 10;
+        ctx.shadowColor = '#10b981';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 8. 텍스트
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px sans-serif';
+        let statusText = '공전 중';
+        if (isDragging) statusText = '임의 지점 배치 중...';
+        else if (isPaused) statusText = '일시정지됨';
+        else if (isMeasuring) statusText = '면적 측정 중...';
+        ctx.fillText(`상태: ${statusText}`, 30, 45);
+        
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillText(`쓸고 지나간 면적: ${measuredArea.toFixed(2)} au²`, 30, 80);
+    }
+
+    function loop() {
+        updatePhysics();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    // 마우스 좌표 반환 유틸리티
+    function getMousePos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top
+        };
+    }
+
+    // 드래그 마우스 이벤트 리스너들
+    canvas.addEventListener('mousedown', (evt) => {
+        if (isMeasuring) return; // 측정 연산 도중에는 조작 차단
+
+        const pos = getMousePos(evt);
+        // 행성 타격 판정 (거리 계산)
+        const dist = Math.hypot(pos.x - planetX, pos.y - planetY);
+        
+        if (dist < 15) { // 행성을 클릭한 경우
+            isDragging = true;
+            canvas.style.cursor = 'grabbing';
+        }
+    });
+
+    canvas.addEventListener('mousemove', (evt) => {
+        const pos = getMousePos(evt);
+        
+        if (isDragging) {
+            // 타원 중심 기준 마우스의 각도(E) 구하기
+            const dx = pos.x - centerX;
+            const dy = pos.y - centerY;
+            let E = Math.atan2(dy, dx);
+            if (E < 0) E += Math.PI * 2;
+
+            // 편심이각(E)을 이용해 새로운 평균근점이각(M = E - e*sinE) 역산 후 바인딩
+            M = E - e * Math.sin(E);
+            if (M < 0) M += Math.PI * 2;
+
+            calculatePositionAndVelocity(M);
+            sectorPoints = [];
+            measuredArea = 0;
+        } else {
+            // 행성에 마우스 호버 시 커서 모양 변화 효과
+            const dist = Math.hypot(pos.x - planetX, pos.y - planetY);
+            if (dist < 15 && !isMeasuring) {
+                canvas.style.cursor = 'grab';
+            } else {
+                canvas.style.cursor = 'default';
+            }
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            canvas.style.cursor = 'default';
+            
+            // 드래그가 끝나면 탐색 편의를 위해 일시정지 상태로 전환함
+            isPaused = true;
+            pauseBtn.textContent = '재생';
+        }
+    });
+
+    // 슬라이더 이벤트
+    eSlider.addEventListener('input', (event) => {
+        if (isMeasuring) return;
+        e = parseFloat(event.target.value);
+        eVal.textContent = e.toFixed(2);
+        calculatePositionAndVelocity(M);
+        sectorPoints = [];
+        measuredArea = 0;
+    });
+
+    dtSlider.addEventListener('input', (event) => {
+        if (isMeasuring) return;
+        dt = parseFloat(event.target.value);
+        dtVal.textContent = dt.toFixed(1);
+        sectorPoints = [];
+        measuredArea = 0;
+    });
+
+    // 면적 측정 시작
+    startBtn.addEventListener('click', () => {
+        if (isMeasuring || isDragging) return;
+        isMeasuring = true;
+        isPaused = false; 
+        pauseBtn.textContent = '일시정지';
+        measureStartTime = M;
+        measureDuration = 0;
+        sectorPoints = [{x: planetX, y: planetY}];
+        measuredArea = 0;
+    });
+
+    // 일시정지
+    pauseBtn.addEventListener('click', () => {
+        if (isDragging) return;
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? '재생' : '일시정지';
+    });
+
+    calculatePositionAndVelocity(M);
+    loop();
+</script>
+</body>
+</html>

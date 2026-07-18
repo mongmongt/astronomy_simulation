@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>혜성 궤도 및 태양풍 시뮬레이션 (Comet Orbit & Solar Wind Simulator)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0d0e15;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Custom scrollbar for control panel */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-amber-500/10 rounded-lg text-amber-400">
+                <!-- 태양 및 빛 에너지를 상징하는 천체 물리 아이콘 -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-pulse">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M19.07 19.07l-1.41-1.41M6.34 6.34l-1.41-1.41"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                    태양풍 & 혜성 꼬리 시뮬레이터
+                </h1>
+                <p class="text-xs text-gray-400">태양풍 세기와 타원 궤도 위치에 따른 꼬리 방향 및 길이 변화 분석</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-400 bg-gray-950 px-3 py-1.5 rounded-lg border border-gray-800">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <span>물리 시뮬레이션 작동 중</span>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 p-4 lg:p-6 max-w-7xl mx-auto w-full">
+        
+        <!-- Left Sidebar: Control Panel (1/4 width) -->
+        <section class="lg:col-span-1 bg-gray-900/60 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between gap-6 backdrop-blur-sm shadow-xl">
+            <div class="space-y-5">
+                <div class="border-b border-gray-800 pb-3">
+                    <h2 class="text-md font-bold text-gray-200 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-400"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        시뮬레이션 조작 패널
+                    </h2>
+                </div>
+
+                <!-- 1. Solar Wind Speed Control -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-300 font-medium flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            태양풍 풍속 (Solar Wind)
+                        </span>
+                        <span id="solarWindVal" class="text-amber-400 font-mono font-bold">450 km/s</span>
+                    </div>
+                    <input type="range" id="solarWindSlider" min="200" max="1000" step="10" value="450" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500 transition-all">
+                    <p class="text-xs text-gray-500">200km/s(저속 대기 흐름) ~ 1000km/s(초고속 우주 폭풍)</p>
+                </div>
+
+                <!-- 2. Orbit Position Control -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-300 font-medium flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            선택된 혜성 위치 (Orbit Pos)
+                        </span>
+                        <span id="cometPosVal" class="text-blue-400 font-mono font-bold">0.00 rad</span>
+                    </div>
+                    <input type="range" id="cometPosSlider" min="0" max="6.28" step="0.01" value="0" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                    <p class="text-xs text-gray-500">선택된 혜성의 공전 각도를 직접 수동으로 슬라이드합니다.</p>
+                </div>
+
+                <!-- 3. Comets List & Management -->
+                <div class="space-y-3 pt-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-medium text-gray-300">혜성 리스트</label>
+                        <span id="cometCount" class="text-xs bg-gray-800 text-gray-300 px-2 py-0.5 rounded-full border border-gray-700">1개 활성</span>
+                    </div>
+                    
+                    <button id="addCometBtn" class="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-medium text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/15 active:scale-[0.98] transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        새로운 혜성 추가하기
+                    </button>
+
+                    <!-- Scrollable Comet Selectors -->
+                    <div id="cometListContainer" class="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                        <!-- Comets dynamically injected -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Toggles & Playback Group (Placed at the bottom of left panel) -->
+            <div class="space-y-4 pt-4 border-t border-gray-800">
+                <!-- Visual settings toggles grouped together -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">시각 효과 토글</label>
+                    <div class="grid grid-cols-1 gap-2">
+                        <!-- Orbit Toggle -->
+                        <button id="toggleOrbitBtn" class="w-full py-2 px-3 bg-gray-950/80 border border-gray-800 text-xs text-gray-300 hover:border-gray-700 hover:bg-gray-900 rounded-xl transition-all flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span id="orbitIndicator" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                공전 궤도 표시
+                            </span>
+                            <span id="orbitText" class="text-[10px] text-blue-400 font-bold">ON</span>
+                        </button>
+                        <!-- Grid Toggle -->
+                        <button id="toggleGridBtn" class="w-full py-2 px-3 bg-gray-950/80 border border-gray-800 text-xs text-gray-300 hover:border-gray-700 hover:bg-gray-900 rounded-xl transition-all flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span id="gridIndicator" class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                그리드 격자망
+                            </span>
+                            <span id="gridText" class="text-[10px] text-emerald-400 font-bold">ON</span>
+                        </button>
+                        <!-- Comet Name Toggle -->
+                        <button id="toggleNamesBtn" class="w-full py-2 px-3 bg-gray-950/80 border border-gray-800 text-xs text-gray-300 hover:border-gray-700 hover:bg-gray-900 rounded-xl transition-all flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span id="namesIndicator" class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                혜성 이름 표시
+                            </span>
+                            <span id="namesText" class="text-[10px] text-emerald-400 font-bold">ON</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulation Controls -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">시뮬레이션 재생 제어</label>
+                    <div class="grid grid-cols-5 gap-1.5">
+                        <button id="startBtn" class="col-span-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 shadow-lg shadow-emerald-600/15 transition-all active:scale-95">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            START
+                        </button>
+                        <button id="stopBtn" class="col-span-2 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 shadow-lg shadow-rose-600/15 transition-all active:scale-95">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                            STOP
+                        </button>
+                        <button id="resetBtn" class="col-span-1 p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl border border-gray-700 flex items-center justify-center transition-all active:scale-95" title="전체 궤도 리셋">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Center & Bottom Section: Canvas & Stats (3/4 width) -->
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            
+            <!-- Canvas Visualizer Container -->
+            <div class="relative flex-1 bg-gray-950 border border-gray-800 rounded-2xl overflow-hidden min-h-[450px] lg:min-h-[500px] flex flex-col justify-between shadow-inner">
+                
+                <!-- Quick Controls Indicator Badge Overlay -->
+                <div class="absolute top-4 left-4 z-10 flex gap-2">
+                    <span class="px-3 py-1.5 bg-gray-900/90 border border-gray-800 text-xs text-gray-300 rounded-lg flex items-center gap-2 shadow-lg">
+                        <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                        화면 드래그로 시점 이동 & 혜성 직접 터치/클릭하여 선택 가능
+                    </span>
+                </div>
+
+                <!-- Simulation Info Banner Overlay -->
+                <div class="absolute top-4 right-4 z-10 pointer-events-none text-right">
+                    <div class="bg-gray-900/90 border border-gray-800 rounded-lg px-3 py-1.5 text-[11px] text-gray-400 space-y-0.5">
+                        <div>태양 기준계 시뮬레이션</div>
+                        <div class="text-amber-400 font-bold">1 AU = 100 px (가상축적)</div>
+                    </div>
+                </div>
+
+                <!-- Main Canvas Element -->
+                <div class="flex-1 w-full relative">
+                    <canvas id="simCanvas" class="absolute inset-0 w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                </div>
+
+                <!-- Info Indicator Bar (Bottom of Canvas container) -->
+                <div class="bg-gray-900/50 border-t border-gray-800/80 px-6 py-4 flex flex-row items-center justify-between gap-4 backdrop-blur-sm">
+                    <div class="text-xs text-gray-500">
+                        * 혜성이 태양(원점)에 가까울수록 궤도 공전 속도가 더 빨라집니다 (케플러 면적속도 일정 법칙 적용).
+                    </div>
+                    <!-- Live Physics Readout Indicators -->
+                    <div class="flex gap-4 text-xs font-mono shrink-0">
+                        <div class="text-center bg-gray-950/80 border border-gray-800 rounded-lg px-3 py-1.5 min-w-[90px]">
+                            <span class="text-gray-500 block text-[9px] uppercase">현재 속도 배율</span>
+                            <span id="speedIndicator" class="text-blue-400 font-bold text-sm">1.0x (Normal)</span>
+                        </div>
+                        <div class="text-center bg-gray-950/80 border border-gray-800 rounded-lg px-3 py-1.5 min-w-[95px]">
+                            <span class="text-gray-500 block text-[9px] uppercase">태양풍 속도</span>
+                            <span id="windPowerIndicator" class="text-amber-400 font-bold text-sm">450 km/s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Information Panel: Numerical analysis of active comets -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 backdrop-blur-sm shadow-xl space-y-4">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                    <h3 class="text-sm font-bold text-gray-200 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald-400"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        선택된 혜성의 물리 정보 분석 패널
+                    </h3>
+                    <span class="text-xs text-gray-400">데이터 수치는 실시간으로 수식 연산 및 업데이트됩니다.</span>
+                </div>
+
+                <!-- Grid Stats for Selected Comet -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-gray-950 border border-gray-800 p-4 rounded-xl flex flex-col justify-between">
+                        <span class="text-xs text-gray-500">태양과의 거리</span>
+                        <div class="mt-2 flex items-baseline gap-1.5">
+                            <span id="statDistance" class="orbitron text-2xl font-bold text-indigo-400">0.00</span>
+                            <span class="text-xs text-gray-400">AU</span>
+                        </div>
+                        <div class="mt-1.5 text-[10px] text-gray-400">근일점 부근에서 꼬리가 가장 발달함</div>
+                    </div>
+
+                    <div class="bg-gray-950 border border-gray-800 p-4 rounded-xl flex flex-col justify-between">
+                        <span class="text-xs text-gray-500">혜성 꼬리 길이 (Tail Length)</span>
+                        <div class="mt-2 flex items-baseline gap-1.5">
+                            <span id="statTailLength" class="orbitron text-2xl font-bold text-amber-400">0.00</span>
+                            <span class="text-xs text-gray-400">M km</span>
+                        </div>
+                        <div class="mt-1.5 text-[10px] text-gray-400">태양풍 속도 및 거리 제곱에 역비례</div>
+                    </div>
+
+                    <div class="bg-gray-950 border border-gray-800 p-4 rounded-xl flex flex-col justify-between">
+                        <span class="text-xs text-gray-500">공전 궤도 이심률 (Eccentricity)</span>
+                        <div class="mt-2 flex items-baseline gap-1.5">
+                            <span id="statEccentricity" class="orbitron text-2xl font-bold text-blue-400">0.00</span>
+                            <span class="text-xs text-gray-400">e</span>
+                        </div>
+                        <div class="mt-1.5 text-[10px] text-gray-400">1에 가까울수록 납작한 타원 궤도</div>
+                    </div>
+
+                    <div class="bg-gray-950 border border-gray-800 p-4 rounded-xl flex flex-col justify-between">
+                        <span class="text-xs text-gray-500">꼬리의 방향각 (Angle)</span>
+                        <div class="mt-2 flex items-baseline gap-1.5">
+                            <span id="statAngle" class="orbitron text-2xl font-bold text-emerald-400">0.00</span>
+                            <span class="text-xs text-gray-400">deg</span>
+                        </div>
+                        <div class="mt-1.5 text-[10px] text-gray-400">태양 반대 방향 벡터 각도 계산</div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 bg-gray-950/80 px-6 py-4 text-center text-xs text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-4 max-w-7xl mx-auto w-full">
+        <div>Developed with high-precision orbital physics equations. All rights reserved.</div>
+        <div class="flex gap-4">
+            <span class="hover:text-gray-300 transition-all cursor-help" title="태양 복사압은 역제곱 법칙에 따라 작용합니다.">역제곱 법칙</span>
+            <span>&middot;</span>
+            <span class="hover:text-gray-300 transition-all cursor-help" title="케플러 제2법칙: 면적 속도 일정의 법칙이 적용됩니다.">케플러 역학</span>
+        </div>
+    </footer>
+
+    <!-- Simulation Implementation Script -->
+    <script>
+        // Global State & UI Elements
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const solarWindSlider = document.getElementById('solarWindSlider');
+        const solarWindVal = document.getElementById('solarWindVal');
+        const cometPosSlider = document.getElementById('cometPosSlider');
+        const cometPosVal = document.getElementById('cometPosVal');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const addCometBtn = document.getElementById('addCometBtn');
+        const cometCountSpan = document.getElementById('cometCount');
+        const cometListContainer = document.getElementById('cometListContainer');
+        
+        // Toggles
+        const toggleOrbitBtn = document.getElementById('toggleOrbitBtn');
+        const toggleGridBtn = document.getElementById('toggleGridBtn');
+        const toggleNamesBtn = document.getElementById('toggleNamesBtn');
+        const orbitIndicator = document.getElementById('orbitIndicator');
+        const gridIndicator = document.getElementById('gridIndicator');
+        const namesIndicator = document.getElementById('namesIndicator');
+        const orbitText = document.getElementById('orbitText');
+        const gridText = document.getElementById('gridText');
+        const namesText = document.getElementById('namesText');
+
+        // Physics Panel Readout Targets
+        const statDistance = document.getElementById('statDistance');
+        const statTailLength = document.getElementById('statTailLength');
+        const statEccentricity = document.getElementById('statEccentricity');
+        const statAngle = document.getElementById('statAngle');
+        const speedIndicator = document.getElementById('speedIndicator');
+        const windPowerIndicator = document.getElementById('windPowerIndicator');
+
+        // Simulation parameters
+        let isRunning = true;
+        let showOrbit = true;
+        let showGrid = true; 
+        let showNames = true;
+        let solarWindPower = 450; // Dynamic scale factor (now represents km/s, default: 450)
+        let selectedCometId = null;
+
+        // Origin centering & Pan
+        let originX = 0;
+        let originY = 0;
+
+        // Solar Wind Flow Particles
+        class SolarWindParticle {
+            constructor() {
+                this.reset();
+                this.r = Math.random() * 550; 
+            }
+            reset() {
+                this.angle = Math.random() * Math.PI * 2;
+                this.r = 10 + Math.random() * 20; 
+                this.speed = 1.2 + Math.random() * 1.8;
+                this.alpha = 0;
+            }
+            update(power) {
+                // Scaling power (200-1000) to visual power (approx 22-111)
+                const visualPower = power / 9;
+                const windMultiplier = visualPower / 40 + 0.3;
+                this.r += this.speed * windMultiplier;
+
+                if (this.r < 100) {
+                    this.alpha = (this.r - 10) / 90;
+                } else if (this.r > 380) {
+                    this.alpha = Math.max(0, 1 - (this.r - 380) / 170);
+                } else {
+                    this.alpha = 1;
+                }
+
+                if (this.r > 550) {
+                    this.reset();
+                }
+            }
+            draw() {
+                const x = originX + this.r * Math.cos(this.angle);
+                const y = originY + this.r * Math.sin(this.angle);
+                ctx.save();
+                const visualPower = solarWindPower / 9;
+                ctx.globalAlpha = this.alpha * 0.12 * (visualPower / 50 + 0.2);
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Initialize 100 wind particles
+        const windParticles = [];
+        for (let i = 0; i < 100; i++) {
+            windParticles.push(new SolarWindParticle());
+        }
+
+        // Custom Comet Class representing high fidelity physics properties
+        class Comet {
+            constructor(id, name, a, e, color, size) {
+                this.id = id;
+                this.name = name;
+                this.a = a; 
+                this.e = e; 
+                this.b = a * Math.sqrt(1 - e * e); 
+                this.color = color;
+                this.size = size; 
+                
+                // Position state
+                this.angle = Math.random() * Math.PI * 2; 
+                this.x = 0;
+                this.y = 0;
+
+                // Physics attributes
+                this.distanceToSun = 0;
+                this.calculatedTailLength = 0;
+
+                // Tail particles state
+                this.particles = [];
+            }
+
+            updatePosition(angleOverride = null) {
+                if (angleOverride !== null) {
+                    this.angle = angleOverride;
+                }
+
+                const numerator = this.a * (1 - this.e * this.e);
+                const denominator = 1 + this.e * Math.cos(this.angle);
+                this.distanceToSun = numerator / denominator;
+
+                this.x = this.distanceToSun * Math.cos(this.angle);
+                this.y = this.distanceToSun * Math.sin(this.angle);
+            }
+
+            generateTailParticles(windPower) {
+                const dx = this.x;
+                const dy = this.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist === 0) return;
+
+                const dirX = dx / dist;
+                const dirY = dy / dist;
+
+                const distAU = dist / 100; 
+                const distanceFactor = Math.min(10, 1.8 / Math.pow(distAU, 1.6));
+                
+                // Scale physical speed input to original visual power
+                const visualPower = windPower / 9;
+                this.calculatedTailLength = (visualPower * 1.5) * distanceFactor;
+
+                const particleCount = Math.floor(visualPower / 25) + 3;
+                for (let i = 0; i < particleCount; i++) {
+                    const dispersion = 0.15;
+                    const spreadAngle = Math.atan2(dirY, dirX) + (Math.random() - 0.5) * dispersion;
+                    
+                    this.particles.push({
+                        x: this.x,
+                        y: this.y,
+                        vx: Math.cos(spreadAngle) * (2 + Math.random() * (visualPower / 25 + 2)),
+                        vy: Math.sin(spreadAngle) * (2 + Math.random() * (visualPower / 25 + 2)),
+                        life: 1.0,
+                        decay: 0.02 + Math.random() * 0.05,
+                        size: this.size * (0.4 + Math.random() * 0.6),
+                        color: this.color
+                    });
+                }
+            }
+
+            updateParticles() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= p.decay;
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        // Initialize Comets Array with fictional names (No real-world names used)
+        let comets = [
+            new Comet('comet_solaria', '솔라리아 혜성 (Solaria)', 240, 0.75, '#60a5fa', 5),
+            new Comet('comet_aurora', '오로라 혜성 (Aurora)', 180, 0.45, '#34d399', 4),
+            new Comet('comet_starlight', '스타라이트 혜성 (Starlight)', 300, 0.65, '#fbbf24', 6.5)
+        ];
+
+        // Random generator with completely fictional / cosmic vocabulary names
+        function generateRandomComet() {
+            const index = comets.length + 1;
+            const names = ['네뷸라', '코스모스', '스텔라', '제피르', '보레알리스', '셀레스티아', '크로노스', '피닉스'];
+            const randomNameBase = names[Math.floor(Math.random() * names.length)];
+            const name = `${randomNameBase} ${index}호`;
+            const id = `custom_${Date.now()}`;
+            
+            const a = Math.floor(Math.random() * 200) + 120;
+            const e = parseFloat((0.3 + Math.random() * 0.55).toFixed(2));
+            
+            const colors = ['#f43f5e', '#ec4899', '#a855f7', '#6366f1', '#06b6d4', '#10b981', '#f59e0b'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const size = parseFloat((3 + Math.random() * 4).toFixed(1));
+            
+            return new Comet(id, name, a, e, color, size);
+        }
+
+        if (comets.length > 0) {
+            selectedCometId = comets[0].id;
+        }
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            originX = canvas.width / 2 + 50; 
+            originY = canvas.height / 2;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function renderCometList() {
+            cometListContainer.innerHTML = '';
+            comets.forEach(comet => {
+                const isSelected = comet.id === selectedCometId;
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all ${
+                    isSelected 
+                        ? 'bg-blue-600/20 border-blue-500 text-white shadow-md' 
+                        : 'bg-gray-950/40 border-gray-800 hover:border-gray-700 text-gray-400'
+                }`;
+
+                item.onclick = () => {
+                    selectedCometId = comet.id;
+                    cometPosSlider.value = comet.angle;
+                    cometPosVal.textContent = `${comet.angle.toFixed(2)} rad`;
+                    renderCometList();
+                };
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-3.5 h-3.5 rounded-full border border-white/20" style="background-color: ${comet.color}; box-shadow: 0 0 8px ${comet.color}"></span>
+                        <div>
+                            <div class="text-xs font-bold leading-tight ${isSelected ? 'text-white' : 'text-gray-300'}">${comet.name}</div>
+                            <div class="text-[10px] text-gray-500">이심률: ${comet.e}e | 크기: ${comet.size}px</div>
+                        </div>
+                    </div>
+                `;
+
+                if (comets.length > 1) {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = "text-gray-500 hover:text-rose-400 p-1 transition-colors";
+                    deleteBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 1 1 4 0v2"/></svg>
+                    `;
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        comets = comets.filter(c => c.id !== comet.id);
+                        if (selectedCometId === comet.id) {
+                            selectedCometId = comets[0]?.id || null;
+                        }
+                        renderCometList();
+                    };
+                    item.appendChild(deleteBtn);
+                }
+
+                cometListContainer.appendChild(item);
+            });
+
+            cometCountSpan.textContent = `${comets.length}개 활성`;
+        }
+
+        renderCometList();
+
+        addCometBtn.addEventListener('click', () => {
+            const newComet = generateRandomComet();
+            comets.push(newComet);
+            selectedCometId = newComet.id;
+            renderCometList();
+            setTimeout(() => {
+                cometListContainer.scrollTop = cometListContainer.scrollHeight;
+            }, 100);
+        });
+
+        // Toggle Buttons logic
+        toggleOrbitBtn.addEventListener('click', () => {
+            showOrbit = !showOrbit;
+            orbitIndicator.className = `w-2 h-2 rounded-full ${showOrbit ? 'bg-blue-500' : 'bg-gray-600'}`;
+            orbitText.textContent = showOrbit ? 'ON' : 'OFF';
+            orbitText.className = `text-[10px] font-bold ${showOrbit ? 'text-blue-400' : 'text-gray-500'}`;
+        });
+
+        toggleGridBtn.addEventListener('click', () => {
+            showGrid = !showGrid;
+            gridIndicator.className = `w-2 h-2 rounded-full ${showGrid ? 'bg-emerald-500' : 'bg-gray-600'}`;
+            gridText.textContent = showGrid ? 'ON' : 'OFF';
+            gridText.className = `text-[10px] font-bold ${showGrid ? 'text-emerald-400' : 'text-gray-500'}`;
+        });
+
+        toggleNamesBtn.addEventListener('click', () => {
+            showNames = !showNames;
+            namesIndicator.className = `w-2 h-2 rounded-full ${showNames ? 'bg-emerald-500' : 'bg-gray-600'}`;
+            namesText.textContent = showNames ? 'ON' : 'OFF';
+            namesText.className = `text-[10px] font-bold ${showNames ? 'text-emerald-400' : 'text-gray-500'}`;
+        });
+
+        // Playback listeners
+        startBtn.addEventListener('click', () => {
+            isRunning = true;
+            speedIndicator.textContent = "1.0x (Normal)";
+            speedIndicator.className = "text-emerald-400 font-bold text-sm";
+        });
+        stopBtn.addEventListener('click', () => {
+            isRunning = false;
+            speedIndicator.textContent = "0.0x (Paused)";
+            speedIndicator.className = "text-rose-400 font-bold text-sm";
+        });
+        resetBtn.addEventListener('click', () => {
+            comets.forEach(comet => {
+                comet.angle = 0;
+                comet.particles = [];
+            });
+            cometPosSlider.value = 0;
+            cometPosVal.textContent = "0.00 rad";
+        });
+
+        // Sliders Listeners
+        solarWindSlider.addEventListener('input', (e) => {
+            solarWindPower = parseInt(e.target.value);
+            solarWindVal.textContent = `${solarWindPower} km/s`;
+            windPowerIndicator.textContent = `${solarWindPower} km/s`;
+        });
+
+        cometPosSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            cometPosVal.textContent = `${val.toFixed(2)} rad`;
+            
+            isRunning = false;
+            speedIndicator.textContent = "Manual (Pos)";
+            speedIndicator.className = "text-blue-400 font-bold text-sm";
+
+            const focusedComet = comets.find(c => c.id === selectedCometId);
+            if (focusedComet) {
+                focusedComet.updatePosition(val);
+            }
+        });
+
+        function getOrbitStep(comet) {
+            const baseSpeed = 15;
+            const step = baseSpeed / (comet.distanceToSun * comet.distanceToSun);
+            return Math.min(0.04, Math.max(0.002, step));
+        }
+
+        function drawTailParticles() {
+            comets.forEach(comet => {
+                comet.particles.forEach(p => {
+                    ctx.save();
+                    ctx.beginPath();
+                    
+                    const gradient = ctx.createRadialGradient(
+                        originX + p.x, originY + p.y, 0,
+                        originX + p.x, originY + p.y, p.size * 3
+                    );
+                    
+                    ctx.globalAlpha = p.life * 0.45;
+                    ctx.fillStyle = p.color;
+                    
+                    ctx.arc(originX + p.x, originY + p.y, p.size * 3.2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            });
+        }
+
+        // Animated Faint Solar Wind Wavefronts + Stream Particles
+        let solarWindPulseCount = 0;
+        function drawSolarWindFaintField() {
+            const visualPower = solarWindPower / 9;
+            solarWindPulseCount += 0.015 * (visualPower / 50 + 0.3);
+            ctx.save();
+            
+            const pulseWaveOpacity = 0.01 * (visualPower / 50 + 0.2);
+            ctx.strokeStyle = `rgba(245, 158, 11, ${pulseWaveOpacity})`;
+            ctx.lineWidth = 1.0 + (visualPower / 100);
+            
+            for (let r = 40; r < 600; r += 120) {
+                const currentRadius = (r + solarWindPulseCount * 65) % 600;
+                ctx.beginPath();
+                ctx.arc(originX, originY, currentRadius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            windParticles.forEach(wp => {
+                wp.update(solarWindPower);
+                wp.draw();
+            });
+        }
+
+        // 고시인성 & 드래그 패닝 동기화 격자망 렌더링 함수
+        function drawGridLines() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(75, 85, 99, 0.15)'; 
+            ctx.lineWidth = 1;
+            
+            const step = 50;
+            const startX = originX % step;
+            const startY = originY % step;
+
+            for (let x = startX; x < canvas.width; x += step) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = startY; y < canvas.height; y += step) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(147, 197, 253, 0.25)'; 
+            ctx.lineWidth = 1.2;
+            for (let r = 100; r <= 500; r += 100) {
+                ctx.beginPath();
+                ctx.arc(originX, originY, r, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.fillStyle = 'rgba(147, 197, 253, 0.7)';
+                ctx.font = '10px Orbitron';
+                ctx.fillText(`${(r/100).toFixed(1)} AU`, originX + r + 6, originY - 6);
+            }
+            ctx.restore();
+        }
+
+        // Core Render & Simulation Loop
+        function animate() {
+            const visualPower = solarWindPower / 9;
+
+            // Background Clear
+            ctx.fillStyle = 'rgba(13, 14, 21, 1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (showGrid) {
+                drawGridLines();
+            }
+
+            drawSolarWindFaintField();
+
+            // Render orbits
+            if (showOrbit) {
+                comets.forEach(comet => {
+                    const isSelected = comet.id === selectedCometId;
+                    ctx.save();
+                    ctx.beginPath();
+                    
+                    const c = comet.a * comet.e;
+                    ctx.ellipse(originX - c, originY, comet.a, comet.b, 0, 0, Math.PI * 2);
+                    
+                    ctx.strokeStyle = isSelected ? `${comet.color}aa` : 'rgba(75, 85, 99, 0.25)';
+                    ctx.lineWidth = isSelected ? 2.5 : 1.2;
+                    ctx.setLineDash(isSelected ? [0] : [3, 4]);
+                    ctx.stroke();
+
+                    if (isSelected) {
+                        ctx.fillStyle = comet.color;
+                        ctx.font = '10px Orbitron';
+                        ctx.fillText(`${comet.name} Orbit`, originX - c - comet.a, originY - 10);
+                    }
+                    ctx.restore();
+                });
+            }
+
+            // Update and Draw Tail particles behind nucleus
+            drawTailParticles();
+
+            // Draw Sun in the focal center
+            ctx.save();
+            const sunGlowRadius = 24 + (visualPower / 10);
+            const sunGlow = ctx.createRadialGradient(originX, originY, 4, originX, originY, sunGlowRadius);
+            sunGlow.addColorStop(0, 'rgba(253, 224, 71, 1)');
+            sunGlow.addColorStop(0.2, 'rgba(249, 115, 22, 0.9)');
+            sunGlow.addColorStop(0.6, 'rgba(239, 68, 68, 0.3)');
+            sunGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = sunGlow;
+            ctx.beginPath();
+            ctx.arc(originX, originY, sunGlowRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.fillStyle = '#fef08a';
+            ctx.arc(originX, originY, 11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Update & Draw Comets
+            comets.forEach(comet => {
+                if (isRunning) {
+                    const step = getOrbitStep(comet);
+                    comet.angle += step;
+                    if (comet.angle > Math.PI * 2) comet.angle -= Math.PI * 2;
+                    comet.updatePosition();
+                } else {
+                    comet.updatePosition();
+                }
+
+                comet.generateTailParticles(solarWindPower);
+                comet.updateParticles();
+
+                const tailAngleDeg = Math.round((comet.angle * 180) / Math.PI) % 360;
+
+                // Sync UI stats
+                if (comet.id === selectedCometId) {
+                    statDistance.textContent = (comet.distanceToSun / 100).toFixed(2);
+                    statTailLength.textContent = (comet.calculatedTailLength * 0.4).toFixed(1);
+                    statEccentricity.textContent = comet.e.toFixed(2);
+                    statAngle.textContent = `${tailAngleDeg}°`;
+
+                    if (isRunning) {
+                        cometPosSlider.value = comet.angle;
+                        cometPosVal.textContent = `${comet.angle.toFixed(2)} rad`;
+                    }
+                }
+
+                // Draw Comet Nucleus
+                ctx.save();
+                
+                // Active selection ring
+                if (comet.id === selectedCometId) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([2, 2]);
+                    ctx.beginPath();
+                    ctx.arc(originX + comet.x, originY + comet.y, comet.size + 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                const comaGlow = ctx.createRadialGradient(
+                    originX + comet.x, originY + comet.y, 0,
+                    originX + comet.x, originY + comet.y, comet.size * 2.5
+                );
+                comaGlow.addColorStop(0, '#ffffff');
+                comaGlow.addColorStop(0.3, comet.color);
+                comaGlow.addColorStop(1, 'rgba(0,0,0,0)');
+                
+                ctx.fillStyle = comaGlow;
+                ctx.beginPath();
+                ctx.arc(originX + comet.x, originY + comet.y, comet.size * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.arc(originX + comet.x, originY + comet.y, comet.size * 0.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Dynamic name tags with selection highlighting
+                if (showNames) {
+                    ctx.restore();
+                    ctx.save();
+                    if (comet.id === selectedCometId) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.shadowColor = comet.color;
+                        ctx.shadowBlur = 8;
+                        ctx.font = 'bold 12px Noto Sans KR';
+                        ctx.textBaseline = 'bottom';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`★ ${comet.name}`, originX + comet.x, originY + comet.y - (comet.size + 12));
+                    } else {
+                        ctx.fillStyle = 'rgba(203, 213, 225, 0.65)';
+                        ctx.font = '10px Noto Sans KR';
+                        ctx.textBaseline = 'bottom';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(comet.name, originX + comet.x, originY + comet.y - (comet.size + 10));
+                    }
+                }
+                ctx.restore();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Click / Touch Comet Selection Mechanism (Hit-test)
+        function checkCometClick(clickX, clickY, maxDistance = 25) {
+            let clickedComet = null;
+            let closestDist = maxDistance;
+
+            comets.forEach(comet => {
+                const cx = originX + comet.x;
+                const cy = originY + comet.y;
+                const dist = Math.hypot(clickX - cx, clickY - cy);
+                
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    clickedComet = comet;
+                }
+            });
+
+            if (clickedComet) {
+                selectedCometId = clickedComet.id;
+                cometPosSlider.value = clickedComet.angle;
+                cometPosVal.textContent = `${clickedComet.angle.toFixed(2)} rad`;
+                renderCometList();
+                return true; 
+            }
+            return false;
+        }
+
+        // Drag handler & Click selection integration
+        let isDragging = false;
+        let lastX, lastY;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            const hit = checkCometClick(clickX, clickY, 25);
+
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                originX += dx;
+                originY += dy;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
+        });
+
+        // Touch handling with slightly larger selection radius (30px) for finger taps
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                const rect = canvas.getBoundingClientRect();
+                const clickX = e.touches[0].clientX - rect.left;
+                const clickY = e.touches[0].clientY - rect.top;
+
+                checkCometClick(clickX, clickY, 30);
+
+                isDragging = true;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            }
+        });
+
+        canvas.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length === 1) {
+                const dx = e.touches[0].clientX - lastX;
+                const dy = e.touches[0].clientY - lastY;
+                originX += dx;
+                originY += dy;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            }
+        });
+
+        animate();
+
+    </script>
+</body>
+</html>

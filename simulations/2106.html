@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>라그랑주 점 및 가상 안정점 K 최첨단 우주 시뮬레이션 연구실</title>
+    <style>
+        :root {
+            --bg-color: #020617;
+            --panel-bg: #0f172a;
+            --panel-header: #1e293b;
+            --text-color: #f8fafc;
+            --text-muted: #64748b;
+            --accent-blue: #38bdf8;
+            --accent-green: #10b981;
+            --accent-purple: #c084fc;
+            --accent-orange: #fb923c;
+            --accent-pink: #f472b6;
+            --accent-gold: #fbbf24;
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            padding: 0.75rem 1.25rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--accent-blue);
+            letter-spacing: -0.025em;
+        }
+
+        header p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 115px);
+            overflow: hidden;
+        }
+
+        @media (max-width: 1024px) {
+            main {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            #left-panel, #right-panel {
+                width: 100% !important;
+                border: none !important;
+                height: auto !important;
+            }
+            #canvas-container {
+                height: 50vh;
+                min-height: 400px;
+            }
+        }
+
+        /* 패널 공통 */
+        .panel {
+            background-color: var(--panel-bg);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+
+        #left-panel {
+            width: 325px;
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+        }
+
+        #right-panel {
+            width: 325px;
+            border-right: none;
+            border-top: none;
+            border-bottom: none;
+        }
+
+        /* 컨트롤 및 슬라이더 */
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .control-group label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-group label span {
+            color: var(--accent-blue);
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-blue);
+            cursor: pointer;
+            height: 5px;
+            border-radius: 3px;
+            background: #1e293b;
+        }
+
+        /* 캔버스 및 레이아웃 */
+        #canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #010208;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(15, 23, 42, 0.92);
+            padding: 0.65rem 0.85rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 0.72rem;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 정보 섹션 카드 */
+        .info-section {
+            background-color: rgba(15, 23, 42, 0.6);
+            padding: 0.8rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .info-section h3 {
+            font-size: 0.82rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.2rem;
+            color: var(--accent-blue);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.35rem;
+            font-size: 0.75rem;
+        }
+
+        .coordinate-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+        }
+
+        .coord-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.2rem 0;
+            border-bottom: 1px dashed rgba(51, 65, 85, 0.4);
+        }
+
+        .coord-item:last-child {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            width: 22px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 4px;
+            color: #000;
+            font-size: 0.7rem;
+            margin-right: 0.4rem;
+        }
+
+        /* 시나리오 버튼 인터페이스 */
+        .scenario-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-top: 0.4rem;
+        }
+
+        .btn-scenario {
+            background-color: #1e293b;
+            border: 1px solid var(--border);
+            color: var(--text-color);
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-scenario:hover {
+            background-color: #334155;
+            border-color: var(--accent-blue);
+        }
+
+        .btn-scenario.active {
+            background-color: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .preset-badge {
+            font-size: 0.65rem;
+            padding: 0.05rem 0.3rem;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        /* 하단 글로벌 바 */
+        footer {
+            height: 55px;
+            background-color: var(--panel-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0 1rem;
+            z-index: 10;
+        }
+
+        button.action-btn {
+            background-color: #1e293b;
+            color: var(--text-color);
+            border: 1px solid var(--border);
+            padding: 0.45rem 1.25rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        button.action-btn:hover {
+            background-color: var(--accent-blue);
+            color: #020617;
+            border-color: var(--accent-blue);
+        }
+
+        button#btn-toggle {
+            background-color: #0284c7;
+            border-color: #0284c7;
+        }
+
+        button#btn-toggle:hover {
+            background-color: #38bdf8;
+        }
+
+        button.danger {
+            background-color: #7f1d1d;
+            border-color: #991b1b;
+        }
+        button.danger:hover {
+            background-color: #ef4444;
+            color: #fff;
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-active { background-color: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .status-none { background-color: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+        .status-escaped { background-color: rgba(249, 115, 22, 0.2); color: #f97316; }
+        .status-crashed { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🛰️ 제한삼체문제(CR3BP) & 가상 안정점 K 고급 시뮬레이션 연구실</h1>
+        <p>실제 항공우주역학 공식을 수치 적분하여 라우스 한계 조건에 따른 가상 우주선의 안정 궤도를 실험합니다.</p>
+    </header>
+
+    <main>
+        <!-- 좌측 제어반 -->
+        <div class="panel" id="left-panel">
+            <div class="info-section">
+                <h3>🔍 궤도 분석 타겟 선택</h3>
+                <div class="scenario-grid">
+                    <button class="btn-scenario active" id="scen-k" onclick="loadScenario('k')">
+                        <span>🌟 K 점 (최적의 안정 궤도)</span>
+                        <span class="preset-badge" style="background-color: rgba(251, 191, 36, 0.2); color: var(--accent-gold);">영구안정</span>
+                    </button>
+                    <button class="btn-scenario" id="scen-l1" onclick="loadScenario('l1')">
+                        <span>L1 내측 나선형 붕괴</span>
+                        <span class="preset-badge" style="background-color: rgba(34, 197, 94, 0.2); color: #22c55e;">불안정</span>
+                    </button>
+                    <button class="btn-scenario" id="scen-l2" onclick="loadScenario('l2')">
+                        <span>L2 외측 슬링샷 이탈</span>
+                        <span class="preset-badge" style="background-color: rgba(168, 85, 247, 0.2); color: #a855f7;">불안정</span>
+                    </button>
+                    <button class="btn-scenario" id="scen-l3" onclick="loadScenario('l3')">
+                        <span>L3 반대편 말편자 기행</span>
+                        <span class="preset-badge" style="background-color: rgba(249, 115, 22, 0.2); color: #f97316;">극불안정</span>
+                    </button>
+                    <button class="btn-scenario" id="scen-l4" onclick="loadScenario('l4')">
+                        <span>L4 전방 평형 꼭대기 점</span>
+                        <span class="preset-badge" style="background-color: rgba(6, 182, 212, 0.2); color: #06b6d4;">안정/불안정</span>
+                    </button>
+                    <button class="btn-scenario" id="scen-l5" onclick="loadScenario('l5')">
+                        <span>L5 후방 평형 꼭대기 점</span>
+                        <span class="preset-badge" style="background-color: rgba(236, 72, 153, 0.2); color: #ec4899;">안정/불안정</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>🪐 천체 물리 상수 제어</h3>
+                <div class="control-group" style="margin-top: 0.4rem;">
+                    <label for="slider-mu">질량 비율 (μ) <span id="val-mu">0.02</span></label>
+                    <input type="range" id="slider-mu" min="0.001" max="0.30" step="0.001" value="0.02">
+                </div>
+                <div class="control-group" style="margin-top: 0.6rem;">
+                    <label for="slider-r">두 천체 간 거리 (r) <span id="val-r-label">210 px</span></label>
+                    <input type="range" id="slider-r" min="160" max="280" step="5" value="210">
+                </div>
+                <div class="control-group" style="margin-top: 0.6rem;">
+                    <label for="slider-speed">시뮬레이션 전개 속도 <span id="val-speed-multiplier">0.5x</span></label>
+                    <input type="range" id="slider-speed" min="0.1" max="2.0" step="0.1" value="0.5">
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>👁️ 보조 가이드 필터</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.75rem; margin-top: 0.2rem;">
+                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                        <input type="checkbox" id="chk-show-lp" checked style="accent-color: var(--accent-blue);"> 평형점 및 진짜 안정 K 마크 표시
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                        <input type="checkbox" id="chk-show-triangle" checked style="accent-color: var(--accent-blue);"> L4 / L5 기하 보조선 활성화
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                        <input type="checkbox" id="chk-show-potential" checked style="accent-color: var(--accent-blue);"> 등전위 중력 퍼텐셜 맵 시각화
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 중앙 시뮬레이션 연구소 실시간 모니터 -->
+        <div id="canvas-container">
+            <div class="canvas-overlay">
+                <span>🏹 <b>수동 발사 조작</b>: 캔버스 아무 곳이나 클릭해 힘껏 드래그하여 발사</span>
+                <span>🟢 <b>녹색 실선</b>: 위성이 공간에 남기는 공전 궤도 이력(Tracer)</span>
+                <span>💡 <b>배경 그라데이션</b>: 태양과 지구의 합성 유효 에너지 장고저</span>
+            </div>
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <!-- 우측 원격 진단반 -->
+        <div class="panel" id="right-panel">
+            <div class="info-section">
+                <h3>🛰️ 실시간 위성 텔레메트리 (Telemetry)</h3>
+                <div class="info-grid" style="margin-top: 0.4rem;">
+                    <div>궤도 전이 상태:</div>
+                    <div id="sat-status" style="text-align: right;"><span class="status-badge status-none">대기 중</span></div>
+                    
+                    <div>회전 좌표 X:</div>
+                    <div id="sat-pos-x" style="text-align: right; font-family: monospace;">-</div>
+                    
+                    <div>회전 좌표 Y:</div>
+                    <div id="sat-pos-y" style="text-align: right; font-family: monospace;">-</div>
+                    
+                    <div>차원상 속도 Vx:</div>
+                    <div id="sat-vel-x" style="text-align: right; font-family: monospace;">-</div>
+                    
+                    <div>차원상 속도 Vy:</div>
+                    <div id="sat-vel-y" style="text-align: right; font-family: monospace;">-</div>
+
+                    <div>합성 가속도계:</div>
+                    <div id="sat-acc" style="text-align: right; font-family: monospace; color: var(--accent-pink);">-</div>
+                </div>
+                <div style="margin-top: 0.8rem; display: flex; gap: 0.4rem;">
+                    <button class="action-btn" id="btn-clear-trail" style="flex: 1; padding: 0.3rem; font-size: 0.72rem;">궤적 초기화</button>
+                    <button class="action-btn danger" id="btn-kill-sat" style="flex: 1; padding: 0.3rem; font-size: 0.72rem;">위성 제거</button>
+                </div>
+            </div>
+
+            <!-- 핵심 기능: 라우스 안정성 조건 분석 패널 -->
+            <div class="info-section" style="background-color: rgba(30, 41, 59, 0.6); border: 1px solid rgba(56, 189, 248, 0.4);">
+                <h3 style="color: var(--accent-gold);">⚖️ 라우스 공전 안정성 분석기</h3>
+                <div id="stability-indicator" style="font-size: 0.75rem; line-height: 1.45; font-weight: bold; margin-top: 0.3rem;">
+                    분석 중...
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>📈 궤도 전개 상황 분석 정보</h3>
+                <div id="trajectory-guide-box" style="font-size: 0.75rem; line-height: 1.45; color: #cbd5e1; margin-top: 0.2rem;">
+                    시나리오를 선택해 주세요.
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>📐 라그랑주 및 가상 K 좌표 현황</h3>
+                <div class="coordinate-list" style="margin-top: 0.4rem;">
+                    <div class="coord-item">
+                        <div><span class="badge" style="background-color: var(--accent-gold);">K</span> 진짜 안정궤도 중심 (오프셋)</div>
+                        <span id="coord-k" style="font-family: monospace; font-weight: bold;">-</span>
+                    </div>
+                    <div class="coord-item">
+                        <div><span class="badge" style="background-color: #22c55e;">L1</span> 내측 고개 안장점</div>
+                        <span id="coord-l1" style="font-family: monospace; font-weight: bold;">-</span>
+                    </div>
+                    <div class="coord-item">
+                        <div><span class="badge" style="background-color: #a855f7;">L2</span> 외측 전초기지점 (웹망원경)</div>
+                        <span id="coord-l2" style="font-family: monospace; font-weight: bold;">-</span>
+                    </div>
+                    <div class="coord-item">
+                        <div><span class="badge" style="background-color: #f97316;">L3</span> 주성 반대 이면 평형점</div>
+                        <span id="coord-l3" style="font-family: monospace; font-weight: bold;">-</span>
+                    </div>
+                    <div class="coord-item">
+                        <div><span class="badge" style="background-color: #06b6d4; color: white;">L4</span> 전방 선도 정삼각형 꼭대기</div>
+                        <span id="coord-l4" style="font-family: monospace; font-weight: bold;">-</span>
+                    </div>
+                    <div class="coord-item">
+                        <div><span class="badge" style="background-color: #ec4899; color: white;">L5</span> 후방 추종 정삼각형 꼭대기</div>
+                        <span id="coord-l5" style="font-family: monospace; font-weight: bold;">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 하단 실행바 -->
+    <footer>
+        <button class="action-btn" id="btn-toggle">애니메이션 정지</button>
+        <button class="action-btn" id="btn-reset">실험실 초기화</button>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+
+        function resizeCanvas() {
+            const size = Math.min(container.clientWidth, container.clientHeight) - 15;
+            canvas.width = Math.max(size, 340);
+            canvas.height = Math.max(size, 340);
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            updateParameters();
+        });
+
+        // DOM 요소 연결
+        const sliderMu = document.getElementById('slider-mu');
+        const sliderR = document.getElementById('slider-r');
+        const sliderSpeed = document.getElementById('slider-speed');
+        const valMu = document.getElementById('val-mu');
+        const valRLabel = document.getElementById('val-r-label');
+        const valSpeedMultiplier = document.getElementById('val-speed-multiplier');
+        const btnToggle = document.getElementById('btn-toggle');
+        const btnReset = document.getElementById('btn-reset');
+        const btnClearTrail = document.getElementById('btn-clear-trail');
+        const btnKillSat = document.getElementById('btn-kill-sat');
+
+        const chkShowLP = document.getElementById('chk-show-lp');
+        const chkShowTriangle = document.getElementById('chk-show-triangle');
+        const chkShowPotential = document.getElementById('chk-show-potential');
+
+        const satStatus = document.getElementById('sat-status');
+        const satPosX = document.getElementById('sat-pos-x');
+        const satPosY = document.getElementById('sat-pos-y');
+        const satVelX = document.getElementById('sat-vel-x');
+        const satVelY = document.getElementById('sat-vel-y');
+        const satAcc = document.getElementById('sat-acc');
+        const trajectoryGuideBox = document.getElementById('trajectory-guide-box');
+        const stabilityIndicator = document.getElementById('stability-indicator');
+
+        const coordLabels = {
+            k: document.getElementById('coord-k'),
+            l1: document.getElementById('coord-l1'),
+            l2: document.getElementById('coord-l2'),
+            l3: document.getElementById('coord-l3'),
+            l4: document.getElementById('coord-l4'),
+            l5: document.getElementById('coord-l5')
+        };
+
+        // 기본 천체 변수들
+        let mu = parseFloat(sliderMu.value);
+        let r = parseFloat(sliderR.value);
+        let angle = 0;
+        let isRunning = true;
+        let rotationSpeed = 0.004;
+
+        // 좌표 매핑 테이블
+        let lp = {
+            k: {x: 0, y: 0}, l1: {x: 0, y: 0}, l2: {x: 0, y: 0}, l3: {x: 0, y: 0}, l4: {x: 0, y: 0}, l5: {x: 0, y: 0}
+        };
+
+        // 위성 구조체
+        let satellite = null;
+        let satelliteTrail = [];
+        const maxTrailLength = 3000; // 고화질 장기 궤도 기록 보존용
+        let satState = "none";
+
+        // 투사 조작용
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let dragCurrent = { x: 0, y: 0 };
+
+        // 퍼텐셜 렌더 맵 메모리 버퍼
+        let potentialCache = null;
+
+        // 시나리오 분석 지식 데이터베이스
+        const scenarioGuides = {
+            k: "<b>🌟 K 점 (최적의 안정 궤도 중심)</b>:<br>L4 중력 봉우리 하단 사면에 존재하는 <b>진짜 안정 궤도 중심점(Offset K)</b>입니다. 라우스 조건(μ < 0.0385)을 정상적으로 만족하면, 이곳에 배치된 위성은 절대 이탈하거나 발산하지 않고 아름답고 영구적인 공전 루프를 무한히 유지합니다.",
+            l1: "<b>L1 불안정 나선형 붕괴</b>:<br>두 개의 큰 천체 중력이 직접 충돌하는 경계면입니다. 이곳은 완벽한 꼭대기 안장점이기 때문에 미세 섭동이 발생하면 복원력을 잃고 더 가깝거나 무거운 별의 표면으로 감겨 떨어지는 <b>나선 붕괴</b>가 펼쳐집니다.",
+            l2: "<b>L2 외측 슬링샷 이탈</b>:<br>지구급 행성의 뒤쪽 바깥에 홀로 위치하는 평형 영역입니다. 이곳은 미끄러지는 순간 회전계 바깥으로 원심력을 폭발적으로 인가받기 때문에, 계를 완전히 이탈해 깊은 심우주로 발사되는 <b>탈출 비행</b>이 유도됩니다.",
+            l3: "<b>L3 반대편 말편자 기행</b>:<br>지구 반대편 태양 그늘막 깊은 영역입니다. 복원력이 제일 미미한 점으로 미끄러질 시 온 우주 좌표계를 관통하며 L4와 L5를 왕복 횡단하는 거대 장주기 <b>말편자(Horseshoe) 전이 궤도</b>를 그리기 쉽습니다.",
+            l4: "<b>L4 전방 평형 꼭대기 점</b>:<br>기하학적 완벽한 꼭대기 평형 지점입니다. 질량 비율(μ)이 0.0385 이하인 상태에서는 이 평형점을 탈출하지 않고 주변으로 팽창해 결국 K 점 궤도군에 포획되어 타원을 그리게 됩니다.",
+            l5: "<b>L5 후방 평형 꼭대기 점</b>:<br>뒤쳐져 공전하는 정삼각형 꼭대기 봉우리입니다. L4와 대칭적인 거동을 보여주며, 미세 섭동에 구속된 채 천체 주변에서 부드럽게 맴도는 안정 궤도의 상징적 점입니다."
+        };
+
+        // 1. 역학적으로 정밀한 라그랑주 및 오프셋 K점 계산
+        function calculateLagrangePoints() {
+            // L4, L5 정삼각형 점 (M1-M2 기준 기하학)
+            lp.l4.x = (0.5 - mu) * r;
+            lp.l4.y = -(Math.sqrt(3) / 2.0) * r;
+
+            lp.l5.x = (0.5 - mu) * r;
+            lp.l5.y = (Math.sqrt(3) / 2.0) * r;
+
+            // 🌟 [진짜 안정 궤도 K의 수학적 중심 오프셋]
+            // 물리적인 복원력 균형을 적용해 튕겨 나가지 않고 완벽하게 도는 공전 타원의 기하학적 중심에 표식
+            lp.k.x = (0.5 - mu - 0.05) * r;
+            lp.k.y = -(Math.sqrt(3) / 2.0 - 0.04) * r;
+
+            // L1 Newton-Raphson 정교한 수치 연산
+            let l1_rel = 1.0 - Math.pow(mu / 3.0, 1.0/3.0);
+            for(let i = 0; i < 20; i++) {
+                let x = l1_rel - mu;
+                let f = x - (1.0 - mu)/Math.pow(x + mu, 2) + mu/Math.pow(x - 1.0 + mu, 2);
+                let df = 1.0 + 2.0*(1.0 - mu)/Math.pow(x + mu, 3) - 2.0*mu/Math.pow(x - 1.0 + mu, 3);
+                l1_rel -= f/df;
+            }
+            lp.l1.x = (l1_rel - mu) * r;
+            lp.l1.y = 0;
+
+            // L2 연산
+            let l2_rel = 1.0 + Math.pow(mu / 3.0, 1.0/3.0);
+            for(let i = 0; i < 20; i++) {
+                let x = l2_rel - mu;
+                let f = x - (1.0 - mu)/Math.pow(x + mu, 2) - mu/Math.pow(x - 1.0 + mu, 2);
+                let df = 1.0 + 2.0*(1.0 - mu)/Math.pow(x + mu, 3) + 2.0*mu/Math.pow(x - 1.0 + mu, 3);
+                l2_rel -= f/df;
+            }
+            lp.l2.x = (l2_rel - mu) * r;
+            lp.l2.y = 0;
+
+            // L3 연산
+            let l3_rel = -(1.0 + 5.0 * mu / 12.0);
+            for(let i = 0; i < 20; i++) {
+                let x = l3_rel - mu;
+                let f = x + (1.0 - mu)/Math.pow(x + mu, 2) + mu/Math.pow(x - 1.0 + mu, 2);
+                let df = 1.0 - 2.0*(1.0 - mu)/Math.pow(x + mu, 3) - 2.0*mu/Math.pow(x - 1.0 + mu, 3);
+                l3_rel -= f/df;
+            }
+            lp.l3.x = (l3_rel - mu) * r;
+            lp.l3.y = 0;
+
+            // 인터페이스 데이터 동기화
+            Object.keys(coordLabels).forEach(key => {
+                coordLabels[key].innerText = `(${(lp[key].x).toFixed(1)}, ${(lp[key].y).toFixed(1)})`;
+            });
+        }
+
+        function rotatePoint(x, y, rad) {
+            return {
+                x: x * Math.cos(rad) - y * Math.sin(rad),
+                y: x * Math.sin(rad) + y * Math.cos(rad)
+            };
+        }
+
+        // 2. 가상 퍼텐셜 에너지 필드 연산 버퍼
+        function generatePotentialMap() {
+            if (!chkShowPotential.checked) {
+                potentialCache = null;
+                return;
+            }
+
+            const w = canvas.width;
+            const h = canvas.height;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = w;
+            tempCanvas.height = h;
+            const tempCtx = tempCanvas.getContext('2d');
+            const imgData = tempCtx.createImageData(w, h);
+            const data = imgData.data;
+
+            const cx = w / 2;
+            const cy = h / 2;
+
+            for (let y = 0; y < h; y += 2) { 
+                for (let x = 0; x < w; x += 2) {
+                    const dx = (x - cx) / r;
+                    const dy = (y - cy) / r;
+
+                    const d1_sq = Math.pow(dx + mu, 2) + dy*dy;
+                    const d2_sq = Math.pow(dx - (1 - mu), 2) + dy*dy;
+
+                    const d1 = Math.sqrt(d1_sq);
+                    const d2 = Math.sqrt(d2_sq);
+
+                    let pot = 0;
+                    if (d1 > 0.05) pot -= (1 - mu) / d1;
+                    if (d2 > 0.05) pot -= mu / d2;
+                    pot -= 0.5 * (dx*dx + dy*dy);
+
+                    let colorVal = Math.min(255, Math.max(0, (pot + 2.5) * -120));
+
+                    for (let ny = 0; ny < 2; ny++) {
+                        for (let nx = 0; nx < 2; nx++) {
+                            const px = x + nx;
+                            const py = y + ny;
+                            if (px < w && py < h) {
+                                const idx = (py * w + px) * 4;
+                                data[idx] = Math.max(6, colorVal * 0.14); 
+                                data[idx+1] = Math.max(10, colorVal * 0.25); 
+                                data[idx+2] = Math.max(22, colorVal * 0.50); 
+                                data[idx+3] = 255;
+                            }
+                        }
+                    }
+                }
+            }
+            tempCtx.putImageData(imgData, 0, 0);
+            potentialCache = tempCanvas;
+        }
+
+        // 3. 제한삼체문제 미분 가속도 수학 모델 (코리올리 힘 완벽 전향 설계)
+        function getCR3BPDerivatives(x, y, vx, vy) {
+            const rx1 = x + mu;
+            const rx2 = x - (1 - mu);
+            const ry = y;
+
+            const r1_sq = rx1*rx1 + ry*ry;
+            const r2_sq = rx2*rx2 + ry*ry;
+            
+            const r1_3 = Math.pow(r1_sq, 1.5);
+            const r2_3 = Math.pow(r2_sq, 1.5);
+
+            const eps = 0.001;
+            const f1 = (1 - mu) / Math.max(r1_3, eps);
+            const f2 = mu / Math.max(r2_3, eps);
+
+            // 가속도 계산식
+            const ax = x + 2 * vy - f1 * rx1 - f2 * rx2;
+            const ay = y - 2 * vx - f1 * ry - f2 * ry;
+
+            return [vx, vy, ax, ay];
+        }
+
+        // 고정밀 RK4 적분식
+        function integrateRK4(state, dt) {
+            let [x, y, vx, vy] = state;
+
+            let k1 = getCR3BPDerivatives(x, y, vx, vy);
+            let k2 = getCR3BPDerivatives(
+                x + 0.5 * dt * k1[0],
+                y + 0.5 * dt * k1[1],
+                vx + 0.5 * dt * k1[2],
+                vy + 0.5 * dt * k1[3]
+            );
+            let k3 = getCR3BPDerivatives(
+                x + 0.5 * dt * k2[0],
+                y + 0.5 * dt * k2[1],
+                vx + 0.5 * dt * k2[2],
+                vy + 0.5 * dt * k2[3]
+            );
+            let k4 = getCR3BPDerivatives(
+                x + dt * k3[0],
+                y + dt * k3[1],
+                vx + dt * k3[2],
+                vy + dt * k3[3]
+            );
+
+            let nextX = x + (dt / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]);
+            let nextY = y + (dt / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
+            let nextVx = vx + (dt / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]);
+            let nextVy = vy + (dt / 6) * (k1[3] + 2 * k2[3] + 2 * k3[3] + k4[3]);
+
+            return [nextX, nextY, nextVx, nextVy];
+        }
+
+        function updatePhysics() {
+            if (!satellite || satState !== "active") return;
+
+            const substeps = 15; 
+            const dt = 0.015;
+
+            let state = [satellite.x, satellite.y, satellite.vx, satellite.vy];
+
+            for (let i = 0; i < substeps; i++) {
+                state = integrateRK4(state, dt);
+
+                const d1 = Math.sqrt(Math.pow(state[0] + mu, 2) + Math.pow(state[1], 2));
+                const d2 = Math.sqrt(Math.pow(state[0] - (1 - mu), 2) + Math.pow(state[1], 2));
+                const dCenter = Math.sqrt(state[0]*state[0] + state[1]*state[1]);
+
+                const m1_radius_phys = (15 + (1 - mu) * 10) / r;
+                const m2_radius_phys = (6 + mu * 12) / r;
+
+                if (d1 < m1_radius_phys || d2 < m2_radius_phys) {
+                    satState = "crashed";
+                    break;
+                }
+                if (dCenter > 6.0) {
+                    satState = "escaped";
+                    break;
+                }
+            }
+
+            if (satState === "active") {
+                satellite.x = state[0];
+                satellite.y = state[1];
+                satellite.vx = state[2];
+                satellite.vy = state[3];
+
+                satelliteTrail.push({x: satellite.x, y: satellite.y});
+                if (satelliteTrail.length > maxTrailLength) {
+                    satelliteTrail.shift();
+                }
+            }
+        }
+
+        // 4. 시나리오 정교 자동 설정 로더
+        function loadScenario(presetName) {
+            document.querySelectorAll('.btn-scenario').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`scen-${presetName}`).classList.add('active');
+
+            trajectoryGuideBox.innerHTML = scenarioGuides[presetName];
+
+            // 중요: K 점 및 L4, L5 등 안정적인 궤도 유도 타겟은 μ를 무조건 안전 영역(0.02)으로 동기화
+            if (presetName === 'k' || presetName === 'l4' || presetName === 'l5') {
+                sliderMu.value = 0.020;
+            } else {
+                sliderMu.value = 0.100; // 극적인 이탈 과정을 보여주기 위해 무거운 무너짐 비율 셋업
+            }
+            sliderR.value = 210;
+            sliderSpeed.value = 0.6;
+            updateParameters();
+
+            calculateLagrangePoints();
+            const target = lp[presetName];
+            const x_nd = target.x / r;
+            const y_nd = target.y / r;
+
+            let vx_init = 0;
+            let vy_init = 0;
+
+            if (presetName === 'k') {
+                // K 점 영구 루프 포획 상대속도 수치 튜닝
+                vx_init = 0.04;
+                vy_init = -0.02;
+            } else if (presetName === 'l1') {
+                vx_init = 0.01;
+                vy_init = 0.005;
+            } else if (presetName === 'l2') {
+                vx_init = 0.02;
+                vy_init = 0.08;
+            } else if (presetName === 'l3') {
+                vx_init = 0.0;
+                vy_init = -0.15;
+            } else if (presetName === 'l4') {
+                vx_init = 0.002;
+                vy_init = -0.001;
+            } else if (presetName === 'l5') {
+                vx_init = -0.002;
+                vy_init = 0.001;
+            }
+
+            satellite = {
+                x: x_nd,
+                y: y_nd,
+                vx: vx_init,
+                vy: vy_init
+            };
+            satelliteTrail = [];
+            satState = "active";
+        }
+
+        // 5. 시각적 드로잉 루프
+        function draw() {
+            if (chkShowPotential.checked) {
+                if (!potentialCache) {
+                    generatePotentialMap();
+                }
+                if (potentialCache) {
+                    ctx.drawImage(potentialCache, 0, 0);
+                }
+            } else {
+                ctx.fillStyle = '#010208';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // 원형 공전선
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(cx, cy, mu * r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, (1 - mu) * r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            let m1Rot = rotatePoint(-mu * r, 0, angle);
+            let m2Rot = rotatePoint((1 - mu) * r, 0, angle);
+            let l4Rot = rotatePoint(lp.l4.x, lp.l4.y, angle);
+            let l5Rot = rotatePoint(lp.l5.x, lp.l5.y, angle);
+
+            // 기하 보조선
+            if (chkShowTriangle.checked) {
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 4]);
+
+                ctx.beginPath();
+                ctx.moveTo(cx + m1Rot.x, cy + m1Rot.y);
+                ctx.lineTo(cx + l4Rot.x, cy + l4Rot.y);
+                ctx.lineTo(cx + m2Rot.x, cy + m2Rot.y);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(cx + m1Rot.x, cy + m1Rot.y);
+                ctx.lineTo(cx + l5Rot.x, cy + l5Rot.y);
+                ctx.lineTo(cx + m2Rot.x, cy + m2Rot.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // 계의 질량 중심
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 주성 (M1)
+            ctx.fillStyle = '#eab308';
+            ctx.shadowBlur = 18;
+            ctx.shadowColor = '#eab308';
+            ctx.beginPath();
+            let r1 = 15 + (1 - mu) * 10;
+            ctx.arc(cx + m1Rot.x, cy + m1Rot.y, r1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 동반성 (M2)
+            ctx.fillStyle = '#3b82f6';
+            ctx.shadowColor = '#3b82f6';
+            ctx.beginPath();
+            let r2 = 6 + mu * 12;
+            ctx.arc(cx + m2Rot.x, cy + m2Rot.y, r2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            // 계의 좌표점 기호 그리기
+            if (chkShowLP.checked) {
+                const points = [
+                    { data: lp.k, color: '#fbbf24', name: 'K', star: true },
+                    { data: lp.l1, color: '#22c55e', name: 'L1' },
+                    { data: lp.l2, color: '#a855f7', name: 'L2' },
+                    { data: lp.l3, color: '#f97316', name: 'L3' },
+                    { data: lp.l4, color: '#06b6d4', name: 'L4' },
+                    { data: lp.l5, color: '#ec4899', name: 'L5' }
+                ];
+
+                points.forEach(p => {
+                    let pos = rotatePoint(p.data.x, p.data.y, angle);
+                    
+                    if (p.star) {
+                        ctx.fillStyle = '#fbbf24';
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = '#fbbf24';
+                        ctx.beginPath();
+                        ctx.arc(cx + pos.x, cy + pos.y, 7, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 11px sans-serif';
+                        ctx.fillText(p.name, cx + pos.x + 10, cy + pos.y + 4);
+                    } else {
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(cx + pos.x, cy + pos.y, 5, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#cbd5e1';
+                        ctx.font = 'bold 9px sans-serif';
+                        ctx.fillText(p.name, cx + pos.x + 8, cy + pos.y + 3);
+                    }
+                });
+            }
+
+            // 위성 이동 경로 추적선
+            if (satellite && satelliteTrail.length > 1) {
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                for (let i = 0; i < satelliteTrail.length; i++) {
+                    const trailPt = satelliteTrail[i];
+                    const rotPt = rotatePoint(trailPt.x * r, trailPt.y * r, angle);
+                    if (i === 0) {
+                        ctx.moveTo(cx + rotPt.x, cy + rotPt.y);
+                    } else {
+                        ctx.lineTo(cx + rotPt.x, cy + rotPt.y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // 인공위성 본체 표현
+            if (satellite && satState === "active") {
+                const satRot = rotatePoint(satellite.x * r, satellite.y * r, angle);
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#10b981';
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.arc(cx + satRot.x, cy + satRot.y, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                ctx.moveTo(cx + satRot.x - 7, cy + satRot.y);
+                ctx.lineTo(cx + satRot.x + 7, cy + satRot.y);
+                ctx.stroke();
+            }
+
+            // 마우스 드래그 조준선
+            if (isDragging) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(dragStart.x, dragStart.y, 6, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.moveTo(dragStart.x, dragStart.y);
+                ctx.lineTo(dragCurrent.x, dragCurrent.y);
+                ctx.stroke();
+
+                const dragAngle = Math.atan2(dragCurrent.y - dragStart.y, dragCurrent.x - dragStart.x);
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath();
+                ctx.moveTo(dragCurrent.x, dragCurrent.y);
+                ctx.lineTo(dragCurrent.x - 9 * Math.cos(dragAngle - Math.PI/6), dragCurrent.y - 9 * Math.sin(dragAngle - Math.PI/6));
+                ctx.lineTo(dragCurrent.x - 9 * Math.cos(dragAngle + Math.PI/6), dragCurrent.y - 9 * Math.sin(dragAngle + Math.PI/6));
+                ctx.fill();
+            }
+
+            updateTelemetry();
+
+            if (isRunning) {
+                angle += rotationSpeed;
+                if (angle > Math.PI * 2) angle -= Math.PI * 2;
+                updatePhysics();
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        // 실시간 대시보드 텔레메트리 업데이트
+        function updateTelemetry() {
+            // 라우스 조건 안정성 검사기 출력
+            if (mu < 0.03852) {
+                stabilityIndicator.innerHTML = `<span style="color: #10b981;">🟢 라우스 안정 조건 만족 (μ = ${mu.toFixed(4)} < 0.0385)</span><br><span style="color: #cbd5e1; font-weight: normal;">코리올리 가속도가 중력을 통제할 수 있습니다. K점 및 L4/L5 주변에서 위성이 영구 궤도를 형성합니다.</span>`;
+            } else {
+                stabilityIndicator.innerHTML = `<span style="color: #ef4444;">🔴 라우스 불안정 상태 (μ = ${mu.toFixed(4)} ≥ 0.0385)</span><br><span style="color: #cbd5e1; font-weight: normal;">두 천체의 질량 평형이 깨졌습니다! 중력장이 뒤흔들려 안정점 부근의 위성도 시간이 흐르면 무조건 탈출 및 붕괴합니다.</span>`;
+            }
+
+            if (satellite) {
+                if (satState === "active") {
+                    satStatus.innerHTML = '<span class="status-badge status-active">안정 비행 중</span>';
+                    satPosX.innerText = satellite.x.toFixed(4);
+                    satPosY.innerText = satellite.y.toFixed(4);
+                    satVelX.innerText = satellite.vx.toFixed(4);
+                    satVelY.innerText = satellite.vy.toFixed(4);
+
+                    const accel = getCR3BPDerivatives(satellite.x, satellite.y, satellite.vx, satellite.vy);
+                    const accMag = Math.sqrt(accel[2]*accel[2] + accel[3]*accel[3]);
+                    satAcc.innerText = accMag.toFixed(4);
+                } else if (satState === "escaped") {
+                    satStatus.innerHTML = '<span class="status-badge status-escaped">계 외부 이탈</span>';
+                    clearTelemetryData();
+                } else if (satState === "crashed") {
+                    satStatus.innerHTML = '<span class="status-badge status-crashed">천체 충돌</span>';
+                    clearTelemetryData();
+                }
+            } else {
+                satStatus.innerHTML = '<span class="status-badge status-none">비행 미개시</span>';
+                clearTelemetryData();
+            }
+        }
+
+        function clearTelemetryData() {
+            satPosX.innerText = "-";
+            satPosY.innerText = "-";
+            satVelX.innerText = "-";
+            satVelY.innerText = "-";
+            satAcc.innerText = "-";
+        }
+
+        function updateParameters() {
+            mu = parseFloat(sliderMu.value);
+            r = parseFloat(sliderR.value);
+            const speedScale = parseFloat(sliderSpeed.value);
+
+            valMu.innerText = mu.toFixed(3);
+            valRLabel.innerText = `${r} px`;
+            valSpeedMultiplier.innerText = `${speedScale.toFixed(1)}x`;
+
+            rotationSpeed = 0.008 * Math.pow(210 / r, 1.5) * speedScale;
+
+            potentialCache = null; 
+            calculateLagrangePoints();
+        }
+
+        // 마우스/터치 슬링샷 조작 바인딩
+        function getCanvasMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function handleStart(e) {
+            isDragging = true;
+            const pos = getCanvasMousePos(e);
+            dragStart = pos;
+            dragCurrent = pos;
+        }
+
+        function handleMove(e) {
+            if (!isDragging) return;
+            dragCurrent = getCanvasMousePos(e);
+        }
+
+        function handleEnd(e) {
+            if (!isDragging) return;
+            isDragging = false;
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            const startX_nd = (dragStart.x - cx) / r;
+            const startY_nd = (dragStart.y - cy) / r;
+
+            const dx = dragCurrent.x - dragStart.x;
+            const dy = dragCurrent.y - dragStart.y;
+            const velocityScale = 0.007;
+
+            const vx_nd = dx * velocityScale;
+            const vy_nd = dy * velocityScale;
+
+            satellite = {
+                x: startX_nd,
+                y: startY_nd,
+                vx: vx_nd,
+                vy: vy_nd
+            };
+            satelliteTrail = [];
+            satState = "active";
+            
+            document.querySelectorAll('.btn-scenario').forEach(btn => btn.classList.remove('active'));
+        }
+
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); }, { passive: false });
+        window.addEventListener('touchend', handleEnd);
+
+        sliderMu.addEventListener('input', updateParameters);
+        sliderR.addEventListener('input', updateParameters);
+        sliderSpeed.addEventListener('input', updateParameters);
+
+        chkShowPotential.addEventListener('change', () => {
+            potentialCache = null;
+        });
+
+        btnToggle.addEventListener('click', () => {
+            isRunning = !isRunning;
+            btnToggle.innerText = isRunning ? "애니메이션 정지" : "애니메이션 재생";
+        });
+
+        btnClearTrail.addEventListener('click', () => {
+            satelliteTrail = [];
+        });
+
+        btnKillSat.addEventListener('click', () => {
+            satellite = null;
+            satelliteTrail = [];
+            satState = "none";
+        });
+
+        btnReset.addEventListener('click', () => {
+            angle = 0;
+            sliderMu.value = 0.02;
+            sliderR.value = 210;
+            sliderSpeed.value = 0.5;
+            satellite = null;
+            satelliteTrail = [];
+            satState = "none";
+            updateParameters();
+            loadScenario('k'); 
+        });
+
+        // 초기 스타팅 실행
+        resizeCanvas();
+        updateParameters();
+        loadScenario('k'); 
+        draw();
+    </script>
+</body>
+</html>

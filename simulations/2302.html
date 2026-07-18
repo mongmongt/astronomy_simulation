@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급 지구과학 가상 실험실 - 금성의 위상 및 시직경 변화 시뮬레이터</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX for Mathematical equations -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    
+    <style>
+        /* 프리미엄 천문학 콘솔 및 갈릴레이 빈티지 조화를 위한 폰트 적용 */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;800;900&family=Oxanium:wght@450;650;850&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        
+        .font-orbitron {
+            font-family: 'Oxanium', sans-serif;
+        }
+        .font-title {
+            font-family: 'Cinzel', 'Noto Sans KR', serif;
+            letter-spacing: 0.06em;
+        }
+        .font-galileo {
+            font-family: 'Cinzel Decorative', 'Cinzel', serif;
+        }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #030712;
+            background-image: linear-gradient(rgba(3, 7, 18, 0.7), rgba(3, 7, 18, 0.95)), url('dnwn.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            transition: background 0.5s ease;
+        }
+        /* Galileo Mode Vintage Theme Background Transition */
+        body.galileo-theme {
+            background-image: linear-gradient(rgba(10, 8, 4, 0.9), rgba(15, 10, 5, 0.98)), url('dnwn.jpg');
+        }
+
+        /* Glassmorphism Premium UI panels */
+        .glass-panel {
+            background: rgba(11, 17, 32, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.65);
+            transition: all 0.3s ease;
+        }
+        .galileo-theme .glass-panel {
+            background: rgba(35, 25, 15, 0.65);
+            border: 1px solid rgba(190, 140, 75, 0.2);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        /* Custom Glowing Slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(8, 12, 24, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 9999px;
+            height: 6px;
+        }
+        .galileo-theme input[type="range"] {
+            background: rgba(30, 20, 10, 0.9);
+            border: 1px solid rgba(190, 140, 75, 0.3);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #2dd4bf;
+            cursor: pointer;
+            box-shadow: 0 0 12px #2dd4bf;
+            transition: all 0.1s ease-in-out;
+        }
+        .galileo-theme input[type="range"]::-webkit-slider-thumb {
+            background: #d97706;
+            box-shadow: 0 0 12px #d97706;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-500">
+
+    <!-- Header -->
+    <header class="border-b border-white/5 bg-slate-950/60 backdrop-blur-md sticky top-0 z-50 px-6 py-4 transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center border border-teal-500/30 transition-all duration-300" id="headerIconContainer">
+                    <i class="fa-solid fa-shuttle-space text-teal-400 text-xl animate-pulse" id="headerIcon"></i>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-teal-400 tracking-widest uppercase font-orbitron transition-all" id="headerSub">Advanced Astrophysics Simulator</span>
+                    <h1 class="text-lg md:text-2xl font-black text-white flex items-center gap-2 font-title" id="headerTitle">
+                        THE VENUS ALIGNMENT
+                    </h1>
+                </div>
+            </div>
+            
+            <!-- Observation Mode Selector Switch (현대 관측 vs 갈릴레이 관측) -->
+            <div class="flex bg-slate-950/80 p-1.5 rounded-xl border border-white/5 gap-1 shadow-inner">
+                <button id="btnModernMode" onclick="toggleObservatoryMode('modern')" class="py-1.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center gap-1.5 bg-teal-500 text-slate-950">
+                    <i class="fa-solid fa-satellite"></i> 2026 현대 관측 모드
+                </button>
+                <button id="btnGalileoMode" onclick="toggleObservatoryMode('galileo')" class="py-1.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center gap-1.5 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-binoculars"></i> 1610 갈릴레이 모드
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Side: Control & Explanations (Lg: 5 columns) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- Mode Selection Card -->
+            <div class="glass-panel rounded-2xl p-5">
+                <h2 class="text-[10px] font-bold text-teal-400 uppercase tracking-widest mb-3 flex items-center gap-2 font-orbitron">
+                    <i class="fa-solid fa-compass text-teal-400"></i> SYSTEM MODE SELECT
+                </h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btnSandbox" onclick="switchMode('sandbox')" class="py-2.5 px-4 rounded-xl font-medium text-xs md:text-sm transition-all duration-300 flex flex-col items-center gap-1 bg-teal-500 text-slate-950 font-bold shadow-lg shadow-teal-500/10 border border-teal-400/20">
+                        <span><i class="fa-solid fa-sliders mr-1"></i> 자유 조절 모드</span>
+                        <span class="text-[9px] opacity-80 font-normal">거리 및 위상각 개별 조작</span>
+                    </button>
+                    <button id="btnOrbit" onclick="switchMode('orbit')" class="py-2.5 px-4 rounded-xl font-medium text-xs md:text-sm transition-all duration-300 flex flex-col items-center gap-1 bg-slate-950/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-white/5">
+                        <span><i class="fa-solid fa-orbit mr-1"></i> 공전 궤도 연동 모드</span>
+                        <span class="text-[9px] opacity-80 font-normal">실제 우주 공전 기하 연동</span>
+                    </button>
+                </div>
+                <p id="modeDesc" class="mt-3 text-xs text-slate-400 leading-relaxed bg-black/40 p-3 rounded-xl border border-white/5">
+                    <strong>자유 조절 모드:</strong> 과학적 변인 조작 분석을 위해 사잇각 $i$와 지구-금성 거리 $a$를 서로 구속하지 않고 각각 개별적으로 세밀하게 움직여볼 수 있는 탐구형 모드입니다.
+                </p>
+            </div>
+
+            <!-- Interactive Sliders & Animation Engine Controller Panel -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col gap-5">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-[10px] font-bold text-teal-400 uppercase tracking-widest flex items-center gap-2 font-orbitron">
+                        <i class="fa-solid fa-sliders"></i> TELEMETRY CONTROLS
+                    </h2>
+                    <!-- Animation Play/Pause Controls -->
+                    <div class="flex gap-2">
+                        <button id="btnPlay" onclick="toggleAnimation()" class="px-3 py-1 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 hover:bg-emerald-400 flex items-center gap-1">
+                            <i class="fa-solid fa-play"></i> PLAY
+                        </button>
+                        <button id="btnSpeed" onclick="cycleSpeed()" class="px-2 py-1 rounded-lg text-xs font-bold transition-all bg-slate-850 hover:bg-slate-750 text-slate-300 border border-white/5 font-orbitron">
+                            1.0x
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Control 1: Angle i (Phase Angle) -->
+                <div id="controlGroupAngle" class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs md:text-sm font-bold text-slate-200 flex items-center gap-2 font-title">
+                            <span class="w-5 h-5 rounded bg-teal-500/20 text-teal-400 text-xs flex items-center justify-center font-bold font-orbitron">1</span>
+                            태양-금성-지구 사잇각 ($i$)
+                        </span>
+                        <span id="angleBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 font-orbitron">PHASE ANGLE</span>
+                    </div>
+                    <div class="relative mt-1">
+                        <input type="range" id="sliderAngle" min="0" max="180" step="0.5" value="90" class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 px-1 font-orbitron">
+                        <span>0° (외합)</span>
+                        <span class="font-bold text-teal-400 text-sm" id="valAngle">90.0°</span>
+                        <span>180° (내합)</span>
+                    </div>
+                </div>
+
+                <!-- Control 2: Distance a (Earth to Venus) -->
+                <div id="controlGroupDistance" class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs md:text-sm font-bold text-slate-200 flex items-center gap-2 font-title">
+                            <span class="w-5 h-5 rounded bg-teal-500/20 text-teal-400 text-xs flex items-center justify-center font-bold font-orbitron">2</span>
+                            지구-금성 사이의 거리 ($a$)
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-bold font-orbitron">DISTANCE (AU)</span>
+                    </div>
+                    <div class="relative mt-1">
+                        <input type="range" id="sliderDistance" min="0.28" max="1.72" step="0.01" value="1.00" class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 px-1 font-orbitron">
+                        <span>Min 0.28 AU</span>
+                        <span class="font-bold text-teal-400 text-sm" id="valDistance">1.00 AU</span>
+                        <span>Max 1.72 AU</span>
+                    </div>
+                </div>
+
+                <!-- Control 3: Orbital Phase (Visible only in Orbit Link Mode) -->
+                <div id="controlGroupOrbit" class="flex flex-col gap-2 hidden">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs md:text-sm font-bold text-slate-200 flex items-center gap-2 font-title">
+                            <span class="w-5 h-5 rounded bg-teal-500/20 text-teal-400 text-xs flex items-center justify-center font-bold font-orbitron">★</span>
+                            금성의 궤도 위치 각도 ($\theta_v$)
+                        </span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-400 border border-teal-500/30 font-orbitron">ORBITAL DEG</span>
+                    </div>
+                    <div class="relative mt-1">
+                        <input type="range" id="sliderOrbit" min="0" max="360" step="1" value="45" class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 px-1 font-orbitron">
+                        <span>0°</span>
+                        <span class="font-bold text-teal-400 text-sm" id="valOrbit">45°</span>
+                        <span>360°</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mathematical Core Formulas Panel -->
+            <div class="glass-panel rounded-2xl p-5">
+                <h2 class="text-[10px] font-bold text-teal-400 uppercase tracking-widest mb-3 flex items-center gap-2 font-orbitron">
+                    <i class="fa-solid fa-calculator"></i> ASTROPHYSICS EQUATIONS
+                </h2>
+                <div class="flex flex-col gap-3 text-xs md:text-sm text-slate-300">
+                    <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                        <div class="font-bold text-teal-300 mb-1 text-xs uppercase tracking-wider font-orbitron">1. 위상 밝기 비율 수식 ($F$)</div>
+                        <div class="text-center my-2 text-white text-base py-1 font-orbitron">
+                            <span class="math-tex">F = \frac{1 + \cos(i)}{2}</span>
+                        </div>
+                    </div>
+                    <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                        <div class="font-bold text-teal-300 mb-1 text-xs uppercase tracking-wider font-orbitron">2. 시직경 비례 공식 ($\theta$)</div>
+                        <div class="text-center my-2 text-white text-base py-1 font-orbitron">
+                            <span class="math-tex">\theta \propto \frac{1}{a}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Side: Visualization & Real-time Output (Lg: 7 columns) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- Real-time Output Viewports (Apparent View & Orbit Map) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Viewport 1: Earth Observation Apparent View -->
+                <div class="glass-panel rounded-2xl p-5 flex flex-col items-center">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <h3 class="text-xs md:text-sm font-bold text-slate-200 flex items-center gap-1.5 font-title" id="observeTitle">
+                            <i class="fa-solid fa-eye text-teal-400"></i> ① 지구 관측망 실시간 뷰 (위상/크기)
+                        </h3>
+                        <span class="text-[10px] font-orbitron text-slate-400 uppercase" id="observeSubtitle">Observer View</span>
+                    </div>
+                    <!-- Outer container of canvas to ensure aspect ratio -->
+                    <div class="relative w-full aspect-square max-w-[280px] bg-black rounded-xl border border-white/5 overflow-hidden flex items-center justify-center">
+                        <canvas id="canvasApparent" class="absolute z-10 w-full h-full cursor-crosshair"></canvas>
+                        
+                        <!-- Mini Scale Indicator -->
+                        <div class="absolute bottom-2 right-2 z-20 text-[9px] text-slate-400 bg-slate-950/80 px-2 py-0.5 rounded border border-white/5 font-orbitron">
+                            GRID RATIO: 1:1
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <span id="apparentPhaseLabel" class="px-3 py-1 rounded-full bg-teal-500/10 text-teal-300 border border-teal-500/20 text-xs font-bold font-title">
+                            위상: 불러오는 중...
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Viewport 2: Orbit Diagram Map -->
+                <div class="glass-panel rounded-2xl p-5 flex flex-col items-center">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <h3 class="text-xs md:text-sm font-bold text-slate-200 flex items-center gap-1.5 font-title">
+                            <i class="fa-solid fa-globe text-teal-400"></i> ② 공전면 궤도 기하도 및 기하학 배치
+                        </h3>
+                        <!-- 태양계 전체보기 제어 토글 버튼 추가 -->
+                        <button id="btnToggleSystem" onclick="toggleSolarSystemScale()" class="px-2 py-1 text-[9px] font-bold bg-teal-500/20 text-teal-400 border border-teal-500/30 rounded hover:bg-teal-500 hover:text-slate-950 transition-all font-orbitron">
+                            태양계 전체보기
+                        </button>
+                    </div>
+                    <!-- Outer container of canvas to ensure aspect ratio -->
+                    <div class="relative w-full aspect-square max-w-[280px] bg-slate-950 rounded-xl border border-white/5 overflow-hidden flex items-center justify-center">
+                        <canvas id="canvasOrbit" class="absolute w-full h-full"></canvas>
+                        
+                        <!-- Drag help overlay -->
+                        <div id="dragPrompt" class="absolute top-2 left-2 z-20 text-[9px] text-teal-400 bg-slate-950/80 px-2 py-1 rounded border border-teal-500/20 flex items-center gap-1 font-orbitron">
+                            <i class="fa-solid fa-mouse-pointer animate-bounce"></i> DRAG VENUS ORBIT
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center text-[11px] text-slate-400 leading-relaxed px-2 font-title" id="orbitMapDesc">
+                        실제 행성 텍스처를 매핑한 공전면 탑뷰입니다.<br>
+                        태양빛 반대 방향으로 <span class="text-teal-400 font-bold">리얼 블랙 그림자</span>가 드리웁니다.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Instrument Readout Board -->
+            <div class="glass-panel rounded-2xl p-5">
+                <h2 class="text-xs font-bold text-teal-400 uppercase tracking-widest mb-4 flex items-center gap-2 font-orbitron" id="boardTitle">
+                    <i class="fa-solid fa-chart-simple"></i> INSTRUMENTATION READOUTS
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Readout 1 -->
+                    <div class="bg-black/50 border border-white/5 p-3.5 rounded-xl flex flex-col justify-between">
+                        <span class="text-[11px] text-slate-400 font-bold font-title" id="lblReadout1">빛을 받는 면적 (위상 비율)</span>
+                        <div class="mt-2 flex items-baseline gap-1">
+                            <span id="dataPhaseRatio" class="text-xl md:text-2xl font-bold font-orbitron text-white">50.0</span>
+                            <span class="text-xs text-teal-400 font-bold font-orbitron">%</span>
+                        </div>
+                    </div>
+                    <!-- Readout 2 -->
+                    <div class="bg-black/50 border border-white/5 p-3.5 rounded-xl flex flex-col justify-between">
+                        <span class="text-[11px] text-slate-400 font-bold font-title" id="lblReadout2">실제적 시직경</span>
+                        <div class="mt-2 flex items-baseline gap-1">
+                            <span id="dataAngularSize" class="text-xl md:text-2xl font-bold font-orbitron text-white">58.0</span>
+                            <span class="text-xs text-teal-400 font-bold font-orbitron">초 (")</span>
+                        </div>
+                    </div>
+                    <!-- Readout 3 -->
+                    <div class="bg-black/50 border border-white/5 p-3.5 rounded-xl flex flex-col justify-between">
+                        <span class="text-[11px] text-slate-400 font-bold font-title" id="lblReadout3">지구-금성 거리</span>
+                        <div class="mt-2 flex items-baseline gap-1">
+                            <span id="dataDistance" class="text-xl md:text-2xl font-bold font-orbitron text-white">1.000</span>
+                            <span class="text-xs text-teal-400 font-bold font-orbitron">AU</span>
+                        </div>
+                    </div>
+                    <!-- Readout 4 -->
+                    <div class="bg-black/50 border border-white/5 p-3.5 rounded-xl flex flex-col justify-between">
+                        <span class="text-[11px] text-slate-400 font-bold font-title" id="lblReadout4">예상 겉보기 등급 ($m$)</span>
+                        <div class="mt-2 flex items-baseline gap-1">
+                            <span id="dataMagnitude" class="text-xl md:text-2xl font-bold font-orbitron text-amber-400">-4.15</span>
+                            <span class="text-xs text-amber-500 font-bold font-orbitron font-orbitron">등급</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Helper (수행평가 보고서 도우미) -->
+            <div class="glass-panel rounded-2xl p-5">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-bold text-teal-400 uppercase tracking-widest flex items-center gap-2 font-orbitron" id="reportTitle">
+                        <i class="fa-solid fa-file-pen"></i> LAB NOTE REPORT TIPS (20점 보증)
+                    </h2>
+                    <button onclick="toggleReport()" class="text-xs text-teal-400 hover:text-teal-300 font-bold flex items-center gap-1 font-orbitron">
+                        <span id="reportBtnText">EXPAND</span> <i id="reportIcon" class="fa-solid fa-chevron-down"></i>
+                    </button>
+                </div>
+                
+                <div id="reportSection" class="hidden flex flex-col gap-4 mt-3 pt-3 border-t border-white/5 transition-all duration-300">
+                    <div class="bg-black/60 p-4 rounded-xl border border-white/5 text-xs md:text-sm leading-relaxed text-slate-300 flex flex-col gap-3" id="reportContent">
+                        <p class="text-teal-300 font-bold flex items-center gap-1 font-title">
+                            <i class="fa-solid fa-circle-info"></i> 수행평가 산출물 소개용 핵심 포인트
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+                            <div class="bg-slate-900/40 p-3 rounded-lg border border-white/5">
+                                <span class="font-bold text-teal-400 font-title">1. 시뮬레이션 제작 목적</span>
+                                <p class="text-slate-400 text-[11px] mt-1 leading-relaxed">우주 공간의 천체 배치 변화에 따라 지구에서 보는 내행성의 위상, 시직경 및 밝기 등급 변동성을 관측하기 위해 고안됨. 특히 실제 텍스처를 캔버스 엔진에 입히고 구면 좌표계를 기반으로 투영 마스크를 제어하여 사실적인 우주 환경 관측을 구현함.</p>
+                            </div>
+                            <div class="bg-slate-900/40 p-3 rounded-lg border border-white/5">
+                                <span class="font-bold text-teal-400 font-title">2. 과학적 한계점 및 자전/공전 속도 분석</span>
+                                <p class="text-slate-400 text-[11px] mt-1 leading-relaxed"><b>물리량 한계점:</b> 본 프로그램은 시각적 관측 효과를 위해 행성간 크기 비율과 자전 및 공전 주기 비율을 실제 비율(예: 금성의 실제 1 자전일은 243 지구일)과 다르게 시각 감도가 높은 배율로 축소/조정하여 시뮬레이션을 단순화하였음.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 bg-slate-950/40 py-4 px-6 text-center text-xs text-slate-500 font-orbitron">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+            <p>© 2026 ADVANCED EARTH SCIENCE ASTROPHYSICS LAB. ALL RIGHTS RESERVED.</p>
+            <p class="text-teal-500/80">REALISTIC OPTICS ENGINE IMPLEMENTED <i class="fa-solid fa-circle-check"></i></p>
+        </div>
+    </footer>
+
+    <!-- Simulation Engine Logic JavaScript -->
+    <script>
+        // DOM Elements
+        const sliderAngle = document.getElementById('sliderAngle');
+        const sliderDistance = document.getElementById('sliderDistance');
+        const sliderOrbit = document.getElementById('sliderOrbit');
+
+        const valAngle = document.getElementById('valAngle');
+        const valDistance = document.getElementById('valDistance');
+        const valOrbit = document.getElementById('valOrbit');
+
+        const dataPhaseRatio = document.getElementById('dataPhaseRatio');
+        const dataAngularSize = document.getElementById('dataAngularSize');
+        const dataDistance = document.getElementById('dataDistance');
+        const dataMagnitude = document.getElementById('dataMagnitude');
+
+        const apparentPhaseLabel = document.getElementById('apparentPhaseLabel');
+        const modeDesc = document.getElementById('modeDesc');
+
+        const controlGroupAngle = document.getElementById('controlGroupAngle');
+        const controlGroupDistance = document.getElementById('controlGroupDistance');
+        const controlGroupOrbit = document.getElementById('controlGroupOrbit');
+        const dragPrompt = document.getElementById('dragPrompt');
+
+        // Canvases
+        const canvasApparent = document.getElementById('canvasApparent');
+        const ctxApparent = canvasApparent.getContext('2d');
+        const canvasOrbit = document.getElementById('canvasOrbit');
+        const ctxOrbit = canvasOrbit.getContext('2d');
+
+        // Global State
+        let currentMode = 'sandbox'; 
+        let venusOrbitAngle = 45; 
+        let isDraggingVenus = false;
+
+        // --- 관측 과학 모드 상태값 (modern vs galileo) ---
+        let currentObservatoryMode = 'modern';
+
+        // --- [NEW] 태양계 전체보기 축적 모드 상태값 (기본: 지구/금성 정밀 뷰) ---
+        let isSolarSystemScale = false;
+
+        // --- 애니메이션 엔진 관련 변수 및 물리 상태값 추가 ---
+        let isAnimating = false;
+        let animationFrameId = null;
+        let playSpeedMultiplier = 1.0; 
+        const speedPresets = [0.5, 1.0, 2.0, 5.0];
+        let speedPresetIdx = 1;
+
+        // [NEW] 지구 및 다른 행성들의 독자적인 실시간 공전 각도 상태값 추가 ★
+        let earthOrbitAngle = 0; // 지구가 공전 궤도를 실제 회전하도록 각도 초기화
+        let mercuryOrbitAngle = 100;
+        let marsOrbitAngle = 180;
+
+        // 행성 자전각 데이터
+        let earthRotationAngle = 0; 
+        let venusRotationAngle = 0; 
+        let sunRotationAngle = 0;   
+        let mercuryRotationAngle = 0;
+        let marsRotationAngle = 0;
+
+        // Constants (Physical Values)
+        const R_Earth = 1.00; 
+        const R_Venus = 0.723; 
+        
+        // 추가된 내행성계 실제 공전궤도 반지름 비율
+        const R_Mercury = 0.387;
+        const R_Mars = 1.524;
+
+        // --- 이미지 객체 사전 정의 ---
+        const bgImg = new Image();
+        bgImg.src = 'dnwn.jpg';
+
+        const venusImg = new Image();
+        venusImg.src = '금성.jpeg';
+
+        const earthImg = new Image();
+        earthImg.src = '지구.webp';
+
+        const sunImg = new Image();
+        sunImg.src = '태양ㅇ.jpeg';
+
+        // 오류 방지 설계
+        bgImg.onload = () => updateSimulation();
+        venusImg.onload = () => updateSimulation();
+        earthImg.onload = () => updateSimulation();
+        sunImg.onload = () => updateSimulation();
+
+        // Setup Responsive Canvas Resolution
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            
+            // Adjust canvasApparent
+            const apparentRect = canvasApparent.parentNode.getBoundingClientRect();
+            if (apparentRect.width > 0 && apparentRect.height > 0) {
+                canvasApparent.width = apparentRect.width * dpr;
+                canvasApparent.height = apparentRect.height * dpr;
+                ctxApparent.resetTransform();
+                ctxApparent.scale(dpr, dpr);
+            }
+
+            // Adjust canvasOrbit
+            const orbitRect = canvasOrbit.parentNode.getBoundingClientRect();
+            if (orbitRect.width > 0 && orbitRect.height > 0) {
+                canvasOrbit.width = orbitRect.width * dpr;
+                canvasOrbit.height = orbitRect.height * dpr;
+                ctxOrbit.resetTransform();
+                ctxOrbit.scale(dpr, dpr);
+            }
+
+            updateSimulation();
+        }
+
+        // Switch simulation mode (sandbox vs orbit)
+        function switchMode(mode) {
+            currentMode = mode;
+            const btnSandbox = document.getElementById('btnSandbox');
+            const btnOrbit = document.getElementById('btnOrbit');
+
+            if (mode === 'sandbox') {
+                btnSandbox.className = "py-2.5 px-4 rounded-xl font-medium text-xs md:text-sm transition-all duration-300 flex flex-col items-center gap-1 bg-teal-500 text-slate-950 font-bold shadow-lg shadow-teal-500/10 border border-teal-400/20";
+                btnOrbit.className = "py-2.5 px-4 rounded-xl font-medium text-xs md:text-sm transition-all duration-300 flex flex-col items-center gap-1 bg-slate-950/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-white/5";
+                
+                controlGroupAngle.classList.remove('hidden');
+                controlGroupDistance.classList.remove('hidden');
+                controlGroupOrbit.classList.add('hidden');
+                dragPrompt.classList.add('hidden');
+
+                if (currentObservatoryMode === 'modern') {
+                    modeDesc.innerHTML = `<strong>자유 조절 모드:</strong> 과학적 변인 조작 분석을 위해 사잇각 $i$와 지구-금성 거리 $a$를 서로 구속하지 않고 각각 개별적으로 세밀하게 움직여볼 수 있는 탐구형 모드입니다.`;
+                } else {
+                    modeDesc.innerHTML = `<strong>자유 조절 모드(갈릴레이):</strong> 1610년식 망원경 접안렌즈를 바라보며 태양-금성 사잇각과 거리를 변경해봅니다. 당대의 천동설로는 절대 설명 불가능했던 금성의 보름달 위상을 탐구해보세요.`;
+                }
+                
+                if (isAnimating) {
+                    toggleAnimation();
+                }
+            } else {
+                btnOrbit.className = "py-2.5 px-4 rounded-xl font-medium text-xs md:text-sm transition-all duration-300 flex flex-col items-center gap-1 bg-teal-500 text-slate-950 font-bold shadow-lg shadow-teal-500/10 border border-teal-400/20";
+                btnSandbox.className = "py-2.5 px-4 rounded-xl font-medium text-xs md:text-sm transition-all duration-300 flex flex-col items-center gap-1 bg-slate-950/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-white/5";
+                
+                controlGroupAngle.classList.add('hidden');
+                controlGroupDistance.classList.add('hidden');
+                controlGroupOrbit.classList.remove('hidden');
+                dragPrompt.classList.remove('hidden');
+
+                if (currentObservatoryMode === 'modern') {
+                    modeDesc.innerHTML = `<strong>공전 궤도 연동 모드:</strong> 실제 케플러의 공전 기하학 구조를 반영합니다. 금성의 공전 궤도 위치 각도($\\theta_v$)를 이동시키면, 그에 부합하는 사잇각 $i$와 지구와의 물리적 실제 거리 $a$가 실시간 자동 산출됩니다.`;
+                } else {
+                    modeDesc.innerHTML = `<strong>공전 궤도 연동 모드(갈릴레이):</strong> 금성이 공전함에 따라 갈릴레이가 발견한 '위상과 크기의 극적인 연동 변화'가 일어납니다. 보름달 모양일 때는 멀고 작게, 그믐달 모양일 때는 가깝고 크게 보이는 지동설의 핵심 증거입니다.`;
+                }
+            }
+            
+            if (window.renderMathInElement) {
+                renderMathInElement(modeDesc);
+            }
+            updateSimulation();
+        }
+
+        // --- [NEW] 태양계 전체보기 축적 온/오프 토글 함수 ---
+        function toggleSolarSystemScale() {
+            isSolarSystemScale = !isSolarSystemScale;
+            const btn = document.getElementById('btnToggleSystem');
+            if (isSolarSystemScale) {
+                btn.className = "px-2 py-1 text-[9px] font-bold bg-teal-400 text-slate-950 rounded shadow-lg shadow-teal-400/20 transition-all font-orbitron";
+                btn.innerText = "단일 관측 모드";
+            } else {
+                btn.className = "px-2 py-1 text-[9px] font-bold bg-teal-500/20 text-teal-400 border border-teal-500/30 rounded hover:bg-teal-500 hover:text-slate-950 transition-all font-orbitron";
+                btn.innerText = "태양계 전체보기";
+            }
+            updateSimulation();
+        }
+
+        // --- [NEW] 관측 모드 체인지 (현대 관측 vs 갈릴레이 모드) ---
+        function toggleObservatoryMode(mode) {
+            currentObservatoryMode = mode;
+            const btnModern = document.getElementById('btnModernMode');
+            const btnGalileo = document.getElementById('btnGalileoMode');
+            
+            const headerIcon = document.getElementById('headerIcon');
+            const headerIconContainer = document.getElementById('headerIconContainer');
+            const headerSub = document.getElementById('headerSub');
+            const headerTitle = document.getElementById('headerTitle');
+
+            const observeTitle = document.getElementById('observeTitle');
+            const observeSubtitle = document.getElementById('observeSubtitle');
+            const orbitMapDesc = document.getElementById('orbitMapDesc');
+            
+            const boardTitle = document.getElementById('boardTitle');
+            const lblReadout1 = document.getElementById('lblReadout1');
+            const lblReadout2 = document.getElementById('lblReadout2');
+            const lblReadout3 = document.getElementById('lblReadout3');
+            const lblReadout4 = document.getElementById('lblReadout4');
+
+            const reportTitle = document.getElementById('reportTitle');
+            const reportContent = document.getElementById('reportContent');
+
+            if (mode === 'modern') {
+                document.body.classList.remove('galileo-theme');
+                btnModern.className = "py-1.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center gap-1.5 bg-teal-500 text-slate-950";
+                btnGalileo.className = "py-1.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center gap-1.5 text-slate-400 hover:text-white";
+                
+                headerIcon.className = "fa-solid fa-shuttle-space text-teal-400 text-xl animate-pulse";
+                headerIconContainer.className = "w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center border border-teal-500/30";
+                headerSub.className = "text-[10px] font-bold text-teal-400 tracking-widest uppercase font-orbitron";
+                headerSub.innerText = "Advanced Astrophysics Simulator";
+                headerTitle.className = "text-lg md:text-2xl font-black text-white flex items-center gap-2 font-title";
+                headerTitle.innerHTML = `THE VENUS ALIGNMENT`;
+
+                observeTitle.innerHTML = `<i class="fa-solid fa-eye text-teal-400"></i> ① 지구 관측망 실시간 뷰 (위상/크기)`;
+                observeSubtitle.innerText = "Observer View";
+                orbitMapDesc.innerHTML = `실제 행성 텍스처를 매핑한 공전면 탑뷰입니다.<br>태양빛 반대 방향으로 <span class="text-teal-400 font-bold">리얼 블랙 그림자</span>가 드리웁니다.`;
+
+                boardTitle.innerHTML = `<i class="fa-solid fa-chart-simple"></i> INSTRUMENTATION READOUTS`;
+                lblReadout1.innerText = "빛을 받는 면적 (위상 비율)";
+                lblReadout2.innerText = "실제적 시직경";
+                lblReadout3.innerText = "지구-금성 거리";
+                lblReadout4.innerText = "예상 겉보기 등급 ($m$)";
+
+                reportTitle.innerHTML = `<i class="fa-solid fa-file-pen"></i> LAB NOTE REPORT TIPS (20점 보증)`;
+                reportContent.innerHTML = `
+                    <p class="text-teal-300 font-bold flex items-center gap-1 font-title">
+                        <i class="fa-solid fa-circle-info"></i> 수행평가 산출물 소개용 핵심 포인트
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+                        <div class="bg-slate-900/40 p-3 rounded-lg border border-white/5">
+                            <span class="font-bold text-teal-400 font-title">1. 시뮬레이션 제작 목적</span>
+                            <p class="text-slate-400 text-[11px] mt-1 leading-relaxed">우주 공간의 천체 배치 변화에 따라 지구에서 보는 내행성의 위상, 시직경 및 밝기 등급 변동성을 관측하기 위해 고안됨. 특히 실제 텍스처를 캔버스 엔진에 입히고 구면 좌표계를 기반으로 투영 마스크를 제어하여 사실적인 우주 환경 관측을 구현함.</p>
+                        </div>
+                        <div class="bg-slate-900/40 p-3 rounded-lg border border-white/5">
+                            <span class="font-bold text-teal-400 font-title">2. 과학적 한계점 및 자전/공전 속도 분석</span>
+                            <p class="text-slate-400 text-[11px] mt-1 leading-relaxed"><b>물리량 한계점:</b> 본 프로그램은 시각적 관측 효과를 위해 행성간 크기 비율과 자전 및 공전 주기 비율을 실제 비율(예: 금성의 실제 1 자전일은 243 지구일)과 다르게 시각 감도가 높은 배율로 축소/조정하여 시뮬레이션을 단순화하였음.</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                document.body.classList.add('galileo-theme');
+                btnGalileo.className = "py-1.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center gap-1.5 bg-amber-600 text-amber-950";
+                btnModern.className = "py-1.5 px-4 rounded-lg text-xs font-bold transition-all duration-300 flex items-center gap-1.5 text-slate-400 hover:text-white";
+                
+                headerIcon.className = "fa-solid fa-feather text-amber-400 text-xl animate-pulse";
+                headerIconContainer.className = "w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/30";
+                headerSub.className = "text-[10px] font-bold text-amber-400 tracking-widest uppercase font-galileo";
+                headerSub.innerText = "ANNUS 1610 • EX COMPERTO GALILEI";
+                headerTitle.className = "text-lg md:text-2xl font-black text-amber-200 flex items-center gap-2 font-galileo";
+                headerTitle.innerHTML = `SIDEREUS NUNCIUS (별의 전령)`;
+
+                observeTitle.innerHTML = `<i class="fa-solid fa-feather-pointed text-amber-500"></i> ① 갈릴레이 굴절망원경 시야 (1610년 관측 스케치)`;
+                observeSubtitle.innerText = "Galileo Telescope View";
+                orbitMapDesc.innerHTML = `갈릴레이가 목격한 내행성의 참된 우주 질서도입니다.<br>금성이 <span class="text-amber-400 font-bold">태양(우주 중심적 존재)</span> 주위를 돌며 크기와 위상이 기하학적으로 연동됩니다.`;
+
+                boardTitle.innerHTML = `<i class="fa-solid fa-scroll text-amber-500"></i> 갈릴레이의 위대한 관측 관찰 일지`;
+                lblReadout1.innerText = "빛을 받는 가관 비율 (위상)";
+                lblReadout2.innerText = "겉보기 직경 (시직경)";
+                lblReadout3.innerText = "지구와의 상대적 원근 거리";
+                lblReadout4.innerText = "예상 겉보기 등급 ($m$)";
+
+                reportTitle.innerHTML = `<i class="fa-solid fa-book text-amber-500"></i> 갈릴레이의 금성 발견과 지동설 입증 원리`;
+                reportContent.innerHTML = `
+                    <p class="text-amber-300 font-bold flex items-center gap-1 font-title">
+                        <i class="fa-solid fa-circle-question"></i> 이 관측이 왜 역사적인가?
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+                        <div class="bg-amber-950/20 p-3 rounded-lg border border-amber-500/10">
+                            <span class="font-bold text-amber-400 font-title">천동설의 치명적 결단</span>
+                            <p class="text-amber-200/80 text-[11px] mt-1 leading-relaxed">프톨레마이오스의 지구 중심 우주관(천동설)에 따르면 금성은 항상 태양 안쪽의 주전원 상에 위치하므로, 사잇각 $i$가 결코 $90^\\circ$를 넘을 수 없으며 지구에서는 항상 가느다란 <b>초승달/그믐달 모양</b>으로만 보이고 크기 변화도 적어야 했습니다.</p>
+                        </div>
+                        <div class="bg-amber-950/20 p-3 rounded-lg border border-amber-500/10">
+                            <span class="font-bold text-amber-400 font-title">갈릴레이가 증명한 지동설</span>
+                            <p class="text-amber-200/80 text-[11px] mt-1 leading-relaxed">갈릴레이는 자작 굴절망원경을 통해 위 시뮬레이터처럼 <b>금성이 외합 근처에서 아주 작지만 거의 완전한 보름달 모양</b>으로 보이고, <b>내합 부근에서 거대하고 아주 얇은 초승달 모양</b>으로 변하는 전체 위상 스펙트럼을 발견하여 코페르니쿠스의 태양 중심설(지동설)을 단숨에 증명했습니다.</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (window.renderMathInElement) {
+                renderMathInElement(reportContent);
+                renderMathInElement(lblReadout4);
+            }
+
+            switchMode(currentMode);
+        }
+
+        // --- 애니메이션 엔진 제어 함수 ---
+        function toggleAnimation() {
+            const btnPlay = document.getElementById('btnPlay');
+            
+            if (currentMode !== 'orbit') {
+                switchMode('orbit');
+            }
+
+            isAnimating = !isAnimating;
+
+            if (isAnimating) {
+                btnPlay.innerHTML = `<i class="fa-solid fa-pause"></i> PAUSE`;
+                btnPlay.className = "px-3 py-1 rounded-lg text-xs font-bold transition-all bg-amber-500 text-slate-950 hover:bg-amber-400 flex items-center gap-1";
+                runAnimationFrame();
+            } else {
+                btnPlay.innerHTML = `<i class="fa-solid fa-play"></i> PLAY`;
+                btnPlay.className = "px-3 py-1 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 hover:bg-emerald-400 flex items-center gap-1";
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+            }
+        }
+
+        function cycleSpeed() {
+            const btnSpeed = document.getElementById('btnSpeed');
+            speedPresetIdx = (speedPresetIdx + 1) % speedPresets.length;
+            playSpeedMultiplier = speedPresets[speedPresetIdx];
+            btnSpeed.innerText = `${playSpeedMultiplier.toFixed(1)}x`;
+        }
+
+        function runAnimationFrame() {
+            if (!isAnimating) return;
+
+            // 1) 행성들 자전 각도 제어 (지구 순행, 금성 역행 자전)
+            earthRotationAngle += 0.03 * playSpeedMultiplier;
+            venusRotationAngle -= 0.008 * playSpeedMultiplier; 
+            sunRotationAngle += 0.002 * playSpeedMultiplier;
+            mercuryRotationAngle += 0.01 * playSpeedMultiplier;
+            marsRotationAngle += 0.025 * playSpeedMultiplier;
+
+            // 2) [RE-DESIGNED] 내행성계 전체 행성들의 공전 속도 연동 계산 (케플러 제3법칙 적용)
+            if (currentMode === 'orbit') {
+                // 금성 공전 속도를 기준(0.25)으로 설정
+                let nextVenusAngle = parseFloat(sliderOrbit.value) + 0.25 * playSpeedMultiplier;
+                if (nextVenusAngle >= 360) nextVenusAngle -= 360;
+                sliderOrbit.value = nextVenusAngle.toFixed(1);
+
+                // [지구 공전 활성화 ★] 케플러 제3법칙에 의거해 금성보다 약 1.625배 느리게 공전합니다 (365일 vs 224.7일)
+                earthOrbitAngle += 0.154 * playSpeedMultiplier;
+                if (earthOrbitAngle >= 360) earthOrbitAngle -= 360;
+
+                // 수성 공전 속도: 가장 빠름 (약 2.5배)
+                mercuryOrbitAngle += 0.65 * playSpeedMultiplier;
+                if (mercuryOrbitAngle >= 360) mercuryOrbitAngle -= 360;
+
+                // 화성 공전 속도: 지구보다 느림
+                marsOrbitAngle += 0.082 * playSpeedMultiplier;
+                if (marsOrbitAngle >= 360) marsOrbitAngle -= 360;
+            }
+
+            updateSimulation();
+            animationFrameId = requestAnimationFrame(runAnimationFrame);
+        }
+
+        // Toggle Expandable Report section
+        function toggleReport() {
+            const reportSection = document.getElementById('reportSection');
+            const btnText = document.getElementById('reportBtnText');
+            const icon = document.getElementById('reportIcon');
+
+            if (reportSection.classList.contains('hidden')) {
+                reportSection.classList.remove('hidden');
+                btnText.innerText = "COLLAPSE";
+                icon.className = "fa-solid fa-chevron-up";
+            } else {
+                reportSection.classList.add('hidden');
+                btnText.innerText = "EXPAND";
+                icon.className = "fa-solid fa-chevron-down";
+            }
+        }
+
+        // Main Calculation and Update function
+        function updateSimulation() {
+            let iDeg = 90; 
+            let distanceAU = 1.00; 
+
+            const widthApp = canvasApparent.width / (window.devicePixelRatio || 1);
+            const heightApp = canvasApparent.height / (window.devicePixelRatio || 1);
+            const widthOrb = canvasOrbit.width / (window.devicePixelRatio || 1);
+            const heightOrb = canvasOrbit.height / (window.devicePixelRatio || 1);
+
+            // 캔버스 크기가 정상 배정되었을 때만 그리기 진행
+            if (widthApp <= 0 || heightApp <= 0 || widthOrb <= 0 || heightOrb <= 0) return;
+
+            // 지구와 금성의 동적 위치 벡터 파악을 위한 각도 계산 라디안 변환
+            const theta_e_rad = (currentMode === 'sandbox' ? 0 : earthOrbitAngle) * Math.PI / 180;
+
+            if (currentMode === 'sandbox') {
+                iDeg = parseFloat(sliderAngle.value);
+                distanceAU = parseFloat(sliderDistance.value);
+
+                if (isNaN(iDeg)) iDeg = 90;
+                if (isNaN(distanceAU) || distanceAU <= 0) distanceAU = 1.00;
+
+                valAngle.innerText = `${iDeg.toFixed(1)}°`;
+                valDistance.innerText = `${distanceAU.toFixed(2)} AU`;
+            } else {
+                venusOrbitAngle = parseFloat(sliderOrbit.value);
+                if (isNaN(venusOrbitAngle)) venusOrbitAngle = 45;
+                valOrbit.innerText = `${venusOrbitAngle}°`;
+
+                const theta_v_rad = venusOrbitAngle * Math.PI / 180;
+                
+                // [정밀 동적 기하 적용] 태양 중심(0, 0)을 기준으로 한 지구와 금성의 실제 x, y 좌표
+                const ex = R_Earth * Math.cos(theta_e_rad);
+                const ey = R_Earth * Math.sin(theta_e_rad);
+                const vx = R_Venus * Math.cos(theta_v_rad);
+                const vy = R_Venus * Math.sin(theta_v_rad);
+
+                // 지구-금성 상대 벡터
+                const evx = vx - ex;
+                const evy = vy - ey;
+
+                distanceAU = Math.sqrt(evx * evx + evy * evy);
+                if (distanceAU <= 0) distanceAU = 0.001;
+
+                // 벡터 내적곱을 통한 태양-금성-지구 사잇각 (i) 정밀 유도
+                const vs_x = -vx;
+                const vs_y = -vy;
+                const ve_x = ex - vx;
+                const ve_y = ey - vy;
+
+                const dot_vs_ve = vs_x * ve_x + vs_y * ve_y;
+                const mag_vs = R_Venus;
+                const mag_ve = distanceAU;
+
+                let cos_i = dot_vs_ve / (mag_vs * mag_ve);
+                cos_i = Math.max(-1, Math.min(1, cos_i)); 
+
+                iDeg = Math.acos(cos_i) * 180 / Math.PI;
+
+                sliderAngle.value = iDeg;
+                sliderDistance.value = distanceAU;
+            }
+
+            const iRad = iDeg * Math.PI / 180;
+            const cosI = Math.cos(iRad); // [NEW] Declaration added here to fix ReferenceError
+            const phaseRatio = (1 + cosI) / 2; 
+            
+            const angularSizeArcsec = (15.4 / distanceAU).toFixed(1);
+
+            const logTerm = 5 * Math.log10(R_Venus * distanceAU);
+            const phaseTerm = (0.0009 * iDeg) + (0.000239 * iDeg * iDeg) - (0.00000065 * iDeg * iDeg * iDeg);
+            const magnitudeVal = (-4.38 + logTerm + phaseTerm).toFixed(2);
+
+            // Update Instrument Boards
+            dataPhaseRatio.innerText = (phaseRatio * 100).toFixed(1);
+            dataAngularSize.innerText = angularSizeArcsec;
+            dataDistance.innerText = distanceAU.toFixed(3);
+            dataMagnitude.innerText = magnitudeVal;
+
+            // Phase labels translations
+            let phaseLabelText = "";
+            if (iDeg <= 15) {
+                phaseLabelText = "외합 (보름달 형태)";
+                apparentPhaseLabel.className = "px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-xs font-bold font-title";
+            } else if (iDeg > 15 && iDeg < 75) {
+                phaseLabelText = "철월 (기브스 형태)";
+                apparentPhaseLabel.className = "px-3 py-1 rounded-full bg-teal-500/10 text-teal-300 border border-teal-500/20 text-xs font-bold font-title";
+            } else if (iDeg >= 75 && iDeg <= 105) {
+                phaseLabelText = "반달형 (동방/서방 최대이각 부근)";
+                apparentPhaseLabel.className = "px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 text-xs font-bold font-title";
+            } else if (iDeg > 105 && iDeg < 165) {
+                phaseLabelText = "초승/그믐형 (궤도 안쪽 진입)";
+                apparentPhaseLabel.className = "px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold font-title";
+            } else {
+                phaseLabelText = "내합 (관측 불가의 완전한 삭)";
+                apparentPhaseLabel.className = "px-3 py-1 rounded-full bg-red-500/10 text-red-300 border border-red-500/20 text-xs font-bold font-title";
+            }
+            apparentPhaseLabel.innerText = `위상: ${phaseLabelText}`;
+
+            // -----------------------------------------------------------------
+            // Render Viewport 1: Earth Observation Apparent View (금성 위상 & 자전)
+            // -----------------------------------------------------------------
+            ctxApparent.clearRect(0, 0, widthApp, heightApp);
+            
+            // 1) 배경화면 매핑 (현대 vs 갈릴레이 모드 분기)
+            if (currentObservatoryMode === 'modern') {
+                if (bgImg.complete && bgImg.naturalWidth > 0) {
+                    ctxApparent.drawImage(bgImg, 0, 0, widthApp, heightApp);
+                } else {
+                    const bgGrad = ctxApparent.createRadialGradient(widthApp/2, heightApp/2, 20, widthApp/2, heightApp/2, widthApp);
+                    bgGrad.addColorStop(0, '#040817');
+                    bgGrad.addColorStop(1, '#010206');
+                    ctxApparent.fillStyle = bgGrad;
+                    ctxApparent.fillRect(0, 0, widthApp, heightApp);
+                }
+            } else {
+                ctxApparent.fillStyle = '#f2edd3';
+                ctxApparent.fillRect(0, 0, widthApp, heightApp);
+            }
+            
+            const cxApp = widthApp / 2;
+            const cyApp = heightApp / 2;
+            
+            const baseAppRadius = 55; 
+            const appRadius = baseAppRadius / distanceAU;
+
+            // 2) 어두운 비발광 밤측 영역
+            ctxApparent.beginPath();
+            ctxApparent.arc(cxApp, cyApp, appRadius, 0, Math.PI * 2);
+            if (currentObservatoryMode === 'modern') {
+                ctxApparent.fillStyle = 'rgba(4, 6, 12, 0.95)';
+            } else {
+                ctxApparent.fillStyle = 'rgba(230, 225, 200, 0.9)';
+            }
+            ctxApparent.fill();
+
+            // 3) 태양 빛을 받는 영역 그리기 (수학적 렌더러 안전 보정)
+            ctxApparent.save();
+            
+            ctxApparent.beginPath();
+            ctxApparent.arc(cxApp, cyApp, appRadius, -Math.PI / 2, Math.PI / 2, false);
+            
+            if (cosI >= 0) {
+                ctxApparent.ellipse(cxApp, cyApp, appRadius * cosI, appRadius, 0, Math.PI / 2, -Math.PI / 2, false);
+            } else {
+                ctxApparent.ellipse(cxApp, cyApp, appRadius * Math.abs(cosI), appRadius, 0, Math.PI / 2, -Math.PI / 2, true);
+            }
+            ctxApparent.closePath();
+            ctxApparent.clip(); 
+
+            // 4) 마스킹 영역에 금성 고해상도 텍스처 (금성.jpeg) 매핑 + 실시간 역행 자전 연출 ★
+            ctxApparent.save();
+            ctxApparent.translate(cxApp, cyApp);
+            ctxApparent.rotate(venusRotationAngle); 
+            if (currentObservatoryMode === 'modern') {
+                if (venusImg.complete && venusImg.naturalWidth > 0) {
+                    ctxApparent.drawImage(venusImg, -appRadius, -appRadius, appRadius * 2, appRadius * 2);
+                } else {
+                    const venusFallbackGrad = ctxApparent.createRadialGradient(-appRadius*0.3, -appRadius*0.3, appRadius*0.1, 0, 0, appRadius);
+                    venusFallbackGrad.addColorStop(0, '#fffbeb');
+                    venusFallbackGrad.addColorStop(0.3, '#fef08a');
+                    venusFallbackGrad.addColorStop(0.85, '#ca8a04');
+                    venusFallbackGrad.addColorStop(1, '#854d0e');
+                    ctxApparent.fillStyle = venusFallbackGrad;
+                    ctxApparent.fill();
+                }
+            } else {
+                ctxApparent.fillStyle = '#cfa667';
+                ctxApparent.fillRect(-appRadius * 1.5, -appRadius * 1.5, appRadius * 3, appRadius * 3);
+            }
+            ctxApparent.restore(); 
+            ctxApparent.restore(); 
+
+            // 5) 실제 구체 구면 질감 및 부드러운 음영 디테일 오버레이
+            if (currentObservatoryMode === 'modern') {
+                const shadowGrad = ctxApparent.createRadialGradient(cxApp - appRadius*0.4, cyApp - appRadius*0.4, appRadius * 0.1, cxApp, cyApp, appRadius);
+                shadowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+                shadowGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0)');
+                const shadowIntensity = Math.min(0.96, Math.max(0.0, 1.0 - phaseRatio * 0.7));
+                shadowGrad.addColorStop(1, 'rgba(3, 5, 12, ' + shadowIntensity.toFixed(2) + ')');
+                
+                ctxApparent.beginPath();
+                ctxApparent.arc(cxApp, cyApp, appRadius, 0, Math.PI * 2);
+                ctxApparent.fillStyle = shadowGrad;
+                ctxApparent.fill();
+
+                ctxApparent.beginPath();
+                ctxApparent.arc(cxApp, cyApp, appRadius, 0, Math.PI * 2);
+                ctxApparent.strokeStyle = 'rgba(254, 240, 138, 0.18)';
+                ctxApparent.lineWidth = 1;
+                ctxApparent.stroke();
+            } else {
+                const galileoShadowGrad = ctxApparent.createRadialGradient(cxApp - appRadius*0.4, cyApp - appRadius*0.4, appRadius*0.1, cxApp, cyApp, appRadius);
+                galileoShadowGrad.addColorStop(0.2, 'rgba(180, 150, 110, 0)');
+                galileoShadowGrad.addColorStop(1, 'rgba(50, 35, 20, 0.95)');
+                
+                ctxApparent.beginPath();
+                ctxApparent.arc(cxApp, cyApp, appRadius, 0, Math.PI * 2);
+                ctxApparent.fillStyle = galileoShadowGrad;
+                ctxApparent.fill();
+
+                ctxApparent.beginPath();
+                ctxApparent.arc(cxApp, cyApp, appRadius, 0, Math.PI * 2);
+                ctxApparent.strokeStyle = '#5a3d1b';
+                ctxApparent.lineWidth = 2;
+                ctxApparent.stroke();
+
+                drawGalileoHatching(cxApp, cyApp, appRadius, phaseRatio, cosI);
+
+                ctxApparent.beginPath();
+                ctxApparent.arc(cxApp, cyApp, Math.min(widthApp, heightApp)/2 - 15, 0, Math.PI * 2);
+                ctxApparent.strokeStyle = 'rgba(90, 61, 27, 0.4)';
+                ctxApparent.lineWidth = 1.5;
+                ctxApparent.stroke();
+
+                ctxApparent.fillStyle = 'rgba(242, 237, 211, 0.05)';
+                ctxApparent.fillRect(0, 0, widthApp, heightApp);
+            }
+
+            // -----------------------------------------------------------------
+            // Render Viewport 2: Top-down Orbit Map (태양계 공전면 탑뷰)
+            // -----------------------------------------------------------------
+            ctxOrbit.clearRect(0, 0, widthOrb, heightOrb);
+            
+            // 궤도도 배경도 매핑
+            if (bgImg.complete && bgImg.naturalWidth > 0) {
+                ctxOrbit.drawImage(bgImg, 0, 0, widthOrb, heightOrb);
+                ctxOrbit.fillStyle = 'rgba(3, 7, 18, 0.78)';
+                ctxOrbit.fillRect(0, 0, widthOrb, heightOrb);
+            } else {
+                ctxOrbit.fillStyle = '#020512';
+                ctxOrbit.fillRect(0, 0, widthOrb, heightOrb);
+            }
+
+            const cxOrb = widthOrb / 2;
+            const cyOrb = heightOrb / 2;
+            
+            // 축적 변환 기법 도입
+            const orbitScale = isSolarSystemScale ? 55 : 110; 
+
+            // 1) 태양 (태양ㅇ.jpeg) 자전 및 글로우 매핑
+            const sunSize = isSolarSystemScale ? 14 : 18;
+            ctxOrbit.save();
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(cxOrb, cyOrb, sunSize, 0, Math.PI * 2);
+            ctxOrbit.closePath();
+            ctxOrbit.clip();
+            ctxOrbit.translate(cxOrb, cyOrb);
+            ctxOrbit.rotate(sunRotationAngle); 
+            if (sunImg.complete && sunImg.naturalWidth > 0) {
+                ctxOrbit.drawImage(sunImg, -sunSize, -sunSize, sunSize * 2, sunSize * 2);
+            } else {
+                const sunFallbackGrad = ctxOrbit.createRadialGradient(0, 0, 1, 0, 0, sunSize);
+                sunFallbackGrad.addColorStop(0, '#ffffff');
+                sunFallbackGrad.addColorStop(0.2, '#fef08a');
+                sunFallbackGrad.addColorStop(0.8, '#ea580c');
+                sunFallbackGrad.addColorStop(1, '#7c2d12');
+                ctxOrbit.fillStyle = sunFallbackGrad;
+                ctxOrbit.fill();
+            }
+            ctxOrbit.restore();
+
+            // 태양 광배 연출
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(cxOrb, cyOrb, sunSize + 6, 0, Math.PI * 2);
+            ctxOrbit.fillStyle = 'rgba(245, 158, 11, 0.16)';
+            ctxOrbit.fill();
+
+            // 2) 내행성계 궤도선 (수성, 금성, 지구, 화성) 전체 렌더링
+            const planets = [
+                { name: "MERCURY", radius: R_Mercury, color: "rgba(148, 163, 184, 0.15)", size: 4 },
+                { name: "VENUS", radius: R_Venus, color: "rgba(254, 240, 138, 0.08)", size: 8 },
+                { name: "EARTH", radius: R_Earth, color: "rgba(59, 130, 246, 0.1)", size: 9 },
+                { name: "MARS", radius: R_Mars, color: "rgba(239, 68, 68, 0.1)", size: 6 }
+            ];
+
+            planets.forEach(p => {
+                if (!isSolarSystemScale && (p.name === "MERCURY" || p.name === "MARS")) return;
+                ctxOrbit.beginPath();
+                ctxOrbit.arc(cxOrb, cyOrb, p.radius * orbitScale, 0, Math.PI * 2);
+                ctxOrbit.strokeStyle = p.color;
+                ctxOrbit.setLineDash(p.name === "VENUS" || p.name === "MARS" ? [4, 4] : [6, 6]);
+                ctxOrbit.stroke();
+                ctxOrbit.setLineDash([]);
+            });
+
+            // 3) 수성 (MERCURY) 탑뷰 렌더링 (태양계 전체보기 모드 전용)
+            if (isSolarSystemScale) {
+                const mercuryRad = mercuryOrbitAngle * Math.PI / 180;
+                const mx_px = cxOrb + R_Mercury * orbitScale * Math.cos(mercuryRad);
+                const my_px = cyOrb + R_Mercury * orbitScale * Math.sin(mercuryRad);
+                const mercurySize = 4;
+
+                ctxOrbit.beginPath();
+                ctxOrbit.arc(mx_px, my_px, mercurySize, 0, Math.PI * 2);
+                ctxOrbit.fillStyle = '#94a3b8';
+                ctxOrbit.fill();
+                ctxOrbit.strokeStyle = '#cbd5e1';
+                ctxOrbit.lineWidth = 1;
+                ctxOrbit.stroke();
+
+                // 수성 밤그림자 효과
+                ctxOrbit.save();
+                ctxOrbit.translate(mx_px, my_px);
+                ctxOrbit.rotate(mercuryRad);
+                ctxOrbit.beginPath();
+                ctxOrbit.arc(0, 0, mercurySize + 0.1, -Math.PI/2, Math.PI/2, false);
+                ctxOrbit.fillStyle = 'rgba(3, 7, 18, 0.92)';
+                ctxOrbit.fill();
+                ctxOrbit.restore();
+
+                ctxOrbit.fillStyle = '#cbd5e1';
+                ctxOrbit.font = '7px Oxanium';
+                ctxOrbit.fillText("MERCURY", mx_px - 14, my_px - 8);
+            }
+
+            // 4) [RE-DESIGNED ★] 지구 (지구.webp) 매핑 + 순행 공전 및 순행 자전(시계 반대방향) 전면 적용
+            // 이제 지구가 멈춰있지 않고 실제 궤도 각도(theta_e_rad)에 따라 공전 궤도를 회전합니다!
+            const ex_px = cxOrb + R_Earth * orbitScale * Math.cos(theta_e_rad);
+            const ey_px = cyOrb + R_Earth * orbitScale * Math.sin(theta_e_rad);
+            const earthSize = isSolarSystemScale ? 7 : 9;
+
+            ctxOrbit.save();
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(ex_px, ey_px, earthSize, 0, Math.PI * 2);
+            ctxOrbit.closePath();
+            ctxOrbit.clip();
+            ctxOrbit.translate(ex_px, ey_px);
+            ctxOrbit.rotate(earthRotationAngle); 
+            if (earthImg.complete && earthImg.naturalWidth > 0) {
+                ctxOrbit.drawImage(earthImg, -earthSize, -earthSize, earthSize * 2, earthSize * 2);
+            } else {
+                const earthFallbackGrad = ctxOrbit.createRadialGradient(-2, -2, 1, 0, 0, earthSize);
+                earthFallbackGrad.addColorStop(0, '#60a5fa');
+                earthFallbackGrad.addColorStop(1, '#1d4ed8');
+                ctxOrbit.fillStyle = earthFallbackGrad;
+                ctxOrbit.fill();
+            }
+            ctxOrbit.restore();
+
+            // 지구 밤 영역 폐색 (자전 텍스처 위에 덮어야 하므로 회전 복구 후 드로잉)
+            // 그림자 축을 지구 공전 반대 각도로 정밀 고정하여 현실성을 구현했습니다.
+            ctxOrbit.save();
+            ctxOrbit.translate(ex_px, ey_px);
+            ctxOrbit.rotate(theta_e_rad);
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(0, 0, earthSize + 0.1, -Math.PI/2, Math.PI/2, false);
+            ctxOrbit.fillStyle = 'rgba(3, 7, 18, 0.88)';
+            ctxOrbit.fill();
+            ctxOrbit.restore();
+
+            ctxOrbit.fillStyle = '#94a3b8';
+            ctxOrbit.font = 'bold 9px Oxanium';
+            ctxOrbit.fillText("EARTH", ex_px - 14, ey_px + (isSolarSystemScale ? 15 : 20));
+
+            // 5) 금성 (금성.jpeg) 연동 및 자전 연출
+            let vx_px, vy_px;
+            let currentVenusAngleRad;
+            if (currentMode === 'sandbox') {
+                const radVisual = (180 - iDeg) * Math.PI / 180;
+                vx_px = ex_px - (distanceAU * orbitScale) * Math.cos(radVisual);
+                vy_px = ey_px - (distanceAU * orbitScale) * Math.sin(radVisual);
+                currentVenusAngleRad = Math.atan2(vy_px - cyOrb, vx_px - cxOrb);
+            } else {
+                currentVenusAngleRad = venusOrbitAngle * Math.PI / 180;
+                vx_px = cxOrb + R_Venus * orbitScale * Math.cos(currentVenusAngleRad);
+                vy_px = cyOrb + R_Venus * orbitScale * Math.sin(currentVenusAngleRad);
+            }
+            const venusSize = isSolarSystemScale ? 6 : 8;
+
+            ctxOrbit.save();
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(vx_px, vy_px, venusSize, 0, Math.PI * 2);
+            ctxOrbit.closePath();
+            ctxOrbit.clip();
+            ctxOrbit.translate(vx_px, vy_px);
+            ctxOrbit.rotate(venusRotationAngle); 
+            if (venusImg.complete && venusImg.naturalWidth > 0) {
+                ctxOrbit.drawImage(venusImg, -venusSize, -venusSize, venusSize * 2, venusSize * 2);
+            } else {
+                const venusFallbackGrad = ctxOrbit.createRadialGradient(-2, -2, 1, 0, 0, venusSize);
+                venusFallbackGrad.addColorStop(0, '#fef08a');
+                venusFallbackGrad.addColorStop(1, '#a16207');
+                ctxOrbit.fillStyle = venusFallbackGrad;
+                ctxOrbit.fill();
+            }
+            ctxOrbit.restore();
+
+            // 금성 밤 영역 및 뒤쪽 리얼 우주 그림자 효과 장막 처리 (태양 반대편 고정)
+            const shadowAngle = currentVenusAngleRad; 
+            ctxOrbit.save();
+            ctxOrbit.translate(vx_px, vy_px);
+            ctxOrbit.rotate(shadowAngle);
+            
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(0, 0, venusSize + 0.3, -Math.PI/2, Math.PI/2, false);
+            ctxOrbit.fillStyle = 'rgba(3, 7, 18, 0.92)';
+            ctxOrbit.fill();
+
+            const shadowGradOrbit = ctxOrbit.createLinearGradient(0, 0, 50, 0);
+            shadowGradOrbit.addColorStop(0, 'rgba(3, 7, 18, 0.85)');
+            shadowGradOrbit.addColorStop(1, 'rgba(3, 7, 18, 0)');
+            
+            ctxOrbit.beginPath();
+            ctxOrbit.moveTo(0, -venusSize);
+            ctxOrbit.lineTo(isSolarSystemScale ? 30 : 50, -venusSize * 1.6);
+            ctxOrbit.lineTo(isSolarSystemScale ? 30 : 50, venusSize * 1.6);
+            ctxOrbit.lineTo(0, venusSize);
+            ctxOrbit.closePath();
+            ctxOrbit.fillStyle = shadowGradOrbit;
+            ctxOrbit.fill();
+            ctxOrbit.restore();
+
+            ctxOrbit.fillStyle = '#fef08a';
+            ctxOrbit.font = 'bold 10px Oxanium';
+            ctxOrbit.fillText("VENUS", vx_px - 14, vy_px - 12);
+
+            // 6) 화성 (MARS) 탑뷰 렌더링 (태양계 전체보기 모드 전용)
+            if (isSolarSystemScale) {
+                const marsRad = marsOrbitAngle * Math.PI / 180;
+                const mr_px = cxOrb + R_Mars * orbitScale * Math.cos(marsRad);
+                const my_px = cyOrb + R_Mars * orbitScale * Math.sin(marsRad);
+                const marsSize = 5.5;
+
+                ctxOrbit.beginPath();
+                ctxOrbit.arc(mr_px, my_px, marsSize, 0, Math.PI * 2);
+                ctxOrbit.fillStyle = '#ef4444';
+                ctxOrbit.fill();
+                ctxOrbit.strokeStyle = '#f87171';
+                ctxOrbit.lineWidth = 1;
+                ctxOrbit.stroke();
+
+                // 화성 밤그림자 효과
+                ctxOrbit.save();
+                ctxOrbit.translate(mr_px, my_px);
+                ctxOrbit.rotate(marsRad);
+                ctxOrbit.beginPath();
+                ctxOrbit.arc(0, 0, marsSize + 0.1, -Math.PI/2, Math.PI/2, false);
+                ctxOrbit.fillStyle = 'rgba(3, 7, 18, 0.92)';
+                ctxOrbit.fill();
+                ctxOrbit.restore();
+
+                ctxOrbit.fillStyle = '#f87171';
+                ctxOrbit.font = '7px Oxanium';
+                ctxOrbit.fillText("MARS", mr_px - 10, my_px - 9);
+            }
+
+            // 7) 시선선 지시 (지구 -> 금성)
+            ctxOrbit.beginPath();
+            ctxOrbit.moveTo(ex_px, ey_px);
+            ctxOrbit.lineTo(vx_px, vy_px);
+            ctxOrbit.strokeStyle = 'rgba(236, 72, 153, 0.38)';
+            ctxOrbit.lineWidth = 1;
+            ctxOrbit.stroke();
+
+            // 8) 태양에너지선 (태양 -> 금성)
+            ctxOrbit.beginPath();
+            ctxOrbit.moveTo(cxOrb, cyOrb);
+            ctxOrbit.lineTo(vx_px, vy_px);
+            ctxOrbit.strokeStyle = 'rgba(254, 240, 138, 0.28)';
+            ctxOrbit.lineWidth = 1;
+            ctxOrbit.stroke();
+
+            // 9) 사잇각 호(Arc) 및 텍스트 렌더링
+            const vs_dx = cxOrb - vx_px;
+            const vs_dy = cyOrb - vy_px;
+            const ve_dx = ex_px - vx_px;
+            const ve_dy = ey_px - vy_px;
+
+            const startAngle = Math.atan2(vs_dy, vs_dx);
+            const endAngle = Math.atan2(ve_dy, ve_dx);
+
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(vx_px, vy_px, 14, startAngle, endAngle, (startAngle > endAngle));
+            ctxOrbit.strokeStyle = '#f43f5e';
+            ctxOrbit.lineWidth = 2;
+            ctxOrbit.stroke();
+
+            ctxOrbit.fillStyle = '#f43f5e';
+            ctxOrbit.font = 'bold 9px Oxanium';
+            ctxOrbit.fillText(`i=${Math.round(iDeg)}°`, vx_px + 14, vy_px + 4);
+        }
+
+        // --- 갈릴레이 모드 전용 수동 해칭 그림자 드로잉 함수 ---
+        function drawGalileoHatching(cx, cy, radius, phaseRatio, cosI) {
+            ctxApparent.save();
+            ctxApparent.beginPath();
+            ctxApparent.arc(cx, cy, radius + 1, 0, Math.PI * 2);
+            
+            ctxApparent.arc(cx, cy, radius, Math.PI / 2, -Math.PI / 2, true);
+            if (cosI >= 0) {
+                ctxApparent.ellipse(cx, cy, radius * cosI, radius, 0, -Math.PI / 2, Math.PI / 2, true);
+            } else {
+                ctxApparent.ellipse(cx, cy, radius * Math.abs(cosI), radius, 0, -Math.PI / 2, Math.PI / 2, false);
+            }
+            ctxApparent.closePath();
+            ctxApparent.clip();
+
+            ctxApparent.strokeStyle = '#5a3d1b';
+            ctxApparent.lineWidth = 1.2;
+            const step = 6; 
+
+            for (let k = -radius * 2; k < radius * 2; k += step) {
+                ctxApparent.beginPath();
+                ctxApparent.moveTo(cx + k - radius, cy - radius);
+                ctxApparent.lineTo(cx + k + radius, cy + radius);
+                ctxApparent.stroke();
+            }
+            ctxApparent.restore();
+        }
+
+        // Drag Interaction logic
+        function handleOrbitDrag(clientX, clientY) {
+            if (currentMode !== 'orbit') return;
+
+            if (isAnimating) {
+                toggleAnimation();
+            }
+
+            const rect = canvasOrbit.getBoundingClientRect();
+            
+            // 드래그 판정 시, 지구의 실시간 동적 각도를 고려하여 태양 중심 기준 금성의 절대 각도를 산출합니다.
+            const x = (clientX - rect.left) - (rect.width / 2);
+            const y = (clientY - rect.top) - (rect.height / 2);
+
+            let angleRad = Math.atan2(y, x);
+            let angleDeg = angleRad * 180 / Math.PI;
+            if (angleDeg < 0) angleDeg += 360;
+
+            sliderOrbit.value = Math.round(angleDeg);
+            updateSimulation();
+        }
+
+        // Event Listeners setup
+        sliderAngle.addEventListener('input', updateSimulation);
+        sliderDistance.addEventListener('input', updateSimulation);
+        sliderOrbit.addEventListener('input', updateSimulation);
+
+        // Canvas Click & Drag setup
+        canvasOrbit.addEventListener('mousedown', (e) => {
+            if (currentMode === 'orbit') {
+                isDraggingVenus = true;
+                handleOrbitDrag(e.clientX, e.clientY);
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDraggingVenus) {
+                handleOrbitDrag(e.clientX, e.clientY);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDraggingVenus = false;
+        });
+
+        // Touch support with preventive scroll lock
+        canvasOrbit.addEventListener('touchstart', (e) => {
+            if (currentMode === 'orbit' && e.touches.length > 0) {
+                isDraggingVenus = true;
+                handleOrbitDrag(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (isDraggingVenus && e.touches.length > 0) {
+                handleOrbitDrag(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            isDraggingVenus = false;
+        });
+
+        // [NEW] 중복되거나 불필요한 바인딩 및 전역 변수 충돌 방지를 위한 리팩토링 정리
+        window.currentObservatoryModeState = 'modern';
+        
+        const originalToggleObservatoryMode = toggleObservatoryMode;
+        toggleObservatoryMode = function(mode) {
+            window.currentObservatoryModeState = mode;
+            originalToggleObservatoryMode(mode);
+        };
+
+        // Math Equation Renderer
+        function initMath() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError: false
+                });
+            } else {
+                setTimeout(initMath, 200);
+            }
+        }
+
+        // Initial setup on window load
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            switchMode('sandbox'); 
+            initMath();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한 눈에 이해하는 변광성 시뮬레이터</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MathJax for rendering equations -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Custom Glowing effects */
+        .glow-blue {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        }
+        .glow-amber {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+        }
+        /* Range Slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1e293b;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Top Navigation / Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 text-white p-2 rounded-lg glow-blue animate-pulse">
+                    <i class="fa-solid fa-star text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                        한 눈에 이해하는 변광성 시뮬레이터
+                    </h1>
+                    <p class="text-xs text-slate-400">물리적 원리 기반 변광성(식변광성 · 세페이드 맥동변광성)의 조작과 정밀 분석</p>
+                </div>
+            </div>
+            
+            <!-- Mode Switcher Tabs -->
+            <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button id="btn-pulsating" onclick="switchMode('pulsating')" class="px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2 bg-indigo-600 text-white glow-blue">
+                    <i class="fa-solid fa-wave-square"></i> 세페이드 맥동변광성 Mode
+                </button>
+                <button id="btn-eclipsing" onclick="switchMode('eclipsing')" class="px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-circle-half-stroke"></i> 식변광성 Mode
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- LEFT: Virtual Screen & Live Graph (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- 1. Star Visualizer Panel -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div class="px-4 py-3 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></span>
+                        <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider">실시간 천체 시각화 (Stellar View)</h2>
+                    </div>
+                    <div id="visualizer-badge" class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
+                        세페이드 맥동 모델 (반지름 및 온도 수축·팽창)
+                    </div>
+                </div>
+                
+                <div class="relative bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black h-[320px] flex items-center justify-center p-4">
+                    <!-- Space Background Stars (using inline canvas background) -->
+                    <canvas id="space-canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                    
+                    <!-- Dynamic Interactive Canvas for Stars -->
+                    <canvas id="star-canvas" width="600" height="300" class="relative z-10 w-full h-full max-h-[280px] cursor-pointer"></canvas>
+                    
+                    <!-- Auto Animation Control Overlay -->
+                    <div class="absolute bottom-3 left-3 z-20 bg-slate-900/90 border border-slate-800 rounded-lg p-1.5 flex items-center gap-2 text-xs">
+                        <button id="btn-play" onclick="togglePlay()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all text-white font-bold rounded-md flex items-center gap-1.5">
+                            <i id="play-icon" class="fa-solid fa-pause"></i> <span id="play-text">자동 공전/맥동 일시정지</span>
+                        </button>
+                        <span id="speed-indicator" class="text-slate-400 px-1 border-l border-slate-800">속도: 1.0x</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Interactive Real-time Graph -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div class="px-4 py-3 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-indigo-400"></i>
+                        <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider">시간-광도(등급) 변화 그래프</h2>
+                    </div>
+                    <span class="text-xs text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                        세로축: 겉보기/절대 등급 (위쪽이 밝음)
+                    </span>
+                </div>
+                <div class="p-4 bg-slate-950/50">
+                    <canvas id="graph-canvas" width="600" height="240" class="w-full h-auto max-h-[220px]"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT: Control Panel & Physics Calculations (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- 1. Controls Panel -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-5">
+                <div class="border-b border-slate-800 pb-3">
+                    <h2 class="text-base font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i> 변수 실시간 조종판 (Control Deck)
+                    </h2>
+                </div>
+
+                <!-- CONTROLS FOR PULSATING MODE -->
+                <div id="controls-pulsating" class="flex flex-col gap-5">
+                    <!-- Slider 1: Star Size (Radius) -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-expand text-blue-400"></i> 세페이드 평균 반지름 (\(R / R_\odot\))
+                            </span>
+                            <span id="val-pulsating-radius" class="orbitron text-sm font-bold text-blue-400">1.0 R☉</span>
+                        </div>
+                        <input type="range" id="slide-pulsating-radius" min="0.5" max="3.0" step="0.05" value="1.0" oninput="updatePhysics()">
+                        <p class="text-[11px] text-slate-500">별의 수축과 팽창 과정 중 기준이 되는 평균 반지름 크기입니다.</p>
+                    </div>
+
+                    <!-- Slider 2: Surface Temperature -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-temperature-three-quarters text-orange-400"></i> 광구 평균 표면 온도 (\(T\))
+                            </span>
+                            <span id="val-pulsating-temp" class="orbitron text-sm font-bold text-orange-400">5800 K</span>
+                        </div>
+                        <input type="range" id="slide-pulsating-temp" min="3000" max="12000" step="100" value="5800" oninput="updatePhysics()">
+                        <div class="flex justify-between text-[10px] text-slate-500 px-1">
+                            <span>적색 초거성 (3,000K)</span>
+                            <span>황색 초거성 (5,800K)</span>
+                            <span>청색 초거성 (12,000K)</span>
+                        </div>
+                    </div>
+
+                    <!-- Slider 3: Period (PL relation variable) -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-stopwatch text-purple-400"></i> 맥동 주기 (\(P\))
+                            </span>
+                            <span id="val-pulsating-period" class="orbitron text-sm font-bold text-purple-400">10.0 일</span>
+                        </div>
+                        <input type="range" id="slide-pulsating-period" min="2" max="50" step="0.5" value="10.0" oninput="updatePhysics()">
+                        <p class="text-[11px] text-slate-500">세페이드 주기-광도 관계식 적용: \(M = a \log P + b\) (\(a = -2.81, b = -1.43\))</p>
+                    </div>
+                </div>
+
+                <!-- CONTROLS FOR ECLIPSING MODE -->
+                <div id="controls-eclipsing" class="flex flex-col gap-5 hidden">
+                    <!-- Slider 1: Orbital Phase (Manual phase navigation) -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-arrows-spin text-emerald-400"></i> 공전 위도 및 위치 (Phase)
+                            </span>
+                            <span id="val-eclipsing-phase" class="orbitron text-sm font-bold text-emerald-400">180°</span>
+                        </div>
+                        <input type="range" id="slide-eclipsing-phase" min="0" max="360" step="1" value="180" oninput="updatePhysics()">
+                        <p class="text-[11px] text-slate-500">공전 궤도상 동반성의 위치를 강제 변경하여 식 현상을 관찰합니다.</p>
+                    </div>
+
+                    <!-- Slider 2: Companion Star Radius Ratio -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-notch text-blue-400"></i> 동반성(반성)의 크기 비율 (\(R_2 / R_1\))
+                            </span>
+                            <span id="val-eclipsing-ratio" class="orbitron text-sm font-bold text-blue-400">0.6 배</span>
+                        </div>
+                        <input type="range" id="slide-eclipsing-ratio" min="0.2" max="1.0" step="0.05" value="0.6" oninput="updatePhysics()">
+                        <p class="text-[11px] text-slate-500">주성(고온 성) 대비 가리는 별(저온 성)의 상대적 반지름 크기입니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Real-time Physics Math Box (Calculations Display) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-4">
+                <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-calculator text-indigo-400"></i> 천체 물리 정밀 진단 데이터
+                </h3>
+                
+                <!-- Pulsating Math Outputs -->
+                <div id="math-pulsating" class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-xs text-slate-400">평균 절대 등급 (\(M_{mean}\))</span>
+                        <div id="calc-pulsating-mag-mean" class="orbitron text-lg font-bold text-purple-400 mt-1">-4.24 등급</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-xs text-slate-400">실시간 절대 등급 (\(M_V\))</span>
+                        <div id="calc-pulsating-mag" class="orbitron text-lg font-bold text-indigo-400 mt-1">-3.85 등급</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 col-span-2">
+                        <span class="text-xs text-slate-400">적용된 물리 공식 관계</span>
+                        <div class="text-[11px] text-slate-300 mt-1.5 space-y-1 bg-slate-900 p-2 rounded border border-slate-800 font-mono leading-relaxed">
+                            <div class="text-purple-400">• 세페이드 주기-광도 관계식:</div>
+                            <div class="pl-2">\(M_{mean} = -2.81 \log_{10}(P) - 1.43\)</div>
+                            <div class="text-indigo-400">• 실시간 광도 및 절대등급 계산:</div>
+                            <div class="pl-2">\(L(t) \propto R(t)^2 \cdot T(t)^4\)</div>
+                            <div class="pl-2">\(M_V(t) = M_{mean} - 2.5 \log_{10}(L(t) / L_{mean})\)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Eclipsing Math Outputs -->
+                <div id="math-eclipsing" class="grid grid-cols-2 gap-4 hidden">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-xs text-slate-400">상대 겉보기 밝기 (\(F / F_0\))</span>
+                        <div id="calc-eclipsing-flux" class="orbitron text-lg font-bold text-amber-400 mt-1">100.0%</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-xs text-slate-400">식 상태 구분</span>
+                        <div id="calc-eclipsing-status" class="text-sm font-bold text-emerald-400 mt-1">평상시</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 col-span-2">
+                        <span class="text-xs text-slate-400">적용된 식변광 기하학 및 에너지 공식</span>
+                        <div class="text-[11px] text-slate-300 mt-1.5 space-y-1 bg-slate-900 p-2 rounded border border-slate-800 font-mono leading-relaxed">
+                            <div class="text-amber-400">• 주극소 (Primary Eclipse) 원리:</div>
+                            <div class="pl-2 text-slate-400">표면온도가 높은 별(주성)이 저온의 동반성에 의해 가려질 때 발생하며, 단면적당 방출 에너지가 큰 고온 광구가 차폐되므로 어두워지는 폭이 매우 큽니다.</div>
+                            <div class="text-sky-400">• 부극소 (Secondary Eclipse) 원리:</div>
+                            <div class="pl-2 text-slate-400">표면온도가 낮은 별이 주성에 의해 가려질 때 발생하며, 차폐되는 광구의 온도 및 면적당 방출 에너지(\(I \propto T^4\))가 상대적으로 작아 광도 하강이 미미합니다.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Scientific Background Accordion (No tips, based on PPT) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                <button onclick="toggleAccordion('theory-content')" class="w-full px-5 py-3 bg-slate-950 hover:bg-slate-900 transition-colors flex justify-between items-center text-slate-300">
+                    <span class="text-xs font-bold tracking-wider uppercase flex items-center gap-2">
+                        <i class="fa-solid fa-book-open text-indigo-400"></i> 변광성에 대해 알아보자
+                    </span>
+                    <i id="theory-chevron" class="fa-solid fa-chevron-down text-slate-500 transition-transform duration-300"></i>
+                </button>
+                <div id="theory-content" class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out bg-slate-950/40 border-t border-slate-800/50">
+                    <div class="p-4 text-xs text-slate-300 space-y-3 leading-relaxed">
+                        <div>
+                            <span class="font-bold text-amber-400">1. 식변광성 (Eclipsing Binary Stars)</span><br>
+                            - 별이 방출하는 광도 자체는 변하지 않지만, 기하학적 조건(공전 궤도면과 지구 관측자 시선방향의 일치)에 의해 관측자에게 도달하는 겉보기 밝기가 변하는 변광성입니다.<br>
+                            - 쌍성계에 속한 두 별이 공전하면서 서로를 가리는 식 현상이 일어납니다. 이에 따라 공전 주기마다 반복하여 고유한 형태의 밝기 변화 곡선이 나타납니다.<br>
+                            <span class="text-red-400 font-semibold">- 주극소(Primary Minima)</span>: 표면 온도가 높은 별이 표면 온도가 낮은 별에 의해 가려질 때 관측되는 가장 깊고 급격한 극소점입니다.<br>
+                            <span class="text-sky-400 font-semibold">- 부극소(Secondary Minima)</span>: 주극소의 반대 경우로, 표면 온도가 낮은 별이 온도가 높은 별에 가려져 겉보기 등급 하강폭이 상대적으로 작게 관측되는 극소점입니다.
+                        </div>
+                        <div class="border-t border-slate-800/80 pt-2">
+                            <span class="font-bold text-indigo-400">2. 맥동 변광성 (Pulsating Stars)</span><br>
+                            - 별이 내부적 헬륨 이온화 과정과 복사평형 붕괴에 의해 직접 방출하는 광도 자체가 주기적으로 변하는 물리적 변광성입니다.<br>
+                            - 별의 진화 단계 중 특정 불안정 영역대에서는 내부 구조의 불균형으로 인해 주기적인 수축과 팽창이 진행됩니다.<br>
+                            - 별의 수축과 팽창 과정 시 별의 반지름(크기)과 표면 온도가 시간차를 두고 함께 요동쳐 광도의 복합적 변화가 도출됩니다.<br>
+                            - <span class="text-purple-300 font-semibold">비대칭성 해석</span>: 별의 크기가 커지더라도(부피 팽창) 표면 온도가 더 크게 감소하면 오히려 총 광도는 감소하며, 크기가 작아지더라도 표면 온도가 급격히 상승하면 총 방출 광도는 대폭 증가할 수 있는 맥동 에너지가 핵심입니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Bottom Info Footer -->
+    <footer class="border-t border-slate-900 bg-slate-950 text-slate-500 text-center py-4 px-4 text-xs">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+            <p>© 한 눈에 이해하는 변광성 시뮬레이터 - 누구나 쉽게 배우는 천문학</p>
+            <p class="text-indigo-400 font-semibold"><i class="fa-solid fa-rocket animate-bounce"></i> 쉽고 재미있는 우주 과학 탐구</p>
+        </div>
+    </footer>
+
+    <!-- Core Physics & Rendering Logic -->
+    <script>
+        // Global State & Physics Variables
+        let currentMode = 'pulsating'; // 'pulsating' or 'eclipsing'
+        let isPlaying = true;
+        let animationFrameId = null;
+        let lastTime = 0;
+        
+        // Dynamic Variable Trackers
+        let timeOffset = 0; // Universal timer variable for running orbits/pulsations
+        
+        // DOM Elements
+        const btnPulsating = document.getElementById('btn-pulsating');
+        const btnEclipsing = document.getElementById('btn-eclipsing');
+        const controlsPulsating = document.getElementById('controls-pulsating');
+        const controlsEclipsing = document.getElementById('controls-eclipsing');
+        const mathPulsating = document.getElementById('math-pulsating');
+        const mathEclipsing = document.getElementById('math-eclipsing');
+        const visualizerBadge = document.getElementById('visualizer-badge');
+        
+        // Physics Formula Display Targets
+        const calcPulsatingMagMean = document.getElementById('calc-pulsating-mag-mean');
+        const calcPulsatingMag = document.getElementById('calc-pulsating-mag');
+        const calcEclipsingFlux = document.getElementById('calc-eclipsing-flux');
+        const calcEclipsingStatus = document.getElementById('calc-eclipsing-status');
+        
+        // Canvases & Contexts
+        const starCanvas = document.getElementById('star-canvas');
+        const starCtx = starCanvas.getContext('2d');
+        const graphCanvas = document.getElementById('graph-canvas');
+        const graphCtx = graphCanvas.getContext('2d');
+        const spaceCanvas = document.getElementById('space-canvas');
+        const spaceCtx = spaceCanvas.getContext('2d');
+
+        // Initial setup for Space Starry Canvas background
+        function setupSpaceBackground() {
+            const width = spaceCanvas.width = spaceCanvas.offsetWidth;
+            const height = spaceCanvas.height = spaceCanvas.offsetHeight;
+            spaceCtx.clearRect(0,0,width,height);
+            spaceCtx.fillStyle = '#ffffff';
+            for (let i = 0; i < 45; i++) {
+                let x = Math.random() * width;
+                let y = Math.random() * height;
+                let size = Math.random() * 1.5;
+                let alpha = Math.random() * 0.8 + 0.2;
+                spaceCtx.fillStyle = `rgba(255,255,255,${alpha})`;
+                spaceCtx.beginPath();
+                spaceCtx.arc(x, y, size, 0, Math.PI * 2);
+                spaceCtx.fill();
+            }
+        }
+
+        // Color Converter according to Stellar Surface Temperature
+        function getStellarColor(temp) {
+            if (temp < 4000) return 'rgb(255, 90, 30)';       // M-class Red Supergiant
+            if (temp < 5200) return 'rgb(255, 160, 60)';      // K-class Orange
+            if (temp < 6000) return 'rgb(255, 220, 110)';     // G-class Yellow Cepheid
+            if (temp < 7500) return 'rgb(240, 240, 200)';     // F-class Yellow-White
+            if (temp < 10000) return 'rgb(210, 225, 255)';    // A-class White
+            return 'rgb(150, 190, 255)';                      // B/O-class Hot Blue
+        }
+
+        // Circular overlap calculation for Eclipsing System (Math Physics Accuracy)
+        function getOverlapArea(r1, r2, d) {
+            if (d >= r1 + r2) return 0; // No eclipse
+            if (d <= Math.abs(r1 - r2)) {
+                // Total eclipse (one star fully behind/in-front of the other)
+                return Math.PI * Math.min(r1, r2) * Math.min(r1, r2);
+            }
+            const r1_sq = r1 * r1;
+            const r2_sq = r2 * r2;
+            const d_sq = d * d;
+            
+            const phi1 = 2 * Math.acos((d_sq + r1_sq - r2_sq) / (2 * d * r1));
+            const phi2 = 2 * Math.acos((d_sq + r2_sq - r1_sq) / (2 * d * r2));
+            
+            const area1 = 0.5 * r1_sq * (phi1 - Math.sin(phi1));
+            const area2 = 0.5 * r2_sq * (phi2 - Math.sin(phi2));
+            
+            return area1 + area2;
+        }
+
+        // Real-time Math Physics calculation and screen update
+        function updatePhysics() {
+            if (currentMode === 'pulsating') {
+                const maxRadius = parseFloat(document.getElementById('slide-pulsating-radius').value);
+                const surfaceTemp = parseFloat(document.getElementById('slide-pulsating-temp').value);
+                const period = parseFloat(document.getElementById('slide-pulsating-period').value);
+                
+                document.getElementById('val-pulsating-radius').innerText = `${maxRadius.toFixed(2)} R☉`;
+                document.getElementById('val-pulsating-temp').innerText = `${surfaceTemp.toLocaleString()} K`;
+                document.getElementById('val-pulsating-period').innerText = `${period.toFixed(1)} 일`;
+                
+                // 1. Period-Luminosity mean magnitude
+                const absMagMean = -2.81 * Math.log10(period) - 1.43;
+                calcPulsatingMagMean.innerText = `${absMagMean.toFixed(2)} 등급`;
+
+                // 2. Pulsation dynamics logic matching Slide 2
+                const phase = (timeOffset / (period * 2)); 
+                
+                // Fluctuation relative scales
+                const sizeOscillation = 0.15 * Math.sin(phase);
+                const tempOscillation = 0.12 * Math.sin(phase + Math.PI/2.2); 
+                
+                const currentRadius = maxRadius * (1.0 + sizeOscillation);
+                const currentTemp = surfaceTemp * (1.0 + tempOscillation);
+                
+                // 3. Stefan-Boltzmann Equation
+                const solarTemp = 5778;
+                const currentLuminosity = (currentRadius * currentRadius) * Math.pow((currentTemp / solarTemp), 4);
+                
+                // Calculate dynamic absolute magnitude derived from Stefan-Boltzmann Luminosity
+                const currentAbsMagnitude = 4.83 - 2.5 * Math.log10(currentLuminosity);
+                
+                // Show real calculated outputs
+                const displayLuminosity = document.getElementById('math-pulsating').querySelector('div:nth-child(2) div');
+                if (displayLuminosity) {
+                    displayLuminosity.innerText = `${currentLuminosity.toLocaleString(undefined, {maximumFractionDigits: 1})} 배`;
+                }
+                calcPulsatingMag.innerText = `${currentAbsMagnitude.toFixed(2)} 등급`;
+                
+            } else {
+                const phaseAngle = parseFloat(document.getElementById('slide-eclipsing-phase').value);
+                const radiusRatio = parseFloat(document.getElementById('slide-eclipsing-ratio').value);
+                
+                // Fixed Inclination to 90 degrees
+                const inclination = 90;
+                
+                document.getElementById('val-eclipsing-phase').innerText = `${phaseAngle}°`;
+                document.getElementById('val-eclipsing-ratio').innerText = `${radiusRatio.toFixed(2)} 배`;
+                
+                const r1 = 40;
+                const r2 = 40 * radiusRatio;
+                const orbitalSeparation = 120;
+                
+                const radPhase = (phaseAngle * Math.PI) / 180;
+                const radIncl = (inclination * Math.PI) / 180; // 90 degrees
+                
+                const dx = orbitalSeparation * Math.sin(radPhase);
+                const dy = orbitalSeparation * Math.cos(radPhase) * Math.cos(radIncl); // always 0 since cos(90) = 0
+                
+                // 미분 불가능한 절댓값 Cusp를 제거하기 위해 수학적 쌍곡선 평활화 필터링 적용 (실제 광성 주변 감광/Limb Darkening 모사)
+                const epsilon = 14; // 부드럽게 감쇄시킬 스케일 팩터 (픽셀 단위)
+                const projectedDistance = Math.sqrt(dx*dx + dy*dy + epsilon*epsilon) - epsilon;
+                
+                const t1 = 7500;
+                const t2 = 3800;
+                
+                const f1 = 1.0; 
+                const f2 = Math.pow(radiusRatio, 2) * Math.pow(t2/t1, 4); 
+                const baseTotalFlux = f1 + f2;
+                
+                let currentFlux = baseTotalFlux;
+                let statusMsg = "평상시";
+                let statusColor = "text-emerald-400";
+                
+                if (projectedDistance < r1 + r2) {
+                    const overlap = getOverlapArea(r1, r2, projectedDistance);
+                    const isSecondaryBehind = Math.cos(radPhase) > 0;
+                    
+                    if (isSecondaryBehind) {
+                        const loss = f2 * (overlap / (Math.PI * r2 * r2));
+                        currentFlux -= loss;
+                        statusMsg = "부극소 (Secondary Eclipse)";
+                        statusColor = "text-sky-400";
+                    } else {
+                        const loss = f1 * (overlap / (Math.PI * r1 * r1));
+                        currentFlux -= loss;
+                        statusMsg = "주극소 (Primary Eclipse)";
+                        statusColor = "text-red-400 font-bold glow-red";
+                    }
+                }
+                
+                const percentageBrightness = (currentFlux / baseTotalFlux) * 100;
+                calcEclipsingFlux.innerText = `${percentageBrightness.toFixed(1)}%`;
+                calcEclipsingStatus.innerText = statusMsg;
+                calcEclipsingStatus.className = `text-sm font-bold ${statusColor} mt-1`;
+            }
+        }
+
+        // Mode switching logic (Pulsating <-> Eclipsing)
+        function switchMode(mode) {
+            currentMode = mode;
+            if (mode === 'pulsating') {
+                btnPulsating.className = "px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2 bg-indigo-600 text-white glow-blue";
+                btnEclipsing.className = "px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2 text-slate-400 hover:text-slate-200";
+                
+                controlsPulsating.classList.remove('hidden');
+                controlsEclipsing.classList.add('hidden');
+                
+                mathPulsating.classList.remove('hidden');
+                mathEclipsing.classList.add('hidden');
+                
+                visualizerBadge.innerText = "세페이드 맥동 모델 (반지름 및 온도 수축·팽창)";
+                visualizerBadge.className = "text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold";
+            } else {
+                btnEclipsing.className = "px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2 bg-indigo-600 text-white glow-blue";
+                btnPulsating.className = "px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 flex items-center gap-2 text-slate-400 hover:text-slate-200";
+                
+                controlsEclipsing.classList.remove('hidden');
+                controlsPulsating.classList.add('hidden');
+                
+                mathEclipsing.classList.remove('hidden');
+                mathPulsating.classList.add('hidden');
+                
+                visualizerBadge.innerText = "식쌍성 시선궤도 모델 (주극소 · 부극소 실시간 추적)";
+                visualizerBadge.className = "text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold";
+            }
+            updatePhysics();
+        }
+
+        // Render functions for Star visualizer
+        function renderStars() {
+            const width = starCanvas.width;
+            const height = starCanvas.height;
+            starCtx.clearRect(0, 0, width, height);
+            
+            if (currentMode === 'pulsating') {
+                const maxRadius = parseFloat(document.getElementById('slide-pulsating-radius').value);
+                const surfaceTemp = parseFloat(document.getElementById('slide-pulsating-temp').value);
+                const period = parseFloat(document.getElementById('slide-pulsating-period').value);
+                
+                const phase = (timeOffset / (period * 2));
+                const sizeOscillation = 0.15 * Math.sin(phase);
+                const tempOscillation = 0.12 * Math.sin(phase + Math.PI/2.2);
+                
+                const sizeFactor = 1.0 + sizeOscillation;
+                const tempFactor = 1.0 + tempOscillation;
+                
+                const liveRadius = maxRadius * sizeFactor * 45; 
+                const liveTemp = surfaceTemp * tempFactor;
+                
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                const stellarColor = getStellarColor(liveTemp);
+                const gradient = starCtx.createRadialGradient(centerX, centerY, liveRadius * 0.2, centerX, centerY, liveRadius * 1.6);
+                gradient.addColorStop(0, stellarColor);
+                gradient.addColorStop(0.4, stellarColor.replace('rgb', 'rgba').replace(')', ', 0.8)'));
+                gradient.addColorStop(0.7, stellarColor.replace('rgb', 'rgba').replace(')', ', 0.3)'));
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                starCtx.fillStyle = gradient;
+                starCtx.beginPath();
+                starCtx.arc(centerX, centerY, liveRadius * 1.6, 0, Math.PI * 2);
+                starCtx.fill();
+                
+                // Star body
+                starCtx.fillStyle = '#ffffff';
+                starCtx.beginPath();
+                starCtx.arc(centerX, centerY, liveRadius * 0.95, 0, Math.PI * 2);
+                starCtx.fill();
+                
+                starCtx.fillStyle = stellarColor;
+                starCtx.globalAlpha = 0.6;
+                starCtx.beginPath();
+                starCtx.arc(centerX, centerY, liveRadius * 0.9, 0, Math.PI * 2);
+                starCtx.fill();
+                starCtx.globalAlpha = 1.0;
+                
+                // Label dynamic physical values
+                starCtx.fillStyle = '#ffffff';
+                starCtx.font = 'bold 12px Noto Sans KR';
+                starCtx.textAlign = 'center';
+                starCtx.fillText(`실시간 세페이드 반경: ${sizeFactor.toFixed(2)} R_avg`, centerX, centerY - 15);
+                starCtx.fillText(`실시간 온구 온도: ${Math.round(liveTemp).toLocaleString()} K`, centerX, centerY + 15);
+                
+            } else {
+                const phaseAngle = parseFloat(document.getElementById('slide-eclipsing-phase').value);
+                const radiusRatio = parseFloat(document.getElementById('slide-eclipsing-ratio').value);
+                
+                // Fixed Inclination to 90 degrees
+                const inclination = 90;
+                
+                const r1 = 35;
+                const r2 = 35 * radiusRatio;
+                const orbitalSeparation = 110; 
+                
+                const radPhase = (phaseAngle * Math.PI) / 180;
+                const radIncl = (inclination * Math.PI) / 180;
+                
+                const dx = orbitalSeparation * Math.sin(radPhase);
+                const dy = orbitalSeparation * Math.cos(radPhase) * Math.cos(radIncl); // always 0
+                
+                const observerCX = width * 0.32;
+                const observerCY = height / 2;
+                const orbitCX = width * 0.75;
+                const orbitCY = height / 2;
+                
+                // Observer view axis labels
+                starCtx.fillStyle = '#94a3b8';
+                starCtx.font = 'bold 10px Noto Sans KR';
+                starCtx.textAlign = 'center';
+                starCtx.fillText("지구 시선 관측정면 (Observer View)", observerCX, 25);
+                
+                // Orbital track (straight line since inclination = 90)
+                starCtx.strokeStyle = 'rgba(71, 85, 105, 0.4)';
+                starCtx.lineWidth = 1.5;
+                starCtx.beginPath();
+                starCtx.moveTo(observerCX - orbitalSeparation, observerCY);
+                starCtx.lineTo(observerCX + orbitalSeparation, observerCY);
+                starCtx.stroke();
+                
+                // Color codes
+                const primaryColor = 'rgb(255, 220, 110)'; 
+                const secondaryColor = 'rgb(239, 68, 68)';  
+                
+                const isSecondaryBehind = Math.cos(radPhase) > 0;
+                
+                const drawStar = (cx, cy, r, color, label) => {
+                    const textYOffset = (label === "주성 (고온)" && !isSecondaryBehind && Math.abs(dx) < 15) ? cy - r - 20 : cy - r - 5;
+                    const grad = starCtx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 1.5);
+                    grad.addColorStop(0, color);
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+                    starCtx.fillStyle = grad;
+                    starCtx.beginPath();
+                    starCtx.arc(cx, cy, r * 1.5, 0, Math.PI*2);
+                    starCtx.fill();
+                    
+                    starCtx.fillStyle = color;
+                    starCtx.beginPath();
+                    starCtx.arc(cx, cy, r, 0, Math.PI*2);
+                    starCtx.fill();
+                    
+                    starCtx.strokeStyle = 'rgba(255,255,255,0.3)';
+                    starCtx.lineWidth = 1;
+                    starCtx.stroke();
+                    
+                    starCtx.fillStyle = '#ffffff';
+                    starCtx.font = '10px Noto Sans KR';
+                    starCtx.fillText(label, cx, textYOffset);
+                };
+                
+                if (isSecondaryBehind) {
+                    drawStar(observerCX + dx, observerCY + dy, r2, secondaryColor, "반성 (저온)");
+                    drawStar(observerCX, observerCY, r1, primaryColor, "주성 (고온)");
+                } else {
+                    drawStar(observerCX, observerCY, r1, primaryColor, "주성 (고온)");
+                    drawStar(observerCX + dx, observerCY + dy, r2, secondaryColor, "반성 (저온)");
+                }
+                
+                // Right side: orbital vertical projection
+                starCtx.fillStyle = '#94a3b8';
+                starCtx.fillText("수직 상공 궤도면 (Overhead Plane)", orbitCX, 25);
+                
+                starCtx.strokeStyle = 'rgba(71, 85, 105, 0.4)';
+                starCtx.beginPath();
+                starCtx.arc(orbitCX, orbitCY, orbitalSeparation * 0.8, 0, Math.PI * 2);
+                starCtx.stroke();
+                
+                starCtx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
+                starCtx.lineWidth = 1;
+                starCtx.setLineDash([4, 4]);
+                starCtx.beginPath();
+                starCtx.moveTo(orbitCX - 50, orbitCY);
+                starCtx.lineTo(orbitCX - 50, orbitCY + 120);
+                starCtx.moveTo(orbitCX + 50, orbitCY);
+                starCtx.lineTo(orbitCX + 50, orbitCY + 120);
+                starCtx.stroke();
+                starCtx.setLineDash([]);
+                starCtx.fillStyle = 'rgba(59, 130, 246, 0.7)';
+                starCtx.fillText("지구 시선방향 ⬇", orbitCX, orbitCY + 115);
+                
+                drawStar(orbitCX, orbitCY, r1 * 0.7, primaryColor, "");
+                
+                const ox = orbitCX + (orbitalSeparation * 0.8) * Math.sin(radPhase);
+                const oy = orbitCY + (orbitalSeparation * 0.8) * Math.cos(radPhase);
+                drawStar(ox, oy, r2 * 0.7, secondaryColor, "");
+            }
+        }
+
+        // Render Graph Function (Explicitly mapping dynamic absolute magnitudes with smooth transit interpolation)
+        function renderGraph() {
+            const width = graphCanvas.width;
+            const height = graphCanvas.height;
+            graphCtx.clearRect(0, 0, width, height);
+            
+            graphCtx.strokeStyle = '#334155';
+            graphCtx.lineWidth = 1.5;
+            graphCtx.beginPath();
+            graphCtx.moveTo(50, 20);
+            graphCtx.lineTo(50, height - 30);
+            graphCtx.lineTo(width - 20, height - 30);
+            graphCtx.stroke();
+            
+            graphCtx.fillStyle = '#94a3b8';
+            graphCtx.font = '10px Noto Sans KR';
+            graphCtx.textAlign = 'right';
+            if (currentMode === 'pulsating') {
+                graphCtx.fillText("시간 (Days)", width - 20, height - 10);
+            } else {
+                graphCtx.fillText("공전 위상 (Degrees)", width - 20, height - 10);
+            }
+            
+            graphCtx.textAlign = 'left';
+            graphCtx.save();
+            graphCtx.translate(15, 20);
+            graphCtx.rotate(-Math.PI / 2);
+            graphCtx.fillText(currentMode === 'pulsating' ? "절대 등급 (M_v)" : "상대 밝기 (%)", -80, 0);
+            graphCtx.restore();
+
+            const graphWidth = width - 70;
+            const graphHeight = height - 60;
+            const paddingLeft = 50;
+            const paddingTop = 20;
+
+            if (currentMode === 'pulsating') {
+                const maxRadius = parseFloat(document.getElementById('slide-pulsating-radius').value);
+                const surfaceTemp = parseFloat(document.getElementById('slide-pulsating-temp').value);
+                const period = parseFloat(document.getElementById('slide-pulsating-period').value);
+                
+                graphCtx.strokeStyle = '#818cf8';
+                graphCtx.lineWidth = 2.5;
+                graphCtx.beginPath();
+                
+                const totalCycleToShow = 2.0;
+                const currentCycleProgress = (timeOffset / (period * 2)) / (2 * Math.PI);
+                const trackerX = paddingLeft + (currentCycleProgress % totalCycleToShow) * (graphWidth / totalCycleToShow);
+                
+                let trackerY = 0;
+                
+                const baseLuminosity = (maxRadius * maxRadius) * Math.pow((surfaceTemp / 5778), 4);
+                const midAbsMag = 4.83 - 2.5 * Math.log10(baseLuminosity);
+                
+                const magMaxLimit = midAbsMag + 2.5;  
+                const magMinLimit = midAbsMag - 2.5;  
+                
+                for (let px = 0; px <= graphWidth; px++) {
+                    const cycleFraction = (px / graphWidth) * totalCycleToShow;
+                    const evalPhase = cycleFraction * 2 * Math.PI;
+                    
+                    const sizeOscillation = 0.15 * Math.sin(evalPhase);
+                    const tempOscillation = 0.12 * Math.sin(evalPhase + Math.PI/2.2);
+                    
+                    const evalRadius = maxRadius * (1.0 + sizeOscillation);
+                    const evalTemp = surfaceTemp * (1.0 + tempOscillation);
+                    
+                    const solarTemp = 5778;
+                    const evalLuminosity = (evalRadius * evalRadius) * Math.pow((evalTemp / solarTemp), 4);
+                    const evalAbsMag = 4.83 - 2.5 * Math.log10(evalLuminosity);
+                    
+                    const normalizedY = (evalAbsMag - magMinLimit) / (magMaxLimit - magMinLimit);
+                    const py = paddingTop + Math.max(0, Math.min(1, normalizedY)) * graphHeight;
+                    
+                    if (px === 0) graphCtx.moveTo(paddingLeft + px, py);
+                    else graphCtx.lineTo(paddingLeft + px, py);
+                    
+                    if (Math.abs(cycleFraction - (currentCycleProgress % totalCycleToShow)) < 0.015) {
+                        trackerY = py;
+                    }
+                }
+                graphCtx.stroke();
+                
+                // Graph Tracker Dot
+                if (trackerY > 0) {
+                    graphCtx.fillStyle = '#ef4444';
+                    graphCtx.strokeStyle = '#ffffff';
+                    graphCtx.lineWidth = 2;
+                    graphCtx.beginPath();
+                    graphCtx.arc(trackerX, trackerY, 6, 0, Math.PI * 2);
+                    graphCtx.fill();
+                    graphCtx.stroke();
+                }
+                
+            } else {
+                // ECLIPSING MODE GRAPH
+                const radiusRatio = parseFloat(document.getElementById('slide-eclipsing-ratio').value);
+                const phaseAngle = parseFloat(document.getElementById('slide-eclipsing-phase').value);
+                
+                // Fixed Inclination to 90 degrees
+                const inclination = 90;
+                
+                graphCtx.strokeStyle = '#f59e0b';
+                graphCtx.lineWidth = 2.5;
+                graphCtx.beginPath();
+                
+                const r1 = 40;
+                const r2 = 40 * radiusRatio;
+                const orbitalSeparation = 120;
+                const radIncl = (inclination * Math.PI) / 180;
+                
+                const t1 = 7500;
+                const t2 = 3800;
+                const f1 = 1.0;
+                const f2 = Math.pow(radiusRatio, 2) * Math.pow(t2/t1, 4);
+                const baseTotalFlux = f1 + f2;
+                
+                let trackerY = 0;
+                const trackerX = paddingLeft + (phaseAngle / 360) * graphWidth;
+                
+                let primaryEclipseY = 0;
+                let secondaryEclipseY1 = 0;
+                let secondaryEclipseY2 = 0;
+                
+                // Dynamically scale Y-axis range so that the curve never spills off the bottom of the canvas
+                const minFluxRatio = (baseTotalFlux - radiusRatio * radiusRatio) / baseTotalFlux;
+                const minScale = Math.max(0.01, minFluxRatio - 0.05);
+                const maxScale = 1.05; 
+                
+                for (let px = 0; px <= graphWidth; px++) {
+                    const evalAngleDeg = (px / graphWidth) * 360;
+                    const radPhase = (evalAngleDeg * Math.PI) / 180;
+                    
+                    const dx = orbitalSeparation * Math.sin(radPhase);
+                    const dy = orbitalSeparation * Math.cos(radPhase) * Math.cos(radIncl);
+                    
+                    // 수학적 절댓값으로 발생하는 특이점 Cusp(V-shape) 부드러운 쌍곡선으로 근사 변환 적용 (Limb Darkening 모사)
+                    const epsilon = 14; // 부드럽게 완화할 범위 스케일 (픽셀단위)
+                    const projectedDistance = Math.sqrt(dx*dx + dy*dy + epsilon*epsilon) - epsilon;
+                    
+                    let evalFlux = baseTotalFlux;
+                    
+                    if (projectedDistance < r1 + r2) {
+                        const overlap = getOverlapArea(r1, r2, projectedDistance);
+                        const isSecondaryBehind = Math.cos(radPhase) > 0;
+                        
+                        // Physics Refinement (Limb Darkening & Transit Smoothing):
+                        // Rather than a harsh geometric intersection area step which produces sharp "V" shapes at the inflection boundaries,
+                        // we apply a cubic Hermite interpolation (SmoothStep) near the minima and transit contacts.
+                        // This replicates the gradual transition as the companion covers the stellar disc's limb.
+                        const totalAreaSec = Math.PI * r2 * r2;
+                        const contactProgress = projectedDistance / (r1 + r2); // 1.0 at first contact, 0.0 at full center overlap
+                        
+                        // Smooth factor calculation (Hermite interpolation)
+                        const smoothStepFactor = 3 * Math.pow(contactProgress, 2) - 2 * Math.pow(contactProgress, 3);
+                        const smoothOverlap = overlap * (1.0 - 0.12 * smoothStepFactor); // Apply softening near edges
+                        
+                        if (isSecondaryBehind) {
+                            const loss = f2 * (smoothOverlap / totalAreaSec);
+                            evalFlux -= loss;
+                        } else {
+                            const loss = f1 * (smoothOverlap / (Math.PI * r1 * r1));
+                            evalFlux -= loss;
+                        }
+                    }
+                    
+                    const percentageBrightness = (evalFlux / baseTotalFlux); 
+                    
+                    const normalizedY = (maxScale - percentageBrightness) / (maxScale - minScale);
+                    const py = paddingTop + Math.max(0, Math.min(1, normalizedY)) * graphHeight;
+                    
+                    if (px === 0) graphCtx.moveTo(paddingLeft + px, py);
+                    else graphCtx.lineTo(paddingLeft + px, py);
+                    
+                    if (Math.abs(evalAngleDeg - phaseAngle) < 1.5) {
+                        trackerY = py;
+                    }
+                    
+                    if (Math.abs(evalAngleDeg - 180) < 0.5) primaryEclipseY = py;
+                    if (Math.abs(evalAngleDeg - 0) < 0.5) secondaryEclipseY1 = py;
+                    if (Math.abs(evalAngleDeg - 360) < 0.5) secondaryEclipseY2 = py;
+                }
+                graphCtx.stroke();
+                
+                // Draw Annotation Lines
+                graphCtx.save();
+                graphCtx.setLineDash([2, 3]);
+                
+                // 주극소 (180도)
+                if (primaryEclipseY > 0) {
+                    graphCtx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+                    graphCtx.beginPath();
+                    graphCtx.moveTo(paddingLeft + (180/360)*graphWidth, paddingTop);
+                    graphCtx.lineTo(paddingLeft + (180/360)*graphWidth, height - 30);
+                    graphCtx.stroke();
+                    
+                    graphCtx.fillStyle = '#ef4444';
+                    graphCtx.font = 'bold 9px Noto Sans KR';
+                    graphCtx.textAlign = 'center';
+                    graphCtx.fillText("★주극소(지구 차폐 대폭)", paddingLeft + (180/360)*graphWidth, primaryEclipseY - 10);
+                }
+                
+                // 부극소 (0도 / 360도)
+                if (secondaryEclipseY1 > 0) {
+                    graphCtx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+                    graphCtx.beginPath();
+                    graphCtx.moveTo(paddingLeft, paddingTop);
+                    graphCtx.lineTo(paddingLeft, height - 30);
+                    graphCtx.stroke();
+                    
+                    graphCtx.fillStyle = '#38bdf8';
+                    graphCtx.font = 'bold 9px Noto Sans KR';
+                    graphCtx.textAlign = 'left';
+                    graphCtx.fillText("부극소", paddingLeft + 5, secondaryEclipseY1 - 10);
+                }
+                if (secondaryEclipseY2 > 0) {
+                    graphCtx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+                    graphCtx.beginPath();
+                    graphCtx.moveTo(paddingLeft + graphWidth, paddingTop);
+                    graphCtx.lineTo(paddingLeft + graphWidth, height - 30);
+                    graphCtx.stroke();
+                    
+                    graphCtx.fillStyle = '#38bdf8';
+                    graphCtx.font = 'bold 9px Noto Sans KR';
+                    graphCtx.textAlign = 'right';
+                    graphCtx.fillText("부극소", paddingLeft + graphWidth - 5, secondaryEclipseY2 - 10);
+                }
+                graphCtx.restore();
+
+                if (trackerY > 0) {
+                    graphCtx.fillStyle = '#10b981';
+                    graphCtx.strokeStyle = '#ffffff';
+                    graphCtx.lineWidth = 2;
+                    graphCtx.beginPath();
+                    graphCtx.arc(trackerX, trackerY, 6, 0, Math.PI * 2);
+                    graphCtx.fill();
+                    graphCtx.stroke();
+                }
+            }
+        }
+
+        // Animation Loop Control
+        function animate(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const delta = (timestamp - lastTime) / 1000; 
+            lastTime = timestamp;
+            
+            if (isPlaying) {
+                if (currentMode === 'pulsating') {
+                    const period = parseFloat(document.getElementById('slide-pulsating-period').value);
+                    timeOffset += delta * 12.0; 
+                } else {
+                    const phaseSlider = document.getElementById('slide-eclipsing-phase');
+                    let currentPhase = parseFloat(phaseSlider.value);
+                    currentPhase = (currentPhase + delta * 25.0) % 360; 
+                    phaseSlider.value = currentPhase.toFixed(1);
+                }
+                updatePhysics();
+            }
+            
+            renderStars();
+            renderGraph();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const playIcon = document.getElementById('play-icon');
+            const playText = document.getElementById('play-text');
+            if (isPlaying) {
+                playIcon.className = "fa-solid fa-pause";
+                playText.innerText = "자동 공전/맥동 일시정지";
+            } else {
+                playIcon.className = "fa-solid fa-play";
+                playText.innerText = "자동 공전/맥동 다시 시작";
+            }
+        }
+
+        // Accordion utility
+        function toggleAccordion(id) {
+            const content = document.getElementById(id);
+            const chevron = document.getElementById('theory-chevron');
+            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+                content.style.maxHeight = '0px';
+                chevron.style.transform = 'rotate(0deg)';
+            } else {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                chevron.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        // Resize handler for responsive canvases
+        window.addEventListener('resize', () => {
+            setupSpaceBackground();
+            renderStars();
+            renderGraph();
+        });
+
+        // Initialize App on window load
+        window.onload = function() {
+            setupSpaceBackground();
+            updatePhysics();
+            animationFrameId = requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>

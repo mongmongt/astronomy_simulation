@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>일식 시뮬레이터 & 물리량 분석기</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for live data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Custom track style for sliders */
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #1e293b;
+            border-radius: 9999px;
+            height: 8px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            background: #3b82f6;
+            border: 2px solid #ffffff;
+            border-radius: 9999px;
+            width: 18px;
+            height: 18px;
+            margin-top: -5px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header Section -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 via-orange-600 to-yellow-300 animate-pulse flex items-center justify-center shadow-lg shadow-orange-500/20">
+                    <div class="w-7 h-7 rounded-full bg-slate-950"></div>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        일식 역학 시뮬레이터 <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/30">v1.8.0</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">물리적 주변부 감광 모델 및 웅장한 황소자리 성도 매핑 적용</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-slate-400">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                    <span>시뮬레이션 엔진 정상 가동</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Canvas & Real-time Visualization (7 Cols) -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+            <!-- Simulation Display -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-2xl relative overflow-hidden flex flex-col h-[500px] md:h-[580px]">
+                <div class="flex justify-between items-center mb-3 z-10">
+                    <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        우주 광학 시각화 (Celestial Canvas)
+                    </span>
+                    <span id="eclipse-badge" class="text-xs font-bold px-3 py-1 rounded-full">
+                        일식 없음
+                    </span>
+                </div>
+
+                <!-- Live Sky Visualizer Canvas Wrapper (지연을 없애기 위해 transition CSS 클래스 원천 제거) -->
+                <div class="relative flex-1 rounded-xl overflow-hidden bg-sky-400 shadow-inner" id="sky-box">
+                    <!-- Background Stars (지연 없는 즉각적 렌더링을 위해 transition CSS 제거) -->
+                    <div id="stars-overlay" class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-950 via-slate-950 to-black opacity-0 pointer-events-none"></div>
+                    
+                    <canvas id="eclipseCanvas" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                    
+                    <!-- Atmospheric Glow Effect -->
+                    <div id="corona-atmosphere" class="absolute inset-0 pointer-events-none transition-opacity duration-300 opacity-0 bg-radial-gradient"></div>
+
+                    <!-- Canvas Drag Helper Note -->
+                    <div class="absolute bottom-3 left-3 bg-slate-950/70 backdrop-blur-md text-[10px] text-slate-300 px-2 py-1 rounded border border-slate-800 pointer-events-none">
+                        💡 마우스로 드래그하거나 아래 슬라이더로 달을 이동할 수 있습니다.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Tabs / Explanations -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 shadow-lg">
+                <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    정밀한 일식 조도 역학 및 시각 정보
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-400 leading-relaxed">
+                    <div class="space-y-2">
+                        <p><strong class="text-slate-200">1. 주변부 감광 적분 모델:</strong> 태양 구체를 24개의 동심원으로 나누어 가장자리 광도가 중심부보다 부드럽고 어둡게 감소하는 수치 적분 모델을 매 프레임 실시간 연산합니다.</p>
+                        <p><strong class="text-slate-200">2. 생리적 멱법칙 필터:</strong> 안구 조도 적응을 표현하는 스티븐스의 법칙($I^{0.4}$)을 연동하여, 부분일식이 한창인 가림률 50~80% 시점에도 하늘 조도를 밝게 유지하며 일식이 주는 진정한 역학적 시각 대비를 선사합니다.</p>
+                    </div>
+                    <div class="space-y-2">
+                        <p><strong class="text-slate-200">3. 웅장한 크기의 황소자리:</strong> 개기일식 극대 지점 도달 시, 태양의 강렬한 실루엣에 가리지 않고 밤하늘을 가로지르도록 기존 대비 1.8배 확대된 황소자리 뼈대와 플레이아데스 성단이 장엄하게 드러납니다.</p>
+                        <p><strong class="text-slate-200">4. 코로나 대비 상댓값:</strong> 광구가 완전히 차단되면 오직 태양 광구 밝기의 백만 분의 일($10^{-6}$) 수준인 극관 코로나 필드 광학 효과만 활성화되어 신비로운 야간 모드로 부드럽게 반전됩니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Control Panel & Metrics Data (5 Cols) -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- [HIDDEN] Numerical Metrics Dashboard - Kept in DOM with "hidden" class to prevent JS reference errors -->
+            <div class="hidden bg-slate-900 rounded-2xl border border-slate-800 p-5 shadow-lg flex-col gap-4">
+                <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                    <svg class="w-4.5 h-4.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z"/></svg>
+                    실시간 물리량 분석 패널
+                </h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                        <span id="metric-obscuration">0.00</span>
+                    </div>
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                        <span id="metric-intensity">100.00</span>
+                    </div>
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 col-span-2">
+                        <span id="metric-corona-ratio">1,000,000.0배</span>
+                        <span id="safety-warning">시력 보호 장비 필수</span>
+                    </div>
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                        <span id="metric-size-ratio">1.00</span>
+                        <span id="size-ratio-label">개기 가능</span>
+                    </div>
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                        <span id="metric-distance">300.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamics Controls -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 shadow-lg flex flex-col gap-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <svg class="w-4.5 h-4.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                        천체 제어 컨트롤러
+                    </h2>
+                    <!-- Preset Buttons -->
+                    <div class="flex gap-1.5">
+                        <button id="btn-preset-total" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded transition">개기일식 셋팅</button>
+                        <button id="btn-preset-annular" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded transition">금환일식 셋팅</button>
+                    </div>
+                </div>
+
+                <!-- Sliders -->
+                <div class="space-y-4">
+                    <!-- Sun Size Slider -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400 flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span> 태양 크기 (시직경)
+                            </span>
+                            <span class="font-bold text-slate-200" id="val-sun-size">100 px</span>
+                        </div>
+                        <input type="range" id="input-sun-size" min="60" max="150" value="100" class="w-full bg-transparent appearance-none">
+                    </div>
+
+                    <!-- Moon Size Slider -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400 flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-slate-400"></span> 달 크기 (시직경)
+                            </span>
+                            <span class="font-bold text-slate-200" id="val-moon-size">105 px</span>
+                        </div>
+                        <input type="range" id="input-moon-size" min="60" max="150" value="105" class="w-full bg-transparent appearance-none">
+                    </div>
+
+                    <!-- Moon Orbit Position X (Transit Progress) -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400 flex items-center gap-1">
+                                ↔️ 공전 진행경로 (X축 위치)
+                            </span>
+                            <span class="font-bold text-slate-200" id="val-orbit-x">180 px</span>
+                        </div>
+                        <input type="range" id="input-orbit-x" min="-300" max="300" value="180" class="w-full bg-transparent appearance-none">
+                    </div>
+
+                    <!-- Moon Orbit Position Y (Orbital Inclination / Offset) -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400 flex items-center gap-1">
+                                ↕️ 황도 궤도 경사 (Y축 오차)
+                            </span>
+                            <span class="font-bold text-slate-200" id="val-orbit-y">0 px</span>
+                        </div>
+                        <input type="range" id="input-orbit-y" min="-120" max="120" value="0" class="w-full bg-transparent appearance-none">
+                        <p class="text-[10px] text-slate-500 mt-1">달과 지구 공전 궤도면의 5도 기울어짐 효과를 구현할 수 있습니다.</p>
+                    </div>
+                </div>
+
+                <!-- Playback controls (Placed directly below the sliders, above the graph) -->
+                <div class="flex gap-2 pt-3 border-t border-slate-800">
+                    <button id="btn-play" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-2 text-xs">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <span>시뮬레이션 재생</span>
+                    </button>
+                    <button id="btn-pause" class="hidden flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-2 text-xs">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <span>일시 정지</span>
+                    </button>
+                    <button id="btn-reset" class="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 px-4 rounded-xl transition text-xs">
+                        초기화
+                    </button>
+                </div>
+
+                <!-- Real-time Plotting Panel: Placed at the bottom of the card, below the controls -->
+                <div class="mt-2 pt-4 border-t border-slate-800/80 flex flex-col h-[220px]">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        공전 진행도별 정밀 광도 프로파일 (Limb Darkening 반영)
+                    </h3>
+                    <div class="relative flex-1">
+                        <canvas id="lightCurveChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>본 일식 광학 분석 프로그램은 구체 교차 수학 모델을 탑재하고 있습니다. 실생활에서의 일식 관측은 필터가 완비된 일식 전용 안경을 필히 사용해야 안전합니다.</p>
+        </div>
+    </footer>
+
+    <!-- Script Block containing all calculation, visualization, UI binding logic -->
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('eclipseCanvas');
+        const ctx = canvas.getContext('2d');
+        const skyBox = document.getElementById('sky-box');
+        const starsOverlay = document.getElementById('stars-overlay');
+        
+        // Input Sliders
+        const inputSunSize = document.getElementById('input-sun-size');
+        const inputMoonSize = document.getElementById('input-moon-size');
+        const inputOrbitX = document.getElementById('input-orbit-x');
+        const inputOrbitY = document.getElementById('input-orbit-y');
+        
+        // Dynamic Value Labels
+        const valSunSize = document.getElementById('val-sun-size');
+        const valMoonSize = document.getElementById('val-moon-size');
+        const valOrbitX = document.getElementById('val-orbit-x');
+        const valOrbitY = document.getElementById('val-orbit-y');
+        
+        // Metrics Displays (Hidden in DOM, kept for script continuity)
+        const metricObscuration = document.getElementById('metric-obscuration');
+        const metricIntensity = document.getElementById('metric-intensity');
+        const metricCoronaRatio = document.getElementById('metric-corona-ratio');
+        const metricSizeRatio = document.getElementById('metric-size-ratio');
+        const metricDistance = document.getElementById('metric-distance');
+        const sizeRatioLabel = document.getElementById('size-ratio-label');
+        const safetyWarning = document.getElementById('safety-warning');
+        const eclipseBadge = document.getElementById('eclipse-badge');
+
+        // Playback Buttons
+        const btnPlay = document.getElementById('btn-play');
+        const btnPause = document.getElementById('btn-pause');
+        const btnReset = document.getElementById('btn-reset');
+        const btnPresetTotal = document.getElementById('btn-preset-total');
+        const btnPresetAnnular = document.getElementById('btn-preset-annular');
+
+        // Simulation State
+        let sun = { x: 0, y: 0, r: 100 };
+        let moon = { x: 180, y: 0, r: 105 };
+        let animationFrameId = null;
+        let isPlaying = false;
+        let playDirection = 1; // 1 = rightward orbit, -1 = leftward orbit
+        let isDraggingMoon = false;
+        let dragOffset = { x: 0, y: 0 };
+        let lightCurveChart = null;
+
+        // Initialize Canvas Sizing
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            // Re-center Sun to the middle of the dynamic canvas coordinate system
+            sun.x = rect.width / 2;
+            sun.y = rect.height / 2;
+            
+            draw();
+        }
+
+        // Initialize state values from sliders
+        function syncStateFromSliders() {
+            sun.r = parseInt(inputSunSize.value);
+            moon.r = parseInt(inputMoonSize.value);
+            
+            // X / Y values relative to Sun center
+            const relX = parseInt(inputOrbitX.value);
+            const relY = parseInt(inputOrbitY.value);
+            
+            moon.x = sun.x + relX;
+            moon.y = sun.y + relY;
+
+            // Update Labels
+            valSunSize.textContent = `${sun.r} px`;
+            valMoonSize.textContent = `${moon.r} px`;
+            valOrbitX.textContent = `${relX} px`;
+            valOrbitY.textContent = `${relY} px`;
+        }
+
+        // Sync Sliders when dragging directly on canvas
+        function syncSlidersFromState() {
+            const relX = Math.round(moon.x - sun.x);
+            const relY = Math.round(moon.y - sun.y);
+
+            inputOrbitX.value = relX;
+            inputOrbitY.value = relY;
+
+            valOrbitX.textContent = `${relX} px`;
+            valOrbitY.textContent = `${relY} px`;
+        }
+
+        // --- MATH 1: 기하학적 면적 교차 함수 (Geometric Circle-Circle Intersection) ---
+        function circleIntersectionArea(R_sub, r_moon, dist) {
+            if (dist >= R_sub + r_moon) return 0;
+            if (dist <= Math.abs(R_sub - r_moon)) {
+                return r_moon < R_sub ? Math.PI * r_moon * r_moon : Math.PI * R_sub * R_sub;
+            }
+            const r2 = r_moon * r_moon;
+            const R2 = R_sub * R_sub;
+            const d2 = dist * dist;
+            
+            // 수치 오류 방지를 위한 클램핑 처리
+            const val1 = (d2 + R2 - r2) / (2 * dist * R_sub);
+            const val2 = (d2 + r2 - R2) / (2 * dist * r_moon);
+            const alpha = Math.acos(Math.max(-1, Math.min(1, val1)));
+            const beta = Math.acos(Math.max(-1, Math.min(1, val2)));
+
+            const segment1 = R2 * alpha - R2 * Math.sin(2 * alpha) / 2;
+            const segment2 = r2 * beta - r2 * Math.sin(2 * beta) / 2;
+
+            return segment1 + segment2;
+        }
+
+        // --- MATH 2: 태양 주변부 감광 모델 수치 적분 (Limb Darkening Concentric Integration) ---
+        function getLimbDarkenedIntensity(R, r, d) {
+            if (d >= R + r) return 1.0; // 겹치지 않음 -> 완전한 대낮
+            if (d <= r - R) return 0.0; // 태양이 완전히 차단됨 -> 개기일식
+
+            // 주변부 감광 이론 계수 설정 (가시광선 파장 표준치)
+            const u = 0.6;
+            const v = 0.2;
+            const N = 24; // 동심원 정밀도를 높여 경계면에서 매우 부드러운 전이를 확보
+
+            let totalWeightedArea = 0;
+            let coveredWeightedArea = 0;
+
+            for (let i = 1; i <= N; i++) {
+                const r_outer = R * (i / N);
+                const r_inner = R * ((i - 1) / N);
+
+                const r_mid = (r_outer + r_inner) / 2;
+                const mu = Math.sqrt(Math.max(0, 1 - (r_mid * r_mid) / (R * R)));
+                const weight = 1 - u * (1 - mu) - v * Math.pow(1 - mu, 2);
+
+                const ring_area = (Math.PI * r_outer * r_outer) - (Math.PI * r_inner * r_inner);
+
+                // 이번 동심원 영역 중 달에 가려지는 세부 면적 구하기
+                const cov_outer = circleIntersectionArea(r_outer, r, d);
+                const cov_inner = circleIntersectionArea(r_inner, r, d);
+                const ring_covered_area = Math.max(0, cov_outer - cov_inner);
+
+                totalWeightedArea += ring_area * weight;
+                coveredWeightedArea += ring_covered_area * weight;
+            }
+
+            const relativeIntensity = 1.0 - (coveredWeightedArea / totalWeightedArea);
+            return Math.max(0.0, Math.min(1.0, relativeIntensity));
+        }
+
+        // --- Core Physics Engine and Statistics calculation ---
+        function updatePhysics() {
+            const dx = moon.x - sun.x;
+            const dy = moon.y - sun.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // 단순 면적 대비 가림률 계산 (기존 기하 수식 유지)
+            const R_area = Math.PI * sun.r * sun.r;
+            const intersection = circleIntersectionArea(sun.r, moon.r, dist);
+            const obscuration = Math.min(1.0, intersection / R_area);
+            
+            // [정밀 보정] 정밀 주변부 감광을 반영한 실질 물리적 빛의 세기(Intensity) 도출
+            const intensity = getLimbDarkenedIntensity(sun.r, moon.r, dist);
+            const sizeRatio = moon.r / sun.r;
+
+            // 퍼센트 스케일 변환
+            const obsPct = obscuration * 100;
+            const intPct = intensity * 100;
+
+            // Update DOM metrics (They exist but are in a hidden block)
+            if (metricObscuration) metricObscuration.textContent = obsPct.toFixed(2);
+            if (metricIntensity) metricIntensity.textContent = intPct.toFixed(2);
+            if (metricSizeRatio) metricSizeRatio.textContent = sizeRatio.toFixed(2);
+            if (metricDistance) metricDistance.textContent = dist.toFixed(1);
+
+            // 일식 종류 배지 판별
+            let phaseText = "일식 없음";
+            let badgeClass = "bg-slate-800 text-slate-300 border border-slate-700";
+            
+            if (obsPct > 0) {
+                if (obsPct >= 99.9) {
+                    phaseText = "개기일식 (Total Eclipse)";
+                    badgeClass = "bg-cyan-950 text-cyan-300 border border-cyan-700/80 animate-pulse";
+                } else if (dist <= Math.abs(sun.r - moon.r) && moon.r < sun.r) {
+                    phaseText = "금환일식 (Annular Eclipse)";
+                    badgeClass = "bg-yellow-950 text-yellow-300 border border-yellow-700/80";
+                } else {
+                    phaseText = "부분일식 (Partial Eclipse)";
+                    badgeClass = "bg-amber-950 text-amber-300 border border-amber-700/80";
+                }
+            }
+            
+            eclipseBadge.textContent = phaseText;
+            eclipseBadge.className = `text-xs font-bold px-3 py-1 rounded-full transition-all duration-300 ${badgeClass}`;
+
+            if (sizeRatioLabel) {
+                if (sizeRatio >= 1.0) {
+                    sizeRatioLabel.textContent = "개기 가능";
+                    sizeRatioLabel.className = "text-[10px] text-emerald-300 bg-emerald-950/80 px-1 rounded";
+                } else {
+                    sizeRatioLabel.textContent = "금환 발생";
+                    sizeRatioLabel.className = "text-[10px] text-amber-300 bg-amber-950/80 px-1 rounded";
+                }
+            }
+
+            // 코로나 밝기 대비 비율 분석 수식 동기화
+            const relativeToCorona = Math.max(1.0, intensity * 1000000);
+            if (metricCoronaRatio && safetyWarning) {
+                if (intensity === 0) {
+                    metricCoronaRatio.textContent = "1.0배 (코로나 전용)";
+                    safetyWarning.textContent = "맨눈 관측 가능 (개기중)";
+                    safetyWarning.className = "text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900/50";
+                } else {
+                    metricCoronaRatio.textContent = `${relativeToCorona.toLocaleString(undefined, {maximumFractionDigits: 1})}배`;
+                    safetyWarning.textContent = "시력 보호 장비 필수";
+                    safetyWarning.className = "text-[10px] px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-900/50";
+                }
+            }
+
+            // --- [과학적 대기 감쇄 및 눈의 생리적 적응 수식 통합] ---
+            const perceivedBrightness = Math.pow(intensity, 0.4);
+
+            // 별무리는 주관적 대기 밝기가 급속도로 어두워질 때 시각 적응에 맞춰 서서히 등장
+            const starsOpacity = Math.max(0, 1.0 - perceivedBrightness);
+            starsOverlay.style.opacity = starsOpacity;
+
+            // 천공 배경 조색 (대낮 스카이 블루에서 개기식 우주의 딥 네이비 블랙으로 비선형 실시간 수치 매핑)
+            let rSky = Math.round(8 + (56 - 8) * perceivedBrightness);
+            let gSky = Math.round(12 + (189 - 12) * perceivedBrightness);
+            let bSky = Math.round(28 + (248 - 28) * perceivedBrightness);
+            skyBox.style.backgroundColor = `rgb(${rSky}, ${gSky}, ${bSky})`;
+
+            return { obscuration, intensity, dist };
+        }
+
+        // --- MATH 4: 황도 12궁 황소자리 정밀 렌더링 함수 ---
+        // 주관적 대기 밝기가 20% 이하로 떨어지기 시작하면 서서히 노출되며 100% 개기일식 시 대화면으로 선명하게 빛납니다.
+        function drawTaurus(sunX, sunY, perceivedBrightness) {
+            if (perceivedBrightness > 0.20) return; // 대기가 충분히 어두워지지 않으면 보이지 않음
+            
+            // 0.20에서 0.00 범위 사이에서 투명도를 부드럽게 보간 (Smoothstep 필터 대입)
+            const t = (0.20 - perceivedBrightness) / 0.20;
+            const totalityAlpha = t * t * (3 - 2 * t);
+
+            ctx.save();
+            
+            // 1. 성도 선 그리기 (연한 블루 야광 톤)
+            ctx.strokeStyle = `rgba(147, 197, 253, ${0.35 * totalityAlpha})`;
+            ctx.lineWidth = 1.2;
+            
+            // [비주얼 보정] 태양 코로나 영역 바깥에서 웅장하게 발산되도록 오프셋 크기 배율 적용
+            const scale = 1.8; 
+            
+            // 황소자리 성도 별들의 좌표 오프셋 설정 (태양 중심 뒤에 완벽히 정렬)
+            const stars = {
+                aldebaran: { x: sunX + (95 * scale), y: sunY + (50 * scale), size: 5.0, color: '#fb923c', name: '알데바란' },
+                theta: { x: sunX + (70 * scale), y: sunY + (25 * scale), size: 2.5 },
+                gamma: { x: sunX + (40 * scale), y: sunY + (12 * scale), size: 2.8 },
+                delta: { x: sunX + (60 * scale), y: sunY + (5 * scale), size: 2.5 },
+                epsilon: { x: sunX + (80 * scale), y: sunY - (15 * scale), size: 3.2 },
+                beta: { x: sunX - (25 * scale), y: sunY - (120 * scale), size: 3.5, name: '엘나스' },
+                zeta: { x: sunX + (55 * scale), y: sunY - (100 * scale), size: 3.0 },
+                lambda: { x: sunX + (15 * scale), y: sunY + (45 * scale), size: 2.5 },
+                xi: { x: sunX - (15 * scale), y: sunY + (65 * scale), size: 2.8 }
+            };
+
+            function connect(s1, s2) {
+                ctx.beginPath();
+                ctx.moveTo(s1.x, s1.y);
+                ctx.lineTo(s2.x, s2.y);
+                ctx.stroke();
+            }
+
+            // 황소 별자리 골격선 연결
+            connect(stars.aldebaran, stars.theta);
+            connect(stars.theta, stars.gamma);
+            connect(stars.gamma, stars.delta);
+            connect(stars.delta, stars.epsilon);
+            connect(stars.epsilon, stars.beta);
+            connect(stars.aldebaran, stars.zeta);
+            connect(stars.gamma, stars.lambda);
+            connect(stars.lambda, stars.xi);
+
+            // 2. 주요 항성들 그리기
+            for (const key in stars) {
+                const star = stars[key];
+                ctx.beginPath();
+                if (key === 'aldebaran') {
+                    // 황소자리의 붉은 1등성 알데바란은 오렌지빛 네온 글로우 효과 추가
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = 'rgba(251, 146, 60, 0.9)';
+                    ctx.fillStyle = `rgba(251, 146, 60, ${totalityAlpha})`;
+                } else {
+                    ctx.shadowBlur = 4;
+                    ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fillStyle = `rgba(255, 255, 255, ${totalityAlpha * 0.9})`;
+                }
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 3. M45 플레이아데스 푸른 성단(Pleiades) 더 넓고 입체감 있게 그리기
+            const pleiadesCenter = { x: sunX - (110 * scale), y: sunY - (30 * scale) };
+            const m45Stars = [
+                { dx: 0, dy: 0 }, { dx: -8, dy: 4 }, { dx: 8, dy: -4 },
+                { dx: -3, dy: -7 }, { dx: 3, dy: 7 }, { dx: 11, dy: 3 }, { dx: -11, dy: -3 }
+            ];
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(147, 197, 253, 0.8)';
+            ctx.fillStyle = `rgba(191, 219, 254, ${totalityAlpha * 0.95})`;
+            m45Stars.forEach(s => {
+                ctx.beginPath();
+                ctx.arc(pleiadesCenter.x + s.dx, pleiadesCenter.y + s.dy, 2.0, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 4. 별자리 가이드 텍스트를 크게 바뀐 성도 위치에 매핑하여 출력
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = `rgba(147, 197, 253, ${totalityAlpha * 0.85})`;
+            ctx.font = "11px 'Orbitron', sans-serif";
+            ctx.fillText("TAURUS", stars.aldebaran.x + 15, stars.aldebaran.y - 5);
+            ctx.fillText("M45 (Pleiades)", pleiadesCenter.x - 45, pleiadesCenter.y - 15);
+
+            ctx.fillStyle = `rgba(255, 255, 255, ${totalityAlpha * 0.9})`;
+            ctx.font = "bold 14px 'Noto Sans KR', sans-serif";
+            ctx.fillText("황소자리", stars.aldebaran.x + 15, stars.aldebaran.y - 22);
+
+            ctx.restore();
+        }
+
+        // --- Visual Graphics Rendering on HTML5 Canvas ---
+        function draw() {
+            if (!canvas.width || !canvas.height) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const { obscuration, intensity, dist } = updatePhysics();
+            
+            const perceivedBrightness = Math.pow(intensity, 0.4);
+
+            // Draw Stars during total eclipse
+            if (obscuration > 0.1) {
+                drawBackgroundStars(perceivedBrightness);
+            }
+
+            // 개기일식 순간에만 우주 공간 배후에 웅장해진 황소자리 성도를 실시간 시각화합니다.
+            drawTaurus(sun.x, sun.y, perceivedBrightness);
+
+            // Draw Solar Corona
+            if (obscuration > 0.8) {
+                drawCorona(sun.x, sun.y, sun.r, moon.r, obscuration, intensity);
+            }
+
+            // Draw Sun
+            drawSun(sun.x, sun.y, sun.r);
+
+            // Draw Moon
+            drawMoon(moon.x, moon.y, moon.r);
+
+            // Optical Flares and Diamond Ring / Baily's Beads Effects
+            if (obscuration > 0.94) {
+                drawBailysBeadsAndDiamondRing(sun, moon, dist, obscuration);
+            }
+        }
+
+        function drawBackgroundStars(perceivedBrightness) {
+            ctx.save();
+            const opacity = Math.max(0, 1.0 - perceivedBrightness);
+            ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+            const positions = [
+                {x: 0.15, y: 0.2}, {x: 0.8, y: 0.15}, {x: 0.3, y: 0.8}, {x: 0.85, y: 0.75},
+                {x: 0.08, y: 0.65}, {x: 0.9, y: 0.35}, {x: 0.45, y: 0.1}, {x: 0.25, y: 0.4}
+            ];
+            positions.forEach(pos => {
+                ctx.beginPath();
+                ctx.arc(pos.x * canvas.width / window.devicePixelRatio, pos.y * canvas.height / window.devicePixelRatio, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        // 빛나는 태양 묘사
+        function drawSun(x, y, r) {
+            ctx.save();
+            
+            // Standard Solar Atmosphere Layered Glow (Corona core)
+            const outerGlow = ctx.createRadialGradient(x, y, r * 0.9, x, y, r * 2.2);
+            outerGlow.addColorStop(0, 'rgba(255, 253, 230, 0.9)');
+            outerGlow.addColorStop(0.15, 'rgba(255, 180, 0, 0.65)');
+            outerGlow.addColorStop(0.4, 'rgba(235, 110, 0, 0.3)');
+            outerGlow.addColorStop(1, 'rgba(235, 70, 0, 0)');
+            ctx.fillStyle = outerGlow;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Solar Disc with Photospheric Limb Darkening
+            const discGlow = ctx.createRadialGradient(x, y, r * 0.4, x, y, r);
+            discGlow.addColorStop(0, '#ffffff');
+            discGlow.addColorStop(0.65, '#fff1a8');
+            discGlow.addColorStop(0.9, '#fca21c');
+            discGlow.addColorStop(1, '#df5b00');
+            ctx.fillStyle = discGlow;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // 코로나 영역 묘사
+        function drawCorona(x, y, sunR, moonR, obscuration, intensity) {
+            ctx.save();
+            
+            // [Smoothstep 3차 에르미트 보간법 적용] 
+            let coronaAlpha = 0;
+            if (obscuration > 0.8) {
+                const t = (obscuration - 0.8) / 0.2;
+                coronaAlpha = t * t * (3 - 2 * t) * (1.0 - intensity);
+            }
+            
+            ctx.shadowBlur = 40;
+            ctx.shadowColor = 'rgba(180, 220, 255, 0.8)';
+
+            // Draw elegant streamy Corona rays
+            const numRays = 48;
+            const maxRayLength = Math.max(sunR, moonR) * (2.0 + Math.sin(Date.now() * 0.001) * 0.1);
+            
+            ctx.strokeStyle = `rgba(230, 245, 255, ${0.12 * coronaAlpha})`;
+            ctx.lineWidth = 2.5;
+
+            for (let i = 0; i < numRays; i++) {
+                const angle = (i / numRays) * Math.PI * 2;
+                const noise = Math.sin(i * 1.7 + (Date.now() * 0.0008)) * 12;
+                const rLength = sunR + 10 + (Math.random() * 8) + (maxRayLength * (0.4 + 0.6 * Math.sin(angle * 3 + noise) * Math.sin(angle * 3 + noise)));
+                
+                ctx.beginPath();
+                ctx.moveTo(x + Math.cos(angle) * sunR, y + Math.sin(angle) * sunR);
+                ctx.lineTo(x + Math.cos(angle) * rLength, y + Math.sin(angle) * rLength);
+                ctx.stroke();
+            }
+
+            // Inner glowing ring of Corona
+            const innerGlow = ctx.createRadialGradient(x, y, sunR * 0.95, x, y, sunR * 1.4);
+            innerGlow.addColorStop(0, `rgba(255, 255, 255, ${0.9 * coronaAlpha})`);
+            innerGlow.addColorStop(0.3, `rgba(200, 230, 255, ${0.75 * coronaAlpha})`);
+            innerGlow.addColorStop(0.7, `rgba(130, 180, 255, ${0.35 * coronaAlpha})`);
+            innerGlow.addColorStop(1, `rgba(0, 0, 0, 0)`);
+            ctx.fillStyle = innerGlow;
+            ctx.beginPath();
+            ctx.arc(x, y, sunR * 1.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // 달 영역 묘사
+        function drawMoon(x, y, r) {
+            ctx.save();
+            
+            const shadowGlow = ctx.createRadialGradient(x, y, r * 0.85, x, y, r);
+            shadowGlow.addColorStop(0, '#040710');
+            shadowGlow.addColorStop(1, '#0c1328');
+
+            ctx.fillStyle = shadowGlow;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Lunar textures
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
+            ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.2, r * 0.15, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + r * 0.25, y + r * 0.3, r * 0.2, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x - r * 0.1, y + r * 0.45, r * 0.1, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + r * 0.4, y - r * 0.3, r * 0.08, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+        }
+
+        // 지형 요철 및 다이아몬드 반지 광학 효과 구현
+        function drawBailysBeadsAndDiamondRing(sunObj, moonObj, dist, obscuration) {
+            const R = sunObj.r;
+            const r = moonObj.r;
+            
+            const delta = Math.abs(dist - Math.abs(R - r));
+            
+            if (delta < 24) {
+                ctx.save();
+                
+                const angle = Math.atan2(sunObj.y - moonObj.y, sunObj.x - moonObj.x);
+                const contactX = moonObj.x + Math.cos(angle) * r;
+                const contactY = moonObj.y + Math.sin(angle) * r;
+                
+                const linearT = Math.max(0, 1.0 - (delta / 24));
+                const flareScale = linearT * linearT * (3 - 2 * linearT);
+                
+                // 1. Draw Baily's Beads
+                if (flareScale > 0.05 && flareScale < 0.6) {
+                    ctx.fillStyle = '#fffae0';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#fca21c';
+                    for (let i = -3; i <= 3; i++) {
+                        if (i === 0) continue;
+                        const beadAngle = angle + (i * 0.05);
+                        const bx = moonObj.x + Math.cos(beadAngle) * r;
+                        const by = moonObj.y + Math.sin(beadAngle) * r;
+                        ctx.beginPath();
+                        ctx.arc(bx, by, 2 + Math.random() * 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // 2. Draw Diamond Ring Effect
+                if (r >= R && flareScale > 0.3) {
+                    const flareStrength = (flareScale - 0.3) / 0.7;
+                    
+                    const ringGlow = ctx.createRadialGradient(contactX, contactY, 1, contactX, contactY, R * 0.8 * flareStrength);
+                    ringGlow.addColorStop(0, '#ffffff');
+                    ringGlow.addColorStop(0.1, '#fff5be');
+                    ringGlow.addColorStop(0.35, 'rgba(255, 160, 0, 0.8)');
+                    ringGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    
+                    ctx.fillStyle = ringGlow;
+                    ctx.beginPath();
+                    ctx.arc(contactX, contactY, R * 0.8 * flareStrength, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Cross flares
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 * flareStrength})`;
+                    ctx.lineWidth = 3;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(contactX - R * 1.5 * flareStrength, contactY);
+                    ctx.lineTo(contactX + R * 1.5 * flareStrength, contactY);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(contactX, contactY - R * 1.5 * flareStrength);
+                    ctx.lineTo(contactX, contactY + R * 1.5 * flareStrength);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(contactX, contactY, 7 * flareStrength, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // --- Live Intensity Graph ---
+        function initializeChart() {
+            const chartCtx = document.getElementById('lightCurveChart').getContext('2d');
+            const dataPoints = [];
+            
+            for (let rx = -250; rx <= 250; rx += 10) {
+                const dy = parseInt(inputOrbitY.value);
+                const d = Math.sqrt(rx * rx + dy * dy);
+                const intensity = getLimbDarkenedIntensity(sun.r, moon.r, d);
+                dataPoints.push({ x: rx, y: intensity * 100 });
+            }
+
+            lightCurveChart = new Chart(chartCtx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: '광전 진행도에 따른 실제 상대 물리 광도 (%)',
+                            data: dataPoints,
+                            borderColor: '#10b981',
+                            borderWidth: 2.5,
+                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                            fill: true,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `물리 광도: ${context.parsed.y.toFixed(2)}% (X오프셋: ${context.parsed.x}px)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: '궤도 오프셋 (X px)', color: '#94a3b8', font: { size: 10 } },
+                            ticks: { color: '#64748b' },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                        },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: { display: true, text: '상대 밝기 (%)', color: '#94a3b8', font: { size: 10 } },
+                            ticks: { color: '#64748b' },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChartCurve() {
+            if (!lightCurveChart) return;
+            
+            const dataPoints = [];
+            const currentYOffset = parseInt(inputOrbitY.value);
+            
+            for (let rx = -250; rx <= 250; rx += 10) {
+                const d = Math.sqrt(rx * rx + currentYOffset * currentYOffset);
+                const intensity = getLimbDarkenedIntensity(sun.r, moon.r, d);
+                dataPoints.push({ x: rx, y: intensity * 100 });
+            }
+            
+            lightCurveChart.data.datasets[0].data = dataPoints;
+            lightCurveChart.update('none');
+        }
+
+        // --- Interaction Handlers & Drag Logic ---
+        function getMousePos(canvasDom, mEvent) {
+            const rect = canvasDom.getBoundingClientRect();
+            const clientX = mEvent.touches ? mEvent.touches[0].clientX : mEvent.clientX;
+            const clientY = mEvent.touches ? mEvent.touches[0].clientY : mEvent.clientY;
+            
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function onMouseDown(e) {
+            const pos = getMousePos(canvas, e);
+            const distToMoon = Math.sqrt((pos.x - moon.x) * (pos.x - moon.x) + (pos.y - moon.y) * (pos.y - moon.y));
+            
+            if (distToMoon <= moon.r + 15) {
+                isDraggingMoon = true;
+                dragOffset.x = pos.x - moon.x;
+                dragOffset.y = pos.y - moon.y;
+                if (isPlaying) pauseSimulation();
+            }
+        }
+
+        function onMouseMove(e) {
+            if (!isDraggingMoon) return;
+            e.preventDefault();
+            const pos = getMousePos(canvas, e);
+            
+            let targetX = pos.x - dragOffset.x;
+            let targetY = pos.y - dragOffset.y;
+            
+            const maxRelX = 300;
+            const minRelX = -300;
+            const maxRelY = 120;
+            const minRelY = -120;
+            
+            let relX = targetX - sun.x;
+            let relY = targetY - sun.y;
+            
+            relX = Math.max(minRelX, Math.min(maxRelX, relX));
+            relY = Math.max(minRelY, Math.min(maxRelY, relY));
+            
+            moon.x = sun.x + relX;
+            moon.y = sun.y + relY;
+            
+            syncSlidersFromState();
+            draw();
+            updateChartCurve();
+        }
+
+        // 마우스 업 상태 감지
+        function onMouseUp() {
+            isDraggingMoon = false;
+        }
+
+        // --- Automation / Timeline Animation Controls ---
+        function animationStep() {
+            if (!isPlaying) return;
+
+            let currentX = parseInt(inputOrbitX.value);
+            currentX += 1.5 * playDirection;
+
+            if (currentX >= 300) {
+                currentX = 300;
+                playDirection = -1;
+            } else if (currentX <= -300) {
+                currentX = -300;
+                playDirection = 1;
+            }
+
+            inputOrbitX.value = currentX;
+            syncStateFromSliders();
+            draw();
+            updateChartCurve();
+
+            animationFrameId = requestAnimationFrame(animationStep);
+        }
+
+        function playSimulation() {
+            if (isPlaying) return;
+            isPlaying = true;
+            btnPlay.classList.add('hidden');
+            btnPlay.classList.remove('flex');
+            
+            btnPause.classList.remove('hidden');
+            btnPause.classList.add('flex');
+            animationStep();
+        }
+
+        function pauseSimulation() {
+            if (!isPlaying) return;
+            isPlaying = false;
+            btnPause.classList.add('hidden');
+            btnPause.classList.remove('flex');
+            
+            btnPlay.classList.remove('hidden');
+            btnPlay.classList.add('flex');
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        }
+
+        // --- Control Setup and Event Listeners ---
+        function initEvents() {
+            const inputs = [inputSunSize, inputMoonSize, inputOrbitX, inputOrbitY];
+            inputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    syncStateFromSliders();
+                    draw();
+                    updateChartCurve();
+                });
+            });
+
+            // Canvas Drag Event Bindings
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+
+            canvas.addEventListener('touchstart', onMouseDown, {passive: false});
+            canvas.addEventListener('touchmove', onMouseMove, {passive: false});
+            window.addEventListener('touchend', onMouseUp);
+
+            window.addEventListener('resize', resizeCanvas);
+
+            // Playback buttons
+            btnPlay.addEventListener('click', playSimulation);
+            btnPause.addEventListener('click', pauseSimulation);
+            btnReset.addEventListener('click', () => {
+                pauseSimulation();
+                inputOrbitX.value = 180;
+                inputOrbitY.value = 0;
+                inputSunSize.value = 100;
+                inputMoonSize.value = 105;
+                syncStateFromSliders();
+                draw();
+                updateChartCurve();
+            });
+
+            // Preset Configs
+            btnPresetTotal.addEventListener('click', () => {
+                pauseSimulation();
+                inputSunSize.value = 100;
+                inputMoonSize.value = 108;
+                inputOrbitX.value = 0;
+                inputOrbitY.value = 0;
+                syncStateFromSliders();
+                draw();
+                updateChartCurve();
+            });
+
+            btnPresetAnnular.addEventListener('click', () => {
+                pauseSimulation();
+                inputSunSize.value = 100;
+                inputMoonSize.value = 92;
+                inputOrbitX.value = 0;
+                inputOrbitY.value = 0;
+                syncStateFromSliders();
+                draw();
+                updateChartCurve();
+            });
+        }
+
+        // --- Application Onload Bootstrap ---
+        window.onload = function() {
+            resizeCanvas();
+            syncStateFromSliders();
+            initializeChart();
+            initEvents();
+            draw();
+            
+            // Initial layout setup for buttons
+            btnPlay.classList.add('flex');
+            btnPause.classList.add('hidden');
+        };
+    </script>
+</body>
+</html>

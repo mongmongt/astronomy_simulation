@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>식쌍성계 및 외계 행성계 광도 곡선 시뮬레이터</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #030712;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Custom scrollbar for control panel */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col">
+
+    <!-- 헤더 영역 -->
+    <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur py-4 px-6 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.9 1.39-1.35 2.22-.75l7.95 5.74c.83.6 1.14 1.74.7 2.65l-3.04 6.27c-.44.9-1.49 1.33-2.42.98l-7.91-3.03a1.8 1.8 0 01-1.04-1.03l-3.04-6.27c-.44-.9-.13-2.05.7-2.65l7.95-5.74z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        식쌍성계 & 외계행성계 겉보기 밝기 시뮬레이터
+                        <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">v4.8 (안정화 최종 마스터)</span>
+                    </h1>
+                    <p class="text-xs text-gray-400">공전 주기와 관측 시간에 따른 실제 광도 곡선(Light Curve) 분석</p>
+                </div>
+            </div>
+            <!-- 핵심 수식 퀵 배너: HTML sup 태그로 온도의 4제곱 확실하게 표현 보장 -->
+            <div class="text-right text-xs bg-gray-900/60 p-2 rounded border border-gray-800">
+                <span class="text-gray-400 font-medium">💡 슈테판-볼츠만 법칙:</span> 
+                <span class="text-yellow-400 font-mono font-bold">L = 4π R² σ T<sup>4</sup></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨테이너 -->
+    <main class="flex-grow p-4 md:p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 좌측: 조작 변인 제어판 -->
+        <section class="lg:col-span-4 flex flex-col gap-5 bg-gray-900/50 border border-gray-800 p-5 rounded-2xl backdrop-blur-sm overflow-y-auto max-h-[85vh]">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h2 class="text-md font-bold text-gray-300 flex items-center gap-2">
+                    <span>🎛️ 조작 변인 제어판</span>
+                </h2>
+                <!-- 프리셋 선택 기능 -->
+                <select id="presetSelect" class="bg-gray-800 border border-gray-700 rounded text-xs px-2 py-1 text-blue-400 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="default">🧬 실험 프리셋 선택</option>
+                    <option value="completeEclipse">1. 완전식쌍성 (i = 90°, P = 4일)</option>
+                    <option value="partialEclipse">2. 부분식쌍성 (i = 78°, P = 3일)</option>
+                    <option value="noEclipse">3. 식 현상 없음 (i = 40°, P = 5일)</option>
+                    <option value="planetTransit">4. 외계행성 식현상 (Transit, P = 6일)</option>
+                    <option value="identicalStars">5. 동일 항성 쌍성 (i = 90°, P = 4일)</option>
+                </select>
+            </div>
+
+            <!-- 공전 상태 제어기 -->
+            <div class="bg-gray-950/60 p-3 rounded-lg border border-gray-800/80">
+                <label class="text-xs text-gray-400 block mb-2 font-medium">🚀 실시간 공전 상태 제어</label>
+                <div class="flex items-center gap-2">
+                    <button id="playPauseBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 px-3 rounded text-xs transition duration-200 flex items-center justify-center gap-1">
+                        <span id="playIcon">⏸️ 일시정지</span>
+                    </button>
+                    <button id="resetBtn" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-1.5 px-3 rounded text-xs transition duration-200">
+                        🔄 처음으로
+                    </button>
+                </div>
+                <!-- 속도 조절 -->
+                <div class="mt-3">
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>공전 가속 속도</span>
+                        <span id="speedVal" class="text-blue-400 font-bold">1x</span>
+                    </div>
+                    <input type="range" id="simSpeed" min="0.2" max="3" value="1" step="0.1" class="w-full accent-blue-500">
+                </div>
+            </div>
+
+            <!-- 변인 1: 궤도 기하 구조 및 공전 주기 -->
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider">📐 궤도 역학 변인</h3>
+                
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-gray-300">궤도 경사각 (i)</label>
+                        <span class="text-blue-400 font-bold font-orbitron" id="inclinationVal">90°</span>
+                    </div>
+                    <input type="range" id="inclination" min="0" max="90" value="90" step="0.5" class="w-full accent-blue-500">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-gray-300">공전 주기 (P)</label>
+                        <span class="text-blue-400 font-bold font-orbitron" id="periodVal">4.0일</span>
+                    </div>
+                    <input type="range" id="period" min="1.5" max="8.0" value="4.0" step="0.1" class="w-full accent-blue-500">
+                </div>
+
+                <!-- 두 천체 사이의 거리 (궤도 반지름) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-gray-300">궤도 반지름 (a) <span class="text-[10px] text-red-400 font-normal" id="limitWarning"></span></label>
+                        <span class="text-blue-400 font-bold font-orbitron" id="orbitRadiusVal">3.50 R☉</span>
+                    </div>
+                    <input type="range" id="orbitRadius" min="1.0" max="8.0" value="3.5" step="0.05" class="w-full accent-blue-500">
+                    <p class="text-[11px] text-gray-500">두 별의 중심 사이의 거리입니다. 반지름의 합보다 커야 물리적으로 충돌을 방지합니다.</p>
+                </div>
+            </div>
+
+            <!-- 변인 2: 주성 (항성 1) -->
+            <div class="space-y-4 border-t border-gray-800/80 pt-4">
+                <h3 class="text-xs font-bold text-yellow-500 uppercase tracking-wider">☀️ 주성 (Primary Star)</h3>
+                
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-gray-300">반지름 (R₁)</label>
+                        <span class="text-yellow-500 font-bold font-orbitron" id="r1Val">1.00 R☉</span>
+                    </div>
+                    <input type="range" id="r1" min="0.5" max="2.0" value="1.0" step="0.05" class="w-full accent-yellow-500">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-gray-300">표면온도 (T₁)</label>
+                        <span class="text-yellow-500 font-bold font-orbitron" id="t1Val">6000 K</span>
+                    </div>
+                    <input type="range" id="t1" min="3000" max="12000" value="6000" step="100" class="w-full accent-yellow-500">
+                </div>
+            </div>
+
+            <!-- 변인 3: 동반천체 (항성 2 / 행성) -->
+            <div class="space-y-4 border-t border-gray-800/80 pt-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">🪐 동반 천체 (Secondary Object)</h3>
+                    <!-- 항성 vs 행성 선택 필터 -->
+                    <select id="secondaryType" class="bg-gray-800 border border-gray-700 text-xs rounded px-1.5 py-0.5 text-emerald-400 focus:outline-none">
+                        <option value="star">⭐ 동반성 (Star)</option>
+                        <option value="planet">☄️ 행성 (Planet)</option>
+                    </select>
+                </div>
+                
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-gray-300">반지름 (R₂)</label>
+                        <span class="text-emerald-400 font-bold font-orbitron" id="r2Val">0.40 R☉</span>
+                    </div>
+                    <input type="range" id="r2" min="0.1" max="2.0" value="0.4" step="0.02" class="w-full accent-emerald-500">
+                </div>
+
+                <div id="t2Group" class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <label class="text-gray-300">표면온도 (T₂)</label>
+                        <span class="text-emerald-400 font-bold font-orbitron" id="t2Val">4000 K</span>
+                    </div>
+                    <input type="range" id="t2" min="1000" max="12000" value="4000" step="100" class="w-full accent-emerald-500">
+                </div>
+            </div>
+
+            <!-- 광도 비율 실시간 분석 장치 -->
+            <div class="border-t border-gray-800/80 pt-4 text-xs space-y-1.5 bg-gray-950/40 p-3 rounded-lg">
+                <span class="text-gray-400 block font-medium">📊 물리량 및 광도비 계산결과 (태양 기준 상대비)</span>
+                <div class="flex justify-between"><span class="text-gray-500">주성 광도 (L₁):</span> <span id="calcL1" class="font-mono text-yellow-400">1.00 L☉</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">동반천체 광도 (L₂):</span> <span id="calcL2" class="font-mono text-emerald-400">0.05 L☉</span></div>
+                <div class="flex justify-between border-t border-gray-800/50 pt-1.5">
+                    <span class="text-gray-500 font-medium">두 별의 광도 비율 (L₂/L₁):</span> 
+                    <span id="calcRatio" class="font-mono text-blue-400 font-bold font-orbitron">5.00 %</span>
+                </div>
+                <div class="text-[10px] text-gray-500 mt-1 leading-normal italic">
+                    * L☉ 단위는 태양의 광도를 1.00으로 두었을 때의 상대적인 세기를 의미합니다. (태양 기준: R☉=1.0, T=5800K)
+                </div>
+            </div>
+        </section>
+
+        <!-- 우측: 결과 시각화 패널 -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- 위: 실시간 겉보기 밝기 그래프 -->
+            <div class="bg-gray-900/50 border border-gray-800 p-5 rounded-2xl flex flex-col justify-between h-[360px]">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-sm font-bold text-gray-300 flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></span>
+                        📉 관측 일수 기준 겉보기 밝기 곡선 (Light Curve)
+                    </h2>
+                    <span class="text-xs text-gray-500">관측 시간: 총 12일 (12 Days)</span>
+                </div>
+                <div class="relative flex-grow h-[280px]">
+                    <canvas id="lightCurveChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 아래: 기하적 궤도 관측 시뮬레이터 -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                
+                <!-- 궤도 캔버스 영역 -->
+                <div class="md:col-span-7 bg-gray-900/50 border border-gray-800 p-5 rounded-2xl flex flex-col h-[320px]">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-sm font-bold text-gray-300">🌌 관측자 시야 방향 정면도 (View from Earth)</h2>
+                        <span id="phaseDisplay" class="text-xs font-mono text-blue-400 font-orbitron">경과 시간: 0.0일 (0.00 주기)</span>
+                    </div>
+                    <div class="relative flex-grow bg-slate-950 rounded-xl overflow-hidden border border-gray-800 flex items-center justify-center">
+                        <canvas id="orbitCanvas" width="400" height="300" class="max-h-[250px] w-full aspect-[4/3]"></canvas>
+                    </div>
+                </div>
+
+                <!-- 탐구 분석 카드 및 설명판 -->
+                <div class="md:col-span-5 bg-gray-900/50 border border-gray-800 p-5 rounded-2xl flex flex-col justify-between h-[320px]">
+                    <h2 class="text-sm font-bold text-gray-300 border-b border-gray-800 pb-2">📋 과학적 수치 실시간 진단</h2>
+                    <div class="flex-grow flex flex-col justify-center gap-2.5 py-3 text-xs">
+                        <div class="bg-gray-950/60 p-2.5 rounded border border-gray-800/60">
+                            <span class="text-gray-400 block mb-0.5">식 진행 상태(Eclipse State)</span>
+                            <span id="eclipseStatusText" class="text-emerald-400 font-bold text-sm">정상 상태</span>
+                        </div>
+                        <div class="bg-gray-950/60 p-2.5 rounded border border-gray-800/60">
+                            <span class="text-gray-400 block mb-0.5">현재 관측되는 상대 밝기 (Flux)</span>
+                            <span id="currentFluxDisplay" class="text-yellow-400 font-bold text-sm font-orbitron">100.00 %</span>
+                        </div>
+                        <div class="bg-gray-950/60 p-2.5 rounded border border-gray-800/60">
+                            <span class="text-gray-400 block mb-0.5">가려진 광도 분율 (주변감광 가중치 반영)</span>
+                            <span id="blockedAreaDisplay" class="text-red-400 font-bold text-sm font-orbitron">0.00 %</span>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-500 text-center leading-relaxed">
+                        실시간으로 흐르는 관측자 시간축 위에 주성이 엄폐될 때 주식이, 동반성이 숨을 때 부식이 기록됩니다.
+                    </p>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- 하단 이론 설명 및 탐구 안내 -->
+    <footer class="bg-gray-950 border-t border-gray-800 py-6 px-6 mt-8">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+                <h3 class="text-sm font-bold text-blue-400">🔭 시뮬레이션 활용 과학 탐구 가이드</h3>
+                <ul class="text-xs text-gray-400 space-y-1.5 list-disc list-inside">
+                    <li><strong class="text-gray-200">궤도 반지름 조절:</strong> 궤도 반지름(a)이 두 천체의 반지름 합(R₁+R₂)에 가까워질수록 성분 천체들이 공전 내내 겹치게 되어 밝기 저하가 연속적으로 관측됩니다.</li>
+                    <li><strong class="text-gray-200">주기 조절 검증:</strong> 공전 주기(P)를 짧게 설정할수록(예: 2.0일), 12일의 관측시간 동안 그래프에 주기적인 파동이 더 촘촘하게 여러 번 기록되는 것을 관측할 수 있습니다.</li>
+                    <li><strong class="text-gray-200">외계 행성 검증:</strong> 행성 프리셋을 누르면 동반천체의 표면온도가 0K이 됩니다. 행성이 별 앞을 지날 때만 밝기가 평평하게 내려갔다가 다시 회복되는 일식형 침강 곡선이 주기적으로 나타납니다.</li>
+                </ul>
+            </div>
+            <div class="space-y-2 border-t md:border-t-0 md:border-l border-gray-800 md:pl-6">
+                <h3 class="text-sm font-bold text-emerald-400">🧪 본 시뮬레이션의 물리 공식 & 수식적 배경</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">
+                    본 시뮬레이션은 두 개의 완벽한 구형 항성이 원형 궤도로 공전함을 가정합니다. 
+                    식 현상이 일어나는 순간 관측되는 가려진 투영 면적은 두 원의 교집합 공식을 사용해 실시간으로 연산되며, 기본 광도는 태양값($R_{\odot}=1.0$, $T_{\odot}=5800\text{K}$)을 기준으로 규격화된 슈테판-볼츠만 법칙에 의거하여 계산됩니다.
+                </p>
+                <!-- T의 4승 수식: 브라우저 호환성을 위해 sup태그 완벽 대치 -->
+                <div class="bg-gray-900 p-2.5 rounded text-[11px] font-mono text-center text-yellow-300">
+                    L_total(L☉) = (R₁/R☉)² × (T₁/T☉)<sup>4</sup> + (R₂/R☉)² × (T₂/T☉)<sup>4</sup>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto text-center text-[11px] text-gray-600 border-t border-gray-900 mt-6 pt-4">
+            고급 지구과학 천문 단원 시뮬레이션 수행평가 산출물
+        </div>
+    </footer>
+
+    <script>
+        // ----------------------------------------------------
+        // 1. 변수 초기화 및 DOM 맵핑
+        // ----------------------------------------------------
+        const incInput = document.getElementById('inclination');
+        const periodInput = document.getElementById('period');
+        const orbitRadiusInput = document.getElementById('orbitRadius'); 
+        const r1Input = document.getElementById('r1');
+        const t1Input = document.getElementById('t1');
+        const r2Input = document.getElementById('r2');
+        const t2Input = document.getElementById('t2');
+        const typeSelect = document.getElementById('secondaryType');
+        
+        const incVal = document.getElementById('inclinationVal');
+        const periodVal = document.getElementById('periodVal');
+        const orbitRadiusVal = document.getElementById('orbitRadiusVal'); 
+        const limitWarning = document.getElementById('limitWarning'); 
+        const r1Val = document.getElementById('r1Val');
+        const t1Val = document.getElementById('t1Val');
+        const r2Val = document.getElementById('r2Val');
+        const t2Val = document.getElementById('t2Val');
+        const t2Group = document.getElementById('t2Group');
+
+        const calcL1 = document.getElementById('calcL1');
+        const calcL2 = document.getElementById('calcL2');
+        const calcRatio = document.getElementById('calcRatio');
+
+        const eclipseStatusText = document.getElementById('eclipseStatusText');
+        const currentFluxDisplay = document.getElementById('currentFluxDisplay');
+        const blockedAreaDisplay = document.getElementById('blockedAreaDisplay');
+
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const ctxOrbit = orbitCanvas.getContext('2d');
+
+        const presetSelect = document.getElementById('presetSelect');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const resetBtn = document.getElementById('resetBtn');
+        const simSpeedInput = document.getElementById('simSpeed');
+        const speedVal = document.getElementById('speedVal');
+        const phaseDisplay = document.getElementById('phaseDisplay');
+
+        let lightCurveChart = null;
+        const totalObserveDays = 12.0; 
+        const steps = 300; 
+        
+        let currentTime = 0; 
+        let isPlaying = true;
+        let animationFrameId = null;
+        let cachedFluxData = [];
+
+        // 주변감광 계수
+        const uCoefficient = 0.6;
+
+        // 드래그 조작 중 플래그
+        let updateScheduled = false;
+
+        // ----------------------------------------------------
+        // 2. 이벤트 리스너 등록
+        // ----------------------------------------------------
+        typeSelect.addEventListener('change', () => {
+            if (typeSelect.value === 'planet') {
+                t2Group.style.opacity = '0.3';
+                t2Group.style.pointerEvents = 'none';
+                t2Input.value = 0; 
+                r2Input.max = 0.4;
+                if(parseFloat(r2Input.value) > 0.4) r2Input.value = 0.2;
+            } else {
+                t2Group.style.opacity = '1';
+                t2Group.style.pointerEvents = 'auto';
+                t2Input.value = 4000;
+                r2Input.max = 2.0;
+            }
+            scheduleUpdate();
+        });
+
+        // 실시간 연속 드래그 시 병목 멈춤 현상을 완전히 격리하는 프레임 스케줄러(Scheduler) 장착
+        const trackingInputs = [incInput, periodInput, orbitRadiusInput, r1Input, t1Input, r2Input, t2Input];
+        trackingInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                updateSliderLabelsOnly();
+                scheduleUpdate();
+            });
+        });
+
+        function updateSliderLabelsOnly() {
+            const iDeg = parseFloat(incInput.value);
+            const P = parseFloat(periodInput.value);
+            const modelR1 = parseFloat(r1Input.value);
+            const modelR2 = parseFloat(r2Input.value);
+            const modelOrbitRadius = parseFloat(orbitRadiusInput.value);
+
+            incVal.innerText = iDeg.toFixed(1) + '°';
+            periodVal.innerText = P.toFixed(1) + '일';
+            orbitRadiusVal.innerText = modelOrbitRadius.toFixed(2) + ' R☉';
+            r1Val.innerText = modelR1.toFixed(2) + ' R☉';
+            r2Val.innerText = modelR2.toFixed(2) + ' R☉';
+        }
+
+        function scheduleUpdate() {
+            if (!updateScheduled) {
+                updateScheduled = true;
+                requestAnimationFrame(() => {
+                    calculateAllCurves();
+                    updateScheduled = false;
+                });
+            }
+        }
+
+        simSpeedInput.addEventListener('input', () => {
+            speedVal.innerText = parseFloat(simSpeedInput.value).toFixed(1) + 'x';
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.innerText = "⏸️ 일시정지";
+                cancelAnimationFrame(animationFrameId); 
+                animate();
+            } else {
+                playIcon.innerText = "▶️ 실시간 공전";
+                cancelAnimationFrame(animationFrameId); 
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            currentTime = 0;
+            updateRealtimeStatus();
+        });
+
+        presetSelect.addEventListener('change', () => {
+            const preset = presetSelect.value;
+            if (preset === 'completeEclipse') { 
+                incInput.value = 90;
+                periodInput.value = 4.0;
+                orbitRadiusInput.value = 3.5;
+                typeSelect.value = 'star';
+                t2Group.style.opacity = '1';
+                t2Group.style.pointerEvents = 'auto';
+                r1Input.value = 1.0;
+                t1Input.value = 6500;
+                r2Input.max = 2.0;
+                r2Input.value = 0.6;
+                t2Input.value = 4200;
+            } else if (preset === 'partialEclipse') { 
+                incInput.value = 78;
+                periodInput.value = 3.0;
+                orbitRadiusInput.value = 3.0;
+                typeSelect.value = 'star';
+                t2Group.style.opacity = '1';
+                t2Group.style.pointerEvents = 'auto';
+                r1Input.value = 1.1;
+                t1Input.value = 6000;
+                r2Input.max = 2.0;
+                r2Input.value = 0.5;
+                t2Input.value = 4500;
+            } else if (preset === 'noEclipse') { 
+                incInput.value = 40;
+                periodInput.value = 5.0;
+                orbitRadiusInput.value = 4.0;
+                typeSelect.value = 'star';
+                t2Group.style.opacity = '1';
+                t2Group.style.pointerEvents = 'auto';
+                r1Input.value = 1.0;
+                t1Input.value = 6000;
+                r2Input.max = 2.0;
+                r2Input.value = 0.5;
+                t2Input.value = 4000;
+            } else if (preset === 'planetTransit') { 
+                incInput.value = 89.5;
+                periodInput.value = 6.0;
+                typeSelect.value = 'planet';
+                t2Group.style.opacity = '0.3';
+                t2Group.style.pointerEvents = 'none';
+                t2Input.value = 0;
+                r1Input.value = 1.2;
+                t1Input.value = 5800; 
+                r2Input.max = 0.4;
+                r2Input.value = 0.18; 
+            } else if (preset === 'identicalStars') { 
+                incInput.value = 90;
+                periodInput.value = 4.0;
+                orbitRadiusInput.value = 3.5;
+                typeSelect.value = 'star';
+                t2Group.style.opacity = '1';
+                t2Group.style.pointerEvents = 'auto';
+                r1Input.value = 1.0;
+                t1Input.value = 5800;
+                r2Input.max = 2.0;
+                r2Input.value = 1.0;
+                t2Input.value = 5800;
+            }
+            calculateAllCurves();
+        });
+
+        // ----------------------------------------------------
+        // 3. 수식 알고리즘 (주변감광 가중치 반영)
+        // ----------------------------------------------------
+        function getLimbDarkenedEclipse(R_bg, R_fg, d, I_bg, I_fg, isPrimary) {
+            if (d >= R_bg + R_fg) return (Math.PI * R_bg * R_bg * I_bg * (1 - uCoefficient/3));
+
+            let totalBgFlux = 0;
+            let obscuredFlux = 0;
+            const N = 25; 
+
+            for (let i = 0; i < N; i++) {
+                let r = R_bg * ((i + 0.5) / N);
+                let ringArea = Math.PI * ((Math.pow(R_bg * (i + 1) / N, 2)) - Math.pow(R_bg * i / N, 2));
+                
+                let mu = Math.sqrt(1 - Math.pow(r / R_bg, 2));
+                let limbDarkeningWeight = 1 - uCoefficient * (1 - mu);
+                let currentIntensity = I_bg * limbDarkeningWeight;
+
+                totalBgFlux += ringArea * currentIntensity;
+
+                // 극단 정렬(d=0 근방) 시 부동소수점 나눗셈 에러(NaN) 안전 가드
+                if (d < 1e-5) {
+                    if (r <= R_fg) {
+                        obscuredFlux += ringArea * currentIntensity;
+                    }
+                    continue;
+                }
+
+                if (d + R_fg <= r) {
+                    obscuredFlux += ringArea * currentIntensity;
+                } else if (Math.abs(d - r) < R_fg) {
+                    let cosAlpha = (r * r + d * d - R_fg * R_fg) / (2 * r * d);
+                    let alpha = Math.acos(Math.max(-1, Math.min(1, cosAlpha)));
+                    let obscuredFraction = alpha / Math.PI;
+                    obscuredFlux += ringArea * currentIntensity * obscuredFraction;
+                }
+            }
+
+            return totalBgFlux - obscuredFlux;
+        }
+
+        function getFluxAtPhase(phase, R1, T1, R2, T2, iRad, orbitRadius) {
+            const I1 = Math.pow(T1, 4);
+            const I2 = Math.pow(T2, 4);
+
+            const baseL1 = Math.PI * R1 * R1 * I1 * (1 - uCoefficient / 3);
+            const baseL2 = Math.PI * R2 * R2 * I2 * (1 - uCoefficient / 3);
+            const totalSystemFlux = baseL1 + baseL2;
+
+            const x2 = orbitRadius * Math.sin(phase);
+            const y2 = orbitRadius * Math.cos(phase) * Math.cos(iRad);
+            const z2 = orbitRadius * Math.cos(phase) * Math.sin(iRad); 
+
+            const d = Math.sqrt(x2 * x2 + y2 * y2); 
+
+            if (d < (R1 + R2)) {
+                if (z2 > 0) {
+                    const remainingL1 = getLimbDarkenedEclipse(R1, R2, d, I1, I2, true);
+                    return remainingL1 + baseL2;
+                } else {
+                    const remainingL2 = getLimbDarkenedEclipse(R2, R1, d, I2, I1, false);
+                    return baseL1 + remainingL2;
+                }
+            }
+            return totalSystemFlux;
+        }
+
+        function calculateAllCurves() {
+            const iDeg = parseFloat(incInput.value);
+            const iRad = (iDeg * Math.PI) / 180;
+            const P = parseFloat(periodInput.value); 
+            
+            const modelR1 = parseFloat(r1Input.value);
+            const modelR2 = parseFloat(r2Input.value);
+
+            // 물리적 한계 충돌 조건 제어 (두 별이 겹쳐서 불완전 렌더링되는 부엉이 버그 완치)
+            const minPossibleDistance = modelR1 + modelR2 + 0.1; 
+            orbitRadiusInput.min = minPossibleDistance.toFixed(2);
+            
+            let modelOrbitRadius = parseFloat(orbitRadiusInput.value);
+            if (modelOrbitRadius < minPossibleDistance) {
+                modelOrbitRadius = minPossibleDistance;
+                orbitRadiusInput.value = minPossibleDistance.toFixed(2);
+                limitWarning.innerText = " (안전 한계 자동 적용)";
+            } else {
+                limitWarning.innerText = "";
+            }
+
+            // 동적 화면 자동 맞춤 스케일 알고리즘
+            const maxBound = Math.max(modelR1, modelOrbitRadius + modelR2);
+            const canvasHalfW = orbitCanvas.width / 2;
+            const canvasHalfH = orbitCanvas.height / 2;
+            const margin = 35;
+            const scale = Math.min((canvasHalfW - margin) / maxBound, (canvasHalfH - margin) / maxBound);
+
+            const R1 = modelR1 * scale;
+            const R2 = modelR2 * scale;
+            const orbitRadius = modelOrbitRadius * scale;
+
+            const T1 = parseFloat(t1Input.value);
+            const T2 = typeSelect.value === 'planet' ? 0 : parseFloat(t2Input.value);
+
+            incVal.innerText = iDeg.toFixed(1) + '°';
+            periodVal.innerText = P.toFixed(1) + '일';
+            orbitRadiusVal.innerText = modelOrbitRadius.toFixed(2) + ' R☉';
+            r1Val.innerText = modelR1.toFixed(2) + ' R☉';
+            t1Val.innerText = T1 + ' K';
+            r2Val.innerText = modelR2.toFixed(2) + ' R☉';
+            t2Val.innerText = typeSelect.value === 'planet' ? '0 K (자체발광 없음)' : T2 + ' K';
+
+            const mathL1 = Math.pow(modelR1, 2) * Math.pow(T1 / 5800, 4);
+            const mathL2 = typeSelect.value === 'planet' ? 0 : Math.pow(modelR2, 2) * Math.pow(T2 / 5800, 4);
+            
+            calcL1.innerHTML = mathL1.toFixed(3) + ' L☉';
+            calcL2.innerHTML = mathL2.toFixed(3) + ' L☉';
+            calcRatio.innerHTML = mathL1 > 0 ? ((mathL2 / mathL1) * 100).toFixed(2) + ' %' : '0.00 %';
+
+            cachedFluxData = [];
+
+            let minFluxVal = 1.0;
+            const baseL1 = Math.PI * R1 * R1 * Math.pow(T1, 4) * (1 - uCoefficient / 3);
+            const baseL2 = Math.PI * R2 * R2 * Math.pow(T2, 4) * (1 - uCoefficient / 3);
+            const baseline = baseL1 + baseL2;
+
+            for (let s = 0; s < steps; s++) {
+                const t = (s / steps) * totalObserveDays; 
+                const phase = 2 * Math.PI * (t / P);
+                const flux = getFluxAtPhase(phase, R1, T1, R2, T2, iRad, orbitRadius);
+                const normalizedFlux = flux / baseline;
+                
+                cachedFluxData.push(normalizedFlux);
+                if (normalizedFlux < minFluxVal) {
+                    minFluxVal = normalizedFlux;
+                }
+            }
+
+            let dynamicMin = minFluxVal - 0.05;
+            if (dynamicMin < 0) dynamicMin = 0;
+            let dynamicMax = 1.05;
+            
+            if (lightCurveChart) {
+                lightCurveChart.options.scales.y.min = dynamicMin;
+                lightCurveChart.options.scales.y.max = dynamicMax;
+                lightCurveChart.data.datasets[0].data = cachedFluxData;
+                lightCurveChart.update('none'); // 드래깅 연산 지연 가이드 'none' 설정
+            }
+
+            updateRealtimeStatus();
+        }
+
+        function updateRealtimeStatus() {
+            const iDeg = parseFloat(incInput.value);
+            const iRad = (iDeg * Math.PI) / 180;
+            const P = parseFloat(periodInput.value);
+            
+            const modelR1 = parseFloat(r1Input.value);
+            const modelR2 = parseFloat(r2Input.value);
+            const modelOrbitRadius = parseFloat(orbitRadiusInput.value);
+
+            const maxBound = Math.max(modelR1, modelOrbitRadius + modelR2);
+            const canvasHalfW = orbitCanvas.width / 2;
+            const canvasHalfH = orbitCanvas.height / 2;
+            const margin = 35;
+            const scale = Math.min((canvasHalfW - margin) / maxBound, (canvasHalfH - margin) / maxBound);
+
+            const R1 = modelR1 * scale;
+            const R2 = modelR2 * scale;
+            const orbitRadius = modelOrbitRadius * scale;
+
+            const T1 = parseFloat(t1Input.value);
+            const T2 = typeSelect.value === 'planet' ? 0 : parseFloat(t2Input.value);
+
+            const currentPhase = 2 * Math.PI * (currentTime / P);
+
+            const x2 = orbitRadius * Math.sin(currentPhase);
+            const y2 = orbitRadius * Math.cos(currentPhase) * Math.cos(iRad);
+            const z2 = orbitRadius * Math.cos(currentPhase) * Math.sin(iRad);
+            const d = Math.sqrt(x2 * x2 + y2 * y2);
+
+            const currentFlux = getFluxAtPhase(currentPhase, R1, T1, R2, T2, iRad, orbitRadius);
+            const baseL1 = Math.PI * R1 * R1 * Math.pow(T1, 4) * (1 - uCoefficient / 3);
+            const baseL2 = Math.PI * R2 * R2 * Math.pow(T2, 4) * (1 - uCoefficient / 3);
+            const baseline = baseL1 + baseL2;
+            const relativeFluxPercent = (currentFlux / baseline) * 100;
+
+            currentFluxDisplay.innerText = relativeFluxPercent.toFixed(2) + ' %';
+            phaseDisplay.innerText = `경과 시간: ${currentTime.toFixed(1)}일 (${(currentTime / P).toFixed(2)} 주기)`;
+
+            let overlapArea = 0;
+            if (d < (R1 + R2)) {
+                overlapArea = calculateOverlapArea(R1, R2, d);
+                const targetArea = (z2 > 0) ? (Math.PI * R1 * R1) : (Math.PI * R2 * R2);
+                const blockedPercent = (overlapArea / targetArea) * 100;
+                blockedAreaDisplay.innerText = Math.min(100, blockedPercent).toFixed(2) + ' %';
+
+                if (z2 > 0) {
+                    eclipseStatusText.innerText = "🛑 주식진행";
+                    eclipseStatusText.className = "text-red-400 font-bold text-sm";
+                } else {
+                    if (typeSelect.value === 'planet') {
+                        eclipseStatusText.innerText = "🔇 행성이 별 뒤로 숨음";
+                        eclipseStatusText.className = "text-blue-400 font-bold text-xs";
+                    } else {
+                        eclipseStatusText.innerText = "🟡 부식진행";
+                        eclipseStatusText.className = "text-yellow-500 font-bold text-sm";
+                    }
+                }
+            } else {
+                blockedAreaDisplay.innerText = '0.00 %';
+                eclipseStatusText.innerText = "🟢 정상 상태";
+                eclipseStatusText.className = "text-emerald-400 font-bold text-sm";
+            }
+
+            drawOrbitVisualization(R1, R2, iRad, orbitRadius, x2, y2, z2);
+
+            // Chart.js 렌더링 충돌(시작 지점 멈춤) 완벽하게 방지하는 검증 장치 추가
+            try {
+                if (lightCurveChart) {
+                    const chartTimeIndex = Math.floor((currentTime / totalObserveDays) * steps) % steps;
+                    const meta = lightCurveChart.getDatasetMeta(0);
+                    // 차트의 데이터가 안전하게 구성되었을 때만 엘리먼트 맵핑 실행
+                    if (meta && meta.data && meta.data.length > chartTimeIndex) {
+                        lightCurveChart.setActiveElements([{
+                            datasetIndex: 0,
+                            index: chartTimeIndex
+                        }]);
+                        if (lightCurveChart.tooltip) {
+                            lightCurveChart.tooltip.setActiveElements([{
+                                datasetIndex: 0,
+                                index: chartTimeIndex
+                            }], { x: 0, y: 0 });
+                        }
+                        lightCurveChart.update('none');
+                    }
+                }
+            } catch (error) {
+                // 예외 가드 블록
+            }
+        }
+
+        function calculateOverlapArea(r1, r2, d) {
+            if (d >= r1 + r2) return 0; 
+            if (d <= Math.abs(r1 - r2)) {
+                const smallerRadius = Math.min(r1, r2);
+                return Math.PI * smallerRadius * smallerRadius;
+            }
+            
+            const r1sq = r1 * r1;
+            const r2sq = r2 * r2;
+            const dsq = d * d;
+
+            const f1 = r1sq * Math.acos((dsq + r1sq - r2sq) / (2 * d * r1));
+            const f2 = r2sq * Math.acos((dsq + r2sq - r1sq) / (2 * d * r2));
+            const f3 = 0.5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2));
+
+            return f1 + f2 - f3;
+        }
+
+        // ----------------------------------------------------
+        // 4. 그래픽 시각화 렌더러
+        // ----------------------------------------------------
+        function drawOrbitVisualization(R1, R2, iRad, orbitRadius, x2, y2, z2) {
+            ctxOrbit.clearRect(0, 0, orbitCanvas.width, orbitCanvas.height);
+            const cx = orbitCanvas.width / 2;
+            const cy = orbitCanvas.height / 2;
+
+            ctxOrbit.fillStyle = '#020617';
+            ctxOrbit.fillRect(0,0, orbitCanvas.width, orbitCanvas.height);
+
+            ctxOrbit.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            const stars = [[30,40], [350,80], [80, 260], [280, 280], [150, 310], [50, 150]];
+            stars.forEach(pos => {
+                ctxOrbit.beginPath();
+                ctxOrbit.arc(pos[0], pos[1], 1, 0, 2*Math.PI);
+                ctxOrbit.fill();
+            });
+
+            ctxOrbit.beginPath();
+            ctxOrbit.ellipse(cx, cy, orbitRadius, orbitRadius * Math.cos(iRad), 0, 0, 2 * Math.PI);
+            ctxOrbit.strokeStyle = 'rgba(59, 130, 246, 0.25)';
+            ctxOrbit.lineWidth = 1.5;
+            ctxOrbit.setLineDash([4, 4]);
+            ctxOrbit.stroke();
+            ctxOrbit.setLineDash([]); 
+
+            const T1 = parseFloat(t1Input.value);
+            const star1Color = T1 > 8000 ? '#93c5fd' : (T1 < 4500 ? '#fca5a5' : '#fef08a');
+
+            if (z2 < 0) {
+                drawSecondary(cx + x2, cy - y2, R2);
+                drawPrimary(cx, cy, R1, star1Color);
+            } else {
+                drawPrimary(cx, cy, R1, star1Color);
+                drawSecondary(cx + x2, cy - y2, R2);
+            }
+
+            ctxOrbit.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ctxOrbit.lineWidth = 1.5;
+            ctxOrbit.beginPath();
+            ctxOrbit.moveTo(cx, cy);
+            ctxOrbit.lineTo(cx, cy + 120);
+            ctxOrbit.stroke();
+            ctxOrbit.fillStyle = 'rgba(239, 68, 68, 0.7)';
+            ctxOrbit.font = '9px Orbitron';
+            ctxOrbit.fillText('OBSERVATION VECTOR', cx + 5, cy + 115);
+        }
+
+        function drawPrimary(x, y, r, color) {
+            ctxOrbit.save();
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(x, y, r, 0, 2 * Math.PI);
+            ctxOrbit.fillStyle = color;
+            ctxOrbit.shadowBlur = r * 0.8;
+            ctxOrbit.shadowColor = color;
+            ctxOrbit.fill();
+            ctxOrbit.restore();
+        }
+
+        function drawSecondary(x, y, r) {
+            ctxOrbit.save();
+            ctxOrbit.beginPath();
+            ctxOrbit.arc(x, y, r, 0, 2 * Math.PI);
+
+            if (typeSelect.value === 'planet') {
+                ctxOrbit.fillStyle = '#1e293b'; 
+                ctxOrbit.strokeStyle = '#475569';
+                ctxOrbit.lineWidth = 1.5;
+                ctxOrbit.stroke();
+                ctxOrbit.fill();
+            } else {
+                const T2 = parseFloat(t2Input.value);
+                const star2Color = T2 > 6500 ? '#bfdbfe' : (T2 < 3800 ? '#fca5a5' : '#fed7aa');
+                ctxOrbit.fillStyle = star2Color;
+                ctxOrbit.shadowBlur = r * 0.7;
+                ctxOrbit.shadowColor = star2Color;
+                ctxOrbit.fill();
+            }
+            ctxOrbit.restore();
+        }
+
+        // ----------------------------------------------------
+        // 5. 프레임 공전 루프 제어 엔진
+        // ----------------------------------------------------
+        function animate() {
+            if (!isPlaying) return;
+
+            const speedMultiplier = parseFloat(simSpeedInput.value);
+            
+            currentTime += 0.02 * speedMultiplier;
+            if (currentTime >= totalObserveDays) {
+                currentTime = 0; 
+            }
+
+            updateRealtimeStatus();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function initChart() {
+            const ctxChart = document.getElementById('lightCurveChart').getContext('2d');
+            
+            const labels = Array.from({length: steps}, (_, i) => {
+                return ((i / steps) * totalObserveDays).toFixed(1) + '일';
+            });
+
+            lightCurveChart = new Chart(ctxChart, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '시스템 겉보기 밝기 비율',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                        borderWidth: 2.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: '#f97316',
+                        pointHoverBorderColor: '#fff',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: '경과 시간 (일, Days)', color: '#9ca3af' },
+                            grid: { color: 'rgba(75, 85, 99, 0.15)' },
+                            ticks: { color: '#9ca3af', font: { size: 10 } }
+                        },
+                        y: {
+                            min: 0.4,
+                            max: 1.05,
+                            grid: { color: 'rgba(75, 85, 99, 0.15)' },
+                            ticks: { 
+                                color: '#9ca3af',
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return (value * 100).toFixed(0) + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `상대 밝기: ${(context.raw * 100).toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = () => {
+            initChart();
+            // 첫 프레임 연동 오류 방지를 위해 동기 렌더링 강제 실행
+            lightCurveChart.update();
+            calculateAllCurves();
+            animate();
+        };
+    </script>
+</body>
+</html>

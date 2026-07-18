@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>위도와 적위에 따른 별의 일주운동 시뮬레이션</title>
+    <!-- Tailwind CSS for Modern Responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for Immersive 3D Space Simulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls for Custom Camera Interactions -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom dark-space styling */
+        body {
+            background: radial-gradient(circle at center, #0b0f19 0%, #020408 100%);
+            color: #f1f5f9;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        /* Beautiful Pure CSS Mathematical Formula Styling 
+           Replaces raw LaTeX strings for absolute compatibility in sandboxed iframes
+        */
+        .math-font {
+            font-family: 'Cambria', 'Georgia', 'Times New Roman', serif;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-950/60 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg">
+                    <i data-lucide="orbit" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        [고급 지구과학] 별의 일주운동 시뮬레이션
+                    </h1>
+                    <p class="text-xs text-slate-400">위도와 적위 변화에 따른 관측 형태 분석</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                실시간 3D 물리 시뮬레이터 엔진 작동 중
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Controls (4 cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            <!-- 1. Input Variables Panel -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-5 border border-slate-800 flex flex-col gap-5">
+                <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+                    <i data-lucide="sliders" class="w-5 h-5 text-indigo-400"></i>
+                    <h2 class="font-bold text-base text-slate-200">조작 변인 조절판</h2>
+                </div>
+
+                <!-- Latitude Control -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400"></i>
+                            관측자 위도 (<span class="math-font italic">&phi;</span>)
+                        </span>
+                        <span id="lat-val" class="text-sm font-bold bg-slate-800 text-emerald-300 px-2 py-0.5 rounded-md">+37.5°</span>
+                    </div>
+                    <input id="latitude" type="range" min="-90" max="90" step="0.5" value="37.5" 
+                           class="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    <div class="flex justify-between text-[10px] text-slate-500 px-1">
+                        <span>-90° (남극)</span>
+                        <span>0° (적도)</span>
+                        <span>+90° (북극)</span>
+                    </div>
+                    <!-- Quick Presets -->
+                    <div class="flex flex-wrap gap-1 mt-1">
+                        <button onclick="setLatitude(90)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">북극</button>
+                        <button onclick="setLatitude(37.5)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">서울 (+37.5°)</button>
+                        <button onclick="setLatitude(0)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">적도</button>
+                        <button onclick="setLatitude(-34.6)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">시드니 (-34.6°)</button>
+                        <button onclick="setLatitude(-90)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">남극</button>
+                    </div>
+                </div>
+
+                <!-- Declination Control -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+                            별의 적위 (<span class="math-font italic">&delta;</span>)
+                        </span>
+                        <span id="dec-val" class="text-sm font-bold bg-slate-800 text-amber-300 px-2 py-0.5 rounded-md">+20.0°</span>
+                    </div>
+                    <input id="declination" type="range" min="-90" max="90" step="0.5" value="20" 
+                           class="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    <div class="flex justify-between text-[10px] text-slate-500 px-1">
+                        <span>-90° (천구남극)</span>
+                        <span>0° (천구적도)</span>
+                        <span>+90° (천구북극)</span>
+                    </div>
+                    <!-- Quick Presets -->
+                    <div class="flex flex-wrap gap-1 mt-1">
+                        <button onclick="setDeclination(89.2)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">북극성 (+89.2°)</button>
+                        <button onclick="setDeclination(20)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">+20°</button>
+                        <button onclick="setDeclination(0)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">적도상의 별</button>
+                        <button onclick="setDeclination(-16.7)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">시리우스 (-16.7°)</button>
+                        <button onclick="setDeclination(-60)" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">-60°</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Animation & Camera Controller -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-5 border border-slate-800 flex flex-col gap-4">
+                <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+                    <i data-lucide="play-circle" class="w-5 h-5 text-indigo-400"></i>
+                    <h2 class="font-bold text-base text-slate-200">일주운동 조절기</h2>
+                </div>
+
+                <!-- Simulation Speed -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span>회전 속도 (배속)</span>
+                        <span id="speed-val" class="font-semibold text-slate-200">1.0x</span>
+                    </div>
+                    <input id="sim-speed" type="range" min="0" max="5" step="0.1" value="1" 
+                           class="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <!-- Play/Pause Controls -->
+                <div class="flex gap-2">
+                    <button id="btn-play" class="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/10">
+                        <i data-lucide="pause" id="play-icon" class="w-4 h-4"></i>
+                        <span id="play-text">일시정지</span>
+                    </button>
+                    <button id="btn-reset" class="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold flex items-center justify-center gap-2 transition">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- View Angle Presets -->
+                <div class="flex flex-col gap-2 pt-2 border-t border-slate-800/60">
+                    <span class="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                        <i data-lucide="eye" class="w-3.5 h-3.5"></i> 관측 방향 전환 (카메라 시점)
+                    </span>
+                    <div class="grid grid-cols-2 gap-1.5 text-xs">
+                        <button id="view-free" onclick="setCameraView('free')" class="py-2 px-3 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-medium">
+                            3D 전체 보기
+                        </button>
+                        <button id="view-north" onclick="setCameraView('north')" class="py-2 px-3 rounded-lg bg-slate-800 border border-transparent text-slate-300 hover:bg-slate-700">
+                            북쪽 지평선
+                        </button>
+                        <button id="view-south" onclick="setCameraView('south')" class="py-2 px-3 rounded-lg bg-slate-800 border border-transparent text-slate-300 hover:bg-slate-700">
+                            남쪽 지평선
+                        </button>
+                        <button id="view-east" onclick="setCameraView('east')" class="py-2 px-3 rounded-lg bg-slate-800 border border-transparent text-slate-300 hover:bg-slate-700">
+                            동쪽 지평선
+                        </button>
+                        <button id="view-west" onclick="setCameraView('west')" class="py-2 px-3 rounded-lg bg-slate-800 border border-transparent text-slate-300 hover:bg-slate-700">
+                            서쪽 지평선
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Center Column: 3D Celestial Canvas (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-4">
+            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden relative flex-1 flex flex-col min-h-[400px] lg:min-h-[500px]">
+                <!-- Top Badge Overlay -->
+                <div class="absolute top-4 left-4 z-10 flex gap-2">
+                    <span id="badge-view" class="bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 text-xs px-3 py-1 rounded-full backdrop-blur-md font-medium">
+                        3D 자유 카메라
+                    </span>
+                    <span class="bg-slate-950/80 border border-slate-800 text-slate-300 text-xs px-3 py-1 rounded-full backdrop-blur-md flex items-center gap-1">
+                        <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> 마우스 드래그로 화면 회전
+                    </span>
+                </div>
+
+                <!-- Real-time Horizon Overlay labels -->
+                <div class="absolute bottom-4 left-4 z-10 flex flex-col gap-1 text-[10px] text-slate-400 bg-slate-950/80 p-3 border border-slate-800 rounded-lg backdrop-blur-md">
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-1.5 bg-teal-400 rounded-full inline-block"></span> 천구 적도 (Celestial Equator)</div>
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-1.5 bg-amber-400 rounded-full inline-block"></span> 별의 일주권 (Diurnal Path)</div>
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-1.5 bg-sky-400 rounded-full inline-block"></span> 하늘의 북극 축 (NCP Axis)</div>
+                </div>
+
+                <!-- 3D Viewport Render Container -->
+                <div id="canvas-container" class="w-full flex-1 relative bg-slate-950">
+                    <!-- Loading State -->
+                    <div id="loader" class="absolute inset-0 flex items-center justify-center bg-slate-950 z-20 transition-opacity duration-500">
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                            <span class="text-sm text-slate-400">천구 시뮬레이션 환경 구축 중...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Data & Analytics Panel (3 cols) -->
+        <section class="lg:col-span-3 flex flex-col gap-6">
+            <!-- Astronomical Metrics Card -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-5 border border-slate-800 flex flex-col gap-5">
+                <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+                    <i data-lucide="line-chart" class="w-5 h-5 text-indigo-400"></i>
+                    <h2 class="font-bold text-base text-slate-200">실시간 측정 데이터</h2>
+                </div>
+
+                <!-- Star Classification -->
+                <div class="bg-slate-950/60 p-4 border border-slate-800/80 rounded-xl text-center">
+                    <div class="text-xs text-slate-400 mb-1">별의 출몰 상태 분류</div>
+                    <div id="star-class" class="text-xl font-black text-rose-400 tracking-wider">
+                        출몰성
+                    </div>
+                    <div id="star-class-desc" class="text-[10px] text-slate-500 mt-1">
+                        지평선 위로 뜨고 지는 별입니다.
+                    </div>
+                </div>
+
+                <!-- Floating Hours circular gauge -->
+                <div class="flex flex-col items-center py-2 relative">
+                    <svg class="w-32 h-32 transform -rotate-90">
+                        <!-- Background Circle -->
+                        <circle cx="64" cy="64" r="54" stroke="#0f172a" stroke-width="8" fill="transparent" />
+                        <!-- Foreground Circle for floating duration -->
+                        <circle id="gauge-bar" cx="64" cy="64" r="54" stroke="#f59e0b" stroke-width="8" fill="transparent" 
+                                stroke-dasharray="339.3" stroke-dashoffset="169.6" stroke-linecap="round" class="transition-all duration-300" />
+                    </svg>
+                    <!-- Floating hours text centered inside circle -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="gauge-time" class="text-lg font-bold text-slate-100">12h 00m</span>
+                        <span class="text-[10px] text-slate-500">지평선 위에 떠 있는 시간</span>
+                    </div>
+                </div>
+
+                <!-- Calculated Coordinates -->
+                <div class="flex flex-col gap-2.5 text-xs">
+                    <div class="flex justify-between items-center p-2 bg-slate-950/40 border border-slate-800/60 rounded-lg">
+                        <span class="text-slate-400">남중 고도 (Maximum Alt)</span>
+                        <span id="val-culmination" class="font-mono font-bold text-slate-200 text-sm">72.5°</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 bg-slate-950/40 border border-slate-800/60 rounded-lg">
+                        <span class="text-slate-400">현재 고도 (Altitude)</span>
+                        <span id="val-altitude" class="font-mono font-bold text-amber-400 text-sm">0.0°</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 bg-slate-950/40 border border-slate-800/60 rounded-lg">
+                        <span class="text-slate-400">현재 방위각 (Azimuth)</span>
+                        <span id="val-azimuth" class="font-mono font-bold text-indigo-300 text-sm">90.0° (동)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Observation Analysis -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-5 border border-slate-800 flex-1 flex flex-col gap-3">
+                <h3 class="font-semibold text-xs text-slate-400 uppercase tracking-wider">물리학적 현상 해설</h3>
+                <div id="observation-analysis" class="text-xs text-slate-300 leading-relaxed overflow-y-auto max-h-[180px] pr-1">
+                    위도와 적위를 조합하면 독특한 현상이 나타납니다. 값을 슬라이더로 변경해 보세요.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Bottom Academic Explanations Section (12 cols) -->
+    <section class="max-w-7xl w-full mx-auto px-4 md:px-6 pb-12 mt-6">
+        <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 md:p-8 flex flex-col gap-6">
+            <h2 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
+                <i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i>
+                별의 일주운동 물리적 분석 및 수행평가 학술 정보
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
+                <!-- Theoretical explanation -->
+                <div class="flex flex-col gap-4">
+                    <h3 class="font-bold text-indigo-400 flex items-center gap-1.5 text-base">
+                        <span class="w-1 h-4 bg-indigo-500 rounded"></span>
+                        1. 핵심 과학 원리 및 천문학 연산 수식
+                    </h3>
+                    <p class="text-slate-300 leading-relaxed">
+                        지구의 자전축을 중심으로 한 서&rarr;동 회전은 관측자 입장에서 하늘의 별들이 동&rarr;서 방향으로 일주일에 하루 1바퀴(<span class="math-font font-bold text-indigo-400">360° / 24h = 15°/h</span>) 회전하는 현상으로 투영됩니다. 일주권은 천구적도와 평행하며, 구체적인 천문학적 상관관계는 다음과 같습니다.
+                    </p>
+                    <ul class="flex flex-col gap-3 text-slate-300 pl-4 list-disc">
+                        <li>
+                            <strong class="text-slate-200">북극성의 고도와 관측자의 위도 관계:</strong>
+                            관측자의 지평선 기준 북극성(또는 하늘의 북극, NCP)의 고도는 관측자의 위도(<span class="math-font italic font-semibold text-emerald-400">&phi;</span>)와 기하학적으로 완벽히 일치합니다 (<span class="math-font italic font-semibold text-emerald-400">h = &phi;</span>).
+                        </li>
+                        <li>
+                            <strong class="text-slate-200">남중 고도 (<span class="math-font italic">H</span>) 계산식:</strong>
+                            남반구 및 북반구 중위도에서 별이 최고점에 도달할 때의 고도(남중고도)는 다음 공식을 충족합니다.
+                            <div class="my-3 bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-center">
+                                <span class="math-font italic text-xl tracking-wider text-amber-300 font-bold">H = 90° - &phi; + &delta;</span>
+                                <span class="text-xs text-slate-500 block mt-1">(북반구 남중 기준)</span>
+                            </div>
+                        </li>
+                        <li>
+                            <strong class="text-slate-200">시간각(<span class="math-font italic">H<sub>0</sub></span>)에 따른 일주 주기:</strong>
+                            별이 떠 있는 시간은 지평 좌표계에서 고도(<span class="math-font italic">h</span>)가 <span class="math-font">0</span>이 되는 시점의 시간각(<span class="math-font italic">H<sub>0</sub></span>)을 이용하여 역산합니다.
+                            <div class="my-3 bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-center">
+                                <span class="math-font italic text-xl tracking-wider text-indigo-300 font-bold">cos H<sub>0</sub> = -tan &phi; &middot; tan &delta;</span>
+                            </div>
+                            <span class="math-font italic font-semibold text-indigo-300">cos H<sub>0</sub></span>가 <span class="math-font font-semibold text-slate-200">1</span>보다 큰 경우 전몰성이 되어 뜨지 않고, <span class="math-font font-semibold text-slate-200">-1</span>보다 작은 경우 주극성이 되어 지평선 아래로 가라앉지 않습니다.
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Simulation limits -->
+                <div class="flex flex-col gap-4">
+                    <h3 class="font-bold text-emerald-400 flex items-center gap-1.5 text-base">
+                        <span class="w-1 h-4 bg-emerald-500 rounded"></span>
+                        2. 시뮬레이션의 단순화된 가정 (과학적 한계점 분석)
+                    </h3>
+                    <p class="text-slate-300 leading-relaxed">
+                        실제 일주운동 관측 시에는 미세한 지구물리학적 요인 및 대기 현상이 작용하나, 본 시뮬레이터는 천구의 기초 기하학적 이해를 극대화하기 위해 다음과 같이 단순화된 수치를 가정하였습니다. 
+                    </p>
+                    <div class="grid grid-cols-1 gap-3 mt-1">
+                        <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                            <h4 class="font-semibold text-slate-200 text-xs mb-1">대기 굴절(Atmospheric Refraction) 효과 미반영</h4>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                실제 대기는 빛을 굴절시켜 별이 실제 지평선 밑에 있을 때도 약 <span class="math-font text-amber-400">34'</span> (약 <span class="math-font text-amber-400">0.56°</span>) 높게 보이게 만듭니다. 이로 인해 실제 별의 뜨는 시간은 이론보다 소폭 길어지지만 본 시뮬레이션에서는 이 효과를 생략했습니다.
+                            </p>
+                        </div>
+                        <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                            <h4 class="font-semibold text-slate-200 text-xs mb-1">별의 고유 운동 및 시차(Parallax) 배제</h4>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                지구 공전으로 인한 연주시차와 우주 공간 내 별들의 미세한 고유운동을 배제하고, 모든 별을 천구 상의 가상의 완전 무한 거리에 투영된 정적인 점으로 가정하였습니다.
+                            </p>
+                        </div>
+                        <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                            <h4 class="font-semibold text-slate-200 text-xs mb-1">지구 자전축 세차 및 장동운동 무시</h4>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                실제 지구의 자전축은 약 <span class="math-font text-indigo-400">26,000년</span>의 주기로 회전하는 세차운동을 수행합니다. 이에 따라 북극성의 고도 및 별들의 적위 정보가 수천 년간 지속해서 변화하지만, 본 모형은 축의 변형이 없는 정적 천구계를 채택하였습니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+        <p>© 2026 Astronomy Web Simulator. Developed for Advanced Earth Science Performance Assessment.</p>
+    </footer>
+
+    <!-- Three.js Application Logic -->
+    <script>
+        // DOM Elements
+        const container = document.getElementById('canvas-container');
+        const latInput = document.getElementById('latitude');
+        const decInput = document.getElementById('declination');
+        const latVal = document.getElementById('lat-val');
+        const decVal = document.getElementById('dec-val');
+        const speedInput = document.getElementById('sim-speed');
+        const speedVal = document.getElementById('speed-val');
+        const btnPlay = document.getElementById('btn-play');
+        const btnReset = document.getElementById('btn-reset');
+        const starClassText = document.getElementById('star-class');
+        const starClassDesc = document.getElementById('star-class-desc');
+        const valAltitude = document.getElementById('val-altitude');
+        const valAzimuth = document.getElementById('val-azimuth');
+        const valCulmination = document.getElementById('val-culmination');
+        const analysisText = document.getElementById('observation-analysis');
+        const gaugeBar = document.getElementById('gauge-bar');
+        const gaugeTime = document.getElementById('gauge-time');
+        const loader = document.getElementById('loader');
+
+        // Three.js State Variables
+        let scene, camera, renderer, controls;
+        let star, diurnalPathLine, equatorLine, horizonDisk, polarAxisLine;
+        let observer, starsParticles;
+        
+        let isPlaying = true;
+        let timeAngle = 0; // Current Hour Angle in degrees (0 - 360)
+        const radius = 10; // Radius of celestial sphere representation
+
+        // Get Input values
+        function getLatitude() { return parseFloat(latInput.value); }
+        function getDeclination() { return parseFloat(decInput.value); }
+        function getSpeed() { return parseFloat(speedInput.value); }
+
+        // Core App Initialization
+        function init() {
+            // 1. Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020408, 0.015);
+
+            // 2. Camera setup
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(16, 12, 16);
+
+            // 3. Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setClearColor(0x020408, 1);
+            container.appendChild(renderer.domElement);
+
+            // 4. Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 40;
+            controls.minDistance = 5;
+
+            // 5. Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            const starPointLight = new THREE.PointLight(0xfff0b3, 1.5, 30);
+            scene.add(starPointLight);
+            
+            // Build Static Environment
+            createSkyboxBackground();
+            createHorizon();
+            createCoordinatesAxes();
+            
+            // Build Dynamic Elements
+            rebuildSystem();
+
+            // Set dynamic lighting source matching star
+            starPointLight.position.copy(star.position);
+
+            // Hide loader once scene is ready
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
+            }, 800);
+
+            // Initialize Lucide Icons
+            lucide.createIcons();
+            
+            // Register Events
+            window.addEventListener('resize', onWindowResize);
+            latInput.addEventListener('input', () => { handleParamChange(); rebuildSystem(); });
+            decInput.addEventListener('input', () => { handleParamChange(); rebuildSystem(); });
+            speedInput.addEventListener('input', () => { speedVal.innerText = getSpeed().toFixed(1) + 'x'; });
+            
+            btnPlay.addEventListener('click', togglePlay);
+            btnReset.addEventListener('click', resetSimulation);
+        }
+
+        // Handle parameters update to UI
+        function handleParamChange() {
+            const lat = getLatitude();
+            const dec = getDeclination();
+            latVal.innerText = (lat >= 0 ? '+' : '') + lat.toFixed(1) + '°';
+            decVal.innerText = (dec >= 0 ? '+' : '') + dec.toFixed(1) + '°';
+        }
+
+        // Toggle state of animation
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const playIcon = document.getElementById('play-icon');
+            const playText = document.getElementById('play-text');
+            if (isPlaying) {
+                playIcon.setAttribute('data-lucide', 'pause');
+                playText.innerText = '일시정지';
+            } else {
+                playIcon.setAttribute('data-lucide', 'play');
+                playText.innerText = '재생';
+            }
+            lucide.createIcons();
+        }
+
+        // Reset the motion variable
+        function resetSimulation() {
+            timeAngle = 0;
+            rebuildSystem();
+        }
+
+        // Presets logic
+        window.setLatitude = function(val) {
+            latInput.value = val;
+            handleParamChange();
+            rebuildSystem();
+        }
+
+        window.setDeclination = function(val) {
+            decInput.value = val;
+            handleParamChange();
+            rebuildSystem();
+        }
+
+        // Camera viewpoint control with precision calibration matching the uploaded physical photographs
+        window.setCameraView = function(viewType) {
+            // Unhighlight all buttons, highlight chosen one
+            const btns = ['free', 'north', 'south', 'east', 'west'];
+            btns.forEach(b => {
+                const btn = document.getElementById('view-' + b);
+                if (b === viewType) {
+                    btn.className = "py-2 px-3 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-medium";
+                } else {
+                    btn.className = "py-2 px-3 rounded-lg bg-slate-800 border border-transparent text-slate-300 hover:bg-slate-700";
+                }
+            });
+
+            // Set state badge
+            const badge = document.getElementById('badge-view');
+
+            if (viewType === 'free') {
+                controls.enabled = true;
+                camera.position.set(16, 12, 16);
+                controls.target.set(0, 0, 0);
+                badge.innerText = "3D 자유 카메라";
+            } else {
+                // Lock manual orbit adjustments during preset evaluations
+                controls.enabled = false;
+                
+                // Position slightly offset from the absolute observer origin (0, 0.5, 0) 
+                // to construct a high-fidelity first-person ground perspective.
+                // Coordinates Map: 
+                // East: +X, West: -X, South: +Z, North: -Z, Zenith: +Y
+                if (viewType === 'north') {
+                    camera.position.set(0, 0.5, 0.5); // Slightly South of center
+                    controls.target.set(0, 2.5, -10); // Look towards North (-Z) with upward tilt
+                    badge.innerText = "북쪽 하늘 고정 시점";
+                } else if (viewType === 'south') {
+                    camera.position.set(0, 0.5, -0.5); // Slightly North of center
+                    controls.target.set(0, 2.5, 10); // Look towards South (+Z) with upward tilt
+                    badge.innerText = "남쪽 하늘 고정 시점";
+                } else if (viewType === 'east') {
+                    camera.position.set(-0.5, 0.5, 0); // Slightly West of center
+                    controls.target.set(10, 2.5, 0); // Look towards East (+X) with upward tilt
+                    badge.innerText = "동쪽 하늘 고정 시점";
+                } else if (viewType === 'west') {
+                    camera.position.set(0.5, 0.5, 0); // Slightly East of center
+                    controls.target.set(-10, 2.5, 0); // Look towards West (-X) with upward tilt
+                    badge.innerText = "서쪽 하늘 고정 시점";
+                }
+            }
+            
+            // Force controls update to recalculate projection matrix instantly
+            controls.update();
+        }
+
+        // Generate static star particles for realism
+        function createSkyboxBackground() {
+            const starsCount = 1500;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(starsCount * 3);
+            const colors = new Float32Array(starsCount * 3);
+
+            for (let i = 0; i < starsCount; i++) {
+                // Sphere math coordinates for uniform background
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                const r = 150 + Math.random() * 50; // High distance
+
+                positions[i * 3] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 1] = r * Math.cos(phi);
+                positions[i * 3 + 2] = r * Math.sin(phi) * Math.cos(theta);
+
+                // Varied stellar temperatures (color accents)
+                const randColor = Math.random();
+                if (randColor > 0.85) { // Warm star
+                    colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.85; colors[i * 3 + 2] = 0.7;
+                } else if (randColor > 0.7) { // Bluish giant
+                    colors[i * 3] = 0.7; colors[i * 3 + 1] = 0.85; colors[i * 3 + 2] = 1.0;
+                } else { // Standard white star
+                    colors[i * 3] = 0.95; colors[i * 3 + 1] = 0.95; colors[i * 3 + 2] = 1.0;
+                }
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 1.2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.85,
+                sizeAttenuation: true
+            });
+
+            starsParticles = new THREE.Points(geometry, material);
+            scene.add(starsParticles);
+        }
+
+        // Ground/Horizon representation (지평선)
+        function createHorizon() {
+            // Circular ground representing earth observer plane
+            const horizonGeo = new THREE.RingGeometry(0, radius, 64);
+            const horizonMat = new THREE.MeshBasicMaterial({
+                color: 0x111e15,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.7,
+                wireframe: false
+            });
+            horizonDisk = new THREE.Mesh(horizonGeo, horizonMat);
+            horizonDisk.rotation.x = Math.PI / 2; // Flat on X-Z plane
+            scene.add(horizonDisk);
+
+            // Horizon outline circle
+            const rimGeo = new THREE.BufferGeometry();
+            const points = [];
+            for (let i = 0; i <= 64; i++) {
+                const theta = (i / 64) * Math.PI * 2;
+                points.push(new THREE.Vector3(radius * Math.cos(theta), 0, radius * Math.sin(theta)));
+            }
+            rimGeo.setFromPoints(points);
+            const rimMat = new THREE.LineBasicMaterial({ color: 0x10b981, linewidth: 2 });
+            const rim = new THREE.Line(rimGeo, rimMat);
+            scene.add(rim);
+
+            // Adding direction cardinal point markers (N, E, S, W)
+            // (Z points to South by default in our astronomy coordinate formulation)
+            // Here:
+            // +Z: South (S)
+            // -Z: North (N)
+            // +X: East (E)
+            // -X: West (W)
+            const markers = [
+                { text: 'S', pos: new THREE.Vector3(0, 0.1, radius + 0.8), color: 0xef4444 },
+                { text: 'N', pos: new THREE.Vector3(0, 0.1, -radius - 0.8), color: 0x3b82f6 },
+                { text: 'E', pos: new THREE.Vector3(radius + 0.8, 0.1, 0), color: 0xf59e0b },
+                { text: 'W', pos: new THREE.Vector3(-radius - 0.8, 0.1, 0), color: 0xec4899 }
+            ];
+
+            markers.forEach(mark => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0,0,64,64);
+                ctx.font = 'bold 36px monospace';
+                ctx.fillStyle = '#' + mark.color.toString(16).padStart(6, '0');
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(mark.text, 32, 32);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const mat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                const sprite = new THREE.Sprite(mat);
+                sprite.position.copy(mark.pos);
+                sprite.scale.set(1.5, 1.5, 1.5);
+                scene.add(sprite);
+            });
+
+            // Observer representation in the center
+            const obsGeo = new THREE.ConeGeometry(0.2, 0.7, 8);
+            const obsMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            observer = new THREE.Mesh(obsGeo, obsMat);
+            observer.position.set(0, 0.35, 0);
+            scene.add(observer);
+        }
+
+        // Draw helper coordinate arcs
+        function createCoordinatesAxes() {
+            // Meridian Loop (자오선) - passing N-Zenith-S
+            const meridianGeo = new THREE.BufferGeometry();
+            const points = [];
+            for (let i = 0; i <= 32; i++) {
+                const theta = (i / 32) * Math.PI; // S to N semi circle
+                points.push(new THREE.Vector3(0, radius * Math.sin(theta), radius * Math.cos(theta)));
+            }
+            meridianGeo.setFromPoints(points);
+            const meridianMat = new THREE.LineDashedMaterial({
+                color: 0x475569,
+                dashSize: 0.5,
+                gapSize: 0.3
+            });
+            const meridianLine = new THREE.Line(meridianGeo, meridianMat);
+            meridianLine.computeLineDistances();
+            scene.add(meridianLine);
+
+            // Zenith/Nadir pointer axis
+            const zenGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, -radius, 0),
+                new THREE.Vector3(0, radius, 0)
+            ]);
+            const zenMat = new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 0.4, gapSize: 0.4 });
+            const zenLine = new THREE.Line(zenGeo, zenMat);
+            zenLine.computeLineDistances();
+            scene.add(zenLine);
+        }
+
+        // Rebuild dynamic paths on slider updates
+        function rebuildSystem() {
+            const lat = getLatitude();
+            const dec = getDeclination();
+
+            const radLat = lat * Math.PI / 180;
+            const radDec = dec * Math.PI / 180;
+
+            // 1. Remove existing dynamic meshes if they exist
+            if (diurnalPathLine) scene.remove(diurnalPathLine);
+            if (equatorLine) scene.remove(equatorLine);
+            if (polarAxisLine) scene.remove(polarAxisLine);
+            if (star) scene.remove(star);
+
+            // 2. Build Polar Axis (하늘의 회전축) - 입체적인 실린더 기하학 활용 (두께 강화)
+            const axisLength = radius * 1.15;
+            const axisUnit = new THREE.Vector3(0, Math.sin(radLat), -Math.cos(radLat)); // Unit NCP vector
+            
+            // 두께 0.1의 입체 튜브 기하학을 적용하여 자전축이 얇게 깨지는 현상 방지
+            const axisGeo = new THREE.CylinderGeometry(0.08, 0.08, axisLength * 2, 16);
+            const axisMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+            polarAxisLine = new THREE.Mesh(axisGeo, axisMat);
+            
+            // Y축 방향 실린더를 NCP 축 방향(axisUnit)으로 일치 회전 변환
+            polarAxisLine.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axisUnit);
+            scene.add(polarAxisLine);
+
+            // 3. Build Celestial Equator (천구 적도) - 두꺼운 입체 3D 링(Torus) 구조 도입
+            // 기존 1px 얇은 선에서 두께 0.06의 입체 튜브 링으로 변경하여 고대비 시인성 극대화
+            const equatorGeo = new THREE.TorusGeometry(radius, 0.05, 8, 120);
+            const equatorMat = new THREE.MeshBasicMaterial({ color: 0x2dd4bf, opacity: 0.65, transparent: true });
+            equatorLine = new THREE.Mesh(equatorGeo, equatorMat);
+            
+            // 토러스 면의 방향을 자전축 방향으로 일치시켜 수평 평면 기준 회전각 설정
+            equatorLine.lookAt(axisUnit);
+            scene.add(equatorLine);
+
+            // 4. Build Star Diurnal Circle (별의 일주권 궤적) - 두꺼운 입체 3D 링(Torus) 구조 도입
+            const rStar = radius * Math.cos(radDec);
+            const shiftVal = radius * Math.sin(radDec);
+            const starCenter = new THREE.Vector3().copy(axisUnit).multiplyScalar(shiftVal);
+
+            // 별이 극축(적위 90도 극단값)에 완전히 붙는 경우를 제외하고는 두께 0.08의 노란색 고리로 가독성 강조
+            if (rStar > 0.05) {
+                const diurnalGeo = new THREE.TorusGeometry(rStar, 0.07, 8, 120);
+                const diurnalMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, opacity: 0.75, transparent: true });
+                diurnalPathLine = new THREE.Mesh(diurnalGeo, diurnalMat);
+                
+                // 별의 경로 중심지로 오프셋 이동
+                diurnalPathLine.position.copy(starCenter);
+                // 토러스 면 정렬 (starCenter 위치에서 NCP 방향을 바라보게 설정)
+                diurnalPathLine.lookAt(starCenter.clone().add(axisUnit));
+                scene.add(diurnalPathLine);
+            }
+
+            // 5. Create Star Sphere
+            const starGeo = new THREE.SphereGeometry(0.45, 16, 16);
+            const starMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
+            star = new THREE.Mesh(starGeo, starMat);
+            scene.add(star);
+
+            // 6. Realtime calculations for UI
+            recalculateAstronomicalValues(lat, dec);
+        }
+
+        // Calculation algorithms based on astronomical coordinate equations
+        function recalculateAstronomicalValues(lat, dec) {
+            const radLat = lat * Math.PI / 180;
+            const radDec = dec * Math.PI / 180;
+
+            // Determine if Star is Circumpolar (주극성), Never-Rises (전몰성), or Rise-Set (출몰성)
+            // Calculate minimum and maximum altitudes mathematically
+            const zMax = Math.sin(radDec) * Math.sin(radLat) + Math.cos(radDec) * Math.cos(radLat);
+            const zMin = Math.sin(radDec) * Math.sin(radLat) - Math.cos(radDec) * Math.cos(radLat);
+
+            let status = "";
+            let desc = "";
+            let color = "";
+            let floatHours = 0;
+
+            if (zMin >= 0) {
+                status = "주극성 (Circumpolar)";
+                desc = "지평선 아래로 결코 지지 않는 항성입니다.";
+                color = "text-emerald-400";
+                floatHours = 24.0;
+            } else if (zMax <= 0) {
+                status = "전몰성 (Never Rises)";
+                desc = "해당 위도에서 평생 지평선 위로 뜨지 않는 별입니다.";
+                color = "text-rose-500";
+                floatHours = 0.0;
+            } else {
+                status = "출몰성 (Rise-Set)";
+                desc = "지평선 위로 뜨고 지기를 반복하는 보통의 별입니다.";
+                color = "text-amber-400";
+
+                // cos(H_0) = -tan(lat) * tan(dec)
+                // Avoid singularity at polar extreme boundaries
+                const tanProduct = Math.tan(radLat) * Math.tan(radDec);
+                if (Math.abs(tanProduct) <= 1) {
+                    const H0 = Math.acos(-tanProduct);
+                    floatHours = 24.0 * (H0 / Math.PI);
+                } else {
+                    floatHours = tanProduct < 0 ? 24.0 : 0.0;
+                }
+            }
+
+            // Update UI elements
+            starClassText.innerText = status;
+            starClassText.className = "text-xl font-black tracking-wider " + color;
+            starClassDesc.innerText = desc;
+
+            // Maximum South-Culmination Altitude Calculation
+            let culminationAlt = 0;
+            // General Southern transit altitude formula: H = 90 - |lat - dec|
+            // If H turns negative, it means it doesn't rise or is visible underneath (for polar coordinates)
+            culminationAlt = 90 - Math.abs(lat - dec);
+            if (culminationAlt < 0) {
+                valCulmination.innerText = "상태적 미도달 (0° 미만)";
+            } else {
+                valCulmination.innerText = culminationAlt.toFixed(1) + "°";
+            }
+
+            // Circular SVG Dashboard update
+            const totalDashLength = 2 * Math.PI * 54; // circumference = 339.29
+            const activeOffset = totalDashLength - (totalDashLength * (floatHours / 24.0));
+            gaugeBar.style.strokeDashoffset = activeOffset;
+            
+            const hoursInteger = Math.floor(floatHours);
+            const minutesInteger = Math.round((floatHours - hoursInteger) * 60);
+            gaugeTime.innerText = hoursInteger + "시간 " + minutesInteger + "분";
+
+            // Generate Educational Analysis Paragraph
+            updateAnalysisText(lat, dec, status, floatHours, culminationAlt);
+        }
+
+        // Write educational summary dynamically based on parameters
+        function updateAnalysisText(lat, dec, status, floatHours, culmination) {
+            let paragraph = "";
+            if (lat === 90) {
+                paragraph = `현재 관측자는 <strong>북극 (위도 90°)</strong>에 위치하고 있습니다. 하늘의 북극(북극성)이 천정(머리 위)에 오게 되어, 천구 적도면이 지평선과 완벽히 나란해집니다. 따라서 적위가 +인 모든 별은 일주운동을 해도 고도가 변하지 않는 <strong>주극성</strong>이 되고, 남반구의 별(적위 -)은 전혀 보이지 않는 <strong>전몰성</strong>이 됩니다. 별이 뜨거나 지는 사선 운동 없이 완전히 수평 회전만 하게 됩니다.`;
+            } else if (lat === 0) {
+                paragraph = `현재 관측자는 <strong>적도 (위도 0°)</strong>에 있습니다. 하늘의 회전축(자전축)이 북쪽 지평선과 남쪽 지평선과 평행하게 누워 있어, 모든 별은 <strong>동쪽 지평선에서 수직으로 떠올라 서쪽 지평선으로 수직으로 지게</strong> 됩니다. 적위 크기에 상관없이 모든 별들이 정확히 <strong>12시간 동안 떠 있게</strong> 되며 전몰성이나 주극성이 일절 존재하지 않는 기하학적 특성을 지닙니다.`;
+            } else if (lat === -90) {
+                paragraph = `관측자는 현재 <strong>남극 (위도 -90°)</strong>에 있습니다. 천구 남극이 천정에 있어 북반구와 완전히 대칭을 이룹니다. 적위가 음(-)인 천체들만 24시간 동안 원을 그리며 회전하는 주극성이 되며, 북반구의 별(적위 +)은 절대 볼 수 없습니다.`;
+            } else {
+                const hemiText = lat > 0 ? "북반구" : "남반구";
+                const directionText = dec >= 0 ? "천구 북쪽" : "천구 남쪽";
+                paragraph = `현재 관측자는 <strong>${hemiText} 중위도 (${Math.abs(lat).toFixed(1)}°)</strong>에 위치합니다. 이 위도에서는 자전축이 지평선과 비스듬한 경사각을 이루며 누워 있기 때문에, 별들도 동쪽 지평선에서 대략 <strong>${(90 - Math.abs(lat)).toFixed(1)}°의 비스듬한 각도</strong>로 솟아오르게 됩니다. <br><br>
+                별의 적위가 <strong>${directionText} (${Math.abs(dec).toFixed(1)}°)</strong>로 배치됨에 따라, 이 별은 총 <strong>${floatHours.toFixed(1)}시간</strong> 동안 하늘에 머물게 되며 남중 시 최고 고도는 <strong>${culmination.toFixed(1)}°</strong>에 도달합니다. 슬라이더를 통해 위도가 높아질수록 비스듬히 누운 회전축의 경사가 가팔라지는 것을 시각적으로 확인해 보시기 바랍니다.`;
+            }
+            analysisText.innerHTML = paragraph;
+        }
+
+        // Core animation tick loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update rotation calculations
+            if (isPlaying) {
+                const speedMult = getSpeed();
+                timeAngle = (timeAngle + 0.2 * speedMult) % 360;
+            }
+
+            const lat = getLatitude();
+            const dec = getDeclination();
+            const radLat = lat * Math.PI / 180;
+            const radDec = dec * Math.PI / 180;
+            const radH = timeAngle * Math.PI / 180;
+
+            // Calculate position coordinates in Astronomy coordinate frame
+            // East: +X, North: -Z, Zenith: +Y
+            const rStar = radius * Math.cos(radDec);
+            const shiftVal = radius * Math.sin(radDec);
+            
+            const axisUnit = new THREE.Vector3(0, Math.sin(radLat), -Math.cos(radLat));
+            const starCenter = new THREE.Vector3().copy(axisUnit).multiplyScalar(shiftVal);
+
+            // [천구 운동 방향 보정] 애니메이션 루프 내에서도 별의 위치 계산용 동쪽 기준벡터의 부호를 일치시킵니다.
+            const starBasisE = new THREE.Vector3(-rStar, 0, 0);
+            const starBasisQ = new THREE.Vector3(0, rStar * Math.cos(radLat), rStar * Math.sin(radLat));
+
+            // Compute current Star XYZ Coordinate
+            const currentPos = new THREE.Vector3()
+                .copy(starCenter)
+                .addScaledVector(starBasisE, Math.sin(radH))
+                .addScaledVector(starBasisQ, Math.cos(radH));
+
+            star.position.copy(currentPos);
+
+            // Real-time Azimuth and Altitude Calculations based on Horizon coordinate standards
+            // In ThreeJS: y is altitude axis, x is East-West axis (+X is East), z is North-South Axis (-Z is North)
+            const altitudeRad = Math.asin(currentPos.y / radius);
+            const altitudeDeg = altitudeRad * 180 / Math.PI;
+            valAltitude.innerText = altitudeDeg.toFixed(1) + '°';
+
+            // Calculate Azimuth (clockwise from North (-Z))
+            // Vector projected on X-Z plane: (-Z is North, +X is East)
+            let azimuthDeg = 0;
+            const projectedX = currentPos.x;
+            const projectedZ = -currentPos.z; // negate Z so that North is positive, South is negative
+            
+            const azRad = Math.atan2(projectedX, projectedZ);
+            azimuthDeg = azRad * 180 / Math.PI;
+            if (azimuthDeg < 0) azimuthDeg += 360;
+
+            let cardinalStr = "";
+            if (azimuthDeg >= 337.5 || azimuthDeg < 22.5) cardinalStr = "북";
+            else if (azimuthDeg >= 22.5 && azimuthDeg < 67.5) cardinalStr = "북동";
+            else if (azimuthDeg >= 67.5 && azimuthDeg < 112.5) cardinalStr = "동";
+            else if (azimuthDeg >= 112.5 && azimuthDeg < 157.5) cardinalStr = "남동";
+            else if (azimuthDeg >= 157.5 && azimuthDeg < 202.5) cardinalStr = "남";
+            else if (azimuthDeg >= 202.5 && azimuthDeg < 247.5) cardinalStr = "남서";
+            else if (azimuthDeg >= 247.5 && azimuthDeg < 292.5) cardinalStr = "서";
+            else if (azimuthDeg >= 292.5 && azimuthDeg < 337.5) cardinalStr = "북서";
+
+            valAzimuth.innerText = azimuthDeg.toFixed(1) + '° (' + cardinalStr + ')';
+
+            // Star appearance modification for night realism (dim/hide below horizon)
+            if (currentPos.y < 0) {
+                star.material.color.setHex(0x554422); // Faint dim red star below ground
+            } else {
+                star.material.color.setHex(0xfff3c4); // Bright golden star
+            }
+
+            // Controls update
+            if (controls.enabled) {
+                controls.update();
+            }
+
+            // Passive starfield rotation for cosmic depth
+            if (starsParticles) {
+                starsParticles.rotation.y += 0.0001;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle Responsive Canvas bounds resizing
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // Run application on load finish
+        window.onload = function() {
+            init();
+            animate();
+        };
+    </script>
+</body>
+</html>

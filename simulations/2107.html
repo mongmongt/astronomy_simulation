@@ -1,0 +1,1328 @@
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[고급 지구과학] 가상 내행성 위상 및 시지름 변화 시뮬레이터</title>
+  <style>
+    /* =========================================================================
+      [UI/UX 테마 및 레이아웃] 다크 모드 우주 테마 테크니컬 대시보드 디자인
+      =========================================================================
+    */
+    :root {
+      --bg-color: #090d16;
+      --panel-bg: #111726;
+      --card-bg: #1a233a;
+      --accent-cyan: #00f0ff;
+      --accent-blue: #3b82f6;
+      --accent-yellow: #fbbf24;
+      --accent-orange: #f97316;
+      --accent-red: #ef4444;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-color: #2b395b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 상단 대시보드 헤더 */
+    header {
+      background: linear-gradient(90deg, #090d16 0%, #151d30 100%);
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .logo-container h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      background: linear-gradient(135deg, #ffffff 30%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-container p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .badge {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: var(--accent-cyan);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* 3단 분할 패널 앱 컨테이너 */
+    .app-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 65px);
+      overflow: hidden;
+    }
+
+    /* 패널 공통 스타일 */
+    .panel {
+      background-color: var(--panel-bg);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-content {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* 1. 좌측 컨트롤 패널 (너비 고정) */
+    .left-panel {
+      width: 320px;
+      flex-shrink: 0;
+    }
+
+    .control-group {
+      margin-bottom: 22px;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+
+    .control-value {
+      color: var(--accent-cyan);
+      font-family: monospace;
+      font-weight: 700;
+    }
+
+    /* 프리셋 버튼 컨테이너 */
+    .preset-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .btn-preset {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn-preset:hover {
+      background-color: rgba(59, 130, 246, 0.2);
+      border-color: var(--accent-blue);
+    }
+
+    .btn-preset.active {
+      background-color: rgba(0, 240, 255, 0.15);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* 커스텀 슬라이더 */
+    .range-slider {
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+      margin: 8px 0;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 8px var(--accent-cyan);
+      transition: transform 0.1s;
+    }
+
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    /* 재생 제어 단추 */
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn-action {
+      flex: 1;
+      padding: 11px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-play {
+      background-color: var(--accent-blue);
+      border: 1px solid var(--accent-blue);
+      color: white;
+    }
+
+    .btn-play:hover {
+      background-color: #2563eb;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-reset {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-reset:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-color: var(--text-muted);
+    }
+
+    .info-card {
+      background: rgba(30, 41, 59, 0.3);
+      border: 1px dashed var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 20px;
+      font-size: 0.75rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    /* 2. 중앙 시각화 영역 (플렉스 컨테이너 - 유연한 너비) */
+    .center-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #05070d;
+      height: 100%;
+    }
+
+    .visualizer-container {
+      flex: 1;
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      padding: 12px;
+      gap: 12px;
+      height: 100%;
+      min-height: 0;
+    }
+
+    @media (min-width: 1200px) {
+      .visualizer-container {
+        grid-template-rows: 1fr;
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .canvas-wrapper {
+      background-color: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .canvas-title {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(17, 23, 38, 0.85);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      z-index: 10;
+      color: var(--text-main);
+      pointer-events: none;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 3. 우측 텔레메트리 대시보드 (너비 고정) */
+    .right-panel {
+      width: 340px;
+      flex-shrink: 0;
+      border-right: none;
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .telemetry-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .card-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .card-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: monospace;
+    }
+
+    .card-subtext {
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      margin-top: 4px;
+    }
+
+    /* 실시간 관측 분석 요약 박스 */
+    .observation-summary {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(0, 240, 255, 0.05) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 14px;
+    }
+
+    .obs-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+    }
+
+    .obs-desc {
+      font-size: 0.75rem;
+      line-height: 1.45;
+      color: var(--text-main);
+    }
+
+    /* 수행평가 전용 아코디언 */
+    .report-accordion {
+      margin-top: 16px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 16px;
+    }
+
+    .report-section {
+      background-color: rgba(43, 57, 91, 0.2);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .report-trigger {
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--text-main);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .report-trigger:hover {
+      background-color: rgba(43, 57, 91, 0.4);
+    }
+
+    .report-content {
+      padding: 0 12px 10px 12px;
+      font-size: 0.72rem;
+      line-height: 1.45;
+      color: var(--text-muted);
+      display: none;
+    }
+
+    .report-content.active {
+      display: block;
+    }
+
+    .report-formula {
+      font-family: monospace;
+      background: #05070d;
+      padding: 4px 6px;
+      border-radius: 4px;
+      display: block;
+      margin: 4px 0;
+      color: var(--accent-cyan);
+      font-size: 0.65rem;
+      word-break: break-all;
+    }
+
+    /* 반응형 레이아웃 예외 조정 */
+    @media (max-width: 900px) {
+      .app-container {
+        flex-direction: column;
+        overflow-y: auto;
+        height: auto;
+      }
+      .left-panel, .right-panel {
+        width: 100%;
+        height: auto;
+      }
+      .center-panel {
+        height: 600px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 헤더 -->
+  <header>
+    <div class="logo-container">
+      <h1>가상 내행성 위상 및 시지름 변화 실험실</h1>
+      <p>[고급 지구과학] 가상 천문 모델링 상호작용 플랫폼</p>
+    </div>
+    <div class="badge">물리적 태양 차폐 보정 완료</div>
+  </header>
+
+  <!-- 메인 프레임 -->
+  <div class="app-container">
+
+    <!-- 1. 좌측 컨트롤 패널 -->
+    <aside class="panel left-panel">
+      <div class="panel-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span>조종판 (조작 변인)</span>
+      </div>
+      <div class="panel-content">
+        
+        <!-- 행성 선택 프리셋 -->
+        <div class="control-group">
+          <div class="control-label">가상 행성 추천 궤도</div>
+          <div class="preset-container">
+            <button class="btn-preset active" id="preset-planet-a" onclick="setPreset('planetA')">케플러-V1 (0.45 AU)</button>
+            <button class="btn-preset" id="preset-planet-b" onclick="setPreset('planetB')">케플러-V2 (0.72 AU)</button>
+          </div>
+        </div>
+
+        <!-- 조작 변인 1: 연속적인 궤도 반지름 -->
+        <div class="control-group">
+          <div class="control-label">
+            <span>가상 궤도 반지름 (r)</span>
+            <span class="control-value" id="val-radius">0.45 AU</span>
+          </div>
+          <input type="range" id="slide-radius" class="range-slider" min="0.20" max="0.95" step="0.01" value="0.45">
+          <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+            <span>0.20 AU (극근접)</span>
+            <span>0.95 AU (지구 근접)</span>
+          </div>
+        </div>
+
+        <!-- 조작 변인 2: 공전 각도 -->
+        <div class="control-group">
+          <div class="control-label">
+            <span>가상 공전 각도 (θ)</span>
+            <span class="control-value" id="val-angle">90°</span>
+          </div>
+          <input type="range" id="slide-angle" class="range-slider" min="0" max="360" step="1" value="90">
+          <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+            <span>0° (내합 반대)</span>
+            <span>90° (내합 위치)</span>
+          </div>
+        </div>
+
+        <!-- 조작 변인 3: 자동 공전 속도 -->
+        <div class="control-group">
+          <div class="control-label">
+            <span>자동 공전 배속</span>
+            <span class="control-value" id="val-speed">1.0x</span>
+          </div>
+          <input type="range" id="slide-speed" class="range-slider" min="0.1" max="5.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- 재생/제어 버튼 -->
+        <div class="action-buttons">
+          <button class="btn-action btn-play" id="btn-toggle-play" onclick="togglePlay()">
+            <span id="play-icon">⏸</span> <span id="play-text">일시정지</span>
+          </button>
+          <button class="btn-action btn-reset" onclick="resetSimulation()">
+            <span>🔄</span> 초기화
+          </button>
+        </div>
+
+        <!-- 팁 박스 -->
+        <div class="info-card">
+          <strong>💡 태양 광휘 간섭 조건:</strong><br>
+          지구에서 내행성을 바라볼 때 태양과의 사잇각(이각)이 <strong>$10^\circ$ 이내</strong>로 좁혀지면, 태양빛 산란에 의한 눈부심 현상(Glare)으로 인해 망원경 관측이 차단됩니다.
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- 2. 중앙 시각화 창 (2개 독립 Canvas) -->
+    <main class="center-panel">
+      <div class="visualizer-container">
+        
+        <!-- Canvas A: 공전 궤도면 평면도 -->
+        <div class="canvas-wrapper">
+          <div class="canvas-title">궤도 평면도 (Top-down View)</div>
+          <canvas id="canvas-orbit"></canvas>
+        </div>
+
+        <!-- Canvas B: 망원경 관측 뷰 -->
+        <div class="canvas-wrapper">
+          <div class="canvas-title">망원경 관측상 (Telescope View)</div>
+          <canvas id="canvas-telescope"></canvas>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- 3. 우측 텔레메트리 대시보드 -->
+    <aside class="panel right-panel">
+      <div class="panel-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>
+        <span>실시간 데이터 (출력 변인)</span>
+      </div>
+      <div class="panel-content">
+        
+        <div class="telemetry-grid">
+          
+          <!-- 지구-내행성 거리 -->
+          <div class="telemetry-card">
+            <div class="card-title">지구-가상행성 거리 (d)</div>
+            <div class="card-value" id="telemetry-dist">0.5500 AU</div>
+            <div class="card-subtext" id="telemetry-dist-range">연동 연산 활성화</div>
+          </div>
+
+          <!-- 위상률 및 형태 -->
+          <div class="telemetry-card">
+            <div class="card-title">위상률 및 관측 형태</div>
+            <div class="card-value" id="telemetry-phase">0.0%</div>
+            <div class="card-subtext" id="telemetry-phase-name">-</div>
+          </div>
+
+          <!-- 시지름 -->
+          <div class="telemetry-card">
+            <div class="card-title">관측 시지름 (겉보기 크기)</div>
+            <div class="card-value" id="telemetry-diameter">0.0"</div>
+            <div class="card-subtext">거리 d에 완벽 반비례 변형</div>
+          </div>
+
+          <!-- 이각 크기 및 판정 -->
+          <div class="telemetry-card">
+            <div class="card-title">이각 (Elongation Angle)</div>
+            <div class="card-value" id="telemetry-elongation">0.0°</div>
+            <div class="card-subtext" id="telemetry-elongation-type">-</div>
+          </div>
+
+        </div>
+
+        <!-- 실시간 관측성 요약 -->
+        <div class="observation-summary">
+          <div class="obs-title">🔭 가상 관측 정보 분석</div>
+          <div class="obs-desc" id="telemetry-obs-desc">
+            시뮬레이터 연산 대기 중...
+          </div>
+        </div>
+
+        <!-- 수행평가 산출물 소개 탭 -->
+        <div class="report-accordion">
+          <div style="font-size: 0.8rem; font-weight:700; margin-bottom: 8px; color: var(--text-main);">📝 수행평가 산출물 소개 자료</div>
+          
+          <!-- 목적 -->
+          <div class="report-section">
+            <button class="report-trigger" onclick="toggleReport(this)">
+              <span>1. 탐구 목적</span> <span>▼</span>
+            </button>
+            <div class="report-content">
+              내행성의 공전 운동에 따른 지구와의 상대적 거리 변화와 이각 크기 변화가 지구에서 실제로 관측되는 위상(밝은 모양) 및 시지름(겉보기 크기)에 미치는 기하학적 상관관계를 정밀 시뮬레이션을 통해 정량적으로 규명하고 탐구하는 것을 목적으로 합니다.
+            </div>
+          </div>
+
+          <!-- 과학적 원리 -->
+          <div class="report-section">
+            <button class="report-trigger" onclick="toggleReport(this)">
+              <span>2. 적용 물리량 및 수식</span> <span>▼</span>
+            </button>
+            <div class="report-content">
+              - <strong>지구-내행성 거리 ($d$):</strong> 피타고라스 정리에 의해 산출합니다.
+              <span class="report-formula">d = √(x_v² + (y_v - R_e)²)</span>
+              - <strong>위상각 ($\psi$ - 제2코사인법칙):</strong> 태양-내행성-지구 삼각형에서 행성의 반사각을 구합니다.
+              <span class="report-formula">cos(ψ) = (r² + d² - R_e²) / (2 · r · d)</span>
+              - <strong>위상률 ($f$):</strong> 행성의 전면 중 밝은 면이 차지하는 비율입니다.
+              <span class="report-formula">f = (1 + cos(ψ)) / 2 * 100 (%)</span>
+              - <strong>시지름 ($\theta$):</strong> 거리 $d$에 반비례하여 동적으로 변화합니다.
+            </div>
+          </div>
+
+          <!-- 과학적 한계점 -->
+          <div class="report-section">
+            <button class="report-trigger" onclick="toggleReport(this)">
+              <span>3. 과학적 한계점 분석</span> <span>▼</span>
+            </button>
+            <div class="report-content">
+              본 시뮬레이션은 완벽한 <strong>원형 공전 궤도</strong> 및 두 행성의 <strong>동일 공전면</strong>을 가정했습니다. 실제 우주에서는 케플러 제1법칙에 따라 타원 궤도로 공전(이심률 존재)하며, 공전면 역시 황도면과 약 3.4°(금성) 어긋나 있으므로 실제 관측 데이터와는 미세한 오차가 발생할 수 있습니다.
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. 초기 설정 및 전역 상태 관리
+       ========================================================================= */
+    const EarthRadiusAU = 1.0; // 지구 공전 반경 (1.0 AU 고정)
+
+    let state = {
+      r: 0.45,        // 연속적인 가상 궤도 반지름 (기본값)
+      theta: 90,      // 공전 각도 (도)
+      isPlaying: true,// 자동 공전 활성화 상태
+      speed: 1.0,     // 속도 배율
+    };
+
+    // DOM 참조 캐싱
+    const slideRadius = document.getElementById('slide-radius');
+    const slideAngle = document.getElementById('slide-angle');
+    const slideSpeed = document.getElementById('slide-speed');
+    
+    const valRadius = document.getElementById('val-radius');
+    const valAngle = document.getElementById('val-angle');
+    const valSpeed = document.getElementById('val-speed');
+
+    const btnTogglePlay = document.getElementById('btn-toggle-play');
+    const playIcon = document.getElementById('play-icon');
+    const playText = document.getElementById('play-text');
+
+    // 출력 데이터 DOM
+    const telDist = document.getElementById('telemetry-dist');
+    const telDistRange = document.getElementById('telemetry-dist-range');
+    const telPhase = document.getElementById('telemetry-phase');
+    const telPhaseName = document.getElementById('telemetry-phase-name');
+    const telDiameter = document.getElementById('telemetry-diameter');
+    const telElongation = document.getElementById('telemetry-elongation');
+    const telElongationType = document.getElementById('telemetry-elongation-type');
+    const telObsDesc = document.getElementById('telemetry-obs-desc');
+
+    // 두 개의 캔버스 개체 수집
+    const canvasOrbit = document.getElementById('canvas-orbit');
+    const ctxOrbit = canvasOrbit.getContext('2d');
+
+    const canvasTelescope = document.getElementById('canvas-telescope');
+    const ctxTelescope = canvasTelescope.getContext('2d');
+
+    /* =========================================================================
+       2. 대화형 인터랙티브 제어 등록
+       ========================================================================= */
+    slideRadius.addEventListener('input', (e) => {
+      state.r = parseFloat(e.target.value);
+      valRadius.textContent = `${state.r.toFixed(2)} AU`;
+      removePresetActive();
+      calculateAndDraw();
+    });
+
+    slideAngle.addEventListener('input', (e) => {
+      state.theta = parseInt(e.target.value);
+      valAngle.textContent = `${state.theta}°`;
+      calculateAndDraw();
+    });
+
+    slideSpeed.addEventListener('input', (e) => {
+      state.speed = parseFloat(e.target.value);
+      valSpeed.textContent = `${state.speed.toFixed(1)}x`;
+    });
+
+    // 가상 프리셋 변경 기능
+    function setPreset(planet) {
+      const presets = {
+        planetA: { r: 0.45, id: 'preset-planet-a' },
+        planetB: { r: 0.72, id: 'preset-planet-b' }
+      };
+      
+      state.r = presets[planet].r;
+      slideRadius.value = state.r;
+      valRadius.textContent = `${state.r.toFixed(2)} AU`;
+
+      document.querySelectorAll('.btn-preset').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(presets[planet].id);
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+      }
+
+      calculateAndDraw();
+    }
+
+    function removePresetActive() {
+      document.querySelectorAll('.btn-preset').forEach(btn => btn.classList.remove('active'));
+    }
+
+    // 일시정지 제어
+    function togglePlay() {
+      state.isPlaying = !state.isPlaying;
+      if (state.isPlaying) {
+        playIcon.textContent = '⏸';
+        playText.textContent = '일시정지';
+        btnTogglePlay.style.backgroundColor = 'var(--accent-blue)';
+      } else {
+        playIcon.textContent = '▶';
+        playText.textContent = '자동공전';
+        btnTogglePlay.style.backgroundColor = 'rgba(0, 240, 255, 0.2)';
+      }
+    }
+
+    // 리셋 처리
+    function resetSimulation() {
+      state.r = 0.45;
+      state.theta = 90;
+      state.isPlaying = true;
+      state.speed = 1.0;
+
+      slideRadius.value = 0.45;
+      slideAngle.value = 90;
+      slideSpeed.value = 1.0;
+
+      valRadius.textContent = '0.45 AU';
+      valAngle.textContent = '90°';
+      valSpeed.textContent = '1.0x';
+
+      playIcon.textContent = '⏸';
+      playText.textContent = '일시정지';
+      btnTogglePlay.style.backgroundColor = 'var(--accent-blue)';
+
+      setPreset('planetA');
+    }
+
+    // 아코디언 제어
+    function toggleReport(button) {
+      const content = button.nextElementSibling;
+      const isActive = content.style.display === 'block';
+      
+      document.querySelectorAll('.report-content').forEach(c => c.style.display = 'none');
+      document.querySelectorAll('.report-trigger span:last-child').forEach(s => s.textContent = '▼');
+
+      if (!isActive) {
+        content.style.display = 'block';
+        button.querySelector('span:last-child').textContent = '▲';
+      }
+    }
+
+    /* =========================================================================
+       3. 실시간 천문/기하학 수치 연산부 (물리 엔진)
+       ========================================================================= */
+    function calculateTelemetry() {
+      const rad = state.theta * (Math.PI / 180);
+      
+      // 태양을 원점 (0,0)에 두고, 지구는 (0, R_e = 1.0)에 고정 배치
+      const x_v = state.r * Math.cos(rad);
+      const y_v = state.r * Math.sin(rad);
+      const x_e = 0;
+      const y_e = EarthRadiusAU; 
+
+      // 1. 지구-내행성 거리 (d) 계산
+      const d = Math.sqrt(x_v * x_v + (y_v - y_e) * (y_v - y_e));
+      const clamped_d = Math.max(d, 0.001); // 0 나누기 예외 방지
+
+      // 2. 위상각 (psi) 유도 (제2코사인법칙)
+      let cosPsi = (state.r * state.r + clamped_d * clamped_d - EarthRadiusAU * EarthRadiusAU) / (2 * state.r * clamped_d);
+      cosPsi = Math.max(-1, Math.min(1, cosPsi)); 
+
+      // 3. 위상률 (f, %)
+      const phaseRatio = ((1 + cosPsi) / 2) * 100;
+
+      // 4. 시지름 (겉보기 직경) 계산
+      const baseDiameterArcsec = 15.0;
+      const apparentDiameter = baseDiameterArcsec / clamped_d;
+
+      // 5. 이각 (Elongation) 계산
+      const vecES = { x: 0, y: -y_e };
+      const vecEP = { x: x_v, y: y_v - y_e };
+      
+      const dotProduct = vecES.x * vecEP.x + vecES.y * vecEP.y;
+      const lenES = y_e;
+      const lenEP = clamped_d;
+      
+      let cosElongation = dotProduct / (lenES * lenEP);
+      cosElongation = Math.max(-1, Math.min(1, cosElongation));
+      const elongationAngleDeg = Math.acos(cosElongation) * (180 / Math.PI);
+
+      // 6. 물리적 관측 불가 조건 판별 (이각 < 10° 기준)
+      const isUnobservableZone = (elongationAngleDeg < 10.0);
+      const isOccultedBehindSun = isUnobservableZone && (y_v < 0); // y_v < 0 이면 태양 뒤쪽(외합 부근)
+
+      // 위상 형상 설명 정의
+      let phaseName = "";
+      if (isUnobservableZone) {
+        phaseName = "관측 불가능 (Solar Obstruction)";
+      } else {
+        if (phaseRatio < 2.5) {
+          phaseName = "삭 (New Planet)";
+        } else if (phaseRatio >= 2.5 && phaseRatio < 45) {
+          phaseName = "초승/그믐달형 (Crescent)";
+        } else if (phaseRatio >= 45 && phaseRatio < 55) {
+          phaseName = "반달형 (Quarter Phase)";
+        } else if (phaseRatio >= 55 && phaseRatio < 97.5) {
+          phaseName = "볼록한 형태 (Gibbous)";
+        } else {
+          phaseName = "망 (Full Planet)";
+        }
+      }
+
+      // 거리 변화 증감 상태
+      let distTrend = "";
+      const maxDist = EarthRadiusAU + state.r;
+      const minDist = EarthRadiusAU - state.r;
+      if (state.theta > 90 && state.theta < 270) {
+        distTrend = `멀어지는 중 (최대 ${maxDist.toFixed(2)} AU)`;
+      } else {
+        distTrend = `가까워지는 중 (최소 ${minDist.toFixed(2)} AU)`;
+      }
+
+      // 이각 종류 및 최적 관측 가이드 생성
+      let elongationType = "내합";
+      let obsSummary = "";
+
+      if (isUnobservableZone) {
+        if (isOccultedBehindSun) {
+          elongationType = "외합 영역 (Superior Conjunction)";
+          obsSummary = "<span style='color:var(--accent-red); font-weight:bold;'>⚠️ 태양 차폐(Occultation) 발생:</span> 내행성이 태양 원반 뒤로 들어가 완전히 가려졌습니다. 지구에서는 기하학적으로 관측이 불가합니다.";
+        } else {
+          elongationType = "내합 영역 (Inferior Conjunction)";
+          obsSummary = "<span style='color:var(--accent-orange); font-weight:bold;'>⚠️ 태양 글레어(Glare) 간섭:</span> 내행성이 태양과 극도로 밀접해 있어 태양의 주간 눈부심 대기 산란으로 인해 형태 관측이 불가능합니다.";
+        }
+      } else if (x_v > 0) {
+        elongationType = `동방이각 (Eastern Elongation) ${elongationAngleDeg.toFixed(1)}°`;
+        obsSummary = `현재 가상 행성은 태양 동쪽에 치우친 [동방이각]입니다. 태양보다 늦게 저물기 때문에 <strong>초저녁 서쪽 하늘</strong>에서 해가 진 직후 관측하기에 가장 좋습니다.`;
+      } else {
+        elongationType = `서방이각 (Western Elongation) ${elongationAngleDeg.toFixed(1)}°`;
+        obsSummary = `현재 가상 행성은 태양 서쪽에 치우친 [서방이각]입니다. 태양보다 먼저 떠오르므로 <strong>새벽 동쪽 하늘(샛별)</strong>에서 관측에 유리합니다.`;
+      }
+
+      // 텔레메트리 대시보드 데이터 주입
+      telDist.textContent = `${clamped_d.toFixed(4)} AU`;
+      telDistRange.textContent = distTrend;
+      telPhase.textContent = isUnobservableZone ? "N/A" : `${phaseRatio.toFixed(1)}%`;
+      telPhaseName.textContent = phaseName;
+      telDiameter.textContent = `${apparentDiameter.toFixed(1)}"`;
+      telElongation.textContent = `${elongationAngleDeg.toFixed(1)}°`;
+      telElongationType.textContent = elongationType;
+      telObsDesc.innerHTML = obsSummary;
+
+      return { d, phaseRatio, apparentDiameter, elongationAngleDeg, x_v, y_v, x_e, y_e, cosPsi, isUnobservableZone, isOccultedBehindSun };
+    }
+
+    /* =========================================================================
+       4. Canvas 실시간 그래픽스 드로잉부 (수식 렌더링)
+       ========================================================================= */
+
+    // 부모 wrapper 크기 변화 감지 후 캔버스 해상도 강제 맞춤 연산
+    function resizeCanvas() {
+      [canvasOrbit, canvasTelescope].forEach(canvas => {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        
+        if (rect.width > 0 && rect.height > 0) {
+          canvas.width = rect.width * dpr;
+          canvas.height = rect.height * dpr;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.resetTransform();
+          ctx.scale(dpr, dpr);
+        }
+      });
+      calculateAndDraw();
+    }
+
+    // Canvas A: 궤도 평면도 (Top-down View)
+    function drawOrbitView(calc) {
+      const width = canvasOrbit.width / (window.devicePixelRatio || 1);
+      const height = canvasOrbit.height / (window.devicePixelRatio || 1);
+      if (width === 0 || height === 0) return;
+
+      ctxOrbit.clearRect(0, 0, width, height);
+
+      // 우주성 암흑 공간 채우기
+      ctxOrbit.fillStyle = '#080d1a';
+      ctxOrbit.fillRect(0, 0, width, height);
+      
+      // 기하 그리드선
+      ctxOrbit.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctxOrbit.lineWidth = 1;
+      for (let i = 0; i < width; i += 40) {
+        ctxOrbit.beginPath(); ctxOrbit.moveTo(i, 0); ctxOrbit.lineTo(i, height); ctxOrbit.stroke();
+      }
+      for (let j = 0; j < height; j += 40) {
+        ctxOrbit.beginPath(); ctxOrbit.moveTo(0, j); ctxOrbit.lineTo(width, j); ctxOrbit.stroke();
+      }
+
+      // 중심 좌표 스케일링 설정
+      const cx = width / 2;
+      const cy = height / 2 - 20; 
+      const scale = Math.min(width, height) * 0.35; 
+
+      // 지구 좌표 및 스케일링
+      const ex = cx;
+      const ey = cy + EarthRadiusAU * scale;
+
+      // -----------------------------------------------------------------------
+      // [신규] 태양 차폐/간섭 위험 원뿔(Solar Blinding Cone, 이각 10도 이하 영역) 드로잉
+      // -----------------------------------------------------------------------
+      const coneAngleRad = 10.0 * (Math.PI / 180);
+      const coneLength = scale * 2.2; // 궤도를 넘어서는 긴 원뿔 가이드선
+      
+      // 지구에서 태양(cx, cy) 방향을 정면 벡터로 삼아 좌우 10도 각도 계산
+      const baseAngle = -Math.PI / 2; // (0, -1) 방향
+      
+      ctxOrbit.fillStyle = 'rgba(239, 68, 68, 0.08)'; // 위기 영역 경고 오렌지/레드 그늘
+      ctxOrbit.beginPath();
+      ctxOrbit.moveTo(ex, ey);
+      ctxOrbit.lineTo(ex + coneLength * Math.cos(baseAngle - coneAngleRad), ey + coneLength * Math.sin(baseAngle - coneAngleRad));
+      ctxOrbit.lineTo(ex + coneLength * Math.cos(baseAngle + coneAngleRad), ey + coneLength * Math.sin(baseAngle + coneAngleRad));
+      ctxOrbit.closePath();
+      ctxOrbit.fill();
+
+      // 태양 간섭 영역 가이드선 테두리
+      ctxOrbit.strokeStyle = 'rgba(239, 68, 68, 0.18)';
+      ctxOrbit.lineWidth = 1.2;
+      ctxOrbit.beginPath();
+      ctxOrbit.moveTo(ex, ey);
+      ctxOrbit.lineTo(ex + coneLength * Math.cos(baseAngle - coneAngleRad), ey + coneLength * Math.sin(baseAngle - coneAngleRad));
+      ctxOrbit.moveTo(ex, ey);
+      ctxOrbit.lineTo(ex + coneLength * Math.cos(baseAngle + coneAngleRad), ey + coneLength * Math.sin(baseAngle + coneAngleRad));
+      ctxOrbit.stroke();
+
+      // 1. 태양(Sun) 렌더링
+      const sunGlow = ctxOrbit.createRadialGradient(cx, cy, 2, cx, cy, 25);
+      sunGlow.addColorStop(0, '#ffffff');
+      sunGlow.addColorStop(0.2, '#fef08a');
+      sunGlow.addColorStop(0.5, '#f97316');
+      sunGlow.addColorStop(1, 'rgba(249, 115, 22, 0)');
+      ctxOrbit.fillStyle = sunGlow;
+      ctxOrbit.beginPath();
+      ctxOrbit.arc(cx, cy, 30, 0, Math.PI * 2);
+      ctxOrbit.fill();
+
+      ctxOrbit.fillStyle = '#ff8c00';
+      ctxOrbit.font = 'bold 11px monospace';
+      ctxOrbit.fillText("태양 (Sun)", cx + 15, cy - 15);
+
+      // 2. 가상 내행성 공전 궤도 (연속적 반경 실시간 반영)
+      ctxOrbit.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+      ctxOrbit.setLineDash([5, 4]);
+      ctxOrbit.lineWidth = 1.2;
+      ctxOrbit.beginPath();
+      ctxOrbit.arc(cx, cy, state.r * scale, 0, Math.PI * 2);
+      ctxOrbit.stroke();
+
+      // 3. 지구 고정 공전 궤도 (1.0 AU)
+      ctxOrbit.strokeStyle = 'rgba(34, 197, 94, 0.15)';
+      ctxOrbit.beginPath();
+      ctxOrbit.arc(cx, cy, EarthRadiusAU * scale, 0, Math.PI * 2);
+      ctxOrbit.stroke();
+      ctxOrbit.setLineDash([]); // 대시 해제
+
+      // 4. 지구(Earth) 렌더링
+      ctxOrbit.fillStyle = '#1e3a8a'; 
+      ctxOrbit.beginPath();
+      ctxOrbit.arc(ex, ey, 9, 0, Math.PI * 2);
+      ctxOrbit.fill();
+      
+      const earthGlow = ctxOrbit.createLinearGradient(ex, ey - 9, ex, ey + 9);
+      earthGlow.addColorStop(0, '#4ade80'); 
+      earthGlow.addColorStop(0.5, '#3b82f6');
+      earthGlow.addColorStop(1, '#0f172a'); 
+      ctxOrbit.fillStyle = earthGlow;
+      ctxOrbit.beginPath();
+      ctxOrbit.arc(ex, ey, 9, Math.PI, 0, false); 
+      ctxOrbit.fill();
+
+      ctxOrbit.fillStyle = '#4ade80';
+      ctxOrbit.font = 'bold 11px monospace';
+      ctxOrbit.fillText("지구 (Earth)", ex + 14, ey + 4);
+
+      // 5. 가상 내행성 위치 산정 및 배치
+      const px = cx + calc.x_v * scale;
+      const py = cy + calc.y_v * scale;
+
+      // 태양-행성 광선 유도선
+      ctxOrbit.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+      ctxOrbit.lineWidth = 1;
+      ctxOrbit.beginPath();
+      ctxOrbit.moveTo(cx, cy);
+      ctxOrbit.lineTo(px, py);
+      ctxOrbit.stroke();
+
+      // 지구-행성 실제 시선선 (차폐 구역일 시 적색 점선 변환으로 관측 불가 표현)
+      if (calc.isUnobservableZone) {
+        ctxOrbit.strokeStyle = 'rgba(239, 68, 68, 0.65)';
+        ctxOrbit.setLineDash([3, 3]);
+      } else {
+        ctxOrbit.strokeStyle = 'rgba(0, 240, 255, 0.55)';
+        ctxOrbit.setLineDash([]);
+      }
+      ctxOrbit.lineWidth = 1.3;
+      ctxOrbit.beginPath();
+      ctxOrbit.moveTo(ex, ey);
+      ctxOrbit.lineTo(px, py);
+      ctxOrbit.stroke();
+      ctxOrbit.setLineDash([]); // 대시 상태 복구
+
+      // 행성 그림자 외곽선
+      ctxOrbit.fillStyle = '#1e293b';
+      ctxOrbit.beginPath();
+      ctxOrbit.arc(px, py, 7, 0, Math.PI * 2);
+      ctxOrbit.fill();
+
+      // 햇빛을 받는 반구 실시간 로테이션
+      const planetAngle = Math.atan2(py - cy, px - cx);
+      ctxOrbit.save();
+      ctxOrbit.translate(px, py);
+      ctxOrbit.rotate(planetAngle + Math.PI); 
+      
+      ctxOrbit.fillStyle = '#fef08a';
+      ctxOrbit.beginPath();
+      ctxOrbit.arc(0, 0, 7, -Math.PI / 2, Math.PI / 2, false);
+      ctxOrbit.fill();
+      ctxOrbit.restore();
+
+      // 행성이 차폐 구역 안에 있으면 붉은 경고 링 강조 및 투명도 반영
+      if (calc.isUnobservableZone) {
+        ctxOrbit.strokeStyle = 'var(--accent-red)';
+        ctxOrbit.lineWidth = 1.5;
+        ctxOrbit.beginPath();
+        ctxOrbit.arc(px, py, 11, 0, Math.PI * 2);
+        ctxOrbit.stroke();
+        
+        ctxOrbit.fillStyle = 'var(--accent-red)';
+        ctxOrbit.font = 'bold 11px monospace';
+        ctxOrbit.fillText("차폐 구역 진입", px + 15, py - 4);
+      } else {
+        ctxOrbit.fillStyle = 'var(--accent-cyan)';
+        ctxOrbit.font = 'bold 11px monospace';
+        ctxOrbit.fillText("가상 행성", px + 12, py - 4);
+      }
+
+      // 6. 이각 측정 호 가이드라인 그리기
+      ctxOrbit.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctxOrbit.lineWidth = 1;
+      ctxOrbit.setLineDash([3, 3]);
+      ctxOrbit.beginPath();
+      ctxOrbit.moveTo(ex, ey);
+      ctxOrbit.lineTo(cx, cy);
+      ctxOrbit.stroke();
+      ctxOrbit.setLineDash([]);
+
+      const earthAngleToSun = -Math.PI / 2; 
+      const earthAngleToPlanet = Math.atan2(py - ey, px - ex);
+      
+      ctxOrbit.strokeStyle = calc.isUnobservableZone ? 'var(--accent-red)' : 'var(--accent-orange)';
+      ctxOrbit.lineWidth = 1.5;
+      ctxOrbit.beginPath();
+      ctxOrbit.arc(ex, ey, 45, earthAngleToSun, earthAngleToPlanet, (calc.x_v < 0));
+      ctxOrbit.stroke();
+
+      // 각도 라벨 텍스트
+      const textAngle = earthAngleToSun + (earthAngleToPlanet - earthAngleToSun) / 2;
+      const tx = ex + 60 * Math.cos(textAngle);
+      const ty = ey + 60 * Math.sin(textAngle);
+      ctxOrbit.fillStyle = calc.isUnobservableZone ? 'var(--accent-red)' : 'var(--accent-orange)';
+      ctxOrbit.font = 'bold 10px monospace';
+      ctxOrbit.fillText(`${calc.elongationAngleDeg.toFixed(1)}°`, tx - 10, ty + 4);
+    }
+
+    // Canvas B: 망원경 관측 뷰 (Telescope View - 태양 차폐 상태 기하 보정)
+    function drawTelescopeView(calc) {
+      const width = canvasTelescope.width / (window.devicePixelRatio || 1);
+      const height = canvasTelescope.height / (window.devicePixelRatio || 1);
+      if (width === 0 || height === 0) return;
+
+      ctxTelescope.clearRect(0, 0, width, height);
+
+      // 망원경 격자망 및 심우주 배경색 채우기
+      ctxTelescope.fillStyle = '#060913';
+      ctxTelescope.fillRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height / 2;
+
+      // 1. 레티클 동심 조준 원선 (시지름 가늠선: 15" ~ 60")
+      ctxTelescope.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+      ctxTelescope.lineWidth = 1;
+      
+      const ringSteps = [15, 30, 45, 60];
+      const visualScale = 2.0; 
+      
+      ringSteps.forEach(step => {
+        const radius = step * visualScale;
+        ctxTelescope.beginPath();
+        ctxTelescope.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctxTelescope.stroke();
+        
+        ctxTelescope.fillStyle = 'rgba(0, 240, 255, 0.25)';
+        ctxTelescope.font = '9px monospace';
+        ctxTelescope.fillText(`${step}"`, cx + radius + 2, cy - 3);
+      });
+
+      // 망원경 십자선
+      ctxTelescope.strokeStyle = 'rgba(0, 240, 255, 0.12)';
+      ctxTelescope.beginPath();
+      ctxTelescope.moveTo(cx - 150, cy); ctxTelescope.lineTo(cx + 150, cy);
+      ctxTelescope.moveTo(cx, cy - 150); ctxTelescope.lineTo(cx, cy + 150);
+      ctxTelescope.stroke();
+
+      const r_render = calc.apparentDiameter * visualScale;
+
+      // -----------------------------------------------------------------------
+      // [신규 문제 보정 적용] 차폐 구역(isUnobservableZone)일 시 실시간 렌더링 필터 마스킹
+      // -----------------------------------------------------------------------
+      if (calc.isUnobservableZone) {
+        if (calc.isOccultedBehindSun) {
+          // 외합 차폐 상황: 행성이 태양 원반 뒤에 완전히 가려짐 (행성을 그리지 않음)
+          ctxTelescope.fillStyle = 'rgba(0, 0, 0, 0.95)';
+          ctxTelescope.fillRect(0, 0, width, height);
+          
+          // 태양 외부 광관 묘사
+          const occultGlow = ctxTelescope.createRadialGradient(cx, cy, 30, cx, cy, 180);
+          occultGlow.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
+          occultGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctxTelescope.fillStyle = occultGlow;
+          ctxTelescope.beginPath();
+          ctxTelescope.arc(cx, cy, 180, 0, Math.PI * 2);
+          ctxTelescope.fill();
+
+          // 안내 텍스트 출력
+          ctxTelescope.fillStyle = 'var(--accent-red)';
+          ctxTelescope.font = 'bold 13px sans-serif';
+          ctxTelescope.textAlign = 'center';
+          ctxTelescope.fillText("⚠️ 태양 배후 차폐 발생 (Occultation)", cx, cy - 10);
+          ctxTelescope.fillStyle = 'var(--text-muted)';
+          ctxTelescope.font = '11px sans-serif';
+          ctxTelescope.fillText("내행성이 태양 원반 뒤를 통과하여 가려진 상태입니다.", cx, cy + 15);
+          ctxTelescope.textAlign = 'left'; // 정렬 복구
+        } else {
+          // 내합 부근: 극심한 눈부심(Solar Glare) 발생으로 렌더링 상이 하얗게 뭉개짐
+          
+          // 1단계: 먼저 눈부심 배경 노이즈/플레어 레이어 덮기
+          const glareGrad = ctxTelescope.createRadialGradient(cx, cy, 10, cx, cy, 190);
+          glareGrad.addColorStop(0, '#ffffff');
+          glareGrad.addColorStop(0.15, '#fffbeb');
+          glareGrad.addColorStop(0.45, 'rgba(251, 191, 36, 0.5)');
+          glareGrad.addColorStop(1.0, 'rgba(6, 9, 19, 0)');
+          
+          ctxTelescope.fillStyle = glareGrad;
+          ctxTelescope.beginPath();
+          ctxTelescope.arc(cx, cy, 200, 0, Math.PI * 2);
+          ctxTelescope.fill();
+
+          // 2단계: 극도의 광량 과포화로 형체 식별 불가 안내
+          ctxTelescope.fillStyle = '#92400e';
+          ctxTelescope.font = 'bold 13px sans-serif';
+          ctxTelescope.textAlign = 'center';
+          ctxTelescope.fillText("⚠️ 극심한 태양 광휘 간섭 (Solar Glare)", cx, cy + 40);
+          ctxTelescope.fillStyle = '#78350f';
+          ctxTelescope.font = '11px sans-serif';
+          ctxTelescope.fillText("태양빛 산란이 지배적이어서 형체 식별이 불가합니다.", cx, cy + 60);
+          ctxTelescope.textAlign = 'left';
+        }
+      } else {
+        // 일반 관측 가능한 구역: 실시간 위상 및 시지름 물리 연동 드로잉
+        const litOnRight = (calc.x_v > 0);
+
+        ctxTelescope.save();
+        ctxTelescope.translate(cx, cy);
+
+        // 행성 본체 어두운 음영 가이드 구체 (배후 그림자망)
+        ctxTelescope.beginPath();
+        ctxTelescope.arc(0, 0, r_render, 0, Math.PI * 2);
+        ctxTelescope.fillStyle = '#111726'; 
+        ctxTelescope.fill();
+        ctxTelescope.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        ctxTelescope.stroke();
+
+        // 완벽한 호(Arc) 접합형 경계선 트레이싱 루틴
+        ctxTelescope.beginPath();
+        ctxTelescope.moveTo(0, -r_render);
+
+        if (litOnRight) {
+          ctxTelescope.arc(0, 0, r_render, -Math.PI / 2, Math.PI / 2, false);
+          
+          const steps = 60;
+          for (let i = 0; i <= steps; i++) {
+            const t = (i / steps) * Math.PI; 
+            const y = r_render * Math.cos(t);
+            const x = -r_render * calc.cosPsi * Math.sin(t);
+            ctxTelescope.lineTo(x, y);
+          }
+        } else {
+          ctxTelescope.arc(0, 0, r_render, -Math.PI / 2, Math.PI / 2, true);
+          
+          const steps = 60;
+          for (let i = 0; i <= steps; i++) {
+            const t = (i / steps) * Math.PI; 
+            const y = r_render * Math.cos(t);
+            const x = r_render * calc.cosPsi * Math.sin(t);
+            ctxTelescope.lineTo(x, y);
+          }
+        }
+        ctxTelescope.closePath();
+
+        // 행성 대기 반사 특성을 묘사한 고휘도 그라데이션 광원
+        const surfaceGrad = ctxTelescope.createRadialGradient(
+          litOnRight ? r_render * 0.35 : -r_render * 0.35, -r_render * 0.1, r_render * 0.1,
+          0, 0, r_render
+        );
+        surfaceGrad.addColorStop(0, '#ffffff');      
+        surfaceGrad.addColorStop(0.2, '#fffbeb');   
+        surfaceGrad.addColorStop(0.6, '#fef08a');    
+        surfaceGrad.addColorStop(1.0, '#b45309');    
+
+        ctxTelescope.fillStyle = surfaceGrad;
+        ctxTelescope.fill();
+
+        // 대기 산란으로 인한 행성 가장자리 광륜 테두리
+        ctxTelescope.strokeStyle = 'rgba(255, 252, 219, 0.45)';
+        ctxTelescope.lineWidth = 1;
+        ctxTelescope.stroke();
+
+        ctxTelescope.restore();
+      }
+
+      // 배율 주석 출력
+      ctxTelescope.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctxTelescope.font = '10px sans-serif';
+      ctxTelescope.fillText("가상 조준 시야각 (배율 조절선: 15\" ~ 60\")", 15, height - 15);
+    }
+
+    // 종합 연산 및 동시 드로잉 루틴
+    function calculateAndDraw() {
+      const calcData = calculateTelemetry();
+      drawOrbitView(calcData);
+      drawTelescopeView(calcData);
+    }
+
+    /* =========================================================================
+       5. 실시간 공전 연산 메인 루프 (Animation Loop)
+       ========================================================================= */
+    function animate() {
+      if (state.isPlaying) {
+        // 배속 슬라이더에 비례하여 궤도 각도 증가 계산
+        const angleStep = 0.45 * state.speed;
+        state.theta = (state.theta + angleStep) % 360;
+        
+        // 슬라이더 바 및 수치 라벨 값 업데이트
+        slideAngle.value = Math.round(state.theta);
+        valAngle.textContent = `${Math.round(state.theta)}°`;
+        
+        calculateAndDraw();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    /* =========================================================================
+       6. 브라우저 리사이즈 및 샌드박스 안정화 처리
+       ========================================================================= */
+    
+    // ResizeObserver 선언을 통해 Canvas 부모 크기를 완전하게 관찰 보정
+    const resizeObserver = new ResizeObserver(() => {
+      resizeCanvas();
+    });
+
+    document.querySelectorAll('.canvas-wrapper').forEach(wrapper => {
+      resizeObserver.observe(wrapper);
+    });
+
+    // 앱 기동 진입점
+    function startApp() {
+      resizeCanvas();
+      setPreset('planetA');
+      animate(); // 루프 실행
+    }
+
+    // 돔 로드 보장 장치 안전 연결
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      startApp();
+    } else {
+      window.addEventListener('DOMContentLoaded', startApp);
+    }
+  </script>
+</body>
+</html>
+
+```

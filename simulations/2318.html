@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우주 적색 편이 및 공간 곡률 시뮬레이터 Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #030712;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* 슬라이더 스타일 커스텀 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1f2937;
+            height: 6px;
+            border-radius: 9999px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+            transform: scale(1.2);
+            box-shadow: 0 0 12px rgba(96, 165, 250, 0.9);
+        }
+        input[type="range"]:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        input[type="range"]:disabled::-webkit-slider-thumb {
+            background: #4b5563;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- 헤더 영역 -->
+    <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-expand animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight font-orbitron text-blue-400">COSMIC REDSHIFT SIMULATOR PRO</h1>
+                <p class="text-xs text-gray-400">공간 곡률과 은하 거리에 따른 적색 편이, 후퇴 속도 및 우주의 운명 탐구</p>
+            </div>
+        </div>
+        <div class="text-xs text-right hidden md:block text-gray-500">
+            <div>밀도 변수 고정: <span class="text-gray-300 font-orbitron">Ω<sub>m</sub> = 0.3</span> (암흑 물질), <span class="text-gray-300 font-orbitron">Ω<sub>Λ</sub> = 0.7</span> (암흑 에너지)</div>
+            <div>기본 허블 상수: <span class="text-gray-300 font-orbitron">H<sub>0</sub> = 70 km/s/Mpc</span></div>
+        </div>
+    </header>
+
+    <!-- 메인 대시보드 콘텐츠 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 왼쪽 상단: 슬라이더 조작 패널 (lg:col-span-4) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 backdrop-blur flex flex-col gap-6 shadow-xl">
+                <div class="flex items-center gap-2 border-b border-gray-800 pb-3">
+                    <i class="fa-solid fa-sliders text-blue-500"></i>
+                    <h2 class="font-bold text-lg text-gray-200">시뮬레이션 파라미터</h2>
+                </div>
+
+                <!-- 거리 R 슬라이더 -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-300">지구에서 은하까지 거리 <span class="font-orbitron text-blue-400 font-bold">R</span></span>
+                        <span class="text-sm font-orbitron font-bold text-blue-400 bg-blue-950/50 px-2 py-0.5 rounded border border-blue-900" id="val-r">1.00 AU</span>
+                    </div>
+                    <input type="range" id="slider-r" min="0.2" max="100" step="0.1" value="1" class="w-full">
+                    <div class="flex justify-between text-[10px] text-gray-500 font-orbitron">
+                        <span>0.2 AU</span>
+                        <span>50 AU</span>
+                        <span>100 AU</span>
+                    </div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mt-1">
+                        <i class="fa-solid fa-circle-info text-blue-500/70 mr-1"></i>
+                        실제 은하 단위 거리는 Mpc(메가파섹)이지만, 교육용 직관적 조작을 위해 <strong>AU 단위(1 AU = 약 10 Mpc 축척 변환)</strong>로 매핑하여 현실감 있는 우주론적 수치로 가공했습니다.
+                    </p>
+                </div>
+
+                <!-- 공간 곡률 Ωk 슬라이더 -->
+                <div class="flex flex-col gap-2 pt-2 border-t border-gray-800/50">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-300">공간 곡률 <span class="font-orbitron text-purple-400 font-bold">Ω<sub>k</sub></span></span>
+                        <span class="text-sm font-orbitron font-bold text-purple-400 bg-purple-950/50 px-2 py-0.5 rounded border border-purple-900" id="val-ok">0.00</span>
+                    </div>
+                    <input type="range" id="slider-ok" min="-1.0" max="1.0" step="0.05" value="0" class="w-full">
+                    <div class="flex justify-between text-[10px] text-gray-500 font-orbitron">
+                        <span class="text-red-400">닫힌 우주 (-1.0)</span>
+                        <span>평탄함 (0)</span>
+                        <span class="text-green-400 font-semibold">열린 우주 (1.0)</span>
+                    </div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mt-1">
+                        <i class="fa-solid fa-circle-info text-purple-500/70 mr-1"></i>
+                        곡률 <span class="font-orbitron">Ω<sub>k</sub></span>가 양수이면 우주는 열린 구조(말안장 모양)가 되고 우주 팽창을 더욱 가속화하여 동일 거리 대비 높은 후퇴 속도를 보이게 됩니다.
+                    </p>
+                </div>
+
+                <!-- 별의 표면 온도 T 슬라이더 -->
+                <div class="flex flex-col gap-2 pt-2 border-t border-gray-800/50">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-300">별의 표면 온도 <span class="font-orbitron text-amber-400 font-bold">T</span></span>
+                        <span class="text-sm font-orbitron font-bold text-amber-400 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-900" id="val-temp">6000 K</span>
+                    </div>
+                    <input type="range" id="slider-temp" min="3000" max="35000" step="100" value="6000" class="w-full">
+                    <div class="flex justify-between text-[10px] text-gray-500 font-orbitron">
+                        <span class="text-red-400">M형 (3,000K)</span>
+                        <span>태양형 (5,800K)</span>
+                        <span class="text-blue-400 font-semibold">O형 (35,000K)</span>
+                    </div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mt-1">
+                        <i class="fa-solid fa-fire-flame-curved text-amber-500/70 mr-1"></i>
+                        온도 변화에 따라 연속 스펙트럼의 색상 치우침(연속 에너지 강도 분포)이 동적으로 재조정되며 대기 속 성분들의 흡수 강도가 바뀝니다.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 미니 학술 정보 카드 -->
+            <div class="bg-gray-900/40 border border-gray-800/60 rounded-2xl p-5 text-xs text-gray-400 leading-relaxed hidden lg:flex flex-col gap-3">
+                <h3 class="font-bold text-gray-300 flex items-center gap-1.5 text-sm">
+                    <i class="fa-solid fa-square-root-variable text-emerald-500"></i> 적용된 이론 공식
+                </h3>
+                <div class="bg-gray-950/60 p-3 rounded-lg border border-gray-800/80 flex flex-col gap-2 font-mono">
+                    <div>
+                        <span class="text-blue-400 font-bold">V = H · R</span> 
+                        <span class="text-gray-500 text-[10px] block">(허블-르메트르 법칙)</span>
+                    </div>
+                    <div class="border-t border-gray-800/80 pt-1">
+                        <span class="text-purple-400 font-bold">H(z) = H<sub>0</sub>√[Ω<sub>m</sub>(1+z)³ + Ω<sub>k</sub>(1+z)² + Ω<sub>Λ</sub>]</span>
+                        <span class="text-gray-500 text-[10px] block">(프리드만 방정식)</span>
+                    </div>
+                    <div class="border-t border-gray-800/80 pt-1">
+                        <span class="text-amber-400 font-bold">λ<sub>obs</sub> = λ<sub>rest</sub>(1 + z)</span>
+                        <span class="text-gray-500 text-[10px] block">(적색 편이 파장 이동 공식)</span>
+                    </div>
+                </div>
+                <p>본 시뮬레이션은 프리드만 방정식을 실시간 계산하여 적색 편이 값 $z$를 산출하고, 대기 성분의 흡수선을 적색 이동 공식에 대입하여 렌더링합니다.</p>
+            </div>
+        </section>
+
+        <!-- 오른쪽: 공간 곡률 비주얼 & 메인 적색편이 시뮬레이션 (lg:col-span-8) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- 곡률 및 메인 공간 그리드 병합 레이아웃 -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                
+                <!-- 우측 상단 성격: 곡률 우주 모습 (md:col-span-5) -->
+                <div class="md:col-span-5 bg-gray-900/60 border border-gray-800 rounded-2xl p-4 backdrop-blur flex flex-col gap-3 shadow-xl relative min-h-[300px] md:min-h-0">
+                    <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                        <div class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-globe text-purple-400"></i>
+                            <span class="text-sm font-bold text-gray-200">곡률 공간의 우주 기하</span>
+                        </div>
+                        <span class="text-[11px] px-2 py-0.5 rounded font-bold uppercase tracking-wider" id="space-type-badge">평탄한 우주</span>
+                    </div>
+                    
+                    <!-- 3D 곡률 캔버스 -->
+                    <div class="flex-1 w-full bg-gray-950/80 rounded-xl border border-gray-800/80 overflow-hidden relative flex items-center justify-center min-h-[200px]">
+                        <canvas id="curvature-canvas" class="w-full h-full absolute top-0 left-0"></canvas>
+                        <div class="absolute bottom-2 left-2 right-2 bg-gray-900/80 backdrop-blur-sm p-2 rounded border border-gray-800 text-[10px] text-center text-gray-400 flex flex-col gap-0.5">
+                            <div>우주 기하: <span class="text-white font-semibold" id="space-type-desc">유클리드 평면 기하</span></div>
+                            <div class="text-[9px] text-purple-300 font-medium" id="triangle-sum-desc">삼각형 내각의 합 = 180°</div>
+                            <div class="text-[9px] text-amber-300 font-semibold uppercase tracking-wider mt-0.5" id="universe-fate">미래 운명: 평형 유지</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 중앙 성격: 후퇴 속도 및 허블 상수 수치 판넬 (md:col-span-7) -->
+                <div class="md:col-span-7 bg-gray-900/60 border border-gray-800 rounded-2xl p-5 backdrop-blur flex flex-col justify-between shadow-xl gap-4">
+                    <div class="flex items-center gap-1.5 border-b border-gray-800 pb-2">
+                        <i class="fa-solid fa-gauge-high text-emerald-500"></i>
+                        <span class="text-sm font-bold text-gray-200">실시간 우주 상태 대시보드</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- 허블 상수 계산치 -->
+                        <div class="bg-gray-950/60 p-4 rounded-xl border border-gray-800/80 flex flex-col gap-1">
+                            <span class="text-xs text-gray-400 font-medium">허블 매개변수 <span class="font-orbitron">H(z)</span></span>
+                            <div class="text-xl md:text-2xl font-black font-orbitron text-emerald-400" id="val-h">70.00</div>
+                            <span class="text-[10px] text-gray-500">km / s / Mpc</span>
+                        </div>
+
+                        <!-- 후퇴 속도 계산치 -->
+                        <div class="bg-gray-950/60 p-4 rounded-xl border border-gray-800/80 flex flex-col gap-1 relative overflow-hidden">
+                            <span class="text-xs text-gray-400 font-medium">후퇴 속도 <span class="font-orbitron text-red-400">V</span></span>
+                            <div class="text-xl md:text-2xl font-black font-orbitron text-red-400" id="val-v">700.0</div>
+                            <span class="text-[10px] text-gray-500">km / s</span>
+                            <div class="absolute top-2 right-2 flex items-center gap-0.5 text-[10px] text-gray-400" id="light-speed-ratio">
+                                0.23% c
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- 적색편이 값 -->
+                        <div class="bg-gray-950/60 p-3 rounded-xl border border-gray-800/50 flex justify-between items-center">
+                            <span class="text-xs text-gray-400">적색 편이 <span class="font-orbitron font-bold text-orange-400">z</span></span>
+                            <span class="text-sm font-bold font-orbitron text-orange-400" id="val-z">0.0023</span>
+                        </div>
+                        
+                        <!-- 룩백 타임 (추가됨) -->
+                        <div class="bg-gray-950/60 p-3 rounded-xl border border-gray-800/50 flex justify-between items-center">
+                            <span class="text-xs text-gray-400">룩백 타임 <span class="text-pink-400"><i class="fa-regular fa-clock"></i></span></span>
+                            <span class="text-sm font-bold font-orbitron text-pink-400" id="val-lookback">1.0 억 년</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 메인 애니메이션 캔버스 (지구와 은하의 거리 및 확장성) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 backdrop-blur flex flex-col gap-4 shadow-xl">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-star-and-crescent text-yellow-500 animate-spin" style="animation-duration: 8s;"></i>
+                        <span class="text-sm font-bold text-gray-200">적색 편이 파동 및 팽창 애니메이션</span>
+                    </div>
+                    <span class="text-xs text-gray-500 font-mono" id="sim-time">T = 0.00s</span>
+                </div>
+
+                <div class="w-full h-56 bg-gray-950 rounded-xl border border-gray-800/80 overflow-hidden relative">
+                    <canvas id="universe-canvas" class="w-full h-full"></canvas>
+                    
+                    <!-- 캔버스 위 오버레이 정보 가이드 -->
+                    <div class="absolute top-3 left-3 bg-gray-900/80 backdrop-blur border border-gray-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs text-blue-300">
+                        <i class="fa-solid fa-earth-asia text-blue-400"></i>
+                        <span>지구 (관측자)</span>
+                    </div>
+                    
+                    <div class="absolute top-3 right-3 bg-gray-900/80 backdrop-blur border border-gray-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs text-red-300">
+                        <i class="fa-solid fa-spinner text-red-400 animate-spin"></i>
+                        <span>팽창 은하 (광원)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 하단 격자 레이아웃: 스펙트럼 뷰어(좌) & v-R 관계 그래프(우) 병합 배치 -->
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                <!-- 별의 대기 흡수 스펙트럼 뷰어 카드 (xl:col-span-7) -->
+                <div class="xl:col-span-7 bg-gray-900/60 border border-gray-800 rounded-2xl p-5 backdrop-blur flex flex-col gap-4 shadow-xl">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-rainbow text-pink-500"></i>
+                            <span class="text-sm font-bold text-gray-200">별의 대기 흡수 스펙트럼 분석 (7대 구성 원소)</span>
+                        </div>
+                        <span class="text-xs text-gray-500 font-mono">380nm - 720nm</span>
+                    </div>
+
+                    <div class="w-full bg-gray-950 rounded-xl border border-gray-800/80 p-4 flex flex-col gap-3">
+                        <canvas id="spectrum-canvas" class="w-full h-52"></canvas>
+                        
+                        <!-- 화학 원소 기호 및 범례 가이드 -->
+                        <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs border-t border-gray-800/60 pt-3 justify-center items-center">
+                            <span class="text-[11px] text-gray-400 mr-1"><i class="fa-solid fa-tags text-gray-500"></i> 범례:</span>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color: #3b82f6;"></span><span>수소 (<span class="font-orbitron font-bold">H</span>)</span></div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color: #a855f7;"></span><span>헬륨 (<span class="font-orbitron font-bold">He</span>)</span></div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color: #10b981;"></span><span>칼슘 (<span class="font-orbitron font-bold">Ca</span>)</span></div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color: #f59e0b;"></span><span>철 (<span class="font-orbitron font-bold">Fe</span>)</span></div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color: #ff007f;"></span><span>나트륨 (<span class="font-orbitron font-bold">Na</span>)</span></div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color: #06b6d4;"></span><span>수소화 마그네슘 (<span class="font-orbitron font-bold">MgH</span>)</span></div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color: #ec4899;"></span><span>메탄 (<span class="font-orbitron font-bold">CH₄</span>)</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- v-R(속도-거리) 관계 실시간 그래프 카드 (xl:col-span-5) -->
+                <div class="xl:col-span-5 bg-gray-900/60 border border-gray-800 rounded-2xl p-5 backdrop-blur flex flex-col gap-4 shadow-xl">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-blue-500"></i>
+                            <span class="text-sm font-bold text-gray-200">후퇴 속도 - 거리 (<span class="font-orbitron">v - R</span>) 그래프</span>
+                        </div>
+                        <span class="text-[10px] bg-blue-950 text-blue-400 px-2 py-0.5 rounded border border-blue-900 font-semibold uppercase">허블 법칙 관측선</span>
+                    </div>
+
+                    <div class="w-full bg-gray-950 rounded-xl border border-gray-800/80 p-4">
+                        <canvas id="vr-canvas" class="w-full h-52"></canvas>
+                        <div class="text-[10px] text-gray-400 text-center mt-2">
+                            기울기 <span class="font-orbitron text-emerald-400 font-bold">H(z)</span>가 공간 곡률 <span class="font-orbitron text-purple-400">Ω<sub>k</sub></span>에 의해 변하고, 점이 <span class="font-orbitron text-blue-400">R</span>에 따라 실시간 추적 이동합니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- 하단 영역: 제어 컨트롤 패널 -->
+    <footer class="border-t border-gray-800 bg-gray-950/80 backdrop-blur px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <button id="btn-play" class="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all">
+                <i class="fa-solid fa-play text-lg ml-0.5" id="play-icon"></i>
+            </button>
+            <button id="btn-reset" class="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center active:scale-95 transition-all">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+            <span class="text-sm text-gray-400" id="sim-status-text">시뮬레이션 대기 중</span>
+        </div>
+
+        <div class="text-xs text-gray-500 text-center sm:text-right max-w-md">
+            본 시뮬레이션의 물리 연산은 표준 우주론 모델 <span class="font-orbitron text-gray-400">ΛCDM</span> 하의 Friedmann 방정식을 정밀 변형한 것입니다.
+        </div>
+    </footer>
+
+    <!-- 자바스크립트 엔진 및 렌더링 스크립트 -->
+    <script>
+        // 물리적 고정 상수 설정
+        const H0 = 70; // km/s/Mpc (기본 허블 상수)
+        const omega_m = 0.3; // 암흑 물질 고정 밀도 매개변수
+        const omega_l = 0.7; // 암흑 에너지(우주상수) 고정 밀도 매개변수
+        const c = 300000; // 광속 (km/s)
+        const scale_factor_au_to_mpc = 10; // 1 AU가 물리 엔진 내에서 거동하는 10 Mpc 축척 비율
+
+        // 슬라이더 엘리먼트 참조
+        const sliderR = document.getElementById('slider-r');
+        const sliderOk = document.getElementById('slider-ok');
+        const sliderTemp = document.getElementById('slider-temp'); 
+        
+        // 표시 엘리먼트 참조
+        const valR = document.getElementById('val-r');
+        const valOk = document.getElementById('val-ok');
+        const valTemp = document.getElementById('val-temp'); 
+        const valH = document.getElementById('val-h');
+        const valV = document.getElementById('val-v');
+        const valZ = document.getElementById('val-z');
+        const valLookback = document.getElementById('val-lookback'); // 룩백타임 추가
+        const spaceTypeBadge = document.getElementById('space-type-badge');
+        const spaceTypeDesc = document.getElementById('space-type-desc');
+        const triangleSumDesc = document.getElementById('triangle-sum-desc');
+        const universeFate = document.getElementById('universe-fate'); // 미래 운명 뱃지 추가
+        const lightSpeedRatio = document.getElementById('light-speed-ratio');
+
+        // 제어 엘리먼트 참조
+        const btnPlay = document.getElementById('btn-play');
+        const btnReset = document.getElementById('btn-reset');
+        const playIcon = document.getElementById('play-icon');
+        const simStatusText = document.getElementById('sim-status-text');
+        const simTimeDisplay = document.getElementById('sim-time');
+
+        // 캔버스 엘리먼트 참조
+        const curvatureCanvas = document.getElementById('curvature-canvas');
+        const curvatureCtx = curvatureCanvas.getContext('2d');
+        const universeCanvas = document.getElementById('universe-canvas');
+        const universeCtx = universeCanvas.getContext('2d');
+        const spectrumCanvas = document.getElementById('spectrum-canvas'); 
+        const spectrumCtx = spectrumCanvas.getContext('2d');
+        const vrCanvas = document.getElementById('vr-canvas'); 
+        const vrCtx = vrCanvas.getContext('2d');
+
+        // 시뮬레이션 동적 상태 제어 변수
+        let R = parseFloat(sliderR.value); // 현재 거리 (AU)
+        let originalR = R; // 리셋 및 확장을 위한 본래 거리값 백업
+        let omega_k = parseFloat(sliderOk.value); // 공간 곡률
+        let tempT = parseFloat(sliderTemp.value); // 현재 표면 온도(K)
+
+        let H = H0;
+        let V = 0;
+        let z = 0;
+        let lookbackTime = 1.0; // 룩백타임 (억 년)
+
+        let isPlaying = false;
+        let simTime = 0;
+        let lastTime = 0;
+        let animationFrameId = null;
+        let lightWaves = []; // 광파동 상태 오브젝트 리스트
+        
+        // 가상 은하 관측 산점도 데이터 생성 (허블 법칙을 현실적으로 보이게 함)
+        // 시뮬레이터 로드 시 일회 생성되어 고정된 실제 오차가 함유된 관측치들을 묘사함
+        const mockGalaxies = [];
+        for (let i = 0; i < 25; i++) {
+            const mockR = 5 + Math.random() * 92; // 5 ~ 97 AU 사이 고르게 분포
+            // 실제 수식 H * mockR에 가우시안 오차를 약 10~15% 수준 부여하여 관측 현실성 반영
+            const errorPercent = 1.0 + (Math.random() - 0.5) * 0.28;
+            mockGalaxies.push({ r: mockR, err: errorPercent });
+        }
+
+        // 7대 흡수 성분의 실제 가시광선 흡수선(nm 단위) 및 온도 반응 가중치 매핑 모델
+        const absorptionSpecies = [
+            {
+                name: 'He I',
+                wavelengths: [447.1, 587.6],
+                color: '#a855f7', // 헬륨 (보라색 계열)
+                getStrength: (T) => Math.exp(-Math.pow(T - 25000, 2) / (2 * Math.pow(6000, 2)))
+            },
+            {
+                name: 'Hβ, Hα',
+                wavelengths: [486.1, 656.3],
+                color: '#3b82f6', // 수소 (파란색 계열)
+                getStrength: (T) => Math.exp(-Math.pow(T - 10000, 2) / (2 * Math.pow(4000, 2)))
+            },
+            {
+                name: 'Ca I, Ca II',
+                wavelengths: [393.4, 422.7],
+                color: '#10b981', // 칼슘 (초록색 계열)
+                getStrength: (T) => Math.exp(-Math.pow(T - 6000, 2) / (2 * Math.pow(1500, 2)))
+            },
+            {
+                name: 'Fe I',
+                wavelengths: [438.3, 527.0],
+                color: '#f59e0b', // 철 (오렌지색 계열)
+                getStrength: (T) => Math.exp(-Math.pow(T - 5200, 2) / (2 * Math.pow(1200, 2)))
+            },
+            {
+                name: 'Na I D',
+                wavelengths: [589.3],
+                color: '#ff007f', // 나트륨 (붉은 기 도는 핑크)
+                getStrength: (T) => Math.exp(-Math.pow(T - 4000, 2) / (2 * Math.pow(1000, 2)))
+            },
+            {
+                name: 'MgH',
+                wavelengths: [516.5],
+                color: '#06b6d4', // 수소화 마그네슘 (청록색)
+                getStrength: (T) => T < 5000 ? Math.max(0, 1 - (T - 3000)/2000) : 0
+            },
+            {
+                name: 'CH₄',
+                wavelengths: [619.0],
+                color: '#ec4899', // 메탄 (마젠타)
+                getStrength: (T) => T < 3800 ? Math.max(0, 1 - (T - 3000)/800) : 0
+            }
+        ];
+
+        // 캔버스 크기 맞춤 조정 함수
+        function resizeCanvases() {
+            const p1 = curvatureCanvas.parentElement;
+            curvatureCanvas.width = p1.clientWidth * window.devicePixelRatio;
+            curvatureCanvas.height = p1.clientHeight * window.devicePixelRatio;
+            curvatureCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            const p2 = universeCanvas.parentElement;
+            universeCanvas.width = p2.clientWidth * window.devicePixelRatio;
+            universeCanvas.height = p2.clientHeight * window.devicePixelRatio;
+            universeCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            const p3 = spectrumCanvas.parentElement;
+            spectrumCanvas.width = p3.clientWidth * window.devicePixelRatio;
+            spectrumCanvas.height = p3.clientHeight * window.devicePixelRatio;
+            spectrumCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            const p4 = vrCanvas.parentElement;
+            vrCanvas.width = p4.clientWidth * window.devicePixelRatio;
+            vrCanvas.height = p4.clientHeight * window.devicePixelRatio;
+            vrCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            drawCurvature();
+            drawUniverse();
+            drawSpectrum();
+            drawVRGraph();
+        }
+
+        // 수치 물리 해석 파트 (핵심: 연립 수치 수렴 계산)
+        function calculatePhysics() {
+            const R_mpc = R * scale_factor_au_to_mpc; // 1AU = 10Mpc 비율로 물리 변환
+            
+            // 수렴 계산용 초깃값 설정
+            let currentZ = 0; 
+            let currentH = H0;
+            let currentV = 0;
+
+            for (let i = 0; i < 5; i++) {
+                // 프리드만 공식 적용
+                const radicand = omega_m * Math.pow(1 + currentZ, 3) + omega_k * Math.pow(1 + currentZ, 2) + omega_l;
+                // 최소 방어벽
+                currentH = H0 * Math.sqrt(Math.max(0.0001, radicand));
+                currentV = currentH * R_mpc;
+                currentZ = currentV / c; 
+            }
+
+            H = currentH;
+            V = currentV;
+            z = currentZ;
+
+            // 룩백 타임 계산 (1 AU 거리는 가상의 우주론 단위에서 10 Mpc에 비례하므로 빛이 이동하는 데 약 3.26백만 년 x 10 = 3260만 년 소요되는 특성을 억 년 단위로 보정 반영)
+            lookbackTime = R * 0.326;
+
+            // UI 수치 업데이트
+            valR.innerText = `${R.toFixed(2)} AU`;
+            valOk.innerText = (omega_k > 0 ? "+" : "") + omega_k.toFixed(2);
+            valTemp.innerText = `${tempT.toLocaleString()} K`;
+            valH.innerText = H.toFixed(2);
+            valV.innerText = V.toFixed(1);
+            valZ.innerText = z.toFixed(4);
+            valLookback.innerText = `${lookbackTime.toFixed(2)} 억 년`;
+
+            // 광속 대비 백분율
+            const cRatio = (V / c) * 100;
+            lightSpeedRatio.innerText = `${cRatio.toFixed(3)}% c (광속)`;
+
+            // 곡률 상태에 따른 우주 운명 및 기하학적 텍스트 동적 분기
+            if (omega_k < -0.05) {
+                spaceTypeBadge.className = "text-[11px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-red-950/80 text-red-400 border border-red-900";
+                spaceTypeBadge.innerText = "닫힌 우주";
+                spaceTypeDesc.innerText = "구형 리만 기하 (유한함)";
+                triangleSumDesc.innerText = "삼각형 내각의 합 > 180° (볼록 곡면)";
+                triangleSumDesc.className = "text-[9px] text-red-400 font-semibold";
+                
+                universeFate.innerText = "미래 운명: 수축 수렴 (빅 크런치)";
+                universeFate.className = "text-[9px] text-red-400 font-bold uppercase tracking-wider mt-0.5 animate-pulse";
+            } else if (omega_k > 0.05) {
+                spaceTypeBadge.className = "text-[11px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-green-950/80 text-green-400 border border-green-900";
+                spaceTypeBadge.innerText = "열린 우주";
+                spaceTypeDesc.innerText = "쌍곡 말안장 기하 (무한함)";
+                triangleSumDesc.innerText = "삼각형 내각의 합 < 180° (오목 곡면)";
+                triangleSumDesc.className = "text-[9px] text-green-400 font-semibold";
+
+                universeFate.innerText = "미래 운명: 영원한 가속 팽창 (빅 칠)";
+                universeFate.className = "text-[9px] text-green-400 font-bold uppercase tracking-wider mt-0.5";
+            } else {
+                spaceTypeBadge.className = "text-[11px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-blue-950/80 text-blue-400 border border-blue-900";
+                spaceTypeBadge.innerText = "평탄한 우주";
+                spaceTypeDesc.innerText = "유클리드 평면 기하 (무한함)";
+                triangleSumDesc.innerText = "삼각형 내각의 합 = 180° (완전 평평)";
+                triangleSumDesc.className = "text-[9px] text-blue-400 font-semibold";
+
+                universeFate.innerText = "미래 운명: 가속 후 안정 상태 수렴";
+                universeFate.className = "text-[9px] text-blue-400 font-bold uppercase tracking-wider mt-0.5";
+            }
+        }
+
+        // 1. 우측 상단 공간 곡률 (Curvature) 그리기 기법
+        function drawCurvature() {
+            const width = curvatureCanvas.width / window.devicePixelRatio;
+            const height = curvatureCanvas.height / window.devicePixelRatio;
+            curvatureCtx.clearRect(0, 0, width, height);
+
+            curvatureCtx.fillStyle = '#02040a';
+            curvatureCtx.fillRect(0, 0, width, height);
+
+            const cx = width / 2;
+            const cy = height / 2;
+            const size = Math.min(width, height) * 0.45;
+
+            const rows = 14;
+            const cols = 14;
+
+            function getProjection(u, v) {
+                const x = u * size * 1.8;
+                let y = v * size * 1.3;
+
+                let zOffset = 0;
+                if (omega_k < 0) {
+                    const r2 = u*u + v*v;
+                    zOffset = Math.sqrt(Math.max(0, 1 - r2 * 2.2)) * (size * 0.55) * Math.abs(omega_k);
+                    y -= zOffset * 0.45;
+                } else if (omega_k > 0) {
+                    zOffset = (u*u - v*v * 1.1) * (size * 0.55) * omega_k;
+                    y += zOffset * 0.35;
+                }
+
+                const projX = cx + x - (y * 0.25);
+                const projY = cy + y + (zOffset * 0.35) + 10;
+                return { x: projX, y: projY };
+            }
+
+            // 가로 격자
+            curvatureCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            curvatureCtx.lineWidth = 0.8;
+            for (let i = 0; i <= rows; i++) {
+                curvatureCtx.beginPath();
+                for (let j = 0; j <= cols; j++) {
+                    const u = (i / rows) - 0.5;
+                    const v = (j / cols) - 0.5;
+                    const p = getProjection(u, v);
+                    if (j === 0) curvatureCtx.moveTo(p.x, p.y);
+                    else curvatureCtx.lineTo(p.x, p.y);
+                }
+                curvatureCtx.stroke();
+            }
+
+            // 세로 격자
+            for (let j = 0; j <= cols; j++) {
+                curvatureCtx.beginPath();
+                for (let i = 0; i <= rows; i++) {
+                    const u = (i / rows) - 0.5;
+                    const v = (j / cols) - 0.5;
+                    const p = getProjection(u, v);
+                    if (i === 0) curvatureCtx.moveTo(p.x, p.y);
+                    else curvatureCtx.lineTo(p.x, p.y);
+                }
+                curvatureCtx.stroke();
+            }
+
+            // 표면에 매핑된 붉은색 삼각형
+            const triA = { u: 0.0, v: -0.35 }; 
+            const triB = { u: -0.25, v: 0.2 };  
+            const triC = { u: 0.25, v: 0.2 };   
+
+            curvatureCtx.strokeStyle = '#ef4444'; 
+            curvatureCtx.lineWidth = 3.5;
+            curvatureCtx.lineCap = 'round';
+            curvatureCtx.lineJoin = 'round';
+
+            function drawGeodesicLine(pStart, pEnd) {
+                curvatureCtx.beginPath();
+                const segments = 20;
+                for (let step = 0; step <= segments; step++) {
+                    const ratio = step / segments;
+                    const currU = pStart.u + (pEnd.u - pStart.u) * ratio;
+                    const currV = pStart.v + (pEnd.v - pStart.v) * ratio;
+                    const proj = getProjection(currU, currV);
+
+                    if (step === 0) curvatureCtx.moveTo(proj.x, proj.y);
+                    else curvatureCtx.lineTo(proj.x, proj.y);
+                }
+                curvatureCtx.stroke();
+            }
+
+            drawGeodesicLine(triA, triB);
+            drawGeodesicLine(triB, triC);
+            drawGeodesicLine(triC, triA);
+
+            // 삼각형 내부 색 채우기
+            curvatureCtx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+            curvatureCtx.beginPath();
+            const segments = 15;
+            for (let step = 0; step <= segments; step++) {
+                const ratio = step / segments;
+                const u = triA.u + (triB.u - triA.u) * ratio;
+                const v = triA.v + (triB.v - triA.v) * ratio;
+                const p = getProjection(u, v);
+                if (step === 0) curvatureCtx.moveTo(p.x, p.y);
+                else curvatureCtx.lineTo(p.x, p.y);
+            }
+            for (let step = 0; step <= segments; step++) {
+                const ratio = step / segments;
+                const u = triB.u + (triC.u - triB.u) * ratio;
+                const v = triB.v + (triC.v - triB.v) * ratio;
+                const p = getProjection(u, v);
+                curvatureCtx.lineTo(p.x, p.y);
+            }
+            for (let step = 0; step <= segments; step++) {
+                const ratio = step / segments;
+                const u = triC.u + (triA.u - triC.u) * ratio;
+                const v = triC.v + (triA.v - triC.v) * ratio;
+                const p = getProjection(u, v);
+                curvatureCtx.lineTo(p.x, p.y);
+            }
+            curvatureCtx.closePath();
+            curvatureCtx.fill();
+        }
+
+        // 2. 중앙 적색편이 우주 공간 메인 캔버스 렌더러
+        function drawUniverse() {
+            const width = universeCanvas.width / window.devicePixelRatio;
+            const height = universeCanvas.height / window.devicePixelRatio;
+            universeCtx.clearRect(0, 0, width, height);
+
+            const spaceGrad = universeCtx.createRadialGradient(width/2, height/2, 10, width/2, height/2, width/2);
+            spaceGrad.addColorStop(0, '#090d1a');
+            spaceGrad.addColorStop(1, '#02040a');
+            universeCtx.fillStyle = spaceGrad;
+            universeCtx.fillRect(0, 0, width, height);
+
+            universeCtx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            const starCount = 30;
+            for(let i=0; i<starCount; i++) {
+                const sx = (Math.sin(i * 99) * 0.5 + 0.5) * width;
+                const sy = (Math.cos(i * 33) * 0.5 + 0.5) * height;
+                universeCtx.fillRect(sx, sy, 1.5, 1.5);
+            }
+
+            const earthX = 80;
+            const earthY = height / 2;
+
+            const maxPxRange = width - 160;
+            const galaxyX = earthX + 40 + ((R - 0.2) / 99.8) * maxPxRange;
+            const galaxyY = height / 2;
+
+            universeCtx.beginPath();
+            universeCtx.setLineDash([5, 5]);
+            universeCtx.strokeStyle = 'rgba(75, 85, 99, 0.3)';
+            universeCtx.moveTo(earthX, earthY);
+            universeCtx.lineTo(galaxyX, galaxyY);
+            universeCtx.stroke();
+            universeCtx.setLineDash([]); 
+
+            if (isPlaying) {
+                if (Math.random() < 0.15) { 
+                    lightWaves.push({
+                        progress: 0, 
+                        speed: 0.005 + (1 / R) * 0.005 
+                    });
+                }
+            } else {
+                if (lightWaves.length === 0) {
+                    lightWaves.push({ progress: 0.5, speed: 0 });
+                }
+            }
+
+            lightWaves.forEach((wave, idx) => {
+                if (isPlaying) {
+                    wave.progress += 0.008; 
+                }
+
+                if (wave.progress > 1) {
+                    lightWaves.splice(idx, 1);
+                    return;
+                }
+
+                const waveX_start = galaxyX - (galaxyX - earthX) * wave.progress;
+                const waveWidth = 80; 
+                
+                universeCtx.beginPath();
+                
+                for (let px = 0; px < waveWidth; px++) {
+                    const currentX = waveX_start - px;
+                    if (currentX < earthX || currentX > galaxyX) continue;
+
+                    const locRatio = (currentX - earthX) / (galaxyX - earthX); 
+
+                    const lambdaFactor = 1 + (z * 10.0) * (1 - locRatio);
+                    const waveFrequency = 0.5 / lambdaFactor; 
+                    
+                    const theta = (px * waveFrequency) - (simTime * 15);
+                    const yOffset = Math.sin(theta) * 15 * (1 - Math.abs(px - waveWidth/2)/(waveWidth/2)); 
+
+                    const tempFactorRed = Math.max(0.5, Math.min(1.5, 12000 / (tempT + 6000)));
+                    const tempFactorBlue = Math.max(0.5, Math.min(1.5, (tempT + 2000) / 10000));
+
+                    const redVal = Math.floor(Math.min(255, (100 + (155 * (1 - locRatio))) * tempFactorRed));
+                    const blueVal = Math.floor(Math.min(255, (255 * locRatio) * tempFactorBlue));
+                    const greenVal = Math.floor(Math.min(255, (180 * locRatio) * (tempFactorRed + tempFactorBlue) / 2));
+                    
+                    universeCtx.strokeStyle = `rgba(${redVal}, ${greenVal}, ${blueVal}, 0.75)`;
+                    universeCtx.lineWidth = 2.5;
+
+                    if (px === 0) universeCtx.moveTo(currentX, galaxyY + yOffset);
+                    else universeCtx.lineTo(currentX, galaxyY + yOffset);
+                }
+                universeCtx.stroke();
+            });
+
+            // 1. 관측자 지구 (Earth)
+            const earthGrad = universeCtx.createRadialGradient(earthX, earthY, 1, earthX, earthY, 14);
+            earthGrad.addColorStop(0, '#60a5fa');
+            earthGrad.addColorStop(0.7, '#1d4ed8');
+            earthGrad.addColorStop(1, 'transparent');
+            
+            universeCtx.beginPath();
+            universeCtx.arc(earthX, earthY, 14, 0, Math.PI * 2);
+            universeCtx.fillStyle = earthGrad;
+            universeCtx.fill();
+            
+            universeCtx.beginPath();
+            universeCtx.arc(earthX, earthY, 14, 0, Math.PI * 2);
+            universeCtx.strokeStyle = 'rgba(96, 165, 250, 0.4)';
+            universeCtx.lineWidth = 1.5;
+            universeCtx.stroke();
+
+            // 2. 광원 은하 (Galaxy)
+            universeCtx.save();
+            universeCtx.translate(galaxyX, galaxyY);
+            
+            let starColorRGB = "255, 255, 255";
+            if (tempT < 4500) {
+                starColorRGB = "252, 115, 3"; 
+            } else if (tempT < 7000) {
+                starColorRGB = "255, 245, 180"; 
+            } else if (tempT < 12000) {
+                starColorRGB = "200, 230, 255"; 
+            } else {
+                starColorRGB = "80, 180, 255"; 
+            }
+            
+            const galGrad = universeCtx.createRadialGradient(0, 0, 1, 0, 0, 25);
+            galGrad.addColorStop(0, '#ffffff');
+            galGrad.addColorStop(0.4, `rgba(${starColorRGB}, 0.95)`);
+            galGrad.addColorStop(1, 'transparent');
+            
+            universeCtx.beginPath();
+            universeCtx.arc(0, 0, 25, 0, Math.PI * 2);
+            universeCtx.fillStyle = galGrad;
+            universeCtx.fill();
+
+            universeCtx.rotate(simTime * 1.5);
+            universeCtx.strokeStyle = `rgba(${starColorRGB}, 0.45)`;
+            universeCtx.lineWidth = 1.8;
+            
+            for (let arm = 0; arm < 2; arm++) {
+                universeCtx.beginPath();
+                universeCtx.rotate(Math.PI);
+                for (let r = 0; r < 20; r++) {
+                    const theta = r * 0.2;
+                    const armX = Math.cos(theta) * r;
+                    const armY = Math.sin(theta) * r;
+                    if (r === 0) universeCtx.moveTo(armX, armY);
+                    else universeCtx.lineTo(armX, armY);
+                }
+                universeCtx.stroke();
+            }
+            universeCtx.restore();
+
+            universeCtx.fillStyle = '#9ca3af';
+            universeCtx.font = '10px Orbitron';
+            universeCtx.fillText("EARTH", earthX - 18, earthY + 30);
+            universeCtx.fillText(`GALAXY (${R.toFixed(1)} AU)`, galaxyX - 35, galaxyY + 30);
+        }
+
+        function wavelengthToRGB(wavelength) {
+            let r, g, b, factor;
+            if (wavelength >= 380 && wavelength < 440) {
+                r = -(wavelength - 440) / (440 - 380); g = 0.0; b = 1.0;
+            } else if (wavelength >= 440 && wavelength < 490) {
+                r = 0.0; g = (wavelength - 440) / (490 - 440); b = 1.0;
+            } else if (wavelength >= 490 && wavelength < 510) {
+                r = 0.0; g = 1.0; b = -(wavelength - 510) / (510 - 490);
+            } else if (wavelength >= 510 && wavelength < 580) {
+                r = (wavelength - 510) / (580 - 510); g = 1.0; b = 0.0;
+            } else if (wavelength >= 580 && wavelength < 645) {
+                r = 1.0; g = -(wavelength - 645) / (645 - 580); b = 0.0;
+            } else if (wavelength >= 645 && wavelength <= 780) {
+                r = 1.0; g = 0.0; b = 0.0;
+            } else {
+                r = 0.0; g = 0.0; b = 0.0;
+            }
+            
+            if (wavelength >= 380 && wavelength < 420) {
+                factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+            } else if (wavelength >= 420 && wavelength < 701) {
+                factor = 1.0;
+            } else if (wavelength >= 701 && wavelength <= 780) {
+                factor = 0.3 + 0.7 * (780 - wavelength) / (780 - 701);
+            } else {
+                factor = 0.0;
+            }
+            
+            return {
+                r: Math.round(r * factor * 255),
+                g: Math.round(g * factor * 255),
+                b: Math.round(b * factor * 255)
+            };
+        }
+
+        function getBlackbodyIntensity(wavelength, T) {
+            const hc_k = 1.43877e7; 
+            const lambda_peak = 2.89777e6 / T; 
+            const exp_term = (wl) => Math.exp(hc_k / (wl * T)) - 1;
+            const num = Math.pow(lambda_peak, 5) * exp_term(lambda_peak);
+            const den = Math.pow(wavelength, 5) * exp_term(wavelength);
+            
+            if (isFinite(num / den)) {
+                return Math.min(1.4, Math.max(0.12, num / den));
+            }
+            return 1.0;
+        }
+
+        // 3. 별의 대기 흡수 스펙트럼 비교 캔버스 그리기 함수
+        function drawSpectrum() {
+            const width = spectrumCanvas.width / window.devicePixelRatio;
+            const height = spectrumCanvas.height / window.devicePixelRatio;
+            spectrumCtx.clearRect(0, 0, width, height);
+
+            spectrumCtx.fillStyle = '#090d16';
+            spectrumCtx.fillRect(0, 0, width, height);
+
+            const startX = 40;
+            const endX = width - 40;
+            const graphWidth = endX - startX;
+            const spectrumH = 34; 
+
+            const restY = 28;       
+            const obsY = height - 48; 
+
+            const startWl = 380;
+            const endWl = 720;
+            const wlRange = endWl - startWl;
+
+            function wlToX(wl) {
+                return startX + ((wl - startWl) / wlRange) * graphWidth;
+            }
+
+            for (let x = startX; x <= endX; x++) {
+                const ratio = (x - startX) / graphWidth;
+                const wl = startWl + ratio * wlRange;
+
+                const baseRGB = wavelengthToRGB(wl);
+                const thermalIntensity = getBlackbodyIntensity(wl, tempT);
+
+                const finalR = Math.min(255, Math.round(baseRGB.r * thermalIntensity));
+                const finalG = Math.min(255, Math.round(baseRGB.g * thermalIntensity));
+                const finalB = Math.min(255, Math.round(baseRGB.b * thermalIntensity));
+
+                const colorStr = `rgb(${finalR}, ${finalG}, ${finalB})`;
+
+                spectrumCtx.fillStyle = colorStr;
+                spectrumCtx.fillRect(x, restY - spectrumH/2, 1, spectrumH);
+                spectrumCtx.fillRect(x, obsY - spectrumH/2, 1, spectrumH);
+            }
+
+            function getAbsorptionMultiplier(wl, isShifted) {
+                let multiplier = 1.0;
+                for (const species of absorptionSpecies) {
+                    const strength = species.getStrength(tempT);
+                    if (strength < 0.02) continue;
+
+                    for (const centerWl of species.wavelengths) {
+                        const targetWl = isShifted ? centerWl * (1 + z) : centerWl;
+                        const dist = Math.abs(wl - targetWl);
+                        const absorptionDepth = strength * 0.93; 
+                        const factor = 1 - absorptionDepth * Math.exp(-Math.pow(dist, 2) / (2 * Math.pow(2.2, 2)));
+                        multiplier *= factor;
+                    }
+                }
+                return multiplier;
+            }
+
+            for (let x = startX; x <= endX; x++) {
+                const ratio = (x - startX) / graphWidth;
+                const wl = startWl + ratio * wlRange;
+
+                const restAbs = getAbsorptionMultiplier(wl, false);
+                if (restAbs < 0.98) {
+                    spectrumCtx.fillStyle = `rgba(0, 0, 0, ${1 - restAbs})`;
+                    spectrumCtx.fillRect(x, restY - spectrumH/2, 1, spectrumH);
+                }
+
+                const obsAbs = getAbsorptionMultiplier(wl, true);
+                if (obsAbs < 0.98) {
+                    spectrumCtx.fillStyle = `rgba(0, 0, 0, ${1 - obsAbs})`;
+                    spectrumCtx.fillRect(x, obsY - spectrumH/2, 1, spectrumH);
+                }
+            }
+
+            absorptionSpecies.forEach((species) => {
+                const strength = species.getStrength(tempT);
+                if (strength < 0.15) return; 
+
+                species.wavelengths.forEach((wl) => {
+                    const xRest = wlToX(wl);
+                    const xObs = wlToX(wl * (1 + z));
+
+                    // 수정 적용: 흡수선 점선 및 가이드 텍스트가 가시광선 범위(X 축 경계) 내에 실존할 때만 제한 렌더링
+                    if (xRest >= startX && xRest <= endX) {
+                        spectrumCtx.fillStyle = species.color;
+                        spectrumCtx.font = '8px Orbitron';
+                        spectrumCtx.fillText(species.name, xRest - 8, restY - spectrumH/2 - 4);
+                    }
+
+                    if (xRest >= startX && xRest <= endX && xObs >= startX && xObs <= endX) {
+                        spectrumCtx.beginPath();
+                        spectrumCtx.setLineDash([2, 3]);
+                        spectrumCtx.strokeStyle = species.color;
+                        spectrumCtx.lineWidth = 1.2;
+                        spectrumCtx.moveTo(xRest, restY + spectrumH/2);
+                        spectrumCtx.lineTo(xObs, obsY - spectrumH/2);
+                        spectrumCtx.stroke();
+                        spectrumCtx.setLineDash([]);
+                    }
+                });
+            });
+
+            spectrumCtx.fillStyle = '#9ca3af';
+            spectrumCtx.font = 'bold 9px Noto Sans KR';
+            spectrumCtx.fillText("지구 실험실 기준 표준 스펙트럼 (정지 상태)", startX, restY - 22);
+            
+            spectrumCtx.fillStyle = '#f87171';
+            spectrumCtx.fillText(`관측 스펙트럼 (적색 편이 적용 z = ${z.toFixed(4)})`, startX, obsY + spectrumH/2 + 12);
+
+            spectrumCtx.fillStyle = '#4b5563';
+            spectrumCtx.strokeStyle = 'rgba(75, 85, 99, 0.4)';
+            spectrumCtx.lineWidth = 1;
+            
+            const ticks = [400, 450, 500, 550, 600, 650, 700];
+            ticks.forEach((tickWl) => {
+                const tx = wlToX(tickWl);
+                if (tx >= startX && tx <= endX) {
+                    spectrumCtx.beginPath();
+                    spectrumCtx.moveTo(tx, obsY + spectrumH/2 + 2);
+                    spectrumCtx.lineTo(tx, obsY + spectrumH/2 + 5);
+                    spectrumCtx.stroke();
+                    spectrumCtx.font = '8px Orbitron';
+                    spectrumCtx.fillText(`${tickWl}nm`, tx - 10, obsY + spectrumH/2 + 14);
+                }
+            });
+        }
+
+        // 4. v-R 관계 실시간 그래프 그리기 함수 (동적 Y축 버그 패치 및 가상 Scatter 연동 버전)
+        function drawVRGraph() {
+            const width = vrCanvas.width / window.devicePixelRatio;
+            const height = vrCanvas.height / window.devicePixelRatio;
+            vrCtx.clearRect(0, 0, width, height);
+
+            // 배경 채우기
+            vrCtx.fillStyle = '#090d16';
+            vrCtx.fillRect(0, 0, width, height);
+
+            const paddingLeft = 45;
+            const paddingRight = 20;
+            const paddingTop = 25;
+            const paddingBottom = 35;
+            const graphWidth = width - paddingLeft - paddingRight;
+            const graphHeight = height - paddingTop - paddingBottom;
+
+            // X축은 고정 (거리 최대 100 AU)
+            const maxX = 100; 
+
+            // 핵심 디버깅 수정: 현재 공간곡률 H에 따라 동적으로 최대 Y 범위 세팅 (최소 50k, 최대 변조 가능치 동적 상한)
+            const theorMaxV = H * maxX * scale_factor_au_to_mpc; 
+            const maxValY = Math.max(60000, Math.ceil(theorMaxV * 1.22 / 10000) * 10000); 
+
+            // 좌표 변환 서브루틴
+            function toCanvasCoords(rVal, vVal) {
+                const x = paddingLeft + (rVal / maxX) * graphWidth;
+                const y = height - paddingBottom - (vVal / maxValY) * graphHeight;
+                return { x, y };
+            }
+
+            // 모눈 그리드 격자선 드로잉
+            vrCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            vrCtx.lineWidth = 0.8;
+
+            // 가로 격자선 (속도축)
+            const yTicks = 4;
+            for (let i = 0; i <= yTicks; i++) {
+                const vVal = (maxValY / yTicks) * i;
+                const p = toCanvasCoords(0, vVal);
+                
+                vrCtx.beginPath();
+                vrCtx.moveTo(paddingLeft, p.y);
+                vrCtx.lineTo(width - paddingRight, p.y);
+                vrCtx.stroke();
+
+                // Y축 숫자 눈금 라벨링
+                vrCtx.fillStyle = '#6b7280';
+                vrCtx.font = '8px Orbitron';
+                vrCtx.textAlign = 'right';
+                vrCtx.fillText(`${Math.round(vVal / 1000)}k`, paddingLeft - 6, p.y + 3);
+            }
+
+            // 세로 격자선 (거리축)
+            const xTicks = 5;
+            for (let i = 0; i <= xTicks; i++) {
+                const rVal = (maxX / xTicks) * i;
+                const p = toCanvasCoords(rVal, 0);
+
+                vrCtx.beginPath();
+                vrCtx.moveTo(p.x, paddingTop);
+                vrCtx.lineTo(p.x, height - paddingBottom);
+                vrCtx.stroke();
+
+                // X축 숫자 눈금 라벨링
+                vrCtx.fillStyle = '#6b7280';
+                vrCtx.font = '8px Orbitron';
+                vrCtx.textAlign = 'center';
+                vrCtx.fillText(`${Math.round(rVal)}`, p.x, height - paddingBottom + 12);
+            }
+
+            // 메인 뼈대 축라인 구축
+            vrCtx.strokeStyle = '#374151';
+            vrCtx.lineWidth = 1.2;
+            vrCtx.beginPath();
+            vrCtx.moveTo(paddingLeft, paddingTop);
+            vrCtx.lineTo(paddingLeft, height - paddingBottom);
+            vrCtx.lineTo(width - paddingRight, height - paddingBottom);
+            vrCtx.stroke();
+
+            // 축 이름 라벨링
+            vrCtx.fillStyle = '#9ca3af';
+            vrCtx.font = 'bold 8px Noto Sans KR';
+            vrCtx.textAlign = 'left';
+            vrCtx.fillText("속도 v (km/s)", paddingLeft - 5, paddingTop - 10);
+            vrCtx.textAlign = 'right';
+            vrCtx.fillText("거리 R (AU)", width - paddingRight, height - paddingBottom + 26);
+
+            // ----------------------------------------------------
+            // 2단계 추가: 오차가 가미된 가상 천문학 관측 scatter 데이터 플로팅
+            // ----------------------------------------------------
+            mockGalaxies.forEach((galaxy) => {
+                // 현재 물리 기울기 H를 대입하여 은하 거리별 속도 유추 산정
+                const trueV = H * (galaxy.r * scale_factor_au_to_mpc);
+                const observedV = trueV * galaxy.err; // 고유 오차율 매핑
+                
+                const gp = toCanvasCoords(galaxy.r, observedV);
+                
+                // 화면 유효 범위 내에서만 관측점 드로잉
+                if (gp.x >= paddingLeft && gp.x <= width - paddingRight && gp.y >= paddingTop && gp.y <= height - paddingBottom) {
+                    vrCtx.fillStyle = 'rgba(156, 163, 175, 0.3)'; // 희미한 반투명 회색
+                    vrCtx.beginPath();
+                    vrCtx.arc(gp.x, gp.y, 2.5, 0, Math.PI * 2);
+                    vrCtx.fill();
+                }
+            });
+
+            // ----------------------------------------------------
+            // 이론적 허블 법칙 추세선 그리기: v = H * R (Mpc 단위)
+            // ----------------------------------------------------
+            const pStart = toCanvasCoords(0, 0);
+            const pEnd = toCanvasCoords(maxX, H * maxX * scale_factor_au_to_mpc);
+
+            vrCtx.strokeStyle = '#10b981'; // 에메랄드색 기울기선
+            vrCtx.lineWidth = 2.5;
+            vrCtx.beginPath();
+            vrCtx.moveTo(pStart.x, pStart.y);
+            vrCtx.lineTo(pEnd.x, pEnd.y);
+            vrCtx.stroke();
+
+            // 기울기(H) 설명 표시
+            vrCtx.fillStyle = '#10b981';
+            vrCtx.font = '9px Orbitron';
+            vrCtx.textAlign = 'left';
+            vrCtx.fillText(`Slope H(z) = ${H.toFixed(1)}`, pStart.x + 10, paddingTop + 8);
+
+            // ----------------------------------------------------
+            // 현재 관측 은하의 실시간 점 (R, V) 드로잉
+            // ----------------------------------------------------
+            const currentP = toCanvasCoords(R, V);
+
+            // 위치 추적 좌표축 점선 가이드
+            vrCtx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+            vrCtx.setLineDash([2, 2]);
+            vrCtx.lineWidth = 1.0;
+            
+            // X축 투영선
+            vrCtx.beginPath();
+            vrCtx.moveTo(currentP.x, currentP.y);
+            vrCtx.lineTo(currentP.x, height - paddingBottom);
+            vrCtx.stroke();
+
+            // Y축 투영선
+            vrCtx.beginPath();
+            vrCtx.moveTo(currentP.x, currentP.y);
+            vrCtx.lineTo(paddingLeft, currentP.y);
+            vrCtx.stroke();
+            vrCtx.setLineDash([]); // 실선 원상복구
+
+            // 현재 위치 은하 표식 점 발광 연출
+            vrCtx.shadowBlur = 10;
+            vrCtx.shadowColor = '#f87171';
+            vrCtx.fillStyle = '#ef4444';
+            vrCtx.beginPath();
+            vrCtx.arc(currentP.x, currentP.y, 5, 0, Math.PI * 2);
+            vrCtx.fill();
+            vrCtx.shadowBlur = 0; // 발광 리셋
+
+            // 실시간 상태 값 오버레이 텍스트
+            vrCtx.fillStyle = '#ffffff';
+            vrCtx.font = 'bold 8px Orbitron';
+            vrCtx.textAlign = 'left';
+            // 캔버스 오른쪽 경계를 넘어설 때 텍스트 정렬 방향 보정하여 짤림 방지
+            if (currentP.x > width - 110) {
+                vrCtx.textAlign = 'right';
+                vrCtx.fillText(`(${R.toFixed(1)} AU, ${Math.round(V).toLocaleString()} km/s)`, currentP.x - 8, currentP.y - 4);
+            } else {
+                vrCtx.fillText(`(${R.toFixed(1)} AU, ${Math.round(V).toLocaleString()} km/s)`, currentP.x + 8, currentP.y - 4);
+            }
+        }
+
+        // 전체 애니메이션 프레임 제어 루프
+        function runSimulation(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const delta = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (isPlaying) {
+                simTime += delta;
+                simTimeDisplay.innerText = `T = ${simTime.toFixed(2)}s`;
+
+                // 팽창 시뮬레이션: 후퇴 속도에 비례하여 은하와의 거리 R를 팽창
+                const dR = (V / c) * R * delta * 5; 
+                R = Math.min(100, R + dR);
+                sliderR.value = R; 
+
+                if (R >= 100) {
+                    togglePlayState(false);
+                    simStatusText.innerText = "우주 지평선 한계 도달 (100 AU)";
+                }
+
+                calculatePhysics();
+            }
+
+            drawCurvature();
+            drawUniverse();
+            drawSpectrum(); 
+            drawVRGraph(); 
+
+            animationFrameId = requestAnimationFrame(runSimulation);
+        }
+
+        // 재생 / 정지 상태 제어기 (수정: 플레이 중에는 거리 조작 잠금 장치 가동)
+        function togglePlayState(targetState = !isPlaying) {
+            isPlaying = targetState;
+            if (isPlaying) {
+                playIcon.className = "fa-solid fa-pause text-lg";
+                simStatusText.innerText = "팽창 중...";
+                sliderR.disabled = true; // 잠금
+                lastTime = performance.now();
+            } else {
+                playIcon.className = "fa-solid fa-play text-lg ml-0.5";
+                simStatusText.innerText = "일시정지됨";
+                sliderR.disabled = false; // 해제
+            }
+        }
+
+        // 초기화 처리 함수 (수정: 슬라이더 상태 완벽 잠금 해제)
+        function resetSimulation() {
+            togglePlayState(false);
+            sliderR.disabled = false;
+            R = originalR;
+            sliderR.value = R;
+            simTime = 0;
+            simTimeDisplay.innerText = "T = 0.00s";
+            lightWaves = [];
+            simStatusText.innerText = "시뮬레이션 초기화 완료";
+            calculatePhysics();
+            drawCurvature();
+            drawUniverse();
+            drawSpectrum();
+            drawVRGraph();
+        }
+
+        // ----------------------------------------------------
+        // 이벤트 핸들러 및 사용자 제어 리스너
+        // ----------------------------------------------------
+
+        // 거리 R 슬라이더 수동 조절 시 이벤트
+        sliderR.addEventListener('input', (e) => {
+            R = parseFloat(e.target.value);
+            if (!isPlaying) {
+                originalR = R; 
+            }
+            calculatePhysics();
+            drawUniverse();
+            drawSpectrum();
+            drawVRGraph();
+        });
+
+        // 공간 곡률 슬라이더 수동 조절 시 이벤트
+        sliderOk.addEventListener('input', (e) => {
+            omega_k = parseFloat(e.target.value);
+            calculatePhysics();
+            drawCurvature();
+            drawUniverse(); 
+            drawSpectrum();
+            drawVRGraph();
+        });
+
+        // 표면 온도 T 슬라이더 수동 조절 시 이벤트
+        sliderTemp.addEventListener('input', (e) => {
+            tempT = parseFloat(e.target.value);
+            calculatePhysics();
+            drawUniverse();
+            drawSpectrum();
+            drawVRGraph();
+        });
+
+        // 버튼 제어 바인딩
+        btnPlay.addEventListener('click', () => togglePlayState());
+        btnReset.addEventListener('click', resetSimulation);
+
+        // 브라우저 리사이징 지원
+        window.addEventListener('resize', resizeCanvases);
+
+        // 최초 시뮬레이터 구동 시작 프로세스
+        window.onload = function() {
+            resizeCanvases();
+            calculatePhysics();
+            animationFrameId = requestAnimationFrame(runSimulation);
+        }
+    </script>
+</body>
+</html>

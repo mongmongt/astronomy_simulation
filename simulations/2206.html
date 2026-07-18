@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>별 볼 일이 다 있네 (부제 : 별별별)</title>
+    <!-- Tailwind CSS for Responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS Theme Variables */
+        :root {
+            --bg-color: #060913;
+            --panel-bg: rgba(15, 23, 42, 0.6);
+            --border-color: #1e293b;
+            --text-main: #f1f5f9;
+            --text-sub: #94a3b8;
+            --canvas-bg-start: #070c1e;
+            --canvas-bg-end: #020409;
+            --grid-color: rgba(71, 85, 105, 0.7);
+            --input-bg: #090d16;
+            --title-color: #ffffff;
+            --box-sub-bg: rgba(2, 6, 23, 0.7);
+        }
+        
+        .light-theme {
+            --bg-color: #f8fafc;
+            --panel-bg: rgba(255, 255, 255, 0.95);
+            --border-color: #cbd5e1;
+            --text-main: #0f172a;
+            --text-sub: #475569;
+            --canvas-bg-start: #e0f2fe;
+            --canvas-bg-end: #f0f9ff;
+            --grid-color: rgba(100, 116, 139, 0.5);
+            --input-bg: #ffffff;
+            --title-color: #0f172a;
+            --box-sub-bg: #f1f5f9;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .panel-theme {
+            background-color: var(--panel-bg);
+            border-color: var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        canvas {
+            background: radial-gradient(circle at center, var(--canvas-bg-start) 0%, var(--canvas-bg-end) 100%);
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s;
+        }
+
+        /* Keyboard Input Styles */
+        input[type="number"] {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+
+        input[type="number"]:focus {
+            border-color: #3b82f6;
+            outline: none;
+        }
+
+        /* Light Theme Overrides for Tailwind hardcoded dark classes */
+        .light-theme .text-white {
+            color: #0f172a !important;
+        }
+        .light-theme .bg-slate-900\/60 {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            border-color: #cbd5e1 !important;
+        }
+        .light-theme .bg-slate-900\/70 {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            border-color: #cbd5e1 !important;
+        }
+        .light-theme .bg-slate-950\/50 {
+            background-color: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+        }
+        .light-theme .bg-slate-950\/70 {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+        .light-theme .bg-slate-900\/40 {
+            background-color: rgba(255, 255, 255, 0.8) !important;
+            border-color: #cbd5e1 !important;
+        }
+        .light-theme select {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+        .light-theme .season-btn:not(.bg-blue-600) {
+            background-color: #ffffff !important;
+            color: #475569 !important;
+            border-color: #cbd5e1 !important;
+        }
+        .light-theme .season-btn:not(.bg-blue-600):hover {
+            border-color: #94a3b8 !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 lg:p-8 flex flex-col items-center">
+
+    <!-- PROJECT HEADER -->
+    <header class="w-full max-w-6xl mb-6 flex flex-col md:flex-row items-center justify-between border-b border-slate-800 pb-4 gap-4">
+        <div class="text-center md:text-left">
+            <h1 class="text-4xl md:text-5xl font-extrabold tracking-wide flex items-center justify-center md:justify-start gap-2" style="color: var(--title-color)">
+                <i class="fa-solid fa-star text-yellow-400 animate-pulse"></i>
+                별 볼 일이 다 있네
+            </h1>
+            <p class="text-2xl text-blue-500 font-bold mt-2">부제 : 별별별</p>
+            <p class="text-sm text-slate-400 mt-2">지구 자전에 따른 별의 일주운동 가상 실험실</p>
+        </div>
+        
+        <!-- Theme Switcher -->
+        <button id="theme-toggle-btn" onclick="toggleTheme()" class="px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-100 flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-lg">
+            <i id="theme-icon" class="fa-solid fa-sun text-yellow-400"></i>
+            <span id="theme-text" class="text-theme-btn text-sm font-semibold">라이트 모드</span>
+        </button>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="w-full max-w-6xl flex flex-col gap-6">
+
+        <!-- 1. UPPER PART: DUAL CANVAS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- 1. Equatorial Coordinate View -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col items-center relative panel-theme">
+                <div class="w-full flex justify-between items-center mb-3">
+                    <span class="text-base font-bold text-blue-500 flex items-center gap-1.5">
+                        <i class="fa-solid fa-globe"></i> 적도 좌표계(우주 밖 시점)
+                    </span>
+                </div>
+                <div class="relative w-full aspect-square max-w-[340px]">
+                    <canvas id="canvas-eq" width="340" height="340" class="w-full h-full rounded-lg border border-slate-850"></canvas>
+                    <!-- Custom Tooltip for Celestial Star -->
+                    <div id="tooltip-eq" class="absolute hidden bg-slate-950/95 border border-slate-700 text-slate-100 text-sm p-3 rounded-md shadow-2xl pointer-events-none z-10 w-48"></div>
+                </div>
+                <p class="text-sm font-medium mt-3 text-center" style="color: var(--text-sub)">자전축, 적도면 기준 3D 회전 표시</p>
+            </div>
+
+            <!-- 2. Horizontal Coordinate View -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col items-center relative panel-theme">
+                <div class="w-full flex justify-between items-center mb-3">
+                    <span class="text-base font-bold text-emerald-500 flex items-center gap-1.5">
+                        <i class="fa-solid fa-person-rays"></i> 지평좌표계(지상 관측자)
+                    </span>
+                    <span class="text-xs text-slate-400 bg-slate-950 px-3 py-1 rounded">북점 기준 동쪽으로</span>
+                </div>
+                <div class="relative w-full aspect-square max-w-[340px]">
+                    <canvas id="canvas-hor" width="340" height="340" class="w-full h-full rounded-lg border border-slate-850"></canvas>
+                    <!-- Custom Tooltip for Horizon Star -->
+                    <div id="tooltip-hor" class="absolute hidden bg-slate-950/95 border border-slate-700 text-slate-100 text-sm p-3 rounded-md shadow-2xl pointer-events-none z-10 w-52"></div>
+                </div>
+                <p class="text-sm font-medium mt-3 text-center" style="color: var(--text-sub)">지평선 너머의 별은 흐린 색상 표시</p>
+            </div>
+
+        </div>
+
+        <!-- 2. MIDDLE PART: LARGE RESULTS DASHBOARD -->
+        <div class="bg-slate-900/40 border border-slate-850 rounded-xl p-6 panel-theme">
+            <h3 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-1.5 border-b border-slate-800 pb-2 text-main-theme">
+                <i class="fa-solid fa-square-poll-vertical text-blue-400"></i> 실시간 관측값(대표별)
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 1. Altitude -->
+                <div class="bg-slate-950/70 p-5 rounded-lg border border-slate-800 text-center panel-sub-theme">
+                    <span class="text-base font-bold text-emerald-500 block mb-1">고도(h)</span>
+                    <div id="result-alt" class="text-5xl font-extrabold font-mono" style="color: var(--title-color)">0.0°</div>
+                </div>
+                <!-- 2. Azimuth -->
+                <div class="bg-slate-950/70 p-5 rounded-lg border border-slate-800 text-center panel-sub-theme">
+                    <span class="text-base font-bold text-yellow-500 block mb-1">방위각(A)</span>
+                    <div id="result-az" class="text-5xl font-extrabold font-mono" style="color: var(--title-color)">0.0°</div>
+                </div>
+                <!-- 3. Meridian Transit Altitude -->
+                <div class="bg-slate-950/70 p-5 rounded-lg border border-slate-800 text-center panel-sub-theme">
+                    <span class="text-base font-bold text-blue-500 block mb-1">남중 고도 (h_south)</span>
+                    <div id="result-south" class="text-5xl font-extrabold font-mono" style="color: var(--title-color)">0.0°</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. LOWER PART: BALANCED SPLIT CONTROLLERS (50:50) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- LEFT HALF: STAR & TIME SETTINGS -->
+            <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-6 flex flex-col justify-between panel-theme">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-800 pb-2 text-main-theme">
+                        <i class="fa-solid fa-moon text-blue-400"></i> 천체 및 시간 세팅
+                    </h3>
+
+                    <!-- Star selection -->
+                    <div class="mb-4">
+                        <label class="block text-base font-bold text-slate-300 mb-2" style="color: var(--text-main)">대상 별자리 선택 (대표별 중심 제어)</label>
+                        <select id="star-select" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-3 text-base text-slate-200 focus:outline-none focus:border-blue-500">
+                            <option value="ursaminor" selected>작은곰자리 [대표별: 북극성] (적위: +89.3° / 적경: 2.5h)</option>
+                            <option value="orion">오리온자리 [대표별: 베텔게우스] (적위: +7.4° / 적경: 5.9h)</option>
+                            <option value="lyra">거문고자리 [대표별: 베가] (적위: +38.8° / 적경: 18.6h)</option>
+                            <option value="scorpio">전갈자리 [대표별: 안타레스] (적위: -26.4° / 적경: 16.5h)</option>
+                            <option value="aquila">독수리자리 [대표별: 알타이르] (적위: +8.9° / 적경: 19.8h)</option>
+                            <option value="cygnus">백조자리 [대표별: 데네브] (적위: +45.3° / 적경: 20.7h)</option>
+                        </select>
+                    </div>
+
+                    <!-- Representative Star Only toggle switch -->
+                    <div class="mb-5 flex items-center justify-between bg-slate-950/50 border border-slate-800 p-3 rounded-lg panel-sub-theme">
+                        <span class="text-sm font-bold" style="color: var(--text-main)">대표별만 보기</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="rep-only-toggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
+                    <!-- Season Selector (춘분, 하지, 추분, 동지) -->
+                    <div class="mb-6">
+                        <label class="block text-base font-bold text-slate-300 mb-2" style="color: var(--text-main)">날짜 (4대 절기 및 태양 적경 입력)</label>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <button type="button" id="season-0" onclick="changeSeason(0)" class="season-btn py-3 px-2 bg-blue-600 border border-blue-500 text-white rounded-lg text-sm font-semibold transition-colors">춘분 (태양 RA 0h)</button>
+                            <button type="button" id="season-6" onclick="changeSeason(6)" class="season-btn py-3 px-2 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-colors">하지 (태양 RA 6h)</button>
+                            <button type="button" id="season-12" onclick="changeSeason(12)" class="season-btn py-3 px-2 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-colors">추분 (태양 RA 12h)</button>
+                            <button type="button" id="season-18" onclick="changeSeason(18)" class="season-btn py-3 px-2 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-colors">동지 (태양 RA 18h)</button>
+                        </div>
+                        <div class="flex items-center gap-3 bg-slate-950/30 p-2.5 rounded-lg border border-slate-800 panel-sub-theme">
+                            <span class="text-xs font-bold" style="color: var(--text-sub)">태양 적경 (RA) 키보드 입력:</span>
+                            <div class="flex items-center gap-1.5 ml-auto">
+                                <input type="number" id="ra-input" min="0" max="23.9" step="0.1" value="0" class="w-20 px-2 py-1 text-center font-mono rounded text-sm focus:outline-none">
+                                <span class="text-xs font-bold">h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Local Time Slider & Keyboard Input -->
+                    <div class="mb-5">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-base font-bold text-slate-300" style="color: var(--text-main)">관측 시각 입력</label>
+                            <span id="time-display" class="text-lg font-bold text-blue-400 font-mono">12:00</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="time-slider" min="0" max="23.99" step="0.01" value="12" class="flex-grow accent-blue-500 bg-slate-950 h-3 rounded-lg cursor-pointer">
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="time-input" min="0" max="23.99" step="0.01" value="12" class="w-20 px-2 py-1 text-center font-mono rounded text-sm focus:outline-none">
+                                <span class="text-xs font-bold">시</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Animation Engine Button -->
+                <button id="play-btn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white text-base font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-lg">
+                    <i id="play-icon" class="fa-solid fa-play"></i> <span id="play-text">애니메이션 재생</span>
+                </button>
+            </div>
+
+            <!-- RIGHT HALF: OBSERVER LOCATION & WORLD MAP -->
+            <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-6 flex flex-col justify-between panel-theme">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2 border-b border-slate-800 pb-2 text-main-theme">
+                        <i class="fa-solid fa-location-dot text-emerald-400"></i> 관측자 위치(위도/경도)
+                    </h3>
+
+                    <!-- Latitude Slider & Keyboard Input -->
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-bold text-slate-300" style="color: var(--text-main)">위도 (φ)</label>
+                            <span id="lat-display" class="text-lg font-bold text-emerald-400 font-mono">37.5° N</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="lat-slider" min="-90" max="90" step="0.5" value="37.5" class="flex-grow accent-emerald-500 bg-slate-950 h-3 rounded-lg cursor-pointer">
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="lat-input" min="-90" max="90" step="0.5" value="37.5" class="w-20 px-2 py-1 text-center font-mono rounded text-sm focus:outline-none">
+                                <span class="text-xs font-bold">°</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Longitude Slider & Keyboard Input -->
+                    <div class="mb-5">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-bold text-slate-300" style="color: var(--text-main)">경도 (λ)</label>
+                            <span id="lon-display" class="text-lg font-bold text-emerald-400 font-mono">127.0° E</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="lon-slider" min="-180" max="180" step="0.5" value="127" class="flex-grow accent-emerald-500 bg-slate-950 h-3 rounded-lg cursor-pointer">
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="lon-input" min="-180" max="180" step="0.5" value="127" class="w-20 px-2 py-1 text-center font-mono rounded text-sm focus:outline-none">
+                                <span class="text-xs font-bold">°</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive High-Contrast SVG Map -->
+                <div>
+                    <label class="block text-base font-bold text-slate-300 mb-2" style="color: var(--text-main)">세계지도에서 클릭</label>
+                    <!-- Exact Aspect ratio 2:1 mapping for geometry alignment -->
+                    <div id="map-wrap" class="relative w-full aspect-[2/1] bg-[#020512] border border-slate-600 rounded-lg overflow-hidden shadow-inner">
+                        <!-- Precise offline High-contrast Vector SVG map drawing -->
+                        <svg id="world-map-svg" viewBox="0 0 360 180" class="w-full h-full cursor-pointer block">
+                            <!-- Background Ocean (Dark Blue) -->
+                            <rect width="360" height="180" fill="#040817"/>
+                            <!-- Highly visible longitude/latitude gridlines -->
+                            <line x1="0" y1="90" x2="360" y2="90" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="3 3"/>
+                            <line x1="180" y1="0" x2="180" y2="180" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="3 3"/>
+                            
+                            <!-- Bright Landmass polygons for maximum visibility -->
+                            <g fill="#1a2538" stroke="#3b82f6" stroke-width="1">
+                                <!-- North America -->
+                                <path d="M 15,10 L 40,8 L 65,15 L 82,32 L 95,20 L 102,48 L 78,60 L 68,78 L 50,75 L 42,50 L 30,45 Z"/>
+                                <!-- South America -->
+                                <path d="M 72,82 L 95,92 L 105,115 L 98,145 L 88,162 L 80,140 L 70,110 Z"/>
+                                <!-- Eurasia -->
+                                <path d="M 140,25 L 180,18 L 240,22 L 310,25 L 305,62 L 260,70 L 245,85 L 210,90 L 180,78 L 175,55 L 138,50 Z"/>
+                                <!-- Africa -->
+                                <path d="M 165,68 L 208,72 L 215,95 L 202,130 L 190,145 L 175,115 L 170,88 Z"/>
+                                <!-- Australia -->
+                                <path d="M 275,115 L 310,110 L 320,132 L 285,140 Z"/>
+                                <!-- Greenland -->
+                                <path d="M 98,5 L 125,8 L 118,22 L 102,18 Z"/>
+                            </g>
+                        </svg>
+                        <!-- Pointer red dot for observer location -->
+                        <div id="map-dot" class="absolute w-4 h-4 bg-red-500 border-2 border-white rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none shadow-[0_0_12px_#ef4444] transition-all duration-75"></div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- BOTTOM EXPLAINER CARD -->
+    <section class="w-full max-w-6xl mt-6 bg-slate-900/30 border border-slate-800 rounded-xl p-5 text-slate-300 panel-theme">
+        <h4 class="text-base font-bold text-slate-300 mb-3 flex items-center gap-1.5 text-main-theme">
+            <i class="fa-solid fa-triangle-exclamation text-yellow-400"></i> 한계점
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-bold leading-relaxed">
+            <div>
+                <p class="text-blue-500 mb-1"><i class="fa-solid fa-circle-minus mr-1.5"></i> 별의 연주시차 및 고유운동 무시</p>
+                <span class="text-xs text-slate-400 font-medium" style="color: var(--text-sub)">별이 움직이지 않는 완전한 고정점으로 수식을 처리함.</span>
+            </div>
+            <div>
+                <p class="text-blue-500 mb-1"><i class="fa-solid fa-circle-minus mr-1.5"></i> 대기 굴절에 의한 고도 보정 배제</p>
+                <span class="text-xs text-slate-400 font-medium" style="color: var(--text-sub)">빛의 꺾임이나 고도 하강 현상 등 대기 조건에 따른 오차를 생략함.</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ASTROPHYSICS ENGINE SCRIPT -->
+    <script>
+        // --- CONSTELLATION & STAR DATABASE ---
+        const constellations = {
+            ursaminor: {
+                name: "작은곰자리",
+                stars: [
+                    { name: "북극성 (Polaris)", ra: 2.5, dec: 89.3, size: 8, color: "#f59e0b" },
+                    { name: "코캅 (Kochab)", ra: 14.8, dec: 74.2, size: 6, color: "#93c5fd" },
+                    { name: "페르카드 (Pherkad)", ra: 15.3, dec: 71.8, size: 5, color: "#cbd5e1" },
+                    { name: "엡실론 별", ra: 16.8, dec: 82.0, size: 4, color: "#cbd5e1" }
+                ],
+                lines: [[0, 3], [3, 2], [2, 1]]
+            },
+            orion: {
+                name: "오리온자리",
+                stars: [
+                    { name: "베텔게우스 (Betelgeuse)", ra: 5.9, dec: 7.4, size: 8, color: "#f97316" }, // Orange supergiant
+                    { name: "리겔 (Rigel)", ra: 5.2, dec: -8.2, size: 8, color: "#38bdf8" }, // Blue supergiant
+                    { name: "벨라트릭스 (Bellatrix)", ra: 5.4, dec: 6.3, size: 6, color: "#93c5fd" },
+                    { name: "알닐람 (Alnilam)", ra: 5.6, dec: -1.2, size: 6, color: "#93c5fd" },
+                    { name: "사이프 (Saiph)", ra: 5.8, dec: -9.7, size: 5, color: "#cbd5e1" }
+                ],
+                lines: [[0, 2], [2, 3], [3, 1], [3, 4], [0, 3]]
+            },
+            lyra: {
+                name: "거문고자리",
+                stars: [
+                    { name: "베가 (Vega)", ra: 18.6, dec: 38.8, size: 8, color: "#67e8f9" },
+                    { name: "슐리아크 (Sheliak)", ra: 18.9, dec: 33.4, size: 5, color: "#93c5fd" },
+                    { name: "술라파트 (Sulafat)", ra: 19.0, dec: 32.7, size: 5, color: "#cbd5e1" },
+                    { name: "델타 별", ra: 18.9, dec: 36.9, size: 4, color: "#cbd5e1" }
+                ],
+                lines: [[0, 3], [3, 1], [1, 2], [2, 0]]
+            },
+            scorpio: {
+                name: "전갈자리",
+                stars: [
+                    { name: "안타레스 (Antares)", ra: 16.5, dec: -26.4, size: 8, color: "#ef4444" }, // Red supergiant
+                    { name: "사울라 (Shaula)", ra: 17.6, dec: -37.1, size: 6, color: "#93c5fd" },
+                    { name: "그라피아스 (Acrab)", ra: 16.1, dec: -19.8, size: 5, color: "#93c5fd" },
+                    { name: "드슈바 (Dschubba)", ra: 16.0, dec: -22.6, size: 5, color: "#cbd5e1" }
+                ],
+                lines: [[0, 3], [3, 2], [0, 1]]
+            },
+            aquila: {
+                name: "독수리자리",
+                stars: [
+                    { name: "알타이르 (Altair)", ra: 19.8, dec: 8.9, size: 8, color: "#ffffff" },
+                    { name: "알샤인 (Alshain)", ra: 19.9, dec: 6.4, size: 5, color: "#cbd5e1" },
+                    { name: "타라제드 (Tarazed)", ra: 19.8, dec: 10.4, size: 5, color: "#93c5fd" }
+                ],
+                lines: [[0, 1], [0, 2]]
+            },
+            cygnus: {
+                name: "백조자리",
+                stars: [
+                    { name: "데네브 (Deneb)", ra: 20.7, dec: 45.3, size: 8, color: "#ffffff" },
+                    { name: "알비레오 (Albireo)", ra: 19.5, dec: 28.0, size: 5, color: "#f59e0b" },
+                    { name: "사드르 (Sadr)", ra: 20.4, dec: 40.3, size: 6, color: "#93c5fd" },
+                    { name: "기나 (Gienah)", ra: 20.8, dec: 33.9, size: 5, color: "#cbd5e1" }
+                ],
+                lines: [[0, 2], [2, 1], [2, 3]]
+            }
+        };
+
+        // Season state
+        let sunRA = 0; // Starts with Vernal Equinox (0h)
+
+        // DOM elements
+        const canvasEq = document.getElementById('canvas-eq');
+        const canvasHor = document.getElementById('canvas-hor');
+        const ctxEq = canvasEq.getContext('2d');
+        const ctxHor = canvasHor.getContext('2d');
+
+        const latSlider = document.getElementById('lat-slider');
+        const lonSlider = document.getElementById('lon-slider');
+        const timeSlider = document.getElementById('time-slider');
+        const starSelect = document.getElementById('star-select');
+        const repOnlyToggle = document.getElementById('rep-only-toggle');
+
+        // Keyboard Inputs
+        const latInput = document.getElementById('lat-input');
+        const lonInput = document.getElementById('lon-input');
+        const timeInput = document.getElementById('time-input');
+        const raInput = document.getElementById('ra-input');
+
+        const latDisplay = document.getElementById('lat-display');
+        const lonDisplay = document.getElementById('lon-display');
+        const timeDisplay = document.getElementById('time-display');
+
+        const playBtn = document.getElementById('play-btn');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
+
+        const mapWrap = document.getElementById('map-wrap');
+        const mapDot = document.getElementById('map-dot');
+
+        const tooltipEq = document.getElementById('tooltip-eq');
+        const tooltipHor = document.getElementById('tooltip-hor');
+
+        const resultAlt = document.getElementById('result-alt');
+        const resultAz = document.getElementById('result-az');
+        const resultSouth = document.getElementById('result-south');
+
+        // App States
+        let isPlaying = false;
+        let animationId = null;
+        let mouseTracker = { x: 0, y: 0, hoverCanvas: null };
+        let activeTheme = 'dark'; // default theme
+
+        // --- MATH CALCULATIONS FOR A SINGLE STAR ---
+        function getAstroForStar(star, customTimeHrs = null) {
+            const latVal = parseFloat(latSlider.value);
+            const lonVal = parseFloat(lonSlider.value);
+            const hrsVal = customTimeHrs !== null ? customTimeHrs : parseFloat(timeSlider.value);
+
+            const phi = latVal * Math.PI / 180; // lat in rad
+            const dec = star.dec * Math.PI / 180; // dec in rad
+            const ra = star.ra; // RA in hours
+
+            // Approximate Local Sidereal Time (LST) calculation
+            const lst = (hrsVal + sunRA + 12 + (lonVal - 127) / 15) % 24;
+
+            // Hour Angle (H) in hours, then to radians
+            let H_hrs = lst - ra;
+            if (H_hrs < 0) H_hrs += 24;
+            const H = H_hrs * 15 * Math.PI / 180;
+
+            // Alt h: sin h = sin phi * sin dec + cos phi * cos dec * cos H
+            const sin_h = Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H);
+            const h = Math.asin(Math.max(-1, Math.min(1, sin_h)));
+
+            // Azimuth A: Using atan2 for safe and reliable 4-quadrant mapping (from North, Eastward)
+            const cos_h = Math.cos(h);
+            let A = 0;
+            if (Math.abs(cos_h) > 0.0001) {
+                const y = -Math.cos(dec) * Math.sin(H);
+                const x = Math.sin(dec) * Math.cos(phi) - Math.cos(dec) * Math.sin(phi) * Math.cos(H);
+                A = Math.atan2(y, x);
+                if (A < 0) A += 2 * Math.PI; // Correct range [0, 2pi]
+            }
+
+            // Transit peak altitude
+            const h_south = 90 - Math.abs(latVal - star.dec);
+
+            return {
+                phi,
+                dec_deg: star.dec,
+                dec,
+                ra,
+                H_hrs,
+                H,
+                h_deg: h * 180 / Math.PI,
+                h,
+                cosAlt: cos_h,
+                sinAlt: sin_h,
+                A_deg: A * 180 / Math.PI,
+                A,
+                h_south: h_south > 90 ? 180 - h_south : h_south
+            };
+        }
+
+        // --- DASHBOARD TEXT EXPANDER ---
+        function updateDashboardResults(calc) {
+            resultAlt.innerText = `${calc.h_deg.toFixed(1)}°`;
+            resultAz.innerText = `${calc.A_deg.toFixed(1)}°`;
+            resultSouth.innerText = `${calc.h_south.toFixed(1)}°`;
+        }
+
+        // --- RENDERING ROUTINE ---
+        function render() {
+            const activeConst = constellations[starSelect.value];
+            const repStar = activeConst.stars[0];
+            const repData = getAstroForStar(repStar);
+
+            // Theme colors mapping
+            const themeGridColor = getComputedStyle(document.body).getPropertyValue('--grid-color');
+
+            // Synced text displays
+            latDisplay.innerText = `${Math.abs(repData.phi * 180 / Math.PI).toFixed(1)}° ${repData.phi >= 0 ? 'N' : 'S'}`;
+            lonDisplay.innerText = `${Math.abs(parseFloat(lonSlider.value)).toFixed(1)}° ${parseFloat(lonSlider.value) >= 0 ? 'E' : 'W'}`;
+            
+            const hours = Math.floor(timeSlider.value);
+            const minutes = Math.floor((timeSlider.value - hours) * 60);
+            timeDisplay.innerText = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+            // Sync Map pointer perfectly using correct percentage offsets
+            const mapX = (parseFloat(lonSlider.value) + 180) / 360 * 100;
+            const mapY = (90 - parseFloat(latSlider.value)) / 180 * 100;
+            mapDot.style.left = `${mapX}%`;
+            mapDot.style.top = `${mapY}%`;
+
+            // Update real-time calculated values
+            updateDashboardResults(repData);
+
+            const showRepOnly = repOnlyToggle.checked;
+
+            // --- 1. RENDER EQUATORIAL CANVAS ---
+            ctxEq.clearRect(0, 0, canvasEq.width, canvasEq.height);
+            const cxE = canvasEq.width / 2;
+            const cyE = canvasEq.height / 2;
+            const rE = 110;
+
+            // Celestial sphere grid circle
+            ctxEq.beginPath();
+            ctxEq.arc(cxE, cyE, rE, 0, 2 * Math.PI);
+            ctxEq.strokeStyle = themeGridColor;
+            ctxEq.lineWidth = 1.2;
+            ctxEq.stroke();
+
+            // Rotation Pole Axis
+            ctxEq.beginPath();
+            ctxEq.moveTo(cxE, cyE - rE - 15);
+            ctxEq.lineTo(cxE, cyE + rE + 15);
+            ctxEq.strokeStyle = '#f87171'; // soft red
+            ctxEq.lineWidth = 1.8;
+            ctxEq.stroke();
+            ctxEq.fillStyle = '#f87171';
+            ctxEq.font = 'bold 10px monospace';
+            ctxEq.fillText('자전축(N)', cxE - 22, cyE - rE - 18);
+
+            // Celestial Equator line
+            ctxEq.beginPath();
+            ctxEq.moveTo(cxE - rE, cyE);
+            ctxEq.lineTo(cxE + rE, cyE);
+            ctxEq.strokeStyle = '#10b981'; // emerald
+            ctxEq.lineWidth = 1.5;
+            ctxEq.stroke();
+            ctxEq.fillStyle = '#10b981';
+            ctxEq.fillText('천구적도', cxE + rE + 5, cyE + 3);
+
+            // 1A. Calculate 3D projected Star coords
+            let starPositionsEq = [];
+            activeConst.stars.forEach((star, index) => {
+                if (showRepOnly && index > 0) return;
+
+                const starCalc = getAstroForStar(star);
+                const orbitY = cyE - rE * Math.sin(starCalc.dec);
+                const orbitR = rE * Math.cos(starCalc.dec);
+
+                const hRad = (starCalc.H_hrs * 15) * Math.PI / 180;
+                const starX = cxE - orbitR * Math.sin(hRad);
+                const starY = orbitY + (orbitR * 0.35) * Math.cos(hRad);
+
+                starPositionsEq.push({ x: starX, y: starY, star, calc: starCalc });
+
+                // Diurnal orbit loop path for Representative Star
+                if (index === 0) {
+                    ctxEq.beginPath();
+                    ctxEq.ellipse(cxE, orbitY, orbitR, orbitR * 0.35, 0, 0, 2 * Math.PI);
+                    ctxEq.strokeStyle = activeTheme === 'dark' ? 'rgba(255, 255, 255, 0.45)' : 'rgba(15, 23, 42, 0.25)';
+                    ctxEq.lineWidth = 1.5;
+                    ctxEq.setLineDash([4, 4]);
+                    ctxEq.stroke();
+                    ctxEq.setLineDash([]);
+                }
+            });
+
+            // 1B. Draw Constellation lines in Equatorial View
+            if (!showRepOnly) {
+                ctxEq.beginPath();
+                ctxEq.strokeStyle = activeTheme === 'dark' ? 'rgba(56, 189, 248, 0.5)' : 'rgba(2, 132, 199, 0.5)';
+                ctxEq.lineWidth = 1.5;
+                activeConst.lines.forEach(([i, j]) => {
+                    if (starPositionsEq[i] && starPositionsEq[j]) {
+                        ctxEq.moveTo(starPositionsEq[i].x, starPositionsEq[i].y);
+                        ctxEq.lineTo(starPositionsEq[j].x, starPositionsEq[j].y);
+                    }
+                });
+                ctxEq.stroke();
+            }
+
+            // Inner Center Earth
+            ctxEq.beginPath();
+            ctxEq.arc(cxE, cyE, 10, 0, 2 * Math.PI);
+            ctxEq.fillStyle = '#3b82f6';
+            ctxEq.fill();
+
+            // 1C. Draw stars in Equatorial View
+            starPositionsEq.forEach(({ x, y, star }) => {
+                ctxEq.beginPath();
+                ctxEq.arc(x, y, star.size, 0, 2 * Math.PI);
+                ctxEq.fillStyle = star.color;
+                ctxEq.shadowColor = star.color;
+                ctxEq.shadowBlur = 12;
+                ctxEq.fill();
+                ctxEq.shadowBlur = 0;
+            });
+
+
+            // --- 2. RENDER HORIZONTAL CANVAS ---
+            ctxHor.clearRect(0, 0, canvasHor.width, canvasHor.height);
+            const cxH = canvasHor.width / 2;
+            const cyH = canvasHor.height / 2 + 25;
+            const rH = 110;
+
+            const sinBeta = 0.4; // Slanted perspective axis coefficient
+            const cosBeta = Math.sqrt(1 - sinBeta * sinBeta);
+
+            // Horizon Base Plane
+            ctxHor.beginPath();
+            ctxHor.ellipse(cxH, cyH, rH, rH * sinBeta, 0, 0, 2 * Math.PI);
+            ctxHor.strokeStyle = themeGridColor;
+            ctxHor.lineWidth = 1.2;
+            ctxHor.stroke();
+            ctxHor.fillStyle = activeTheme === 'dark' ? '#080d1a' : '#f0f4f8';
+            ctxHor.fill();
+
+            // Cardinal direction labels (Left = West, Right = East, Top = North, Bottom = South)
+            ctxHor.fillStyle = activeTheme === 'dark' ? '#94a3b8' : '#334155';
+            ctxHor.font = 'bold 11px monospace';
+            ctxHor.fillText('서(W)', cxH - rH - 32, cyH + 4);
+            ctxHor.fillText('동(E)', cxH + rH + 8, cyH + 4);
+            ctxHor.fillText('북(N)', cxH - 12, cyH - (rH * sinBeta) - 8);
+            ctxHor.fillText('남(S)', cxH - 12, cyH + (rH * sinBeta) + 14);
+            ctxHor.fillText('천정(Z)', cxH - 18, cyH - rH - 10);
+
+            // Zenith normal line
+            ctxHor.beginPath();
+            ctxHor.moveTo(cxH, cyH);
+            ctxHor.lineTo(cxH, cyH - rH);
+            ctxHor.strokeStyle = themeGridColor;
+            ctxHor.stroke();
+
+            // Sky Hemisphere Dome Arc
+            ctxHor.beginPath();
+            ctxHor.arc(cxH, cyH, rH, Math.PI, 0, false);
+            ctxHor.strokeStyle = activeTheme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(37, 99, 235, 0.4)';
+            ctxHor.lineWidth = 1.2;
+            ctxHor.stroke();
+
+            // Center Observer Point
+            ctxHor.beginPath();
+            ctxHor.arc(cxH, cyH, 3.5, 0, 2 * Math.PI);
+            ctxHor.fillStyle = '#ef4444';
+            ctxHor.fill();
+
+            // 2A. DRAW REPRESENTATIVE STAR DIURNAL PATH (Dashed Line)
+            // Precise Mathematical 3D slant projection applied here for correct orbit visualization
+            const pathSteps = 120;
+            let pathPoints = [];
+            for (let i = 0; i <= pathSteps; i++) {
+                const tempHrs = (i / pathSteps) * 24;
+                const tempCalc = getAstroForStar(repStar, tempHrs);
+                
+                const projX = tempCalc.cosAlt * Math.sin(tempCalc.A);
+                // Corrected projection Y vector using '+' addition for accurate coordinate system integration
+                const projY = tempCalc.sinAlt * cosBeta + tempCalc.cosAlt * Math.cos(tempCalc.A) * sinBeta;
+
+                pathPoints.push({
+                    x: cxH + rH * projX,
+                    y: cyH - rH * projY,
+                    h: tempCalc.h_deg
+                });
+            }
+
+            ctxHor.lineWidth = 2.0; // Increased line width for maximum visibility
+            ctxHor.setLineDash([4, 4]);
+            for (let i = 0; i < pathPoints.length - 1; i++) {
+                const pt1 = pathPoints[i];
+                const pt2 = pathPoints[i + 1];
+                ctxHor.beginPath();
+                ctxHor.moveTo(pt1.x, pt1.y);
+                ctxHor.lineTo(pt2.x, pt2.y);
+                
+                // Set high contrast distinct glowing color representation
+                if (pt1.h >= 0 && pt2.h >= 0) {
+                    // Sky golden path
+                    ctxHor.strokeStyle = activeTheme === 'dark' ? 'rgba(234, 179, 8, 1.0)' : 'rgba(180, 83, 9, 1.0)';
+                } else {
+                    // Deep underground path
+                    ctxHor.strokeStyle = activeTheme === 'dark' ? 'rgba(234, 179, 8, 0.25)' : 'rgba(180, 83, 9, 0.2)';
+                }
+                ctxHor.stroke();
+            }
+            ctxHor.setLineDash([]); // reset
+
+            // 2B. Calculate 3D projected coords for each star in Hor View
+            let starPositionsHor = [];
+            activeConst.stars.forEach((star, index) => {
+                if (showRepOnly && index > 0) return;
+
+                const starCalc = getAstroForStar(star);
+                const projX = starCalc.cosAlt * Math.sin(starCalc.A);
+                // Unified standard '+' projection math formula to ensure absolute coordinate sync
+                const projY = starCalc.sinAlt * cosBeta + starCalc.cosAlt * Math.cos(starCalc.A) * sinBeta;
+
+                const horStarX = cxH + rH * projX;
+                const horStarY = cyH - rH * projY;
+
+                starPositionsHor.push({ x: horStarX, y: horStarY, star, calc: starCalc });
+
+                if (starCalc.h_deg >= 0) {
+                    // Sub-star ground alignment line
+                    ctxHor.beginPath();
+                    ctxHor.moveTo(cxH, cyH);
+                    ctxHor.lineTo(horStarX, horStarY);
+                    ctxHor.strokeStyle = activeTheme === 'dark' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(217, 119, 6, 0.3)';
+                    ctxHor.stroke();
+                }
+            });
+
+            // 2C. Draw Constellation lines in Hor View
+            if (!showRepOnly) {
+                ctxHor.beginPath();
+                ctxHor.strokeStyle = activeTheme === 'dark' ? 'rgba(56, 189, 248, 0.5)' : 'rgba(2, 132, 199, 0.5)';
+                ctxHor.lineWidth = 1.5;
+                activeConst.lines.forEach(([i, j]) => {
+                    const s1 = starPositionsHor[i];
+                    const s2 = starPositionsHor[j];
+                    if (s1 && s2) {
+                        ctxHor.moveTo(s1.x, s1.y);
+                        ctxHor.lineTo(s2.x, s2.y);
+                    }
+                });
+                ctxHor.stroke();
+            }
+
+            // 2D. Draw stars in Hor View
+            starPositionsHor.forEach(({ x, y, star, calc }) => {
+                ctxHor.beginPath();
+                ctxHor.arc(x, y, star.size, 0, 2 * Math.PI);
+                
+                if (calc.h_deg >= 0) {
+                    ctxHor.fillStyle = star.color;
+                    ctxHor.shadowColor = star.color;
+                    ctxHor.shadowBlur = 14;
+                    ctxHor.fill();
+                    ctxHor.shadowBlur = 0;
+                } else {
+                    // Underground representation
+                    ctxHor.fillStyle = activeTheme === 'dark' ? 'rgba(245, 158, 11, 0.22)' : 'rgba(217, 119, 6, 0.22)';
+                    ctxHor.strokeStyle = activeTheme === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(15, 23, 42, 0.25)';
+                    ctxHor.lineWidth = 1;
+                    ctxHor.stroke();
+                    ctxHor.fill();
+                }
+            });
+
+            // Hover Tooltips Syncing (Utilizing representative coordinates as target)
+            const activeEqStar = starPositionsEq[0];
+            const activeHorStar = starPositionsHor[0];
+            if (activeEqStar && activeHorStar) {
+                evaluateTooltips(activeHorStar.x, activeHorStar.y, activeEqStar.x, activeEqStar.y, repData);
+            }
+        }
+
+        // --- HOVER DETECTOR FOR TOOLTIPS ---
+        function evaluateTooltips(horX, horY, eqX, eqY, data) {
+            const starName = constellations[starSelect.value].stars[0].name;
+            const content = `
+                <div class="space-y-1">
+                    <div class="font-bold text-slate-200 text-xs">✨ ${starName}</div>
+                    <div class="font-mono text-[11px] text-slate-300 space-y-0.5">
+                        <div>방위각(A): <span class="text-yellow-400 font-bold">${data.A_deg.toFixed(1)}°</span></div>
+                        <div>고도(h): <span class="text-emerald-400 font-bold">${data.h_deg.toFixed(1)}°</span></div>
+                        <div>남중고도: <span class="text-blue-400 font-bold">${data.h_south.toFixed(1)}°</span></div>
+                    </div>
+                </div>
+            `;
+
+            // Hor Canvas Check
+            if (mouseTracker.hoverCanvas === 'hor' && Math.hypot(mouseTracker.x - horX, mouseTracker.y - horY) < 15) {
+                tooltipHor.style.display = 'block';
+                tooltipHor.style.left = `${horX + 10}px`;
+                tooltipHor.style.top = `${horY - 20}px`;
+                tooltipHor.innerHTML = content;
+            } else {
+                tooltipHor.style.display = 'none';
+            }
+
+            // Eq Canvas Check
+            if (mouseTracker.hoverCanvas === 'eq' && Math.hypot(mouseTracker.x - eqX, mouseTracker.y - eqY) < 15) {
+                tooltipEq.style.display = 'block';
+                tooltipEq.style.left = `${eqX + 10}px`;
+                tooltipEq.style.top = `${eqY - 20}px`;
+                tooltipEq.innerHTML = content;
+            } else {
+                tooltipEq.style.display = 'none';
+            }
+        }
+
+        // --- MAP CLICK CODES ---
+        mapWrap.addEventListener('click', function(e) {
+            const rect = mapWrap.getBoundingClientRect();
+            const px = (e.clientX - rect.left) / rect.width;
+            const py = (e.clientY - rect.top) / rect.height;
+
+            const lon = px * 360 - 180;
+            const lat = 90 - py * 180;
+
+            latSlider.value = Math.max(-90, Math.min(90, lat)).toFixed(1);
+            lonSlider.value = Math.max(-180, Math.min(180, lon)).toFixed(1);
+
+            latInput.value = latSlider.value;
+            lonInput.value = lonSlider.value;
+
+            render();
+        });
+
+        // --- ANIMATION INTERFACE CONTROLLER ---
+        playBtn.addEventListener('click', function() {
+            if (isPlaying) {
+                isPlaying = false;
+                playIcon.className = 'fa-solid fa-play';
+                playText.innerText = '애니메이션 재생';
+                cancelAnimationFrame(animationId);
+            } else {
+                isPlaying = true;
+                playIcon.className = 'fa-solid fa-pause';
+                playText.innerText = '애니메이션 일시정지';
+                function loop() {
+                    let nextTime = parseFloat(timeSlider.value) + 0.05;
+                    if (nextTime >= 24) nextTime = 0;
+                    timeSlider.value = nextTime;
+                    timeInput.value = nextTime.toFixed(2);
+                    render();
+                    animationId = requestAnimationFrame(loop);
+                }
+                loop();
+            }
+        });
+
+        // --- SELECTORS AND SEASON HOOKS ---
+        function changeSeason(raHours) {
+            sunRA = raHours;
+            raInput.value = raHours;
+            document.querySelectorAll('.season-btn').forEach(btn => {
+                btn.className = "season-btn py-2.5 px-2 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-colors";
+            });
+            const targetBtn = document.getElementById(`season-${raHours}`);
+            if (targetBtn) {
+                targetBtn.className = "season-btn py-2.5 px-2 bg-blue-600 border border-blue-500 text-white rounded-lg text-sm font-semibold transition-colors";
+            }
+            render();
+        }
+
+        // --- THEME SWITCH MODULE ---
+        function toggleTheme() {
+            const body = document.body;
+            const themeBtn = document.getElementById('theme-toggle-btn');
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+
+            if (activeTheme === 'dark') {
+                activeTheme = 'light';
+                body.classList.add('light-theme');
+                themeIcon.className = "fa-solid fa-moon text-blue-500";
+                themeText.innerText = "다크 모드";
+            } else {
+                activeTheme = 'dark';
+                body.classList.remove('light-theme');
+                themeIcon.className = "fa-solid fa-sun text-yellow-400";
+                themeText.innerText = "라이트 모드";
+            }
+            render();
+        }
+
+        // --- HOVER TRIGGER MAPPINGS ---
+        function createMouseTracker(canvasName) {
+            return function(e) {
+                const rect = e.target.getBoundingClientRect();
+                mouseTracker.x = e.clientX - rect.left;
+                mouseTracker.y = e.clientY - rect.top;
+                mouseTracker.hoverCanvas = canvasName;
+                render();
+            }
+        }
+
+        canvasEq.addEventListener('mousemove', createMouseTracker('eq'));
+        canvasHor.addEventListener('mousemove', createMouseTracker('hor'));
+
+        canvasEq.addEventListener('mouseleave', () => { mouseTracker.hoverCanvas = null; tooltipEq.style.display = 'none'; });
+        canvasHor.addEventListener('mouseleave', () => { mouseTracker.hoverCanvas = null; tooltipHor.style.display = 'none'; });
+
+        // --- BIDIRECTIONAL SYNC HANDLERS ---
+        function syncSliderAndInput(slider, input, min, max) {
+            slider.addEventListener('input', () => {
+                input.value = slider.value;
+                render();
+            });
+            input.addEventListener('change', () => {
+                let val = parseFloat(input.value);
+                if (isNaN(val)) val = parseFloat(slider.value);
+                if (val < min) val = min;
+                if (val > max) val = max;
+                input.value = val;
+                slider.value = val;
+                render();
+            });
+        }
+
+        syncSliderAndInput(latSlider, latInput, -90, 90);
+        syncSliderAndInput(lonSlider, lonInput, -180, 180);
+        syncSliderAndInput(timeSlider, timeInput, 0, 23.99);
+
+        // Custom Sun RA keyboard handling (Changes season buttons to normal if custom value entered)
+        raInput.addEventListener('change', () => {
+            let val = parseFloat(raInput.value);
+            if (isNaN(val)) val = 0;
+            if (val < 0) val = 0;
+            if (val > 23.9) val = 23.9;
+            raInput.value = val;
+            sunRA = val;
+            
+            // Remove active style from all season buttons unless it matches exactly
+            document.querySelectorAll('.season-btn').forEach(btn => {
+                btn.className = "season-btn py-2.5 px-2 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-colors";
+            });
+            const matchedBtn = document.getElementById(`season-${val}`);
+            if (matchedBtn) {
+                matchedBtn.className = "season-btn py-2.5 px-2 bg-blue-600 border border-blue-500 text-white rounded-lg text-sm font-semibold transition-colors";
+            }
+            render();
+        });
+
+        starSelect.addEventListener('change', render);
+        repOnlyToggle.addEventListener('change', render);
+
+        // Bootstrap Initial Values
+        latInput.value = latSlider.value;
+        lonInput.value = lonSlider.value;
+        timeInput.value = timeSlider.value;
+        raInput.value = sunRA;
+
+        render();
+    </script>
+</body>
+</html>

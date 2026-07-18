@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>외부 은하 도플러 효과 3D 시뮬레이션</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome (아이콘용) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        /* canvas 포커스 테두리 제거 */
+        canvas {
+            display: block;
+            outline: none;
+        }
+        /* 슬라이더 스타일 커스텀 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #374151;
+            height: 6px;
+            border-radius: 9999px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+        }
+    </style>
+</head>
+<body class="text-slate-100 flex flex-col h-screen select-none">
+
+    <!-- 상단 헤더 및 이론 설명 패널 -->
+    <header class="bg-slate-900/90 border-b border-slate-800 p-4 z-10 shrink-0 shadow-lg backdrop-blur-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+                <h1 class="text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                    <span class="text-blue-500"><i class="fa-solid fa-galaxy"></i>🌀</span>
+                    외부 은하 도플러 효과 3차원 시뮬레이션
+                </h1>
+                <p class="text-xs md:text-sm text-slate-400 mt-1">
+                    지구에서 관측하는 은하의 3차원 운동에 따른 적색편이와 청색편이 현상을 실시간으로 시뮬레이션합니다.
+                </p>
+            </div>
+            <!-- 과학적 원리 요약 팝업 버튼 -->
+            <button id="theoryBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs rounded-lg transition-all flex items-center gap-2">
+                <i class="fa-solid fa-book-open text-blue-400"></i> 이론적 배경 및 수식 보기
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃: 왼쪽 3D 시뮬레이션 공간 / 오른쪽 실시간 물리 데이터 정보창 -->
+    <main class="flex-1 relative flex flex-col md:flex-row overflow-hidden min-h-0 w-full">
+        
+        <!-- 1. 3D 애니메이션 캔버스 영역 -->
+        <div id="canvasContainer" class="flex-1 relative min-h-[350px] md:min-h-0 bg-radial-at-c from-slate-950 to-black overflow-hidden">
+            <!-- 미니 컨트롤 패널 (재시작 및 시뮬레이션 속도) -->
+            <div class="absolute top-4 right-4 z-10 flex gap-2">
+                <button id="resetBtn" class="p-2.5 bg-slate-900/95 hover:bg-slate-800 border border-slate-700 rounded-xl text-xs transition-colors shadow-md flex items-center gap-2 text-red-400" title="은하 위치 초기화">
+                    <i class="fa-solid fa-arrow-rotate-left"></i> 은하 위치 재설정
+                </button>
+            </div>
+
+            <!-- 3D 렌더링 영역 (높이 유실 방지를 위한 absolute 레이아웃 고정) -->
+            <div id="threejsCanvas" class="absolute inset-0 w-full h-full"></div>
+        </div>
+
+        <!-- 2. 우측 물리 분석 데이터, 스펙트럼 비교 및 공간 가이드 병합 패널 -->
+        <div class="w-full md:w-96 bg-slate-900/95 border-t md:border-t-0 md:border-l border-slate-800 p-5 overflow-y-auto flex flex-col justify-between gap-5 shrink-0 z-10 shadow-2xl backdrop-blur-md">
+            <div class="space-y-5">
+                <h2 class="text-sm font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800 pb-2 flex items-center justify-between">
+                    <span>실시간 관측 분석기</span>
+                    <span id="shiftStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-800 text-slate-400">
+                        대기중
+                    </span>
+                </h2>
+
+                <!-- 상태 표시 카드 -->
+                <div id="statusCard" class="p-4 rounded-xl border border-slate-800 transition-all duration-300 bg-slate-950/50">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs text-slate-400 block font-medium">은하 운동 상태</span>
+                            <span id="statusText" class="text-lg font-extrabold tracking-tight mt-0.5 block text-slate-300">정지 상태</span>
+                        </div>
+                        <div id="statusIcon" class="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-800 text-slate-400">
+                            <i class="fa-solid fa-pause"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 주요 계측 정보 목록 -->
+                <div class="space-y-3.5">
+                    <!-- 은하 전속력 -->
+                    <div class="bg-slate-950/40 p-3 rounded-lg border border-slate-800/60 flex justify-between items-center">
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-gauge text-slate-500 mr-1"></i>은하 실제 속력 ($v$)</span>
+                        <span id="valTotalSpeed" class="text-sm font-mono font-bold text-slate-200">0 km/s</span>
+                    </div>
+
+                    <!-- 시선 속도 (가장 중요) -->
+                    <div class="bg-slate-950/40 p-3 rounded-lg border border-slate-800/60 flex justify-between items-center">
+                        <div>
+                            <span class="text-xs text-slate-400 block"><i class="fa-solid fa-arrows-left-right text-slate-500 mr-1"></i>시선 속도 ($v_r$)</span>
+                            <span class="text-[10px] text-slate-500 block leading-none mt-0.5">지구와 은하를 잇는 축 방향 속도</span>
+                        </div>
+                        <span id="valRadialSpeed" class="text-sm font-mono font-bold">0 km/s</span>
+                    </div>
+
+                    <!-- 방출/관측 파장 비교 -->
+                    <div class="bg-slate-950/40 p-3 rounded-lg border border-slate-800/60 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-400"><i class="fa-solid fa-wave-square text-slate-500 mr-1"></i>고유 방출 파장 ($\lambda_0$)</span>
+                            <span class="text-xs font-mono font-bold text-slate-300">656.3 nm (H-α선)</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-800/50">
+                            <span class="text-xs text-slate-400"><i class="fa-solid fa-eye text-slate-500 mr-1"></i>지구 관측 파장 ($\lambda$)</span>
+                            <span id="valObservedWavelength" class="text-sm font-mono font-bold text-emerald-400">656.3 nm</span>
+                        </div>
+                    </div>
+
+                    <!-- 적색편이량 (z) -->
+                    <div class="bg-slate-950/40 p-3 rounded-lg border border-slate-800/60 flex justify-between items-center">
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-chart-line text-slate-500 mr-1"></i>편이값 ($z = \frac{\Delta\lambda}{\lambda_0}$)</span>
+                        <span id="valRedshiftZ" class="text-sm font-mono font-bold text-slate-200">0.000000</span>
+                    </div>
+                </div>
+
+                <!-- 실시간 스펙트럼 시각화 비주얼 -->
+                <div class="space-y-2">
+                    <span class="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                        <i class="fa-solid fa-rainbow"></i> 스펙트럼 흡수선 변위 비교
+                    </span>
+                    <div class="relative h-12 w-full rounded-lg overflow-hidden border border-slate-800 bg-gradient-to-r from-violet-600 via-blue-500 via-emerald-400 via-yellow-400 via-orange-500 to-red-600">
+                        <!-- 정지(고유) 기준선 (H-alpha) -->
+                        <div class="absolute top-0 bottom-0 w-[3px] bg-black opacity-80" style="left: 75%;" title="고유 기준선 (656.3 nm)"></div>
+                        <div class="absolute -top-1 text-[9px] text-black font-extrabold" style="left: 76%;">$\lambda_0$</div>
+
+                        <!-- 실시간 변화선 -->
+                        <div id="spectrumIndicator" class="absolute top-0 bottom-0 w-[4px] bg-white border-x border-slate-950 shadow-[0_0_10px_white] transition-all duration-100" style="left: 75%;"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-500 px-1">
+                        <span>청색편이 영역 (짧은 파장)</span>
+                        <span>적색편이 영역 (긴 파장)</span>
+                    </div>
+                </div>
+
+                <!-- 관측 은하 발광색 정보 창 -->
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800/80 flex items-center gap-3">
+                    <div id="galaxyPreview" class="w-14 h-14 rounded-lg bg-black flex items-center justify-center border border-slate-800 overflow-hidden relative shrink-0">
+                        <!-- 빛번짐 효과 광원 -->
+                        <div id="galaxyLightGlow" class="w-8 h-8 rounded-full bg-white opacity-40 blur-md transition-all duration-300"></div>
+                    </div>
+                    <div class="flex-1 text-xs">
+                        <div class="font-bold text-slate-300">관측 은하 발광색</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">도플러 변위에 의해 관측되는 은하의 실제 파장 색상입니다.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 공간 가이드 패널 (우측 사이드바 최하단으로 통합 이동됨) -->
+            <div class="bg-slate-950/70 border border-slate-800/80 p-4 rounded-xl text-xs space-y-2.5 shadow-md shrink-0">
+                <div class="font-bold text-slate-300 border-b border-slate-800/80 pb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-compass text-blue-400"></i> 공간 가이드
+                </div>
+                <div class="grid grid-cols-2 gap-y-2.5 gap-x-1.5 text-[11px] text-slate-300">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-blue-500 inline-block shrink-0 shadow-[0_0_8px_#3b82f6]"></span>
+                        <span>지구 (관측자)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-indigo-400 inline-block shrink-0 animate-pulse"></span>
+                        <span>외부 은하</span>
+                    </div>
+                    <div class="flex items-center gap-2 col-span-2">
+                        <span class="w-5 h-0.5 bg-amber-400 inline-block shrink-0"></span>
+                        <span>시선선 (지구-은하 연결선)</span>
+                    </div>
+                    <div class="flex items-center gap-2 col-span-2">
+                        <span class="w-5 h-0.5 bg-emerald-500 inline-block shrink-0"></span>
+                        <span>속도 벡터 화살표 ($\vec{v}$)</span>
+                    </div>
+                </div>
+                <div class="text-[10px] text-slate-400 pt-2 leading-relaxed border-t border-slate-800/60 mt-1">
+                    ※ 화면을 드래그하면 3D 카메라 각도를 자유롭게 회전시킬 수 있습니다.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 하단 제어 패널: 슬라이더 4개 -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-4 md:p-6 shrink-0 z-10 shadow-inner">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+                
+                <!-- 슬라이더 1 : 속력의 크기 (v) - [수정됨] 간격을 20km/s으로 조정하여 0, 20, 40, 60... 값을 가지도록 변경 -->
+                <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="speedRange" class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                            1. 은하 운동 속력 ($v$)
+                        </label>
+                        <span id="speedValue" class="text-xs font-mono font-bold text-blue-400">15,000 km/s</span>
+                    </div>
+                    <input type="range" id="speedRange" min="0" max="60000" step="20" value="15000" class="w-full">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0 (정지)</span>
+                        <span>빛의 20% ($0.2c$)</span>
+                    </div>
+                </div>
+
+                <!-- 슬라이더 2 : x축과 이루는 각도 -->
+                <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="angleXRange" class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                            2. X축과의 각도 ($\alpha$)
+                        </label>
+                        <span id="angleXValue" class="text-xs font-mono font-bold text-red-400">60°</span>
+                    </div>
+                    <input type="range" id="angleXRange" min="0" max="180" step="1" value="60" class="w-full">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0° (X축 방향)</span>
+                        <span>180°</span>
+                    </div>
+                </div>
+
+                <!-- 슬라이더 3 : y축과 이루는 각도 -->
+                <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="angleYRange" class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                            3. Y축과의 각도 ($\beta$)
+                        </label>
+                        <span id="angleYValue" class="text-xs font-mono font-bold text-green-400">45°</span>
+                    </div>
+                    <input type="range" id="angleYRange" min="0" max="180" step="1" value="45" class="w-full">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0° (Y축 방향)</span>
+                        <span>180°</span>
+                    </div>
+                </div>
+
+                <!-- 슬라이더 4 : z축과 이루는 각도 -->
+                <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="angleZRange" class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+                            4. Z축과의 각도 ($\gamma$)
+                        </label>
+                        <span id="angleZValue" class="text-xs font-mono font-bold text-blue-300">105°</span>
+                    </div>
+                    <input type="range" id="angleZRange" min="0" max="180" step="1" value="105" class="w-full">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0° (Z축 방향)</span>
+                        <span>180°</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </footer>
+
+    <!-- 이론적 배경 모달 레이어 -->
+    <div id="theoryModal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap text-blue-400"></i> 도플러 효과 & 수식적 배경
+                </h3>
+                <button id="closeTheoryBtn" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3 text-sm text-slate-300 leading-relaxed overflow-y-auto max-h-[60vh] pr-2">
+                <p>
+                    <strong class="text-white">1. 도플러 효과 (Doppler Effect)</strong><br>
+                    파원과 관측자가 서로 다가가거나 멀어질 때, 관측자가 느끼는 파동의 진동수(또는 파장)가 변화하는 현상입니다.
+                    우주론에서는 지구로 다가오는 천체는 파장이 압축되는 <span class="text-sky-400 font-bold">청색편이(Blueshift)</span>가, 지구로부터 멀어지는 천체는 파장이 늘어나는 <span class="text-rose-400 font-bold">적색편이(Redshift)</span>가 관찰됩니다.
+                </p>
+                
+                <p>
+                    <strong class="text-white">2. 수학적 원리 (시선속도의 중요성)</strong><br>
+                    도플러 편이를 유발하는 핵심 속도는 은하의 전체 속도($v$)가 아니라, 지구와 은하를 잇는 직선상의 방향 성분인 <strong class="text-amber-400">시선속도(Radial Velocity, $v_r$)</strong>입니다.
+                    $$\vec{v} = (v_x, v_y, v_z)$$
+                    $$v_r = \vec{v} \cdot \hat{r}$$
+                    여기서 $\hat{r}$은 지구에서 은하를 바라보는 단위 방향 벡터입니다. 
+                </p>
+
+                <p>
+                    <strong class="text-white">3. 파장 변위 공식</strong><br>
+                    빛의 속력 $c \approx 300,000\text{ km/s}$에 비해 은하의 속도 $v_r$이 충분히 작을 때 비상대론적 도플러 공식은 다음과 같습니다.
+                    $$z = \frac{\Delta\lambda}{\lambda_0} = \frac{\lambda - \lambda_0}{\lambda_0} = \frac{v_r}{c}$$
+                    $$\lambda = \lambda_0 \left(1 + \frac{v_r}{c}\right)$$
+                    <ul>
+                        <li>$v_r > 0$ (지구로부터 멀어지는 중) $\rightarrow \lambda > \lambda_0$ : <span class="text-red-400 font-semibold">적색편이</span></li>
+                        <li>$v_r < 0$ (지구로 가까워지는 중) $\rightarrow \lambda < \lambda_0$ : <span class="text-blue-400 font-semibold">청색편이</span></li>
+                    </ul>
+                </p>
+
+                <p>
+                    <strong class="text-white">4. 3차원 방향 각도의 수학적 연동 제약</strong><br>
+                    3차원 유클리드 좌표계에서 임의의 방향 벡터가 $x, y, z$ 축의 양의 방향과 이루는 각도를 방향각 $\alpha, \beta, \gamma$라 할 때, 기하학적으로 항상 다음 관계식을 엄격히 만족해야만 합니다.
+                    $$\cos^2\alpha + \cos^2\beta + \cos^2\gamma = 1$$
+                    본 시뮬레이션에서는 사용자가 임의의 한 슬라이더를 변경하면 이 법칙이 항상 지켜지도록 다른 두 변수가 부드럽고 비례적으로 자동 동기화 계산됩니다.
+                </p>
+            </div>
+            
+            <div class="border-t border-slate-800 pt-3 text-right">
+                <button id="closeTheoryBtn2" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors">
+                    이해했습니다
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MathJax 수식 포맷 렌더링용 CDN -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- 시뮬레이션 핵심 로직 스크립트 -->
+    <script>
+        // --- 글로벌 상수 및 설정 ---
+        const LIGHT_SPEED = 300000; // km/s (빛의 속도)
+        const ORIGINAL_WAVELENGTH = 656.3; // nm (수소 알파 H-α 흡수선 기준 파장)
+        const MIN_VISIBLE_WL = 380;  // 가시광선 청색 끝단 대략 380nm
+        const MAX_VISIBLE_WL = 750;  // 가시광선 적색 끝단 대략 750nm
+
+        // --- DOM 엘리먼트 가져오기 ---
+        const container = document.getElementById('threejsCanvas');
+        const speedRange = document.getElementById('speedRange');
+        const angleXRange = document.getElementById('angleXRange');
+        const angleYRange = document.getElementById('angleYRange');
+        const angleZRange = document.getElementById('angleZRange');
+
+        const speedValue = document.getElementById('speedValue');
+        const angleXValue = document.getElementById('angleXValue');
+        const angleYValue = document.getElementById('angleYValue');
+        const angleZValue = document.getElementById('angleZValue');
+
+        const valTotalSpeed = document.getElementById('valTotalSpeed');
+        const valRadialSpeed = document.getElementById('valRadialSpeed');
+        const valObservedWavelength = document.getElementById('valObservedWavelength');
+        const valRedshiftZ = document.getElementById('valRedshiftZ');
+
+        const statusCard = document.getElementById('statusCard');
+        const statusText = document.getElementById('statusText');
+        const statusIcon = document.getElementById('statusIcon');
+        const shiftStatusBadge = document.getElementById('shiftStatusBadge');
+        
+        const spectrumIndicator = document.getElementById('spectrumIndicator');
+        const galaxyLightGlow = document.getElementById('galaxyLightGlow');
+
+        const resetBtn = document.getElementById('resetBtn');
+        const theoryBtn = document.getElementById('theoryBtn');
+        const theoryModal = document.getElementById('theoryModal');
+        const closeTheoryBtn = document.getElementById('closeTheoryBtn');
+        const closeTheoryBtn2 = document.getElementById('closeTheoryBtn2');
+
+        // --- Three.js 전역 변수 ---
+        let scene, camera, renderer;
+        let earth, galaxy, lineOfSight, velocityArrow;
+        let starsGeom, starsMaterial, starField;
+        let waveCircles = []; // 도플러 효과 구면 파동 시각화를 위한 링 어레이
+        
+        // 은하 실제 물리 상태값 (안전한 지연 초기화를 위해 null로 설정)
+        let galaxyPos = null; 
+        let earthPos = null; // 지구 위치 원점
+        let velocityDir = null; // 물리 방향 벡터
+
+        // 입력 각도 상태 (정수 Degrees)
+        let speed = parseFloat(speedRange.value); // km/s
+        let degX = parseInt(angleXRange.value);
+        let degY = parseInt(angleYRange.value);
+        let degZ = parseInt(angleZRange.value);
+
+        // 파동 방출 타이머
+        let waveTimer = 0;
+        const waveEmissionInterval = 25; // 루프 프레임 주기 기준
+
+        // 마우스 제어 인터랙션 (카메라 회전용 간단 구현)
+        let isDragging = false;
+        let prevMousePosition = { x: 0, y: 0 };
+        
+        // 카메라 제어 물리량 (초기 구면좌표계 최적값 설정)
+        let cameraRadius = 24; 
+        let cameraTheta = 1.2; // 수평각 (약 70도 회전 상태로 3차원 축을 역동적으로 관찰)
+        let cameraPhi = 1.1;   // 수직각 (지면을 비스듬하게 내려다보는 높은 각도)
+
+        // --- 이벤트 리스너 등록 ---
+        function initEvents() {
+            // 속도 변경 감지
+            speedRange.addEventListener('input', () => {
+                speed = parseFloat(speedRange.value);
+                speedValue.textContent = speed.toLocaleString() + " km/s";
+            });
+
+            // 임의 한 축 조정 시 타 좌표축 수학적 실시간 자동 연동
+            angleXRange.addEventListener('input', () => {
+                degX = parseInt(angleXRange.value);
+                adjustAngles('X');
+            });
+
+            angleYRange.addEventListener('input', () => {
+                degY = parseInt(angleYRange.value);
+                adjustAngles('Y');
+            });
+
+            angleZRange.addEventListener('input', () => {
+                degZ = parseInt(angleZRange.value);
+                adjustAngles('Z');
+            });
+
+            // 초기화 및 모달 제어
+            resetBtn.addEventListener('click', resetGalaxyPosition);
+            theoryBtn.addEventListener('click', () => theoryModal.classList.remove('hidden'));
+            const closeModal = () => theoryModal.classList.add('hidden');
+            closeTheoryBtn.addEventListener('click', closeModal);
+            closeTheoryBtn2.addEventListener('click', closeModal);
+
+            // 캔버스 마우스 회전 제어
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                prevMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - prevMousePosition.x;
+                const deltaY = e.clientY - prevMousePosition.y;
+
+                cameraTheta -= deltaX * 0.007;
+                cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi + deltaY * 0.007));
+
+                prevMousePosition = { x: e.clientX, y: e.clientY };
+                updateCameraPosition();
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // 터치 모바일 디바이스 지원
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    prevMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                const deltaX = e.touches[0].clientX - prevMousePosition.x;
+                const deltaY = e.touches[0].clientY - prevMousePosition.y;
+
+                cameraTheta -= deltaX * 0.007;
+                cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi + deltaY * 0.007));
+
+                prevMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                updateCameraPosition();
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => { isDragging = false; });
+
+            // 화면 크기 조절 대응
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // [핵심 기능] 3차원 유클리드 공간의 수학적 방향 코사인 각도 연동 계산
+        // cos^2(X) + cos^2(Y) + cos^2(Z) = 1 성질을 유지하도록 슬라이더 값 동적 배분
+        function calculateValidAngles() {
+            let cx = Math.cos(degX * Math.PI / 180);
+            let cy = Math.cos(degY * Math.PI / 180);
+            let cz = Math.cos(degZ * Math.PI / 180);
+
+            if (activeAxis === 'X') {
+                // X축 각도가 주어졌을 때: cos^2(Y) + cos^2(Z) = 1 - cos^2(X)
+                const targetSum = 1 - cx * cx;
+                if (targetSum <= 0) {
+                    // cx^2이 1인 경우 (0도 또는 180도) -> Y, Z는 90도로 고정되어야 함
+                    degY = 90;
+                    degZ = 90;
+                } else {
+                    // 현재의 Y, Z축 비율(cos ratio)을 유지한 채 크기를 맞춤
+                    let currentNorm = Math.sqrt(cy*cy + cz*cz);
+                    if (currentNorm < 0.001) {
+                        // 기존 비율이 0인 경우 절반씩 분배
+                        cy = Math.sqrt(targetSum / 2);
+                        cz = Math.sqrt(targetSum / 2);
+                    } else {
+                        const scale = Math.sqrt(targetSum) / currentNorm;
+                        cy *= scale;
+                        cz *= scale;
+                    }
+                    // 방향 코사인을 만족하는 실제 제약 조건 속 각도로 치환
+                    degY = Math.round(Math.acos(Math.max(-1, Math.min(1, cy))) * 180 / Math.PI);
+                    degZ = Math.round(Math.acos(Math.max(-1, Math.min(1, cz))) * 180 / Math.PI);
+                }
+            } 
+            else if (changedAxis === 'Y') {
+                const targetSum = 1 - cy * cy;
+                if (targetSum <= 0) {
+                    degX = 90;
+                    degZ = 90;
+                } else {
+                    let currentNorm = Math.sqrt(cx*cx + cz*cz);
+                    if (currentNorm < 0.001) {
+                        cx = Math.sqrt(targetSum / 2);
+                        cz = Math.sqrt(targetSum / 2);
+                    } else {
+                        const scale = Math.sqrt(targetSum) / currentNorm;
+                        cx *= scale;
+                        cz *= scale;
+                    }
+                    degX = Math.round(Math.acos(Math.max(-1, Math.min(1, cx))) * 180 / Math.PI);
+                    degZ = Math.round(Math.acos(Math.max(-1, Math.min(1, cz))) * 180 / Math.PI);
+                }
+            } 
+            else if (changedAxis === 'Z') {
+                const targetSum = 1 - cz * cz;
+                if (targetSum <= 0) {
+                    degX = 90;
+                    degY = 90;
+                } else {
+                    let currentNorm = Math.sqrt(cx*cx + cy*cy);
+                    if (currentNorm < 0.001) {
+                        cx = Math.sqrt(targetSum / 2);
+                        cy = Math.sqrt(targetSum / 2);
+                    } else {
+                        const scale = Math.sqrt(targetSum) / currentNorm;
+                        cx *= scale;
+                        cy *= scale;
+                    }
+                    degX = Math.round(Math.acos(Math.max(-1, Math.min(1, cx))) * 180 / Math.PI);
+                    degY = Math.round(Math.acos(Math.max(-1, Math.min(1, cy))) * 180 / Math.PI);
+                }
+            }
+
+            // 슬라이더 및 UI 텍스트 업데이트
+            angleXRange.value = degX;
+            angleYRange.value = degY;
+            angleZRange.value = degZ;
+
+            angleXValue.textContent = degX + "°";
+            angleYValue.textContent = degY + "°";
+            angleZValue.textContent = degZ + "°";
+
+            // 최종 3D 지향 벡터 업데이트
+            cx = Math.cos(degX * Math.PI / 180);
+            cy = Math.cos(degY * Math.PI / 180);
+            cz = Math.cos(degZ * Math.PI / 180);
+
+            if (!velocityDir) {
+                velocityDir = new THREE.Vector3();
+            }
+            velocityDir.set(cx, cy, cz).normalize();
+        }
+
+        // 임의 한 축 조정 시 타 좌표축 수학적 실시간 자동 연동 분기점 설정
+        function adjustAngles(changedAxis) {
+            let cx = Math.cos(degX * Math.PI / 180);
+            let cy = Math.cos(degY * Math.PI / 180);
+            let cz = Math.cos(degZ * Math.PI / 180);
+
+            if (changedAxis === 'X') {
+                const targetSum = 1 - cx * cx;
+                if (targetSum <= 0) {
+                    degY = 90;
+                    degZ = 90;
+                } else {
+                    let currentNorm = Math.sqrt(cy*cy + cz*cz);
+                    if (currentNorm < 0.001) {
+                        cy = Math.sqrt(targetSum / 2);
+                        cz = Math.sqrt(targetSum / 2);
+                    } else {
+                        const scale = Math.sqrt(targetSum) / currentNorm;
+                        cy *= scale;
+                        cz *= scale;
+                    }
+                    degY = Math.round(Math.acos(Math.max(-1, Math.min(1, cy))) * 180 / Math.PI);
+                    degZ = Math.round(Math.acos(Math.max(-1, Math.min(1, cz))) * 180 / Math.PI);
+                }
+            } 
+            else if (changedAxis === 'Y') {
+                const targetSum = 1 - cy * cy;
+                if (targetSum <= 0) {
+                    degX = 90;
+                    degZ = 90;
+                } else {
+                    let currentNorm = Math.sqrt(cx*cx + cz*cz);
+                    if (currentNorm < 0.001) {
+                        cx = Math.sqrt(targetSum / 2);
+                        cz = Math.sqrt(targetSum / 2);
+                    } else {
+                        const scale = Math.sqrt(targetSum) / currentNorm;
+                        cx *= scale;
+                        cz *= scale;
+                    }
+                    degX = Math.round(Math.acos(Math.max(-1, Math.min(1, cx))) * 180 / Math.PI);
+                    degZ = Math.round(Math.acos(Math.max(-1, Math.min(1, cz))) * 180 / Math.PI);
+                }
+            } 
+            else if (changedAxis === 'Z') {
+                const targetSum = 1 - cz * cz;
+                if (targetSum <= 0) {
+                    degX = 90;
+                    degY = 90;
+                } else {
+                    let currentNorm = Math.sqrt(cx*cx + cy*cy);
+                    if (currentNorm < 0.001) {
+                        cx = Math.sqrt(targetSum / 2);
+                        cy = Math.sqrt(targetSum / 2);
+                    } else {
+                        const scale = Math.sqrt(targetSum) / currentNorm;
+                        cx *= scale;
+                        cz *= scale;
+                    }
+                    degX = Math.round(Math.acos(Math.max(-1, Math.min(1, cx))) * 180 / Math.PI);
+                    degY = Math.round(Math.acos(Math.max(-1, Math.min(1, cy))) * 180 / Math.PI);
+                }
+            }
+
+            // 슬라이더 바 수치 업데이트
+            angleXRange.value = degX;
+            angleYRange.value = degY;
+            angleZRange.value = degZ;
+
+            // 라벨 텍스트 동시 갱신
+            angleXValue.textContent = degX + "°";
+            angleYValue.textContent = degY + "°";
+            angleZValue.textContent = degZ + "°";
+
+            // 최종 3D 지향 벡터 업데이트
+            cx = Math.cos(degX * Math.PI / 180);
+            cy = Math.cos(degY * Math.PI / 180);
+            cz = Math.cos(degZ * Math.PI / 180);
+
+            if (!velocityDir) {
+                velocityDir = new THREE.Vector3();
+            }
+            velocityDir.set(cx, cy, cz).normalize();
+        }
+
+        // --- 초기 매개변수 적용 및 기하조건 정렬 ---
+        function updateParameters() {
+            speed = parseFloat(speedRange.value);
+            speedValue.textContent = speed.toLocaleString() + " km/s";
+
+            degX = parseInt(angleXRange.value);
+            degY = parseInt(angleYRange.value);
+            degZ = parseInt(angleZRange.value);
+
+            // 최초 로딩 시 X축을 기점으로 구형 좌표계 제약 연동 실행
+            adjustAngles('X');
+        }
+
+        // --- 초기 은하 위치 재정렬 ---
+        function resetGalaxyPosition() {
+            if (galaxyPos) {
+                galaxyPos.set(10, 5, -8);
+            }
+            // 모든 이전 방출 파동 제거
+            waveCircles.forEach(w => scene.remove(w.mesh));
+            waveCircles = [];
+        }
+
+        // --- Three.js 초기 씬 셋팅 ---
+        function initThreeJS() {
+            // 안전한 지연 초기화 실행 (ReferenceError 전면 방지)
+            galaxyPos = new THREE.Vector3(10, 5, -8);
+            earthPos = new THREE.Vector3(0, 0, 0);
+            velocityDir = new THREE.Vector3();
+
+            // 너비와 높이가 0으로 검출될 경우의 방어 코드 작성 (윈도우 크기 대입)
+            const width = container.clientWidth || window.innerWidth || 800;
+            const height = container.clientHeight || window.innerHeight || 600;
+
+            // 1. 씬 생성
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020617, 0.012);
+
+            // 2. 카메라 세팅
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            updateCameraPosition();
+
+            // 3. 렌더러 생성
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x020208, 1);
+            container.appendChild(renderer.domElement);
+
+            // 4. 우주 배경 별무리 생성
+            const starCount = 1500;
+            starsGeom = new THREE.BufferGeometry();
+            const starPositions = new Float32Array(starCount * 3);
+            const starColors = new Float32Array(starCount * 3);
+
+            for (let i = 0; i < starCount * 3; i += 3) {
+                const radius = 60 + Math.random() * 100;
+                const u = Math.random();
+                const v = Math.random();
+                const theta = u * 2.0 * Math.PI;
+                const phi = Math.acos(2.0 * v - 1.0);
+                
+                starPositions[i] = radius * Math.sin(phi) * Math.cos(theta);
+                starPositions[i+1] = radius * Math.sin(phi) * Math.sin(theta);
+                starPositions[i+2] = radius * Math.cos(phi);
+
+                const randColor = Math.random();
+                if (randColor > 0.8) {
+                    starColors[i] = 0.7; starColors[i+1] = 0.8; starColors[i+2] = 1.0;
+                } else if (randColor > 0.6) {
+                    starColors[i] = 1.0; starColors[i+1] = 0.7; starColors[i+2] = 0.7;
+                } else {
+                    starColors[i] = 1.0; starColors[i+1] = 1.0; starColors[i+2] = 1.0;
+                }
+            }
+            starsGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            starsGeom.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+            starsMaterial = new THREE.PointsMaterial({
+                size: 0.5,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            starField = new THREE.Points(starsGeom, starsMaterial);
+            scene.add(starField);
+
+            // 5. 기본 조명 세팅
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
+            pointLight.position.set(20, 20, 20);
+            scene.add(pointLight);
+
+            // 6. 지구 (관측자) 오브젝트 생성
+            const earthGeom = new THREE.SphereGeometry(1.2, 32, 32);
+            const earthMat = new THREE.MeshPhongMaterial({
+                color: 0x3b82f6,
+                emissive: 0x1d4ed8,
+                specular: 0xffffff,
+                shininess: 30,
+                wireframe: true
+            });
+            earth = new THREE.Mesh(earthGeom, earthMat);
+            earth.position.copy(earthPos);
+            scene.add(earth);
+
+            // 지구 아우라 추가
+            const earthGlowGeom = new THREE.SphereGeometry(1.5, 16, 16);
+            const earthGlowMat = new THREE.MeshBasicMaterial({
+                color: 0x00d2ff,
+                transparent: true,
+                opacity: 0.2,
+                wireframe: true
+            });
+            const earthGlow = new THREE.Mesh(earthGlowGeom, earthGlowMat);
+            earth.add(earthGlow);
+
+            // 7. 외부 은하 (입자 나선 구조)
+            galaxy = new THREE.Group();
+            
+            // 은하 코어 (밝은 중심핵)
+            const coreGeom = new THREE.SphereGeometry(0.8, 16, 16);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const core = new THREE.Mesh(coreGeom, coreMat);
+            galaxy.add(core);
+
+            // 은하 나선구조 생성
+            const ringCount = 250;
+            const ringGeom = new THREE.BufferGeometry();
+            const ringPositions = new Float32Array(ringCount * 3);
+            const ringColors = new Float32Array(ringCount * 3);
+
+            for (let i = 0; i < ringCount; i++) {
+                const theta = i * 0.12;
+                const r = 0.4 + i * 0.012;
+                const spreadY = (Math.random() - 0.5) * 0.12;
+
+                ringPositions[i*3] = r * Math.cos(theta);
+                ringPositions[i*3+1] = spreadY;
+                ringPositions[i*3+2] = r * Math.sin(theta);
+
+                ringColors[i*3] = 0.85;
+                ringColors[i*3+1] = 0.9;
+                ringColors[i*3+2] = 1.0;
+            }
+            ringGeom.setAttribute('position', new THREE.BufferAttribute(ringPositions, 3));
+            ringGeom.setAttribute('color', new THREE.BufferAttribute(ringColors, 3));
+            
+            const diskMat = new THREE.PointsMaterial({ size: 0.2, vertexColors: true, transparent: true, opacity: 0.95 });
+            const disk = new THREE.Points(ringGeom, diskMat);
+            galaxy.add(disk);
+
+            galaxy.position.copy(galaxyPos);
+            scene.add(galaxy);
+
+            // 8. 지구와 은하를 잇는 시선선 (Line of Sight) 점선
+            const lineMat = new THREE.LineDashedMaterial({
+                color: 0xf59e0b, 
+                dashSize: 0.6,
+                gapSize: 0.4,
+            });
+            const lineGeom = new THREE.BufferGeometry().setFromPoints([earthPos, galaxyPos]);
+            lineOfSight = new THREE.Line(lineGeom, lineMat);
+            lineOfSight.computeLineDistances();
+            scene.add(lineOfSight);
+
+            // 9. 속도 방향 가이드 화살표
+            const arrowDir = new THREE.Vector3(1, 0, 0);
+            velocityArrow = new THREE.ArrowHelper(arrowDir, galaxyPos, 3.5, 0x10b981, 0.8, 0.5);
+            scene.add(velocityArrow);
+
+            // 10. 격자 바닥면 배치
+            const gridHelper = new THREE.GridHelper(60, 30, 0x1e293b, 0x0f172a);
+            gridHelper.position.y = -6;
+            scene.add(gridHelper);
+
+            // 초기 파라미터 연동 적용
+            updateParameters();
+        }
+
+        // --- 카메라의 실시간 위치 및 추적 목표점(지구와 은하의 중앙) 설정 ---
+        function updateCameraPosition() {
+            if (!earthPos || !galaxyPos || !camera) return;
+            
+            const targetCenter = new THREE.Vector3().addVectors(earthPos, galaxyPos).multiplyScalar(0.5);
+            
+            camera.position.x = targetCenter.x + cameraRadius * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+            camera.position.y = targetCenter.y + cameraRadius * Math.cos(cameraPhi);
+            camera.position.z = targetCenter.z + cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+            
+            camera.lookAt(targetCenter);
+        }
+
+        // --- 창 크기 변화 시 대응 ---
+        function onWindowResize() {
+            if (!container || !camera || !renderer) return;
+            const width = container.clientWidth || window.innerWidth || 800;
+            const height = container.clientHeight || window.innerHeight || 600;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // --- 파장에 따른 RGB 값 매핑 헬퍼 함수 ---
+        function wavelengthToColor(wavelength) {
+            let r, g, b, factor;
+            
+            if (wavelength >= 380 && wavelength < 440) {
+                r = -(wavelength - 440) / (440 - 380); g = 0.0; b = 1.0;
+            } else if (wavelength >= 440 && wavelength < 490) {
+                r = 0.0; g = (wavelength - 440) / (490 - 440); b = 1.0;
+            } else if (wavelength >= 490 && wavelength < 510) {
+                r = 0.0; g = 1.0; b = -(wavelength - 510) / (510 - 490);
+            } else if (wavelength >= 510 && wavelength < 580) {
+                r = (wavelength - 510) / (580 - 510); g = 1.0; b = 0.0;
+            } else if (wavelength >= 580 && wavelength < 645) {
+                r = 1.0; g = -(wavelength - 645) / (645 - 580); b = 0.0;
+            } else if (wavelength >= 645 && wavelength <= 780) {
+                r = 1.0; g = 0.0; b = 0.0;
+            } else {
+                r = 0.5; g = 0.5; b = 0.5;
+            }
+
+            if (wavelength >= 380 && wavelength < 420) {
+                factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+            } else if (wavelength >= 420 && wavelength < 701) {
+                factor = 1.0;
+            } else if (wavelength >= 701 && wavelength <= 780) {
+                factor = 0.3 + 0.7 * (780 - wavelength) / (780 - 701);
+            } else {
+                factor = 0.0;
+            }
+
+            const R = Math.round(r * factor * 255);
+            const G = Math.round(g * factor * 255);
+            const B = Math.round(b * factor * 255);
+            return `rgb(${R}, ${G}, ${B})`;
+        }
+
+        // --- 메인 애니메이션 루프 (실시간 물리 계산) ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!galaxyPos || !earthPos || !velocityDir || !scene || !camera || !renderer) return;
+
+            // 1. 은하 시간당 변위 운동
+            const simTimeFactor = 0.00015; 
+            const deltaPos = velocityDir.clone().multiplyScalar(speed * simTimeFactor);
+            galaxyPos.add(deltaPos);
+
+            // 2. 척도(Scale) 자동 조절 및 초점 추적
+            const distance = earthPos.distanceTo(galaxyPos);
+            const optimalRadius = Math.max(24, distance * 1.5);
+            
+            cameraRadius += (optimalRadius - cameraRadius) * 0.05;
+            updateCameraPosition();
+
+            // 은하 및 고유 객체들의 위치 동기화
+            galaxy.position.copy(galaxyPos);
+            galaxy.rotation.y += 0.01; 
+
+            // 3. 시선속도($v_r$) 실시간 계산
+            const lineVector = new THREE.Vector3().subVectors(galaxyPos, earthPos);
+            const sightUnitVector = lineVector.clone().normalize();
+            const velocityVector = velocityDir.clone().multiplyScalar(speed);
+            const radialSpeedValue = velocityVector.dot(sightUnitVector);
+
+            // 4. 도플러 편이율 및 관측 파장 계산
+            const redshiftZ = radialSpeedValue / LIGHT_SPEED;
+            const observedWavelength = ORIGINAL_WAVELENGTH * (1 + redshiftZ);
+
+            // 5. 점선 시선선 갱신
+            const points = [earthPos, galaxyPos];
+            lineOfSight.geometry.setFromPoints(points);
+            lineOfSight.geometry.attributes.position.needsUpdate = true;
+            lineOfSight.computeLineDistances();
+
+            // 6. 속도 방향 벡터 가이드 화살표 갱신
+            velocityArrow.position.copy(galaxyPos);
+            velocityArrow.setDirection(velocityDir);
+
+            // 7. 입체 도플러 구면 파동 방출 연출
+            waveTimer++;
+            if (waveTimer >= waveEmissionInterval) {
+                waveTimer = 0;
+                
+                const waveGeom = new THREE.RingGeometry(0.15, 0.2, 32);
+                const waveColorStr = wavelengthToColor(observedWavelength);
+                const threeColor = new THREE.Color(waveColorStr);
+
+                const waveMat = new THREE.MeshBasicMaterial({
+                    color: threeColor,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const waveMesh = new THREE.Mesh(waveGeom, waveMat);
+                waveMesh.position.copy(galaxyPos);
+                waveMesh.lookAt(camera.position);
+
+                scene.add(waveMesh);
+                waveCircles.push({
+                    mesh: waveMesh,
+                    size: 0.15,
+                    maxSize: 22,
+                    opacity: 0.8
+                });
+            }
+
+            // 구면파 전개 및 오파시티 페이드아웃
+            for (let i = waveCircles.length - 1; i >= 0; i--) {
+                const w = waveCircles[i];
+                w.size += 0.07; 
+                w.opacity -= 0.005; 
+                
+                w.mesh.scale.set(w.size, w.size, 1);
+                w.mesh.material.opacity = w.opacity;
+
+                if (w.opacity <= 0 || w.size >= w.maxSize) {
+                    scene.remove(w.mesh);
+                    waveCircles.splice(i, 1);
+                }
+            }
+
+            // 8. 2D 상태 대시보드 데이터 연동
+            updateUIPanel(speed, radialSpeedValue, observedWavelength, redshiftZ);
+
+            // 최종 렌더링
+            renderer.render(scene, camera);
+        }
+
+        // --- 2D 스펙트럼 및 관측 대시보드 갱신 함수 ---
+        function updateUIPanel(totalSpeed, rSpeed, obsWavelength, z) {
+            valTotalSpeed.innerHTML = `<span class="text-blue-400 font-extrabold">${totalSpeed.toLocaleString()}</span> km/s <span class="text-[10px] text-slate-500">(${(totalSpeed/LIGHT_SPEED).toFixed(3)}c)</span>`;
+            
+            const absRSpeed = Math.abs(rSpeed);
+            if (totalSpeed === 0) {
+                valRadialSpeed.textContent = "0 km/s (정지)";
+                valRadialSpeed.className = "text-sm font-mono font-bold text-slate-400";
+            } else if (rSpeed > 0.01) {
+                valRadialSpeed.innerHTML = `<i class="fa-solid fa-arrow-right-from-bracket mr-1 text-red-400"></i> 멀어짐 +${Math.round(absRSpeed).toLocaleString()} km/s`;
+                valRadialSpeed.className = "text-sm font-mono font-bold text-red-400";
+            } else if (rSpeed < -0.01) {
+                valRadialSpeed.innerHTML = `<i class="fa-solid fa-arrow-right-to-bracket mr-1 text-blue-400"></i> 가까워짐 -${Math.round(absRSpeed).toLocaleString()} km/s`;
+                valRadialSpeed.className = "text-sm font-mono font-bold text-blue-400";
+            } else {
+                valRadialSpeed.textContent = "0 km/s (접선 운동)";
+                valRadialSpeed.className = "text-sm font-mono font-bold text-slate-300";
+            }
+
+            valObservedWavelength.textContent = `${obsWavelength.toFixed(2)} nm`;
+            const colorCode = wavelengthToColor(obsWavelength);
+            valObservedWavelength.style.color = colorCode;
+
+            valRedshiftZ.textContent = (z >= 0 ? "+" : "") + z.toFixed(6);
+
+            const startWl = 380;
+            const endWl = 780;
+            let percent = ((obsWavelength - startWl) / (endWl - startWl)) * 100;
+            percent = Math.max(0, Math.min(100, percent));
+            spectrumIndicator.style.left = `${percent}%`;
+
+            galaxyLightGlow.style.backgroundColor = colorCode;
+            galaxyLightGlow.style.boxShadow = `0 0 25px 10px ${colorCode}`;
+
+            if (totalSpeed === 0) {
+                statusCard.className = "p-4 rounded-xl border border-slate-800 bg-slate-950/50";
+                statusText.textContent = "정지 상태";
+                statusText.className = "text-lg font-extrabold tracking-tight mt-0.5 block text-slate-300";
+                statusIcon.className = "w-9 h-9 rounded-lg flex items-center justify-center bg-slate-800 text-slate-400";
+                statusIcon.innerHTML = `<i class="fa-solid fa-pause"></i>`;
+                shiftStatusBadge.textContent = "대기중";
+                shiftStatusBadge.className = "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-800 text-slate-400";
+            } else if (rSpeed > 0.01) {
+                statusCard.className = "p-4 rounded-xl border border-red-950 bg-red-950/20";
+                statusText.textContent = "적색편이 (Redshift)";
+                statusText.className = "text-lg font-extrabold tracking-tight mt-0.5 block text-red-400";
+                statusIcon.className = "w-9 h-9 rounded-lg flex items-center justify-center bg-red-900/40 text-red-400";
+                statusIcon.innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i>`;
+                shiftStatusBadge.textContent = "적색편이";
+                shiftStatusBadge.className = "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-500/25 text-red-400 border border-red-500/30";
+            } else if (rSpeed < -0.01) {
+                statusCard.className = "p-4 rounded-xl border border-blue-950 bg-blue-950/20";
+                statusText.textContent = "청색편이 (Blueshift)";
+                statusText.className = "text-lg font-extrabold tracking-tight mt-0.5 block text-blue-400";
+                statusIcon.className = "w-9 h-9 rounded-lg flex items-center justify-center bg-blue-900/40 text-blue-400";
+                statusIcon.innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i>`;
+                shiftStatusBadge.textContent = "청색편이";
+                shiftStatusBadge.className = "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-500/25 text-blue-400 border border-blue-500/30";
+            } else {
+                statusCard.className = "p-4 rounded-xl border border-emerald-950 bg-emerald-950/20";
+                statusText.textContent = "편이 없음 (접선 운동)";
+                statusText.className = "text-lg font-extrabold tracking-tight mt-0.5 block text-emerald-400";
+                statusIcon.className = "w-9 h-9 rounded-lg flex items-center justify-center bg-emerald-900/40 text-emerald-400";
+                statusIcon.innerHTML = `<i class="fa-solid fa-shuffle"></i>`;
+                shiftStatusBadge.textContent = "편이 무발생";
+                shiftStatusBadge.className = "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-500/25 text-emerald-400 border border-emerald-500/30";
+            }
+        }
+
+        // --- 초기화 시퀀스 트리거 ---
+        window.onload = function() {
+            initEvents();
+            initThreeJS();
+            animate();
+        };
+    </script>
+</body>
+</html>

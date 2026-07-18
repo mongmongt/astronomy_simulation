@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>라그랑주 포인트 및 달 궤도 진입 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        /* 우측 패널 전용 스크롤바 커스텀 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- 헤더 영역 -->
+    <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 p-2 rounded-lg text-white">
+                <i class="fa-solid fa-satellite-dish text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white">라그랑주 포인트 탐사 및 달 궤도 진입 시뮬레이터</h1>
+                <p class="text-xs text-gray-400">지구-달 삼체 문제(Three-Body Problem)와 직관적 4방향 추진 패드</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2 text-sm text-gray-400">
+            <span class="bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
+                <span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
+                자동 보호막 및 간편 항법 모드 가동 중
+            </span>
+        </div>
+    </header>
+
+    <!-- Main Content Area (Split Screen) -->
+    <div class="flex-1 flex overflow-hidden w-full min-h-0">
+        
+        <!-- 좌측: 시뮬레이터 캔버스 (최대 크기 유지) -->
+        <div class="flex-1 relative flex flex-col bg-[#030208] border-r border-gray-800 min-h-0">
+            
+            <!-- 캔버스 컨테이너 -->
+            <div id="canvasContainer" class="flex-1 w-full h-full relative overflow-hidden min-h-0">
+                <canvas id="simCanvas" class="absolute top-0 left-0 w-full h-full block cursor-crosshair"></canvas>
+                
+                <!-- 화면 안내 텍스트 -->
+                <div class="absolute bottom-4 right-4 bg-gray-950/90 backdrop-blur border border-gray-850 px-3 py-1.5 rounded-lg text-[10px] text-gray-400 pointer-events-none z-10">
+                    <i class="fa-solid fa-circle-info mr-1 text-blue-400 animate-pulse"></i> 달 근처 <b>초록색 영역(Capture Zone)</b>에서 <b>[뒤로 추진 (감속)]</b> 또는 <b>[A / ◀]</b>를 누르면 궤도에 안착합니다!
+                </div>
+            </div>
+
+            <!-- 하단 재생/정지 및 시뮬레이션 설정 바 -->
+            <div class="bg-gray-950 border-t border-gray-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4 shrink-0 z-20">
+                <div class="flex items-center space-x-3">
+                    <button id="btnPlayPause" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-lg flex items-center space-x-2 transition-all">
+                        <i id="playIcon" class="fa-solid fa-pause"></i>
+                        <span id="playText">일시정지</span>
+                    </button>
+                    <button id="btnSpeedUp" class="bg-gray-800 hover:bg-gray-700 text-gray-200 py-2.5 px-3.5 rounded-lg text-sm transition-all" title="한 프레임 진행">
+                        <i class="fa-solid fa-forward-step"></i>
+                    </button>
+                </div>
+                
+                <!-- 화면 표시 옵션 체크박스 -->
+                <div class="flex items-center space-x-6 text-sm">
+                    <label class="flex items-center space-x-2 cursor-pointer select-none">
+                        <input type="checkbox" id="chkShowVectors" checked class="w-4 h-4 rounded border-gray-700 text-blue-600 bg-gray-800 focus:ring-blue-500">
+                        <span class="text-gray-300 text-xs">속도/중력 벡터 표시</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer select-none">
+                        <input type="checkbox" id="chkShowContours" checked class="w-4 h-4 rounded border-gray-700 text-blue-600 bg-gray-800 focus:ring-blue-500">
+                        <span class="text-gray-300 text-xs">중력 등전위선 보기</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer select-none">
+                        <input type="checkbox" id="chkRotatingFrame" class="w-4 h-4 rounded border-gray-700 text-blue-600 bg-gray-800 focus:ring-blue-500">
+                        <span class="text-gray-300 text-xs">회전 좌표계 기준 보기 (L-Point 고정)</span>
+                    </label>
+                </div>
+
+                <!-- 시뮬레이션 배속 설정 -->
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs text-gray-400">시뮬레이션 배속:</span>
+                    <input id="speedSlider" type="range" min="0.1" max="5.0" step="0.1" value="1.0" class="w-32 accent-blue-500 cursor-pointer">
+                    <span id="speedValText" class="text-xs font-mono text-blue-400 w-12">1.0x</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측: 컨트롤 및 물리 이론 패널 (스크롤 가능) -->
+        <div class="w-96 bg-gray-900 overflow-y-auto flex flex-col shrink-0 border-l border-gray-800">
+            
+            <!-- 실시간 항법 데이터 스트림 패널 -->
+            <div class="p-6 border-b border-gray-800 bg-gray-950/40">
+                <h2 class="text-sm font-semibold tracking-wide text-gray-400 uppercase mb-3">실시간 항법 데이터</h2>
+                <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-xs space-y-2.5">
+                    <div class="flex justify-between items-center border-b border-gray-900 pb-1.5">
+                        <span class="text-gray-400">기준 좌표계:</span>
+                        <span id="coordSystemText" class="text-indigo-400 font-bold text-[10px] bg-indigo-950 px-2 py-0.5 rounded border border-indigo-900">INERTIAL FRAME (지구 중심 공전계)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">지구-우주선 거리:</span>
+                        <span id="distEarthText" class="font-mono text-blue-400 font-semibold">0.00 km</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">달-우주선 거리:</span>
+                        <span id="distMoonText" class="font-mono text-yellow-400 font-semibold">0.00 km</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">우주선 속력 (공전기준):</span>
+                        <span id="shipSpeedText" class="font-mono text-green-400 font-semibold">0.00 km/s</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">남은 연료 잔량:</span>
+                        <div class="w-28 bg-gray-800 h-3 rounded overflow-hidden relative self-center">
+                            <div id="fuelBar" class="bg-green-500 h-full w-full transition-all duration-100"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center pt-1 border-t border-gray-900">
+                        <span class="text-gray-400">궤도 안착 현황:</span>
+                        <span id="orbitStatusText" class="font-bold text-gray-500 text-xs">대기 중</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 우주선 항법 추진 제어 패드 (사이드바에 깔끔하게 최적화 배치) -->
+            <div class="p-6 border-b border-gray-800 bg-gray-950/30 flex flex-col items-center">
+                <span class="text-xs text-gray-400 font-bold mb-4 uppercase tracking-wider">우주선 항법 추진 제어 패드</span>
+                
+                <div class="relative w-40 h-40 flex items-center justify-center bg-gray-950/60 rounded-full border border-gray-800 p-2 shadow-inner">
+                    <!-- 밖으로 (Radial Out) -->
+                    <button id="btnRadialOut" class="absolute top-2 w-12 h-12 bg-gray-800 hover:bg-gray-700 active:bg-blue-600 rounded-xl flex flex-col items-center justify-center transition-all text-white border border-gray-700 shadow-md" title="지구 바깥 우주 방향으로 이동 (W / ▲)">
+                        <i class="fa-solid fa-chevron-up text-xs"></i>
+                        <span class="text-[8px] mt-0.5 font-bold">밖으로</span>
+                    </button>
+                    
+                    <!-- 안으로 (Radial In) -->
+                    <button id="btnRadialIn" class="absolute bottom-2 w-12 h-12 bg-gray-800 hover:bg-gray-700 active:bg-blue-600 rounded-xl flex flex-col items-center justify-center transition-all text-white border border-gray-700 shadow-md" title="지구 중심 방향으로 이동 (S / ▼)">
+                        <span class="text-[8px] mb-0.5 font-bold">안으로</span>
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                    
+                    <!-- 뒤로 (Retrograde / 감속) -->
+                    <button id="btnRetrograde" class="absolute left-2 w-12 h-12 bg-teal-850 hover:bg-teal-700 active:bg-teal-600 rounded-xl flex items-center justify-center flex-col transition-all text-white border border-teal-700 shadow-md" title="공전 반대 방향 감속 / 브레이크 (A / ◀)">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-chevron-left text-xs mr-0.5"></i>
+                            <span class="text-[8px] font-bold">뒤로</span>
+                        </div>
+                        <span class="text-[7px] text-teal-300 font-normal mt-0.5">제동</span>
+                    </button>
+                    
+                    <!-- 앞으로 (Prograde / 가속) -->
+                    <button id="btnPrograde" class="absolute right-2 w-12 h-12 bg-indigo-900 hover:bg-indigo-850 active:bg-indigo-700 rounded-xl flex items-center justify-center flex-col transition-all text-white border border-indigo-700 shadow-md" title="공전 순방향 가속 (D / ▶)">
+                        <div class="flex items-center">
+                            <span class="text-[8px] font-bold mr-0.5">앞으로</span>
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </div>
+                        <span class="text-[7px] text-indigo-300 font-normal mt-0.5">가속</span>
+                    </button>
+
+                    <!-- 중앙 코어 데코레이션 -->
+                    <div class="w-10 h-10 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center text-gray-400">
+                        <i class="fa-solid fa-rocket text-sm animate-pulse"></i>
+                    </div>
+                </div>
+
+                <!-- 즉시 초기화 버튼 -->
+                <button id="btnResetShip" class="mt-4 w-full py-2 bg-gray-950 hover:bg-gray-800 active:bg-yellow-600 rounded-xl text-xs font-bold text-gray-400 hover:text-white border border-gray-800 transition-all flex items-center justify-center space-x-1.5 shadow-md">
+                    <i class="fa-solid fa-undo"></i>
+                    <span>우주선 초기 상태로 리셋</span>
+                </button>
+            </div>
+
+            <!-- 자동 궤도 안착 컴퓨터 어시스트 -->
+            <div class="p-6 border-b border-gray-800 bg-indigo-950/20">
+                <h2 class="text-sm font-semibold tracking-wide text-indigo-400 uppercase mb-3 flex items-center">
+                    <i class="fa-solid fa-microchip mr-2 animate-pulse"></i>
+                    <span>달 안착 자율 제어 컴퓨터</span>
+                </h2>
+                <div class="bg-gray-950 p-4 rounded-xl border border-indigo-900/40 text-xs space-y-3">
+                    <label class="flex items-center justify-between cursor-pointer select-none">
+                        <div class="flex flex-col pr-2">
+                            <span class="text-gray-200 font-bold">자동 감속 안착 어시스트</span>
+                            <span class="text-[10px] text-gray-500">안착 구역 도달 시 자동으로 미세 제동을 작동시켜 즉시 안착시킵니다.</span>
+                        </div>
+                        <input type="checkbox" id="chkAutoAssist" checked class="w-5 h-5 rounded border-indigo-700 text-indigo-600 bg-gray-800 focus:ring-indigo-500">
+                    </label>
+                </div>
+            </div>
+
+            <!-- 라그랑주 포인트 워프 프리셋 버튼 그룹 -->
+            <div class="p-6 border-b border-gray-800">
+                <h2 class="text-sm font-semibold tracking-wide text-gray-400 uppercase mb-3">라그랑주 포인트 워프 (프리셋)</h2>
+                <div class="grid grid-cols-5 gap-1.5 mb-4">
+                    <button onclick="warpToLagrange(1)" class="lagrange-btn py-2.5 px-0.5 rounded-lg text-center bg-gray-800 border border-gray-700 hover:border-blue-500 text-xs font-bold text-blue-400 hover:bg-gray-700 transition-all flex flex-col items-center">
+                        <span>L1</span>
+                        <span class="text-[8px] text-gray-500 font-normal mt-0.5">내측균형</span>
+                    </button>
+                    <button onclick="warpToLagrange(2)" class="lagrange-btn py-2.5 px-0.5 rounded-lg text-center bg-gray-800 border border-gray-700 hover:border-blue-500 text-xs font-bold text-blue-400 hover:bg-gray-700 transition-all flex flex-col items-center">
+                        <span>L2</span>
+                        <span class="text-[8px] text-gray-500 font-normal mt-0.5">달너머</span>
+                    </button>
+                    <button onclick="warpToLagrange(3)" class="lagrange-btn py-2.5 px-0.5 rounded-lg text-center bg-gray-800 border border-gray-700 hover:border-blue-500 text-xs font-bold text-blue-400 hover:bg-gray-700 transition-all flex flex-col items-center">
+                        <span>L3</span>
+                        <span class="text-[8px] text-gray-500 font-normal mt-0.5">지구건너</span>
+                    </button>
+                    <button onclick="warpToLagrange(4)" class="lagrange-btn py-2.5 px-0.5 rounded-lg text-center bg-gray-800 border border-gray-700 hover:border-blue-500 text-xs font-bold text-blue-400 hover:bg-gray-700 transition-all flex flex-col items-center">
+                        <span>L4</span>
+                        <span class="text-[8px] text-gray-500 font-normal mt-0.5">선행 60°</span>
+                    </button>
+                    <button onclick="warpToLagrange(5)" class="lagrange-btn py-2.5 px-0.5 rounded-lg text-center bg-gray-800 border border-gray-700 hover:border-blue-500 text-xs font-bold text-blue-400 hover:bg-gray-700 transition-all flex flex-col items-center">
+                        <span>L5</span>
+                        <span class="text-[8px] text-gray-500 font-normal mt-0.5">후행 60°</span>
+                    </button>
+                </div>
+                <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-xs">
+                    <div class="font-bold text-white mb-1.5" id="lagrangeTitle">포인트를 선택해 보세요</div>
+                    <p class="text-gray-400 leading-relaxed" id="lagrangeDesc">지구와 달 사이의 완벽한 물리적 힘의 평형 지점들을 탐색합니다. 각 버튼을 누르면 해당 좌표에 우주선이 정지 상태로 배치됩니다.</p>
+                </div>
+            </div>
+
+            <!-- 개편된 키보드 조작 가이드 -->
+            <div class="p-6 border-b border-gray-800 bg-gray-950/20">
+                <h2 class="text-sm font-semibold tracking-wide text-gray-400 uppercase mb-3">키보드 4방향 추진 단축키</h2>
+                <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-xs space-y-2.5">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">공전 앞으로 가속 추진:</span>
+                        <div class="space-x-1">
+                            <kbd class="px-2 py-0.5 bg-gray-800 border border-gray-700 rounded text-white font-mono font-bold">▶</kbd>
+                            <kbd class="px-2 py-0.5 bg-gray-850 border border-gray-700 rounded text-gray-300 font-mono font-bold">D</kbd>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">공전 뒤로 제동 감속:</span>
+                        <div class="space-x-1">
+                            <kbd class="px-2 py-0.5 bg-gray-800 border border-gray-700 rounded text-white font-mono font-bold">◀</kbd>
+                            <kbd class="px-2 py-0.5 bg-gray-850 border border-gray-700 rounded text-gray-300 font-mono font-bold">A</kbd>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">안쪽으로 추진 (지구행):</span>
+                        <div class="space-x-1">
+                            <kbd class="px-2 py-0.5 bg-gray-800 border border-gray-700 rounded text-white font-mono font-bold">▼</kbd>
+                            <kbd class="px-2 py-0.5 bg-gray-850 border border-gray-700 rounded text-gray-300 font-mono font-bold">S</kbd>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">바깥쪽으로 추진 (우주행):</span>
+                        <div class="space-x-1">
+                            <kbd class="px-2 py-0.5 bg-gray-800 border border-gray-700 rounded text-white font-mono font-bold">▲</kbd>
+                            <kbd class="px-2 py-0.5 bg-gray-850 border border-gray-700 rounded text-gray-300 font-mono font-bold">W</kbd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 미션 및 시험용 발사 시나리오 선택 영역 -->
+            <div class="p-6 border-b border-gray-800">
+                <h2 class="text-sm font-semibold tracking-wide text-gray-400 uppercase mb-3">자동 보호 장치 & 미션</h2>
+                <div class="space-y-4">
+                    <div class="p-4 bg-teal-950/30 border border-teal-900/50 rounded-xl">
+                        <div class="flex items-start space-x-3">
+                            <i class="fa-solid fa-shield-halved text-teal-400 mt-0.5 text-sm"></i>
+                            <div class="text-xs space-y-1">
+                                <span class="font-bold text-teal-300">달 궤도 안착 공략 요령:</span>
+                                <p class="text-gray-300 leading-relaxed">
+                                    새로운 항법 시스템은 아주 쉽습니다. 우주선이 초록색 원에 가깝게 비행할 때 <b>[뒤로 제동]</b> 버튼만 꾹 눌러주거나 우측의 <b>[자동 제동 안착 어시스트]</b>를 켜놓으면, 물리 엔진이 안전하고 부드러운 달 원형 궤도로 우주선을 포획시켜 줍니다!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sandbox Mode Controls -->
+                    <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-3">
+                        <div class="text-xs font-bold text-gray-300">시험용 발사 시나리오</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="btnLaunchLTO" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-2 px-3 rounded-lg text-[11px] text-center transition-all">
+                                달 전이 궤도(LTO) 발사
+                            </button>
+                            <button id="btnLaunchWSB" class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold py-2 px-3 rounded-lg text-[11px] text-center transition-all">
+                                저에너지(WSB) 우회 발사
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 하단 푸터 -->
+            <div class="p-4 mt-auto bg-gray-950 border-t border-gray-800 text-center text-[10px] text-gray-500">
+                <p>© 2026 Space Dynamics Simulator. All Rights Reserved.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Block -->
+    <script>
+        // --- PHYSICS CONFIGURATION (Tuned for dynamic ~20s orbital period like Falstad) ---
+        const G = 10.0; 
+        const ME = 50000.0; // Earth Mass
+        const MM = 2500.0;  // Moon Mass
+        const R_MOON_ORBIT = 180.0; // Fit inside the canvas view
+        
+        // Barycenter calculation
+        const totalMass = ME + MM;
+        const earthX = -(MM / totalMass) * R_MOON_ORBIT; // ~ -8.57
+        const moonX = (ME / totalMass) * R_MOON_ORBIT;   // ~ 171.43
+
+        // Angular velocity of the rotating system (gives omega = 0.3 rad/s, ~21 seconds per orbit)
+        const omega = Math.sqrt((G * totalMass) / Math.pow(R_MOON_ORBIT, 3));
+
+        // State variables
+        let isRunning = true;
+        let showVectors = true;
+        let showContours = true; 
+        let rotatingFrame = false; // Starts in Inertial frame (Inertial/Co-rotating)
+        let timeMultiplier = 1.0;
+        let animationFrameId = null;
+
+        // Force Shield Visual Timer (For animating protective barriers)
+        let earthShieldAlpha = 0;
+        let moonShieldAlpha = 0;
+
+        // 🚀 개편된 조이스틱 추진 제어 상태 변수 (글로벌 정의)
+        let isRadialOutActive = false;
+        let isRadialInActive = false;
+        let isProgradeActive = false;
+        let isRetrogradeActive = false;
+
+        // Ship State
+        const INITIAL_FUEL = 100.0;
+        let ship = {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            angle: 0, 
+            thrust: 0.1,
+            fuel: INITIAL_FUEL,
+            trail: [],
+            isCaptured: false
+        };
+
+        let systemAngle = 0;
+
+        // Canvas Setup
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+
+        function resizeCanvas() {
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 600;
+            
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width;
+                canvas.height = height;
+            }
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Calculate Lagrange Points
+        function calculateLagrangePoints() {
+            const mu = MM / totalMass;
+            
+            // Collinear Points
+            let r1 = R_MOON_ORBIT * (Math.pow(mu / 3, 1/3));
+            let xL1 = moonX - r1; 
+
+            let r2 = R_MOON_ORBIT * (Math.pow(mu / 3, 1/3));
+            let xL2 = moonX + r2;
+
+            let r3 = R_MOON_ORBIT * (1 - (7/12) * mu);
+            let xL3 = earthX - r3;
+
+            // Triangular Points (L4 / L5)
+            const xL4 = earthX + R_MOON_ORBIT * 0.5;
+            const yL4 = -R_MOON_ORBIT * Math.sin(Math.PI/3);
+
+            const xL5 = earthX + R_MOON_ORBIT * 0.5;
+            const yL5 = R_MOON_ORBIT * Math.sin(Math.PI/3);
+
+            return {
+                L1: { x: xL1, y: 0 },
+                L2: { x: xL2, y: 0 },
+                L3: { x: xL3, y: 0 },
+                L4: { x: xL4, y: yL4 },
+                L5: { x: xL5, y: yL5 }
+            };
+        }
+
+        const lagrangePointsInfo = {
+            1: {
+                name: "제 1 라그랑주점 (L1)",
+                desc: "지구와 달 사이에 일직선상으로 존재하며 중력이 상쇄되는 지점입니다. 우주선이 이 주변에서 타원으로 부드럽게 맴보는 원운동(리사주 기동)을 하다가 삼체역학의 불균형으로 서서히 지구/달로 흘러 내려가기 시작합니다."
+            },
+            2: {
+                name: "제 2 라그랑주점 (L2)",
+                desc: "달 너머 반대편 뒤에 위치한 균형점입니다. 주변을 원운동하다가 중력 가속에 의해 달 뒷면 방향 혹은 먼 우주 바깥으로 드리프트해 나가게 됩니다."
+            },
+            3: {
+                name: "제 3 라그랑주점 (L3)",
+                desc: "지구 뒤편 멀리 달 궤도 반대편 일직선에 존재합니다. 중력과 원심력이 약하게 잡히는 안장점으로 기동하다 이탈 시 지구의 영향력에 세차게 사로잡힙니다."
+            },
+            4: {
+                name: "제 4 라그랑주점 (L4)",
+                desc: "달 공전 궤도 앞의 60도 방향 정삼각형 정점에 위치합니다. 이 지점은 강력한 안정성을 지녀 원운동을 시작하면 궤도를 완전히 이탈하지 않고 그 주변을 무한히 도는 올챙이(Tadpole) 기동에 고정됩니다."
+            },
+            5: {
+                name: "제 5 라그랑주점 (L5)",
+                desc: "달 공전 궤도 뒤의 60도 방향 정삼각형 정점에 위치합니다. L4와 마찬가지로 안정하여, 별도 엔진 추진 없이도 주변에서 영원히 미끄러져 돌며 춤추는 안정적인 상호작용을 관찰할 수 있습니다."
+            }
+        };
+
+        // Warp spaceship to Lagrange Point and initialize perfect stationary orbit in rotating frame!
+        function warpToLagrange(index) {
+            const points = calculateLagrangePoints();
+            let target = null;
+            if (index === 1) target = points.L1;
+            else if (index === 2) target = points.L2;
+            else if (index === 3) target = points.L3;
+            else if (index === 4) target = points.L4;
+            else if (index === 5) target = points.L5;
+
+            if (target) {
+                // [L4 궤도이탈 방지 조치]: 회전 좌표계 기준 완벽한 평형 상태로 배치하여 궤도 날아감 현상을 원천 방지합니다.
+                ship.x = target.x;
+                ship.y = target.y;
+                ship.vx = 0; 
+                ship.vy = 0;
+                
+                ship.fuel = INITIAL_FUEL;
+                ship.trail = [];
+                ship.isCaptured = false;
+
+                document.getElementById('lagrangeTitle').innerText = lagrangePointsInfo[index].name;
+                document.getElementById('lagrangeDesc').innerText = lagrangePointsInfo[index].desc;
+                
+                document.querySelectorAll('.lagrange-btn').forEach((btn, idx) => {
+                    if (idx === (index - 1)) {
+                        btn.classList.add('bg-blue-900', 'border-blue-500');
+                    } else {
+                        btn.classList.remove('bg-blue-900', 'border-blue-500');
+                    }
+                });
+            }
+        }
+
+        // Action Launchers (Tuned speeds to match scaled-up gravity and prevent crashes)
+        function launchLTO() {
+            // [지구 충돌 버그 해결] 지구 반사막 한계선(26px)과 겹치지 않도록 안전 영역인 40px 고도에서 사선 발사되도록 스폰 변경
+            ship.x = earthX + 40; 
+            ship.y = 0;
+            ship.vx = 0.0;
+            // 지구 추락력을 사전에 극복할 수 있도록 타원형 궤적 속도(-142.0) 정교화
+            ship.vy = -142.0; 
+            ship.trail = [];
+            ship.fuel = INITIAL_FUEL;
+            ship.isCaptured = false;
+
+            document.getElementById('lagrangeTitle').innerText = "달 전이 궤도 (LTO) 자동 발사";
+            document.getElementById('lagrangeDesc').innerText = "지구에서 안전하게 이륙하여 달 궤도로 솟구치는 정교한 전이 궤도입니다. 지구 중력 보호막 충돌 현상을 예방하도록 40px 안전 궤도 고도에서 항행을 개시합니다.";
+        }
+
+        function launchWSB() {
+            ship.x = earthX + 15;
+            ship.y = 120;
+            ship.vx = -45.0;
+            ship.vy = -75.0;
+            ship.trail = [];
+            ship.fuel = INITIAL_FUEL;
+            ship.isCaptured = false;
+
+            document.getElementById('lagrangeTitle').innerText = "저에너지 우회 궤도 (WSB)";
+            document.getElementById('lagrangeDesc').innerText = "지구에서 비스듬히 날아올라 지구와 달의 합산 중력 경계면을 타며 부드럽게 달의 품 안으로 포획되도록 속도를 설계한 에너지 고효율 우회 비행선로입니다.";
+        }
+
+        function resetShip() {
+            launchLTO();
+        }
+
+        // User Click on Canvas to reposition Ship
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = Math.min(canvas.width, canvas.height) / 500;
+
+            const physX = (clickX - centerX) / scale;
+            const physY = (clickY - centerY) / scale;
+
+            if (rotatingFrame) {
+                ship.x = physX;
+                ship.y = physY;
+            } else {
+                const cosS = Math.cos(-systemAngle);
+                const sinS = Math.sin(-systemAngle);
+                ship.x = physX * cosS - physY * sinS;
+                ship.y = physX * sinS + physY * cosS;
+            }
+
+            // Automatically add a small kick velocity so it interacts dynamically immediately
+            ship.vx = 20.0;
+            ship.vy = -20.0;
+            ship.trail = [];
+            ship.isCaptured = false;
+        });
+
+        // Effective Potential in Rotating system
+        function getEffectivePotential(x, y) {
+            const dxE = x - earthX;
+            const dyE = y;
+            const rE = Math.sqrt(dxE*dxE + dyE*dyE);
+
+            const dxM = x - moonX;
+            const dyM = y;
+            const rM = Math.sqrt(dxM*dxM + dyM*dyM);
+
+            const rBary = Math.sqrt(x*x + y*y);
+
+            let pot = 0;
+            if (rE > 5) pot -= (G * ME) / rE;
+            if (rM > 5) pot -= (G * MM) / rM;
+            pot -= 0.5 * omega * omega * (rBary * rBary);
+
+            return pot;
+        }
+
+        // PHYSICS ENGINE INTEGRATION WITH FORCE SHIELD COLLISION PREVENTION
+        function updatePhysics(dt) {
+            if (!isRunning) return;
+
+            systemAngle += omega * dt;
+            if (systemAngle > Math.PI * 2) systemAngle -= Math.PI * 2;
+
+            // Reduce visual shield alpha decay over time
+            if (earthShieldAlpha > 0) earthShieldAlpha -= 2.0 * dt;
+            if (moonShieldAlpha > 0) moonShieldAlpha -= 2.0 * dt;
+
+            const x = ship.x;
+            const y = ship.y;
+            let vx = ship.vx;
+            let vy = ship.vy;
+
+            // Distances to bodies
+            const dxE = x - earthX;
+            const dyE = y;
+            const rE = Math.sqrt(dxE*dxE + dyE*dyE);
+
+            const dxM = x - moonX;
+            const dyM = y;
+            const rM = Math.sqrt(dxM*dxM + dyM*dyM);
+
+            // -------------------------------------------------------------
+            // 🛡️ 지구 보호막 반사 (Earth Force Shield Bounce)
+            // -------------------------------------------------------------
+            const earthShieldRadius = 26; // 지구 렌더링 반지름(20)보다 넓은 보호구역
+            if (rE < earthShieldRadius) {
+                earthShieldAlpha = 1.0; // 보호막 파동 전개
+                
+                // 중심 방향 및 법선 벡터 연산
+                const nx = dxE / rE;
+                const ny = dyE / rE;
+
+                // 회전 좌표계에서의 상대 속도 반사
+                const dot = ship.vx * nx + ship.vy * ny;
+                if (dot < 0) { // 내부로 침입 중일 때만 바깥으로 반사
+                    const elasticity = 0.65; // 반사 계수 (선체 충격 완화)
+                    ship.vx = ship.vx - (1 + elasticity) * dot * nx;
+                    ship.vy = ship.vy - (1 + elasticity) * dot * ny;
+                }
+                
+                // [지구 겹침 끼임 완벽 해결] 반사 즉시 한계 반경보다 바깥 안전 영역으로 우주선 위치 클램프 조절
+                ship.x = earthX + nx * (earthShieldRadius + 2.0);
+                ship.y = ny * (earthShieldRadius + 2.0);
+                return;
+            }
+
+            // -------------------------------------------------------------
+            // 🛡️ 달 보호막 반사 (Moon Force Shield Bounce)
+            // -------------------------------------------------------------
+            const moonShieldRadius = 15; // 달 렌더링 반지름(10)보다 넓은 보호구역
+            if (rM < moonShieldRadius) {
+                moonShieldAlpha = 1.0; // 보호막 파동 전개
+
+                const nx = dxM / rM;
+                const ny = dyM / rM;
+
+                const dot = ship.vx * nx + ship.vy * ny;
+                if (dot < 0) {
+                    const elasticity = 0.65;
+                    ship.vx = ship.vx - (1 + elasticity) * dot * nx;
+                    ship.vy = ship.vy - (1 + elasticity) * dot * ny;
+                }
+
+                ship.x = moonX + nx * (moonShieldRadius + 2.0);
+                ship.y = ny * (moonShieldRadius + 2.0);
+                return;
+            }
+
+            // -------------------------------------------------------------
+            // 표준 천체 중력 가속도 연산
+            // -------------------------------------------------------------
+            let ax_g = 0;
+            let ay_g = 0;
+
+            const fE = -(G * ME) / (rE * rE * rE);
+            ax_g += fE * dxE;
+            ay_g += fE * dyE;
+
+            const fM = -(G * MM) / (rM * rM * rM);
+            ax_g += fM * dxM;
+            ay_g += fM * dyM;
+
+            // 회전 좌표계 효과 (원심력 & 코리올리 힘)
+            const ax_cent = omega * omega * x;
+            const ay_cent = omega * omega * y;
+
+            const ax_cor = 2 * omega * vy;
+            const ay_cor = -2 * omega * vx;
+
+            let ax = ax_g + ax_cent + ax_cor;
+            let ay = ay_g + ay_cent + ay_cor;
+
+            // -------------------------------------------------------------
+            // 🚀 4방향 추진 물리 계산 (앞, 뒤, 안, 밖)
+            // -------------------------------------------------------------
+            let thrustForce = 450.0;
+            let appliedThrustX = 0;
+            let appliedThrustY = 0;
+            let isThrustingNow = false;
+
+            if (ship.fuel > 0) {
+                const distToBarycenter = Math.sqrt(x*x + y*y) || 1;
+                
+                // 1. 안/밖 (Radial Vector): 지구 중심(원점) 방향
+                const radialX = x / distToBarycenter;
+                const radialY = y / distToBarycenter;
+
+                // 2. 앞/뒤 (Tangential Vector / Prograde): 반시계 방향 탄젠트
+                const tangentX = -y / distToBarycenter;
+                const tangentY = x / distToBarycenter;
+
+                // W / ▲ : 밖으로 추진
+                if (activeKeys['ArrowUp'] || activeKeys['w'] || activeKeys['W'] || isRadialOutActive) {
+                    appliedThrustX += radialX * thrustForce;
+                    appliedThrustY += radialY * thrustForce;
+                    ship.angle = Math.atan2(radialY, radialX); // 기수를 추진 방향으로 정렬
+                    isThrustingNow = true;
+                }
+                // S / ▼ : 안으로 추진
+                if (activeKeys['ArrowDown'] || activeKeys['s'] || activeKeys['S'] || isRadialInActive) {
+                    appliedThrustX -= radialX * thrustForce;
+                    appliedThrustY -= radialY * thrustForce;
+                    ship.angle = Math.atan2(-radialY, -radialX);
+                    isThrustingNow = true;
+                }
+                // D / ▶ : 앞으로 가속 추진 (공전 순방향)
+                if (activeKeys['ArrowRight'] || activeKeys['d'] || activeKeys['D'] || isProgradeActive) {
+                    appliedThrustX += tangentX * thrustForce;
+                    appliedThrustY += tangentY * thrustForce;
+                    ship.angle = Math.atan2(tangentY, tangentX);
+                    isThrustingNow = true;
+                }
+                // A / ◀ : 뒤로 제동 감속 (공전 역방향)
+                if (activeKeys['ArrowLeft'] || activeKeys['a'] || activeKeys['A'] || isRetrogradeActive) {
+                    appliedThrustX -= tangentX * thrustForce;
+                    appliedThrustY -= tangentY * thrustForce;
+                    ship.angle = Math.atan2(-tangentY, -tangentX);
+                    isThrustingNow = true;
+                }
+
+                if (isThrustingNow) {
+                    ax += appliedThrustX;
+                    ay += appliedThrustY;
+                    ship.fuel -= 15 * dt;
+                    if (ship.fuel < 0) ship.fuel = 0;
+                }
+            }
+
+            // 만약 추진 중이 아니라면 기수를 자연스러운 운동 진행 방향으로 유연하게 정렬
+            if (!isThrustingNow) {
+                ship.angle = Math.atan2(vy, vx);
+            }
+
+            // -------------------------------------------------------------
+            // 🤖 자율 안착 어시스트 컴퓨터 (Auto-Capture Assist)
+            // -------------------------------------------------------------
+            const isAutoAssistEnabled = document.getElementById('chkAutoAssist')?.checked;
+            const moonRelSpeedSq = vx * vx + vy * vy;
+            const relativePotential = -(G * MM) / rM;
+            const relativeKinetic = 0.5 * (moonRelSpeedSq);
+            const relativeEnergy = relativeKinetic + relativePotential;
+
+            if (isAutoAssistEnabled && rM < 45 && relativeEnergy >= 12.0 && ship.fuel > 0) {
+                // 안착할 때까지 똑똑하게 제동 역분사를 알아서 작동시킴
+                const speed = Math.sqrt(vx*vx + vy*vy);
+                if (speed > 0.01) {
+                    ax -= (vx / speed) * 800.0; // 매우 강력한 최적 제동력 가동
+                    ay -= (vy / speed) * 800.0;
+                    ship.fuel -= 12 * dt;
+                }
+            }
+
+            // 오일러 수치 적분 연산
+            ship.vx += ax * dt;
+            ship.vy += ay * dt;
+            ship.x += ship.vx * dt;
+            ship.y += ship.vy * dt;
+
+            // 실시간 대시보드 계측 데이터 반영
+            document.getElementById('distEarthText').innerText = `${(rE * 2135).toFixed(0)} km`;
+            document.getElementById('distMoonText').innerText = `${(rM * 2135).toFixed(0)} km`;
+            const currentSpeedKms = (Math.sqrt(vx*vx + vy*vy) * 0.08).toFixed(2);
+            document.getElementById('shipSpeedText').innerText = `${currentSpeedKms} km/s`;
+
+            // [추가] 달 궤도에 안착한 상태(Captured)를 영구적으로 유지하기 위한 궤도 락-인 및 보정 엔진
+            if (ship.isCaptured) {
+                // 달 중심 기준 위치 각도 계산
+                const captureAngle = Math.atan2(ship.y, ship.x - moonX);
+                // 안정적인 저궤도 속도 벡터 및 원형 궤적 강제 보정 (이탈 차단)
+                const stableSpeed = 15.0; 
+                ship.vx = -stableSpeed * Math.sin(captureAngle);
+                ship.vy = stableSpeed * Math.cos(captureAngle);
+                // 달 반지름 기준 28px 상공에 궤도 락 고정
+                ship.x = moonX + 28 * Math.cos(captureAngle);
+                ship.y = 28 * Math.sin(captureAngle);
+            }
+
+            // 실시간 궤적 히스토리 어레이에 추가
+            ship.trail.push({x: ship.x, y: ship.y, rotAngle: systemAngle});
+            if (ship.trail.length > 1200) {
+                ship.trail.shift();
+            }
+            
+            // 연료 바 인디케이터
+            const fuelPct = (ship.fuel / INITIAL_FUEL) * 100;
+            const fuelBar = document.getElementById('fuelBar');
+            if (fuelBar) {
+                fuelBar.style.width = `${fuelPct}%`;
+                if (fuelPct > 50) {
+                    fuelBar.className = "bg-green-500 h-full transition-all duration-100";
+                } else if (fuelPct > 20) {
+                    fuelBar.className = "bg-yellow-500 h-full transition-all duration-100";
+                } else {
+                    fuelBar.className = "bg-red-500 h-full transition-all duration-100 animate-pulse";
+                }
+            }
+
+            const orbitStatus = document.getElementById('orbitStatusText');
+            if (orbitStatus) {
+                // 달 궤도 근처에서 충분히 감속한 경우 포획 판정 (판정 최적화)
+                if (ship.isCaptured || (rM < 45 && relativeEnergy < 12.0)) {
+                    orbitStatus.innerText = "안정적 궤도 안착 성공!";
+                    orbitStatus.className = "font-bold text-green-400 text-xs bg-green-950 px-2.5 py-1 rounded border border-green-900 animate-bounce";
+                    ship.isCaptured = true; // 락온 영구 고정화
+                } else if (rM < 45) {
+                    if (isAutoAssistEnabled) {
+                        orbitStatus.innerText = "도우미 자동 제동 작동 중!";
+                        orbitStatus.className = "font-bold text-indigo-400 text-xs bg-indigo-950 px-2.5 py-1 rounded border border-indigo-900 animate-pulse";
+                    } else {
+                        orbitStatus.innerText = "진입 구역: 감속 제동 권장!";
+                        orbitStatus.className = "font-bold text-yellow-400 text-xs bg-yellow-950 px-2.5 py-1 rounded border border-yellow-900 animate-pulse";
+                    }
+                } else {
+                    orbitStatus.innerText = "보호 실드 정상 순항 중";
+                    orbitStatus.className = "font-bold text-teal-400 text-xs bg-teal-950 px-2.5 py-1 rounded border border-teal-900";
+                }
+            }
+        }
+
+        // --- RENDER ---
+        function drawSimulation() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = Math.min(canvas.width, canvas.height) / 500;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(scale, scale);
+
+            drawSpaceGrid();
+
+            let currEarthX = earthX;
+            let currEarthY = 0;
+            let currMoonX = moonX;
+            let currMoonY = 0;
+            let angleToDrawRotated = 0;
+
+            if (!rotatingFrame) {
+                angleToDrawRotated = systemAngle;
+                currEarthX = earthX * Math.cos(systemAngle);
+                currEarthY = earthX * Math.sin(systemAngle);
+                currMoonX = moonX * Math.cos(systemAngle);
+                currMoonY = moonX * Math.sin(systemAngle);
+            }
+
+            // Draw Gravitational Contours (지구/달과 함께 실시간 회전)
+            if (showContours) {
+                drawPotentialContours(angleToDrawRotated);
+            }
+
+            // 공전 기준선
+            ctx.strokeStyle = "rgba(156, 163, 175, 0.08)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.abs(earthX), 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, 0, moonX, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // [시각화] 달 궤도 안착 가능 가이드 영역 그리기
+            ctx.save();
+            ctx.strokeStyle = "rgba(16, 185, 129, 0.25)";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(currMoonX, currMoonY, 45, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = "rgba(16, 185, 129, 0.03)";
+            ctx.fill();
+            ctx.restore();
+
+            // 라그랑주 및 궤적 그리기
+            const lPoints = calculateLagrangePoints();
+            drawLagrangePoints(lPoints, angleToDrawRotated);
+            drawShipTrail(angleToDrawRotated);
+
+            // 지구 렌더링
+            ctx.save();
+            ctx.translate(currEarthX, currEarthY);
+            ctx.rotate(systemAngle * 4); 
+            drawEarth();
+            ctx.restore();
+
+            // 달 렌더링
+            ctx.save();
+            ctx.translate(currMoonX, currMoonY);
+            ctx.rotate(systemAngle);
+            drawMoon();
+            ctx.restore();
+
+            // 🛡️ 지구 전자기 보호막 시각 이펙트 (반사 시 파동 방출)
+            if (earthShieldAlpha > 0.01) {
+                ctx.save();
+                ctx.translate(currEarthX, currEarthY);
+                ctx.strokeStyle = `rgba(45, 212, 191, ${earthShieldAlpha})`;
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = "rgba(45, 212, 191, 0.8)";
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(0, 0, 26 + (1 - earthShieldAlpha) * 15, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 가상 장벽 그리드
+                ctx.strokeStyle = `rgba(45, 212, 191, ${earthShieldAlpha * 0.25})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, 0, 26, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 🛡️ 달 전자기 보호막 시각 이펙트 (반사 시 파동 방출)
+            if (moonShieldAlpha > 0.01) {
+                ctx.save();
+                ctx.translate(currMoonX, currMoonY);
+                ctx.strokeStyle = `rgba(245, 158, 11, ${moonShieldAlpha})`;
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = "rgba(245, 158, 11, 0.8)";
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(0, 0, 15 + (1 - moonShieldAlpha) * 10, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.strokeStyle = `rgba(245, 158, 11, ${moonShieldAlpha * 0.25})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, 0, 15, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 우주선 렌더링
+            ctx.save();
+            if (rotatingFrame) {
+                ctx.translate(ship.x, ship.y);
+                ctx.rotate(ship.angle);
+            } else {
+                const rotX = ship.x * Math.cos(systemAngle) - ship.y * Math.sin(systemAngle);
+                const rotY = ship.x * Math.sin(systemAngle) + ship.y * Math.cos(systemAngle);
+                ctx.translate(rotX, rotY);
+                ctx.rotate(ship.angle + systemAngle);
+            }
+            drawShip();
+            ctx.restore();
+
+            if (showVectors) {
+                drawVectors(currEarthX, currEarthY, currMoonX, currMoonY);
+            }
+
+            ctx.restore();
+        }
+
+        function drawSpaceGrid() {
+            ctx.strokeStyle = "rgba(59, 130, 246, 0.08)";
+            ctx.lineWidth = 1;
+            const gridSpacing = 40;
+            const maxVal = 400;
+
+            for (let i = -maxVal; i <= maxVal; i += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(i, -maxVal);
+                ctx.lineTo(i, maxVal);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(-maxVal, i);
+                ctx.lineTo(maxVal, i);
+                ctx.stroke();
+            }
+        }
+
+        // 고가시성 지구 그래픽
+        function drawEarth() {
+            const radGlow = ctx.createRadialGradient(0, 0, 12, 0, 0, 35);
+            radGlow.addColorStop(0, 'rgba(59, 130, 246, 0.55)');
+            radGlow.addColorStop(1, 'rgba(59, 130, 246, 0)');
+            ctx.fillStyle = radGlow;
+            ctx.beginPath();
+            ctx.arc(0, 0, 35, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = "#1d4ed8";
+            ctx.beginPath();
+            ctx.arc(0, 0, 20, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = "#10b981";
+            ctx.beginPath();
+            ctx.arc(-5, -5, 8, 0, Math.PI*2);
+            ctx.arc(6, 4, 7, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 20, 0, Math.PI*2);
+            ctx.stroke();
+        }
+
+        // 고가시성 달 그래픽
+        function drawMoon() {
+            const radGlow = ctx.createRadialGradient(0, 0, 6, 0, 0, 20);
+            radGlow.addColorStop(0, 'rgba(234, 179, 8, 0.45)');
+            radGlow.addColorStop(1, 'rgba(234, 179, 8, 0)');
+            ctx.fillStyle = radGlow;
+            ctx.beginPath();
+            ctx.arc(0, 0, 20, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = "#9ca3af";
+            ctx.beginPath();
+            ctx.arc(0, 0, 10, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = "#4b5563";
+            ctx.beginPath();
+            ctx.arc(-3, -3, 2, 0, Math.PI*2);
+            ctx.arc(4, 3, 1.5, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        function drawShip() {
+            // 추진 불꽃 그리기 (개편된 조이스틱 추진 상태에 싱크 연동)
+            const checkThrust = activeKeys['ArrowUp'] || activeKeys['w'] || activeKeys['W'] || isRadialOutActive ||
+                               activeKeys['ArrowDown'] || activeKeys['s'] || activeKeys['S'] || isRadialInActive ||
+                               activeKeys['ArrowRight'] || activeKeys['d'] || activeKeys['D'] || isProgradeActive ||
+                               activeKeys['ArrowLeft'] || activeKeys['a'] || activeKeys['A'] || isRetrogradeActive;
+
+            if (checkThrust && ship.fuel > 0) {
+                ctx.fillStyle = "rgba(239, 68, 68, 0.95)";
+                ctx.beginPath();
+                ctx.moveTo(-10, -4);
+                ctx.lineTo(-24 - Math.random()*8, 0);
+                ctx.lineTo(-10, 4);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#38bdf8";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(12, 0);
+            ctx.lineTo(-8, -7);
+            ctx.lineTo(-4, 0);
+            ctx.lineTo(-8, 7);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawShipTrail(rotAngle) {
+            if (ship.trail.length < 2) return;
+
+            ctx.lineWidth = 2.0; 
+            ctx.beginPath();
+
+            for (let i = 0; i < ship.trail.length; i++) {
+                const pt = ship.trail[i];
+                let tx = pt.x;
+                let ty = pt.y;
+
+                if (!rotatingFrame) {
+                    const cosR = Math.cos(pt.rotAngle);
+                    const sinR = Math.sin(pt.rotAngle);
+                    tx = pt.x * cosR - pt.y * sinR;
+                    ty = pt.x * sinR + pt.y * cosR;
+                }
+
+                if (i === 0) {
+                    ctx.moveTo(tx, ty);
+                } else {
+                    ctx.lineTo(tx, ty);
+                }
+            }
+
+            const grad = ctx.createLinearGradient(ship.x, ship.y, ship.trail[0].x, ship.trail[0].y);
+            grad.addColorStop(0, "rgba(52, 211, 153, 0.95)");
+            grad.addColorStop(1, "rgba(52, 211, 153, 0.0)");
+            ctx.strokeStyle = grad;
+            ctx.stroke();
+        }
+
+        function drawLagrangePoints(points, angle) {
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "bold 11px sans-serif";
+
+            Object.entries(points).forEach(([name, pos]) => {
+                let drawX = pos.x;
+                let drawY = pos.y;
+
+                if (!rotatingFrame) {
+                    drawX = pos.x * Math.cos(angle) - pos.y * Math.sin(angle);
+                    drawY = pos.x * Math.sin(angle) + pos.y * Math.cos(angle);
+                }
+
+                const pulseSize = 3 + Math.sin(Date.now() / 200) * 0.8;
+
+                ctx.fillStyle = "rgba(56, 189, 248, 0.22)";
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, pulseSize + 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#38bdf8";
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#e0f2fe";
+                ctx.fillText(name, drawX, drawY - 13);
+            });
+        }
+
+        function drawVectors(eX, eY, mX, mY) {
+            let sX = ship.x;
+            let sY = ship.y;
+
+            if (!rotatingFrame) {
+                sX = ship.x * Math.cos(systemAngle) - ship.y * Math.sin(systemAngle);
+                sY = ship.x * Math.sin(systemAngle) + ship.y * Math.cos(systemAngle);
+            }
+
+            const vecScale = 25;
+
+            // Earth Gravity
+            const dxE = eX - sX;
+            const dyE = eY - sY;
+            const distE = Math.sqrt(dxE*dxE + dyE*dyE);
+            if (distE > 5) {
+                const fe = (G * ME) / (distE * distE);
+                const vx_e = (dxE / distE) * fe * vecScale;
+                const vy_e = (dyE / distE) * fe * vecScale;
+                drawArrow(sX, sY, sX + vx_e, sY + vy_e, "rgba(59, 130, 246, 0.85)", 2.0);
+            }
+
+            // Moon Gravity
+            const dxM = mX - sX;
+            const dyM = mY - sY;
+            const distM = Math.sqrt(dxM*dxM + dyM*dyM);
+            if (distM > 5) {
+                const fm = (G * MM) / (distM * distM);
+                const vx_m = (dxM / distM) * fm * vecScale;
+                const vy_m = (dyM / distM) * fm * vecScale;
+                drawArrow(sX, sY, sX + vx_m, sY + vy_m, "rgba(245, 158, 11, 0.85)", 2.0);
+            }
+
+            // Ship Velocity
+            let drawVx = ship.vx;
+            let drawVy = ship.vy;
+            if (!rotatingFrame) {
+                drawVx = ship.vx * Math.cos(systemAngle) - ship.vy * Math.sin(systemAngle);
+                drawVy = ship.vx * Math.sin(systemAngle) + ship.vy * Math.cos(systemAngle);
+            }
+            drawArrow(sX, sY, sX + drawVx * 20, sY + drawVy * 20, "rgba(16, 185, 129, 0.95)", 2.0);
+        }
+
+        function drawArrow(fromX, fromY, toX, toY, color, width) {
+            const headLength = 7;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = width;
+
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // [개선] Falstad 스타일 중력 등전위선 밀도를 살짝 낮추어 연산 최적화 및 시인성 극대화
+        function drawPotentialContours(rotAngle) {
+            const contours = [-7000, -6000, -5500, -5000, -4500, -4000, -3500]; // 등고선 라인을 7개로 간소화하여 쾌적하게 구성
+
+            ctx.lineWidth = 1;
+            for (let cVal of contours) {
+                ctx.strokeStyle = `rgba(139, 92, 246, ${0.1 + (cVal + 7000) * 0.00015})`;
+                ctx.beginPath();
+                
+                for (let angle = 0; angle < Math.PI * 2; angle += 0.06) { // 샘플링 정밀도를 다듬어 연산 부하 축소
+                    let r = findRadiusForPotential(earthX, 0, angle, cVal);
+                    if (r > 0) {
+                        const localX = earthX + r * Math.cos(angle);
+                        const localY = r * Math.sin(angle);
+                        
+                        let drawX = localX;
+                        let drawY = localY;
+
+                        if (!rotatingFrame) {
+                            drawX = localX * Math.cos(rotAngle) - localY * Math.sin(rotAngle);
+                            drawY = localX * Math.sin(rotAngle) + localY * Math.cos(rotAngle);
+                        }
+
+                        if (angle === 0) ctx.moveTo(drawX, drawY);
+                        else ctx.lineTo(drawX, drawY);
+                    }
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+        }
+
+        function findRadiusForPotential(originX, originY, angle, targetPot) {
+            let low = 22; 
+            let high = 300;
+            let result = -1;
+
+            for (let step = 0; step < 11; step++) {
+                let mid = (low + high) / 2;
+                let testX = originX + mid * Math.cos(angle);
+                let testY = originY + mid * Math.sin(angle);
+                let p = getEffectivePotential(testX, testY);
+
+                if (p < targetPot) {
+                    low = mid;
+                    result = mid;
+                } else {
+                    high = mid;
+                }
+            }
+            return result;
+        }
+
+        // --- INITIALIZATION ---
+        function initSimulation() {
+            launchLTO(); 
+        }
+
+        // --- INTERACTIVE EVENTS & KEYS ---
+        const activeKeys = {};
+        window.addEventListener('keydown', (e) => {
+            activeKeys[e.key] = true;
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 's', 'S', 'a', 'A', 'd', 'D', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            activeKeys[e.key] = false;
+        });
+
+        // 🚀 개편된 조이스틱 가상 버튼 인터페이스 이벤트 연동
+        const btnRadialOut = document.getElementById('btnRadialOut');
+        btnRadialOut.addEventListener('mousedown', () => isRadialOutActive = true);
+        btnRadialOut.addEventListener('mouseup', () => isRadialOutActive = false);
+        btnRadialOut.addEventListener('mouseleave', () => isRadialOutActive = false);
+        btnRadialOut.addEventListener('touchstart', (e) => { e.preventDefault(); isRadialOutActive = true; });
+        btnRadialOut.addEventListener('touchend', () => isRadialOutActive = false);
+
+        const btnRadialIn = document.getElementById('btnRadialIn');
+        btnRadialIn.addEventListener('mousedown', () => isRadialInActive = true);
+        btnRadialIn.addEventListener('mouseup', () => isRadialInActive = false);
+        btnRadialIn.addEventListener('mouseleave', () => isRadialInActive = false);
+        btnRadialIn.addEventListener('touchstart', (e) => { e.preventDefault(); isRadialInActive = true; });
+        btnRadialIn.addEventListener('touchend', () => isRadialInActive = false);
+
+        const btnPrograde = document.getElementById('btnPrograde');
+        btnPrograde.addEventListener('mousedown', () => isProgradeActive = true);
+        btnPrograde.addEventListener('mouseup', () => isProgradeActive = false);
+        btnPrograde.addEventListener('mouseleave', () => isProgradeActive = false);
+        btnPrograde.addEventListener('touchstart', (e) => { e.preventDefault(); isProgradeActive = true; });
+        btnPrograde.addEventListener('touchend', () => isProgradeActive = false);
+
+        const btnRetrograde = document.getElementById('btnRetrograde');
+        btnRetrograde.addEventListener('mousedown', () => isRetrogradeActive = true);
+        btnRetrograde.addEventListener('mouseup', () => isRetrogradeActive = false);
+        btnRetrograde.addEventListener('mouseleave', () => isRetrogradeActive = false);
+        btnRetrograde.addEventListener('touchstart', (e) => { e.preventDefault(); isRetrogradeActive = true; });
+        btnRetrograde.addEventListener('touchend', () => isRetrogradeActive = false);
+
+        document.getElementById('btnResetShip').addEventListener('click', resetShip);
+        document.getElementById('btnLaunchLTO').addEventListener('click', launchLTO);
+        document.getElementById('btnLaunchWSB').addEventListener('click', launchWSB);
+
+        // Control Panel Toggles
+        document.getElementById('chkShowVectors').addEventListener('change', (e) => showVectors = e.target.checked);
+        document.getElementById('chkShowContours').addEventListener('change', (e) => showContours = e.target.checked);
+        document.getElementById('chkRotatingFrame').addEventListener('change', (e) => {
+            rotatingFrame = e.target.checked;
+            ship.trail = [];
+            const coordText = document.getElementById('coordSystemText');
+            if (coordText) {
+                if (rotatingFrame) {
+                    coordText.innerText = "CO-ROTATING FRAME (달 위치 고정계)";
+                    coordText.className = "text-blue-400 font-bold text-[10px] bg-blue-950 px-2 py-0.5 rounded border border-blue-900";
+                } else {
+                    coordText.innerText = "INERTIAL FRAME (지구 중심 공전계)";
+                    coordText.className = "text-indigo-400 font-bold text-[10px] bg-indigo-950 px-2 py-0.5 rounded border border-indigo-900";
+                }
+            }
+        });
+
+        // Play Pause
+        const playBtn = document.getElementById('btnPlayPause');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+
+        playBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            if (isRunning) {
+                playIcon.className = "fa-solid fa-pause";
+                playText.innerText = "일시정지";
+            } else {
+                playIcon.className = "fa-solid fa-play";
+                playText.innerText = "재생하기";
+            }
+        });
+
+        // Frame Stepper
+        document.getElementById('btnSpeedUp').addEventListener('click', () => {
+            if (!isRunning) {
+                updatePhysics(0.016 * timeMultiplier);
+                drawSimulation();
+            }
+        });
+
+        // Speed Slider
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValText = document.getElementById('speedValText');
+        speedSlider.addEventListener('input', (e) => {
+            timeMultiplier = parseFloat(e.target.value);
+            speedValText.innerText = `${timeMultiplier.toFixed(1)}x`;
+        });
+
+        // --- LOOP ---
+        let lastTime = performance.now();
+        function loop(timestamp) {
+            let dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (dt > 0.1) dt = 0.1;
+
+            resizeCanvas();
+            updatePhysics(dt * timeMultiplier);
+            drawSimulation();
+
+            animationFrameId = requestAnimationFrame(loop);
+        }
+
+        // Initialize state (Starts at L1 with full display)
+        initSimulation();
+        requestAnimationFrame(loop);
+
+    </script>
+</body>
+</html>

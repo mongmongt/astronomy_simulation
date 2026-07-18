@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>주계열성 H-R도 진화 시뮬레이터 v2.0</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 대수학 스케일 커스텀 슬라이더 스타일 */
+    input[type="range"]::-webkit-slider-thumb {
+      background: #f59e0b;
+      border: 2px solid #ffffff;
+      border-radius: 9999px;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-moz-range-thumb {
+      background: #f59e0b;
+      border: 2px solid #ffffff;
+      border-radius: 9999px;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spin-slow 20s linear infinite;
+    }
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 0.25; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.1); }
+    }
+    .animate-pulse-slow {
+      animation: pulse-slow 3s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-3 md:p-6 flex flex-col justify-between select-none">
+
+  <!-- --- 탑 네비게이션 헤더 --- -->
+  <header class="flex flex-col md:flex-row justify-between items-center pb-4 mb-4 border-b border-slate-800 gap-4">
+    <div class="flex items-center gap-3">
+      <div class="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30 shadow-lg shadow-blue-500/10">
+        <!-- Compass Icon SVG -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-xl md:text-2xl font-black tracking-tight flex items-center gap-2">
+          주계열성 H-R도 진화 시뮬레이터
+          <span class="text-xs font-normal text-slate-400 bg-slate-900 border border-slate-800 py-1 px-2.5 rounded-full">v2.0 (PMS)</span>
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">성간운의 원시별 붕괴수축(Hayashi·Henyey)부터 최후까지 전단계 수치 모델</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-lg">
+      <!-- Activity Pulse Indicator -->
+      <span class="relative flex h-2 w-2">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      </span>
+      <span>전주계열 성좌 수치 연동 엔진 가동 중</span>
+    </div>
+  </header>
+
+  <!-- --- 메인 시뮬레이터 공간 --- -->
+  <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch flex-grow">
+    
+    <!-- [좌측 패널]: 컨트롤 및 수치 입력 (4컬럼) -->
+    <section class="lg:col-span-4 flex flex-col gap-4">
+      
+      <!-- 1. 슬라이더 컨트롤 박스 -->
+      <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col gap-5">
+        <h2 class="text-base font-bold flex items-center gap-2 border-b border-slate-800 pb-2 text-amber-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          항성 파라미터 초기화
+        </h2>
+        
+        <!-- 초기 질량 슬라이더 -->
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-sm font-semibold text-slate-300 font-mono">초기 질량 (M₀)</span>
+            <span id="mass-value-badge" class="text-sm font-bold text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/30">
+              1.00 M_☉
+            </span>
+          </div>
+          <input 
+            type="range" 
+            id="mass-slider"
+            min="0.1" 
+            max="60" 
+            step="0.05"
+            value="1.00"
+            class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+          />
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+            <span>적색왜성 (0.1 M☉)</span>
+            <span>태양 (1.0 M☉)</span>
+            <span>대질량 거성 (60 M☉)</span>
+          </div>
+        </div>
+
+        <!-- 현재 나이 슬라이더 -->
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-sm font-semibold text-slate-300">현재 상태 및 나이</span>
+            <span id="age-value-badge" class="text-sm font-bold text-blue-400 bg-blue-950/40 px-2 py-0.5 rounded border border-blue-800/30">
+              45.00 Myr 전 (수축 중)
+            </span>
+          </div>
+          <input 
+            type="range" 
+            id="age-slider"
+            min="-45" 
+            max="14500" 
+            step="5"
+            value="-45"
+            class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          />
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+            <span id="slider-born-label" class="text-red-400 font-semibold">원시성 탄생 (-45 Myr)</span>
+            <span class="text-emerald-400 font-bold">주계열 점화 (0.0)</span>
+            <span id="slider-end-label" class="text-slate-400">말기 (145%)</span>
+          </div>
+        </div>
+
+        <!-- 타임라인 실시간 재생 컨트롤러 -->
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/60 flex flex-col gap-3">
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-400 font-medium">시간 흐름 조작</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-slate-400">속도:</span>
+              <select 
+                id="speed-selector"
+                class="text-xs bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 text-slate-200"
+              >
+                <option value="1">0.1x (정밀 관측)</option>
+                <option value="10" selected>1x (기본)</option>
+                <option value="40">4x (고속)</option>
+                <option value="120">12x (대우주 흐름)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              id="btn-play"
+              class="flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/10"
+            >
+              <!-- Play Icon SVG -->
+              <svg id="icon-play" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <!-- Pause Icon SVG (Hidden by default) -->
+              <svg id="icon-pause" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 fill-current hidden" viewBox="0 0 24 24">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+              <span id="btn-play-text">시뮬레이션 재생</span>
+            </button>
+            <button
+              id="btn-reset"
+              title="원시성 상태로 되돌리기"
+              class="p-2 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 6.578M3 9h6V3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 별 비교 리스트 등록 -->
+      <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col gap-4 flex-grow">
+        <div class="flex justify-between items-center">
+          <h2 class="text-sm font-bold flex items-center gap-2 text-violet-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            성단 내 다중 별 분석 (비교)
+          </h2>
+          <button 
+            id="btn-add-compare"
+            class="flex items-center gap-1 bg-violet-600/20 text-violet-400 border border-violet-500/30 text-[10px] px-2 py-1 rounded-md hover:bg-violet-600/40 transition-colors"
+          >
+            + 현재 별 등록
+          </button>
+        </div>
+
+        <div id="compare-list-container" class="flex-grow flex flex-col gap-2 max-h-[160px] lg:max-h-none overflow-y-auto pr-1">
+          <!-- 비교할 별 카드들이 동적으로 생성되는 영역 -->
+        </div>
+        <p class="text-[10px] text-slate-500 italic mt-auto">
+          * 별 항목을 클릭하면 컨트롤러 및 시뮬레이터가 해당 물리 모델로 로드됩니다.
+        </p>
+      </div>
+    </section>
+
+    <!-- [중앙 패널]: 실시간 H-R도 그리기 (5컬럼) -->
+    <section class="lg:col-span-5 bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-col justify-between">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-sm font-bold flex items-center gap-1.5 text-sky-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+          </svg>
+          헤르츠스프룽-러셀 도표 (H-R Diagram)
+        </h2>
+        <div class="flex gap-2">
+          <span class="text-[10px] flex items-center gap-1 text-slate-400">
+            <span class="w-2.5 h-0.5 bg-slate-500 border-t border-dashed"></span> ZAMS(주계열)
+          </span>
+          <span class="text-[10px] flex items-center gap-1 text-slate-400">
+            <span class="w-2.5 h-0.5 bg-blue-500"></span> 진화 트랙
+          </span>
+        </div>
+      </div>
+
+      <!-- H-R도 도표 영역 (SVG) -->
+      <div class="relative w-full aspect-square bg-slate-950/80 border border-slate-800 rounded-xl overflow-hidden shadow-inner">
+        
+        <!-- 배경 분광 분류 텍스트 -->
+        <div class="absolute top-2 left-0 right-0 px-10 flex justify-between text-[11px] font-semibold text-slate-600">
+          <span>O (초고온)</span>
+          <span>B</span>
+          <span>A</span>
+          <span>F</span>
+          <span>G</span>
+          <span>K</span>
+          <span>M (저온)</span>
+        </div>
+
+        <!-- SVG 그래프 요소 -->
+        <svg id="hr-svg" viewBox="0 0 500 500" class="w-full h-full">
+          <!-- 격자 및 궤적 등이 JS에 의해 동적으로 여기에 그려집니다. -->
+        </svg>
+
+        <!-- 축 이름 레이블 -->
+        <div class="absolute bottom-1 right-2 text-[10px] text-slate-500 font-bold">
+          표면 온도 Teff (K, 역대수 눈금 [단위: x1,000])
+        </div>
+        <div class="absolute top-1/2 left-1.5 -rotate-90 transform origin-left text-[10px] text-slate-500 font-bold">
+          광도 L/L☉ (Solar Units)
+        </div>
+
+        <!-- 현재 상태 레이블 온 스크린 -->
+        <div class="absolute bottom-3 left-10 bg-slate-900/90 border border-slate-800 py-1 px-2.5 rounded-lg text-[10px] text-slate-300">
+          <span class="font-semibold text-slate-400">현재 상태:</span> <span id="current-phase-label">원시별</span>
+        </div>
+      </div>
+
+      <div class="mt-2 text-center">
+        <p class="text-[10px] text-slate-400">
+          * 별의 초기 단계인 음수 나이 영역에서는 H-R도 최우측 고광도(우상단) 지역에서부터 수축 궤적이 시작됩니다.
+        </p>
+      </div>
+    </section>
+
+    <!-- [우측 패널]: 현재 물리량 정보 및 천체 모형 비주얼라이저 (3컬럼) -->
+    <section class="lg:col-span-3 flex flex-col gap-4">
+      
+      <!-- 1. 실시간 항성 비주얼라이저 (크기/색상 시뮬레이션) -->
+      <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center gap-4 aspect-square lg:aspect-auto">
+        <h2 class="text-xs font-bold text-slate-400 tracking-wider uppercase">항성 물리 뷰어 (상대 규모)</h2>
+        
+        <div class="relative w-40 h-40 flex items-center justify-center bg-slate-950 rounded-full border border-slate-800 overflow-hidden">
+          <div class="absolute inset-0 bg-radial-gradient opacity-10"></div>
+          
+          <!-- 항성 아바타 및 특수 효과 렌더링 컨테이너 -->
+          <div id="star-viewer-container" class="relative w-full h-full flex items-center justify-center">
+            <!-- JS에서 동적 엘리먼트를 실시간 주입 -->
+          </div>
+        </div>
+
+        <div class="w-full">
+          <div class="text-sm font-black text-slate-100 flex items-center justify-center gap-1.5">
+            <span id="star-color-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <span id="viewer-phase-title">원시별 (하야시 경로)</span>
+          </div>
+          <p id="viewer-desc" class="text-[11px] text-slate-400 mt-1 max-w-xs leading-relaxed mx-auto">
+            가스 요람 구역 설명 공간
+          </p>
+        </div>
+      </div>
+
+      <!-- 2. 유도 물리량 리스트 대시보드 -->
+      <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col gap-3.5 flex-grow">
+        <h2 class="text-sm font-bold flex items-center gap-1.5 border-b border-slate-800 pb-2 text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          진화 물리 제원표
+        </h2>
+
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 font-medium text-[10px]">광도 (L/L☉)</div>
+            <div id="data-luminosity" class="text-sm font-bold text-amber-400 mt-0.5">
+              1.00000 L☉
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 font-medium text-[10px]">표면 온도 (Teff)</div>
+            <div id="data-temp" class="text-sm font-bold text-sky-300 mt-0.5">
+              5,778 K
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 font-medium text-[10px]">반지름 (R/R☉)</div>
+            <div id="data-radius" class="text-sm font-bold text-emerald-400 mt-0.5">
+              1.00000 R☉
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 font-medium text-[10px]">진화 진행도 (τ)</div>
+            <div id="data-progress" class="text-sm font-bold text-purple-400 mt-0.5">
+              수축 중 (0%)
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 천체 내부 물리학 설명 박스 -->
+        <div class="mt-auto bg-blue-950/20 text-blue-400 border border-blue-900/30 p-3 rounded-xl">
+          <h3 class="text-xs font-bold flex items-center gap-1 mb-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            항성 주기 수식 힌트
+          </h3>
+          <p class="text-[10px] leading-relaxed text-slate-300">
+            나이가 <span class="text-amber-400 font-semibold">음수</span>일 때 별은 태어나기 전 가스 요람 단계입니다. 주계열 점화(0 Myr)가 되면 스스로 빛나는 안정한 주계열이 완성됩니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- --- 하단 교육용 및 물리 원리 설명 패널 --- -->
+  <footer class="mt-6 bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex flex-col gap-3">
+    <h3 class="text-sm font-bold text-slate-200">항성 물리학적 원리 해설</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-400 leading-relaxed">
+      
+      <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800/40">
+        <span class="font-bold text-amber-500 block mb-1">① 전주계열성(PMS)의 수축</span>
+        중력에 이끌려 모인 먼지와 가스 덩어리는 점점 밀도가 커지며 중심 온도를 높여갑니다. 이 수축 속도는 켈빈-헬름홀츠(Kelvin-Helmholtz) 수축 공식에 비례하며 질량이 무거운 거성일수록 극도로 빠르게 압축되어 주계열성에 안착합니다.
+      </div>
+
+      <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800/40">
+        <span class="font-bold text-blue-400 block mb-1">② 하야시 및 헤냐이에이 경로</span>
+        * **하야시 경로:** 대류 장벽에 부딪혀 일정 온도 아래로 차가워지지 않고 수직 낙하하며 지름이 작아집니다. (M &lt; 0.5 M☉은 주계열 직전까지 이 경로를 따름) <br> 
+        * **헤냐이에이 경로:** 가속 수축으로 온도가 임계점에 이르면 내부 에너지가 복사 압력 방출 방식으로 개편되어 표면온도가 아주 뜨겁게 상승합니다.
+      </div>
+
+      <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800/40">
+        <span class="font-bold text-violet-400 block mb-1">③ 영년주계열 (ZAMS) 정착</span>
+        온도계가 고온으로 이동하며 마침내 수축을 견딘 별 중심핵의 온도가 1,000만K를 돌파하는 기적의 순간, 수소 핵융합 반응이 격렬하게 작동하여 중력 수축을 멈추고 주계열성으로서의 탄생을 알립니다.
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- --- 핵심 물리 및 UI 제어 스크립트 --- -->
+  <script>
+    // --- 0. 물리 상수 및 공식 상수 정의 ---
+    const SUN_MS_LIFETIME = 10000; // 태양의 주계열 수명 (약 100억 년 = 10,000 Myr)
+    const SUN_TEMP = 5778; // 태양 표면온도 (K)
+
+    // --- 1. 천체 물리 물리 모델 상태 정의 ---
+    const state = {
+      mass: 1.0,           // 현재 항성 초기질량 (태양 질량 단위)
+      age: -45.0,          // 현재 항성 나이 (Myr 단위)
+      isPlaying: false,    // 시뮬레이션 타이머 재생 여부
+      playSpeed: 10,       // 나이 흐름 속도 가중치
+      compareStars: [      // 비교 리스트 기본 세트
+        { id: '1', name: '태양 유사 원시성', mass: 1.0, age: -45, color: '#f59e0b' },
+        { id: '2', name: '고질량 청색 원시성', mass: 15.0, age: -0.1, color: '#3b82f6' }
+      ]
+    };
+
+    // 주계열성 궤적 샘플 추출 질량들
+    const zamsMasses = [0.1, 0.2, 0.3, 0.43, 0.7, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 12.0, 20.0, 30.0, 50.0, 60.0];
+
+    // --- 2. 물리 계산 및 보간 엔진 공식 세트 ---
+
+    // 질량-광도 수식 (전달받은 네 종류의 조건 분기 적용)
+    function calculateLuminosity(M) {
+      if (M < 0.43) {
+        return 0.23 * Math.pow(M, 2.3);
+      } else if (M < 2.0) {
+        return Math.pow(M, 4.0);
+      } else if (M < 20.0) {
+        return 1.5 * Math.pow(M, 3.5);
+      } else {
+        return 3200 * M;
+      }
+    }
+
+    // 주계열 수명 계산 공식 (수명 ∝ M/L)
+    function calculateLifetime(M, L) {
+      return SUN_MS_LIFETIME * (M / L);
+    }
+
+    // 주계열성 표면온도 피팅 공식
+    function calculateMSTemperature(M) {
+      if (M < 0.43) {
+        return SUN_TEMP * Math.pow(M, 0.4);
+      } else if (M < 2.0) {
+        return SUN_TEMP * Math.pow(M, 0.55);
+      } else if (M < 20.0) {
+        return SUN_TEMP * Math.pow(M, 0.62);
+      } else {
+        return Math.min(45000, SUN_TEMP * Math.pow(M, 0.5));
+      }
+    }
+
+    // 온도 -> RGB 색감 변환 매핑
+    function getStarColor(temp) {
+      // 온도가 비정상적인 값(NaN 등)일 때의 예외 제어
+      const safeTemp = Math.max(1000, isNaN(temp) ? SUN_TEMP : temp);
+      let t = safeTemp / 100;
+      let r, g, b;
+
+      if (t <= 66) {
+        r = 255;
+        const safeG = Math.max(1, t);
+        g = 99.4708 * Math.log(safeG) - 161.1196;
+        if (t <= 19) {
+          b = 0;
+        } else {
+          const safeB = Math.max(1, t - 10);
+          b = 138.5177 * Math.log(safeB) - 305.0448;
+        }
+      } else {
+        const factor = Math.max(1, t - 60);
+        r = 329.6987 * Math.pow(factor, -0.1332);
+        g = 288.1222 * Math.pow(factor, -0.0755);
+        b = 255;
+      }
+
+      const clamp = (val) => Math.min(255, Math.max(0, isNaN(val) ? 255 : Math.round(val)));
+      return `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`;
+    }
+
+    // 나이 및 질량 기반 별의 상태 추출기
+    function getStarEvolutionState(M, ageMyr) {
+      const L_MS = calculateLuminosity(M);
+      const T_MS = calculateLifetime(M, L_MS);
+      const Temp_MS = calculateMSTemperature(M);
+      const T_PMS = Math.max(0.1, Math.min(150, 45 / Math.pow(M, 2.5)));
+
+      const clampedAgeMyr = ageMyr < 0 ? Math.max(-T_PMS, ageMyr) : ageMyr;
+
+      // --- 0. 전주계열성 (Pre-Main Sequence) ---
+      if (clampedAgeMyr < 0) {
+        const tRatio = clampedAgeMyr / T_PMS; // -1.0 -> 0.0
+        const progress = tRatio + 1.0;        // 0.0 -> 1.0
+
+        if (M < 0.5) {
+          const Temp = Math.max(1000, 2800 * (1.0 - progress) + Temp_MS * progress);
+          const L = (L_MS * 45) * Math.pow(0.022, progress);
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "원시별 (하야시 경로 - Hayashi Track)",
+            desc: "거대한 성간 가스 구름이 모여 수축 중인 신생 항성입니다. 전체가 강하게 대류하며, 크기는 거대하지만 온도는 낮고 아직 중심에서 핵융합 반응이 일어나지 않는 중력 수축 단계입니다.",
+            L, Temp, R, status: "pms-hayashi",
+            tau: tRatio
+          };
+        } else {
+          if (tRatio < -0.4) {
+            const subProgress = (tRatio + 1.0) / 0.6;
+            const Temp = Math.max(1000, 3100 + 400 * subProgress);
+            const L = (L_MS * 90) * Math.pow(0.1, subProgress);
+            const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+            return {
+              phase: "원시별 (하야시 경로 - Hayashi Track)",
+              desc: "별의 탄생 초기 단계로, 내부 에너지를 대류를 통해 뿜어내며 광도가 급격하게 하강하는 수축 과정에 있습니다.",
+              L, Temp, R, status: "pms-hayashi",
+              tau: tRatio
+            };
+          } else {
+            const subProgress = (tRatio + 0.4) / 0.4;
+            const Temp = Math.max(1000, 3500 * (1.0 - subProgress) + Temp_MS * subProgress);
+            const L = (L_MS * 9) * (1.0 - subProgress) + L_MS * subProgress;
+            const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+            return {
+              phase: "전주계열성 (헤냐이에이 경로 - Henyey Track)",
+              desc: "중심핵 내부 온도가 높아져 복사 전달 방식으로 바뀌었습니다. 크기는 완만히 수축하지만 온도가 급격히 상승하며 주계열성(ZAMS) 정착을 준비합니다.",
+              L, Temp, R, status: "pms-henyey",
+              tau: tRatio
+            };
+          }
+        }
+      }
+
+      // --- ZAMS 이후 진화 단계 ---
+      const tau = clampedAgeMyr / T_MS;
+      const isHighMass = M >= 8.0;
+
+      if (tau <= 1.0) {
+        // 주계열성
+        const L = L_MS * (1.0 + 0.3 * tau);
+        const Temp = Temp_MS * (1.0 - 0.08 * tau);
+        const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+        return {
+          phase: "주계열성 (Main Sequence)",
+          desc: "수소 핵융합 반응을 통해 스스로 에너지를 내며 가장 안정적으로 빛나는 별의 청년기 단계입니다. 질량이 클수록 광도가 급격해져 수명이 매우 짧습니다.",
+          L, Temp, R, status: "stable",
+          tau
+        };
+      } else if (tau <= 1.15) {
+        // 거성/초거성 진입
+        const subTau = (tau - 1.0) / 0.15;
+        if (!isHighMass) {
+          const Temp = (Temp_MS * 0.92) * (1 - subTau) + 3500 * subTau;
+          const L = (L_MS * 1.3) * (1 - subTau) + (L_MS * 100) * subTau;
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "적색거성 가지 (Red Giant Branch)",
+            desc: "중심핵의 수소가 가득 차 외층이 급격하게 팽창하며식어가는 상태입니다. 표면 온도는 낮아지지만 크기가 커져 광도가 치솟습니다.",
+            L, Temp, R, status: "expanding",
+            tau
+          };
+        } else {
+          const Temp = (Temp_MS * 0.92) * (1 - subTau) + 3800 * subTau;
+          const L = (L_MS * 1.3) * (1 - subTau) + (L_MS * 3.0) * subTau;
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "초거성 단계 (Supergiant)",
+            desc: "거대한 질량의 압력으로 헬륨 연소에 조기 진입하며 외포층이 태양 궤도 크기 이상으로 광활하게 부풀어 오르는 상태입니다.",
+            L, Temp, R, status: "expanding",
+            tau
+          };
+        }
+      } else if (tau <= 1.25) {
+        // 헬륨 연소
+        const subTau = (tau - 1.15) / 0.10;
+        if (!isHighMass) {
+          const Temp = 3500 * (1 - subTau) + 5000 * subTau;
+          const L = L_MS * 80;
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "수평가지 (Horizontal Branch)",
+            desc: "안정적인 헬륨 핵융합이 안착되어 거대했던 외포층이 다소 수축하고 표면 온도가 다시 상승한 단계입니다.",
+            L, Temp, R, status: "burning-he",
+            tau
+          };
+        } else {
+          const Temp = 3800 * (1 - subTau) + 8000 * subTau;
+          const L = L_MS * 3.5;
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "초거성 후기 연소 (Late Supergiant)",
+            desc: "헬륨 고갈 후 탄소, 네온, 규소 등 무거운 원소들을 격렬하게 연소하며 중심핵이 매우 조밀해지는 단계입니다.",
+            L, Temp, R, status: "burning-he",
+            tau
+          };
+        }
+      } else if (tau <= 1.30) {
+        // AGB / 초신성 임박
+        const subTau = (tau - 1.25) / 0.05;
+        if (!isHighMass) {
+          const Temp = 5000 * (1 - subTau) + 3000 * subTau;
+          const L = (L_MS * 80) * (1 - subTau) + (L_MS * 1500) * subTau;
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "점근거성가지 (AGB)",
+            desc: "탄소와 산소로 이루어진 중심핵 바깥층에서 불안정하게 다중 연소하며 외각의 가스를 외주 공간으로 세차게 뿜어냅니다.",
+            L, Temp, R, status: "unstable",
+            tau
+          };
+        } else {
+          const Temp = 8000 * (1 - subTau) + 3300 * subTau;
+          const L = L_MS * 4.0;
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "초신성 임박 (Pre-Supernova)",
+            desc: "중심핵 연소의 한계 물질인 철(Fe)이 누적되어 자체 중력을 견디지 못하고 폭발 직전의 극도로 불안정한 단계입니다.",
+            L, Temp, R, status: "critical",
+            tau
+          };
+        }
+      } else if (tau <= 1.35) {
+        // 초신성 폭발 / 성운 가스 방출
+        const subTau = (tau - 1.30) / 0.05;
+        if (!isHighMass) {
+          const Temp = 3000 * (1 - subTau) + 50000 * subTau;
+          const L = (L_MS * 1500) * (1 - subTau) + (L_MS * 10) * subTau;
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "행성상성운기 (Planetary Nebula)",
+            desc: "별이 외포층 가스를 우주 공간으로 완전히 방출하며, 그 중심부에 매우 뜨거운 탄소 중심핵이 훤히 드러나 빛나고 있습니다.",
+            L, Temp, R, status: "nebula",
+            tau
+          };
+        } else {
+          const Temp = 3300 * (1 - subTau) + 120000 * subTau;
+          const L = (L_MS * 4.0) * (1 - subTau) + 2e10 * subTau;
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "초신성 폭발 (Supernova)",
+            desc: "역사상 가장 장엄한 폭발입니다! 단 몇 주 동안 온 은하의 별빛을 합한 것보다 밝은 극대 광도(10^10배 이상)를 내뿜으며 핵을 붕괴시킵니다.",
+            L, Temp, R, status: "supernova",
+            tau
+          };
+        }
+      } else {
+        // 잔해들
+        const coolTau = Math.min(5.0, (tau - 1.35) / 0.15);
+        if (!isHighMass) {
+          const Temp = 50000 / (1.0 + 0.3 * coolTau);
+          const L = 0.01 / Math.pow(1.0 + 0.2 * coolTau, 2);
+          const R = Math.sqrt(L) / Math.pow(Temp / SUN_TEMP, 2);
+          return {
+            phase: "백색왜성 (White Dwarf)",
+            desc: "태양 크기의 별이 죽고 남긴 지구만 한 고밀도 축퇴핵입니다. 새로운 에너지원 없이 수십억 년 동안 서서히 어두워지며 식어갑니다.",
+            L, Temp, R, status: "dead-wd",
+            tau
+          };
+        } else {
+          const isBlackHole = M >= 25.0;
+          if (isBlackHole) {
+            return {
+              phase: "블랙홀 (Black Hole)",
+              desc: "질량이 너무 비대해 무한한 압축을 이겨내고 시공간마저 뚫어버렸습니다. 빛마저 빠져나올 수 없는 시공간의 무덤입니다.",
+              L: 1e-8, Temp: 1000, R: 1e-6, status: "dead-bh",
+              tau
+            };
+          } else {
+            const Temp = 150000 / (1.0 + 0.2 * coolTau);
+            const R = 0.000015;
+            const L = Math.pow(R, 2) * Math.pow(Temp / SUN_TEMP, 4);
+            return {
+              phase: "중성자별 (Neutron Star)",
+              desc: "태양 질량이 원자핵 크기(약 10km)로 완전 압축되어 초입방 센티미터당 수억 톤에 육박하는 초고밀도 중성자 물질 덩어리입니다.",
+              L, Temp, R, status: "dead-ns",
+              tau
+            };
+          }
+        }
+      }
+    }
+
+    // 진화 트랙 생성
+    function generateEvolutionTrack(M, steps = 150) {
+      const track = [];
+      const L_MS = calculateLuminosity(M);
+      const T_MS = calculateLifetime(M, L_MS);
+      const T_PMS = Math.max(0.1, Math.min(150, 45 / Math.pow(M, 2.5)));
+
+      const pmsSteps = Math.round(steps * 0.25);
+      for (let i = 0; i < pmsSteps; i++) {
+        const age = -T_PMS * (1.0 - (i / pmsSteps));
+        const state = getStarEvolutionState(M, age);
+        track.push({
+          tau: age / T_MS,
+          L: state.L,
+          Temp: state.Temp,
+          phase: state.phase
+        });
+      }
+
+      const postSteps = steps - pmsSteps;
+      for (let i = 0; i <= postSteps; i++) {
+        const tRatio = (i / postSteps) * 1.45;
+        const age = tRatio * T_MS;
+        const state = getStarEvolutionState(M, age);
+        track.push({
+          tau: tRatio,
+          L: state.L,
+          Temp: state.Temp,
+          phase: state.phase
+        });
+      }
+      return track;
+    }
+
+    // --- 3. 좌표계 픽셀 매핑 엔진 (NaN 예방 필터 탑재) ---
+    function getCoordinates(temp, luminosity) {
+      const minTemp = 1000;
+      const maxTemp = 200000;
+      const minL = 1e-8;
+      const maxL = 1e11;
+
+      const safeTemp = Math.max(minTemp, isNaN(temp) || temp <= 0 ? minTemp : temp);
+      const safeL = Math.max(minL, isNaN(luminosity) || luminosity <= 0 ? minL : luminosity);
+
+      const logTemp = Math.log10(safeTemp);
+      const logMinTemp = Math.log10(minTemp);
+      const logMaxTemp = Math.log10(maxTemp);
+
+      const xFraction = (logMaxTemp - logTemp) / (logMaxTemp - logMinTemp);
+      const x = 40 + xFraction * 420;
+
+      const logL = Math.log10(safeL);
+      const logMinL = Math.log10(minL);
+      const logMaxL = Math.log10(maxL);
+      const yFraction = (logMaxL - logL) / (logMaxL - logMinL);
+      const y = 40 + yFraction * 420;
+
+      return { 
+        x: isNaN(x) ? 40 : x, 
+        y: isNaN(y) ? 450 : y 
+      };
+    }
+
+    // --- 4. DOM 업데이트 및 렌더링 오케스트레이터 ---
+
+    const massSlider = document.getElementById('mass-slider');
+    const ageSlider = document.getElementById('age-slider');
+    const massValueBadge = document.getElementById('mass-value-badge');
+    const ageValueBadge = document.getElementById('age-value-badge');
+    const btnPlay = document.getElementById('btn-play');
+    const btnReset = document.getElementById('btn-reset');
+    const speedSelector = document.getElementById('speed-selector');
+    const compareListContainer = document.getElementById('compare-list-container');
+    const btnAddCompare = document.getElementById('btn-add-compare');
+
+    const sliderBornLabel = document.getElementById('slider-born-label');
+    const sliderEndLabel = document.getElementById('slider-end-label');
+
+    const currentPhaseLabel = document.getElementById('current-phase-label');
+    const starViewerContainer = document.getElementById('star-viewer-container');
+    const viewerPhaseTitle = document.getElementById('viewer-phase-title');
+    const viewerDesc = document.getElementById('viewer-desc');
+    const starColorDot = document.getElementById('star-color-dot');
+
+    const dataLuminosity = document.getElementById('data-luminosity');
+    const dataTemp = document.getElementById('data-temp');
+    const dataRadius = document.getElementById('data-radius');
+    const dataProgress = document.getElementById('data-progress');
+
+    // 실시간 UI 동기화 렌더러
+    function render() {
+      const M = state.mass;
+      const age = state.age;
+
+      const L_MS = calculateLuminosity(M);
+      const T_MS = calculateLifetime(M, L_MS);
+      const T_PMS = Math.max(0.1, Math.min(150, 45 / Math.pow(M, 2.5)));
+      const maxAgeLimit = T_MS * 1.45;
+
+      // 슬라이더 바인딩 값 정정
+      massValueBadge.innerText = `${M.toFixed(2)} M_☉`;
+      massSlider.value = M;
+
+      ageSlider.min = -T_PMS;
+      ageSlider.max = maxAgeLimit;
+      sliderBornLabel.innerText = `원시성 탄생 (-${T_PMS.toFixed(1)} Myr)`;
+      sliderEndLabel.innerText = `말기 (${Math.round(maxAgeLimit / T_MS * 100)}%)`;
+
+      if (age < 0) {
+        ageValueBadge.innerText = `탄생 전: 수축 중 (${Math.abs(age).toFixed(2)} Myr 전)`;
+      } else if (age >= 1000) {
+        ageValueBadge.innerText = `${(age/1000).toFixed(3)} Gyr (십억 년)`;
+      } else {
+        ageValueBadge.innerText = `${age.toFixed(2)} Myr (백만 년)`;
+      }
+      ageSlider.value = age;
+
+      // 물리 데이터 추출
+      const currentStarState = getStarEvolutionState(M, age);
+      
+      // 전역 뷰어 텍스트 패널 업데이트
+      currentPhaseLabel.innerText = currentStarState.phase;
+      viewerPhaseTitle.innerText = currentStarState.phase;
+      viewerDesc.innerText = currentStarState.desc;
+      starColorDot.style.backgroundColor = getStarColor(currentStarState.Temp);
+
+      // 제원표 갱신
+      dataLuminosity.innerText = currentStarState.L >= 1000 
+        ? `${(currentStarState.L).toLocaleString(undefined, {maximumFractionDigits: 1})} L☉` 
+        : `${currentStarState.L.toFixed(5)} L☉`;
+      dataTemp.innerText = `${Math.round(currentStarState.Temp).toLocaleString()} K`;
+      dataRadius.innerText = `${currentStarState.R.toFixed(5)} R☉`;
+      
+      if (currentStarState.tau < 0) {
+        dataProgress.innerText = `수축 중 (${Math.round((currentStarState.tau + 1.0) * 100)}%)`;
+      } else {
+        dataProgress.innerText = `${(currentStarState.tau * 100).toFixed(1)} %`;
+      }
+
+      // --- 항성 비주얼라이저 구현 ---
+      renderStarVisualizer(currentStarState);
+
+      // --- H-R도 SVG 도표 렌더링 ---
+      renderHRDiagram(M, age, currentStarState);
+
+      // --- 비교 리스트 렌더링 ---
+      renderCompareList();
+    }
+
+    // 항성 광구 뷰어 드로잉 함수
+    function renderStarVisualizer(star) {
+      starViewerContainer.innerHTML = '';
+      const color = getStarColor(star.Temp);
+
+      if (star.status === "dead-bh") {
+        starViewerContainer.innerHTML = `
+          <div class="relative flex items-center justify-center">
+            <div class="w-24 h-24 rounded-full border-2 border-amber-500/50 animate-spin-slow"></div>
+            <div class="absolute w-16 h-16 bg-black rounded-full shadow-[0_0_20px_#000000]"></div>
+            <span class="text-[9px] text-slate-500 mt-24 absolute font-mono tracking-wider">EVENT HORIZON</span>
+          </div>
+        `;
+      } else if (star.status === "dead-ns") {
+        starViewerContainer.innerHTML = `
+          <div class="relative flex flex-col items-center justify-center">
+            <div class="w-2 h-2 bg-blue-100 rounded-full filter blur-[0.5px] shadow-[0_0_20px_#3b82f6,0_0_40px_#93c5fd]"></div>
+            <div class="absolute w-0.5 h-32 bg-sky-400/40 blur-[1px] animate-pulse"></div>
+            <span class="text-[9px] text-blue-400 mt-24 absolute font-mono">NEUTRON CORE</span>
+          </div>
+        `;
+      } else if (star.status === "supernova") {
+        starViewerContainer.innerHTML = `
+          <div class="relative w-full h-full flex items-center justify-center">
+            <div class="absolute w-28 h-28 rounded-full border-2 border-amber-400 animate-ping opacity-80"></div>
+            <div class="absolute w-36 h-36 rounded-full border border-red-500 animate-ping opacity-40"></div>
+            <div class="absolute inset-0 bg-amber-500/10 rounded-full animate-pulse"></div>
+            <div class="w-14 h-14 bg-white rounded-full filter blur-[2px] shadow-[0_0_35px_#f59e0b,0_0_70px_#ef4444]"></div>
+          </div>
+        `;
+      } else if (star.status === "pms-hayashi" || star.status === "pms-henyey") {
+        const dSize = Math.min(130, Math.max(12, 25 * Math.log10(star.R + 1) + 16));
+        starViewerContainer.innerHTML = `
+          <div class="relative w-full h-full flex items-center justify-center">
+            <div class="absolute w-24 h-24 rounded-full bg-red-600/10 blur-md animate-spin-slow"></div>
+            <div class="absolute w-32 h-32 rounded-full border border-dashed border-amber-500/20 animate-spin-slow"></div>
+            <div 
+              class="rounded-full transition-all duration-300"
+              style="width: ${dSize}px; height: ${dSize}px; background-color: ${color}; box-shadow: 0 0 35px 5px ${color}; filter: brightness(1.1);"
+            ></div>
+            <span class="absolute bottom-2 text-[8px] bg-red-950/80 border border-red-800 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+              가스 집적 중
+            </span>
+          </div>
+        `;
+      } else {
+        const dSize = Math.min(130, Math.max(12, 25 * Math.log10(star.R + 1) + 16));
+        const glowRadius = Math.min(50, 10 + star.L / 100000);
+        starViewerContainer.innerHTML = `
+          <div 
+            class="rounded-full transition-all duration-300"
+            style="width: ${dSize}px; height: ${dSize}px; background-color: ${color}; box-shadow: 0 0 ${glowRadius}px ${color}; filter: brightness(${1 + Math.min(0.5, star.L / 1e8)});"
+          ></div>
+        `;
+      }
+    }
+
+    // SVG H-R도 그리기
+    function renderHRDiagram(M, age, currentStarState) {
+      const svg = document.getElementById('hr-svg');
+      svg.innerHTML = ''; // 기존 격자 비우기
+
+      // 세로 온도 그리드 가이드라인 그리기 (200,000K ~ 1,000K)
+      const temps = [200000, 100000, 50000, 20000, 10000, 5000, 3000, 1000];
+      temps.forEach(tVal => {
+        const coords = getCoordinates(tVal, 1.0);
+        svg.appendChild(createSVGLine(coords.x, 25, coords.x, 455, '#1e293b', '3,3'));
+        svg.appendChild(createSVGText(coords.x, 470, tVal >= 1000 ? `${tVal / 1000}K` : `${tVal}`, '#64748b', 'middle'));
+      });
+
+      // 가로선 (광도 가이드라인)
+      const luminosities = [1e-8, 1e-5, 1e-2, 1.0, 1e3, 1e6, 1e9, 1e11];
+      luminosities.forEach(lVal => {
+        const coords = getCoordinates(10000, lVal);
+        svg.appendChild(createSVGLine(35, coords.y, 475, coords.y, '#1e293b', '3,3'));
+        
+        const logPower = Math.round(Math.log10(lVal));
+        const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textElement.setAttribute('x', '28');
+        textElement.setAttribute('y', (coords.y + 3).toString());
+        textElement.setAttribute('fill', '#64748b');
+        textElement.setAttribute('font-size', '8');
+        textElement.setAttribute('text-anchor', 'end');
+        textElement.setAttribute('font-weight', 'bold');
+        textElement.innerHTML = `10<tspan dy="-4" font-size="6">${logPower}</tspan>`;
+        svg.appendChild(textElement);
+      });
+
+      // ZAMS(영년주계열선) 커브 플로팅
+      const zamsPoints = zamsMasses.map(m => {
+        const l = calculateLuminosity(m);
+        const t = calculateMSTemperature(m);
+        return getCoordinates(t, l);
+      });
+      const zamsPathD = zamsPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+      svg.appendChild(createSVGPath(zamsPathD, '#475569', '1.5', '4,4'));
+
+      // 현재 선택된 메인 항성의 진화 트랙 경로 그리기
+      const trackPoints = generateEvolutionTrack(M).map(pt => getCoordinates(pt.Temp, pt.L));
+      const trackPathD = trackPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+      svg.appendChild(createSVGPath(trackPathD, '#3b82f6', '2.5', ''));
+
+      // 비교 리스트 항성들의 실시간 현재 포인트 및 얇은 궤적 그리기
+      state.compareStars.forEach(star => {
+        const otherTrack = generateEvolutionTrack(star.mass);
+        const otherState = getStarEvolutionState(star.mass, star.age);
+        const otherCoords = getCoordinates(otherState.Temp, otherState.L);
+
+        const otherTrackPathD = otherTrack.map((pt, i) => {
+          const c = getCoordinates(pt.Temp, pt.L);
+          return `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`;
+        }).join(' ');
+
+        svg.appendChild(createSVGPath(otherTrackPathD, star.color, '1', '', '0.3'));
+        svg.appendChild(createSVGCircle(otherCoords.x, otherCoords.y, 4, getStarColor(otherState.Temp), star.color, '1.5'));
+      });
+
+      // 현재 메인 활성 항성 마커 렌더링
+      if (currentStarState.status !== "dead-bh") {
+        const mainCoords = getCoordinates(currentStarState.Temp, currentStarState.L);
+        const isSupernova = currentStarState.status === "supernova";
+        
+        // 퍼지는 후광 애니메이션용 큰 구체
+        const outerCircle = createSVGCircle(mainCoords.x, mainCoords.y, isSupernova ? 20 : 12, getStarColor(currentStarState.Temp), 'none', '0', '0.25');
+        outerCircle.setAttribute('class', 'animate-ping');
+        svg.appendChild(outerCircle);
+
+        // 중심 별 구체
+        svg.appendChild(createSVGCircle(mainCoords.x, mainCoords.y, isSupernova ? 9 : 6.5, getStarColor(currentStarState.Temp), '#ffffff', '1.5', '1.0', 'filter: drop-shadow(0 0 4px rgba(0,0,0,0.5))'));
+      }
+    }
+
+    // SVG 보조 생성 빌더 함수들
+    function createSVGLine(x1, y1, x2, y2, stroke, strokeDasharray = '') {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x1.toString());
+      line.setAttribute('y1', y1.toString());
+      line.setAttribute('x2', x2.toString());
+      line.setAttribute('y2', y2.toString());
+      line.setAttribute('stroke', stroke);
+      line.setAttribute('stroke-width', '1');
+      if (strokeDasharray) {
+        line.setAttribute('stroke-dasharray', strokeDasharray);
+      }
+      return line;
+    }
+
+    function createSVGText(x, y, content, fill, textAnchor) {
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', x.toString());
+      text.setAttribute('y', y.toString());
+      text.setAttribute('fill', fill);
+      text.setAttribute('font-size', '8');
+      text.setAttribute('text-anchor', textAnchor);
+      text.setAttribute('font-weight', 'bold');
+      text.textContent = content;
+      return text;
+    }
+
+    function createSVGPath(d, stroke, strokeWidth, strokeDasharray = '', opacity = '1.0') {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', stroke);
+      path.setAttribute('stroke-width', strokeWidth);
+      path.setAttribute('stroke-linecap', 'round');
+      if (strokeDasharray) {
+        path.setAttribute('stroke-dasharray', strokeDasharray);
+      }
+      path.setAttribute('opacity', opacity);
+      return path;
+    }
+
+    // 비교 리스트 출력 빌더
+    function createSVGCircle(cx, cy, r, fill, stroke, strokeWidth, opacity = '1.0', style = '') {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', cx.toString());
+      circle.setAttribute('cy', cy.toString());
+      circle.setAttribute('r', r.toString());
+      circle.setAttribute('fill', fill);
+      circle.setAttribute('stroke', stroke);
+      circle.setAttribute('stroke-width', strokeWidth);
+      circle.setAttribute('opacity', opacity);
+      if (style) {
+        circle.setAttribute('style', style);
+      }
+      return circle;
+    }
+
+    function renderCompareList() {
+      compareListContainer.innerHTML = '';
+      if (state.compareStars.length === 0) {
+        compareListContainer.innerHTML = `
+          <div class="text-center py-6 text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+            비교할 별을 우측 버튼을 통해 등록해 보세요.
+          </div>
+        `;
+        return;
+      }
+
+      state.compareStars.forEach(star => {
+        const sL = calculateLuminosity(star.mass);
+        const sT_MS = calculateLifetime(star.mass, sL);
+        const sState = getStarEvolutionState(star.mass, star.age);
+        const starDotColor = getStarColor(sState.Temp);
+
+        const card = document.createElement('div');
+        card.className = "group bg-slate-950 hover:bg-slate-900 border border-slate-800/80 hover:border-slate-700/80 p-2.5 rounded-xl cursor-pointer flex justify-between items-center transition-all";
+        
+        card.innerHTML = `
+          <div class="flex items-center gap-2">
+            <div class="w-2.5 h-2.5 rounded-full shadow-lg" style="background-color: ${starDotColor}; box-shadow: 0 0 8px ${starDotColor}"></div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-blue-400 transition-colors">${star.name}</div>
+              <div class="text-[9px] text-slate-400">
+                질량: ${star.mass.toFixed(1)}M☉ | ${star.age < 0 ? '원시성 수축' : `주계열: ${sT_MS >= 1000 ? (sT_MS/1000).toFixed(1) + ' Gyr' : sT_MS.toFixed(0) + ' Myr'}`}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] bg-slate-900 border border-slate-800 text-slate-300 py-0.5 px-1.5 rounded">
+              ${sState.phase.split(" ")[0]}
+            </span>
+            <button class="btn-delete-star text-slate-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100" data-id="${star.id}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        `;
+
+        // 카드 클릭 시 데이터 로드
+        card.addEventListener('click', () => {
+          state.mass = star.mass;
+          state.age = star.age;
+          state.isPlaying = false;
+          updatePlayButtonUI();
+          render();
+        });
+
+        // 삭제 이벤트 위임 바인딩
+        const delBtn = card.querySelector('.btn-delete-star');
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const starId = delBtn.getAttribute('data-id');
+          state.compareStars = state.compareStars.filter(s => s.id !== starId);
+          render();
+        });
+
+        compareListContainer.appendChild(card);
+      });
+    }
+
+    function updatePlayButtonUI() {
+      const playIcon = document.getElementById('icon-play');
+      const pauseIcon = document.getElementById('icon-pause');
+      const playText = document.getElementById('btn-play-text');
+
+      if (state.isPlaying) {
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        playText.innerText = "일시 정지";
+      } else {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        playText.innerText = "시뮬레이션 재생";
+      }
+    }
+
+    // --- 5. 타이머 및 이벤트 리스너 리액티브 연결 ---
+
+    // 재생 애니메이션 프레임 루프
+    let lastTime = null;
+    function animationLoop(time) {
+      if (!state.isPlaying) {
+        lastTime = null;
+        return;
+      }
+
+      if (lastTime !== null) {
+        const delta = time - lastTime;
+        const M = state.mass;
+        const L_MS = calculateLuminosity(M);
+        const T_MS = calculateLifetime(M, L_MS);
+        const T_PMS = Math.max(0.1, Math.min(150, 45 / Math.pow(M, 2.5)));
+        const maxAgeLimit = T_MS * 1.45;
+
+        // 전체 시간 영역 길이 계산
+        const totalSpan = maxAgeLimit + T_PMS;
+        // 속도 배율에 따라 30초 내에 전 과정을 가속 돌파하게끔 보간 스텝 연산
+        const ageStep = (totalSpan / (30000 / state.playSpeed)) * (delta / 16.7);
+
+        state.age = state.age + ageStep;
+
+        if (state.age >= maxAgeLimit) {
+          state.age = maxAgeLimit;
+          state.isPlaying = false;
+          updatePlayButtonUI();
+        }
+        render();
+      }
+
+      lastTime = time;
+      requestAnimationFrame(animationLoop);
+    }
+
+    // 이벤트 리스너 장착
+    massSlider.addEventListener('input', (e) => {
+      const nextMass = parseFloat(e.target.value);
+      state.mass = nextMass;
+      
+      const L_MS = calculateLuminosity(nextMass);
+      const T_PMS = Math.max(0.1, Math.min(150, 45 / Math.pow(nextMass, 2.5)));
+      
+      state.age = -T_PMS; // 새로운 질량으로 변경 시 전주계열 원시 탄생 시점으로 초기화
+      state.isPlaying = false;
+      updatePlayButtonUI();
+      render();
+    });
+
+    ageSlider.addEventListener('input', (e) => {
+      state.age = parseFloat(e.target.value);
+      state.isPlaying = false;
+      updatePlayButtonUI();
+      render();
+    });
+
+    btnPlay.addEventListener('click', () => {
+      state.isPlaying = !state.isPlaying;
+      updatePlayButtonUI();
+      if (state.isPlaying) {
+        requestAnimationFrame(animationLoop);
+      }
+    });
+
+    btnReset.addEventListener('click', () => {
+      const T_PMS = Math.max(0.1, Math.min(150, 45 / Math.pow(state.mass, 2.5)));
+      state.age = -T_PMS;
+      state.isPlaying = false;
+      updatePlayButtonUI();
+      render();
+    });
+
+    speedSelector.addEventListener('change', (e) => {
+      state.playSpeed = parseInt(e.target.value);
+    });
+
+    // 별 비교 리스트 추가 이벤트
+    btnAddCompare.addEventListener('click', () => {
+      if (state.compareStars.length >= 6) return;
+      const colors = ['#f59e0b', '#3b82f6', '#10b981', '#ec4899', '#8b5cf6', '#ef4444'];
+      const color = colors[state.compareStars.length % colors.length];
+      
+      const newStar = {
+        id: Date.now().toString(),
+        name: `별 M=${state.mass.toFixed(1)}M☉`,
+        mass: state.mass,
+        age: state.age,
+        color: color
+      };
+      
+      state.compareStars.push(newStar);
+      render();
+    });
+
+    // 초기 로딩 렌더링 작동
+    window.onload = function() {
+      render();
+    };
+  </script>
+</body>
+</html>
