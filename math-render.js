@@ -1,8 +1,13 @@
 (() => {
   const root = document.querySelector('#modalBody');
-  let timer;
+  let timer, attempts = 0;
   function render() {
-    if (!window.renderMathInElement || !root) return;
+    if (!root) return;
+    if (!window.renderMathInElement) {
+      if (attempts++ < 20) timer = setTimeout(render, 100);
+      return;
+    }
+    attempts = 0;
     window.renderMathInElement(root, {
       delimiters: [
         { left: '$$', right: '$$', display: true },
