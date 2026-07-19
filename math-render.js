@@ -91,6 +91,7 @@
       return;
     }
     attempts = 0;
+    appendDeviceGuide();
     appendProjectReflection();
     normalizeLooseEquations();
     window.renderMathInElement(root, {
@@ -185,6 +186,51 @@
     else grid.after(section);
   }
 
+  function appendDeviceGuide() {
+    const top = root?.querySelector('.modal-top');
+    if (!top || root.querySelector('.device-guide')) return;
+    const guide = document.createElement('aside');
+    guide.className = 'device-guide';
+    guide.innerHTML = '<b>실행 환경 안내</b><span>학생 작품은 PC·노트북 화면에서 제작되었습니다. 모바일에서는 화면을 가로로 돌려 이용해 보세요.</span>';
+    top.after(guide);
+  }
+
+  function buildHeroOrbit() {
+    const hero = document.querySelector('.hero');
+    if (!hero || hero.querySelector('.hero-orbit')) return;
+    const orbit = document.createElement('div');
+    orbit.className = 'hero-orbit';
+    orbit.setAttribute('aria-hidden', 'true');
+    orbit.innerHTML = '<i class="hero-sun"></i><i class="hero-planet"></i>';
+    hero.append(orbit);
+  }
+
+  function buildResources() {
+    if (document.querySelector('.resources')) return;
+    const footer = document.querySelector('footer');
+    if (!footer) return;
+    const resources = document.createElement('section');
+    resources.className = 'resources';
+    resources.setAttribute('aria-label', '외부 천문학 탐구 자료');
+    resources.innerHTML = `
+      <div class="resources-head">
+        <div><p class="eyebrow">CONTINUE EXPLORING</p><h2>더 탐구하기</h2></div>
+        <p>학생 작품에서 출발한 질문을 더 넓은 과학 자료와 시뮬레이션으로 이어 가 보세요.</p>
+      </div>
+      <div class="resource-grid">
+        <a class="resource-card" href="https://science.nasa.gov/eyes/" target="_blank" rel="noopener noreferrer"><span class="resource-kicker">NASA</span><h3>NASA’s Eyes</h3><p>실제 NASA 데이터와 우주 탐사 임무를 3D로 탐색합니다.</p><span class="external">OPEN RESOURCE ↗</span></a>
+        <a class="resource-card" href="https://phet.colorado.edu/ko/" target="_blank" rel="noopener noreferrer"><span class="resource-kicker">UNIVERSITY OF COLORADO</span><h3>PhET</h3><p>변인을 직접 조작하며 과학 개념을 탐색하는 시뮬레이션입니다.</p><span class="external">OPEN RESOURCE ↗</span></a>
+        <a class="resource-card" href="https://astro.unl.edu/naap/" target="_blank" rel="noopener noreferrer"><span class="resource-kicker">UNIVERSITY OF NEBRASKA</span><h3>NAAP Labs</h3><p>천문학 개념을 활동과 관측 자료로 연결해 보는 온라인 실험실입니다.</p><span class="external">OPEN RESOURCE ↗</span></a>
+        <a class="resource-card" href="https://javalab.org/ko/" target="_blank" rel="noopener noreferrer"><span class="resource-kicker">KOREAN SCIENCE LAB</span><h3>자바실험실</h3><p>한국어로 과학 실험, 코딩, 측정 활동을 이어 갈 수 있습니다.</p><span class="external">OPEN RESOURCE ↗</span></a>
+      </div>`;
+    footer.before(resources);
+  }
+
+  function tuneArchiveSearch() {
+    const input = document.querySelector('#search');
+    if (input) input.placeholder = '제목, 학번, 조작 변인, 키워드 검색';
+  }
+
   function buildTopGuide() {
     const hero = document.querySelector('.hero');
     const actions = hero?.querySelector('.hero-actions');
@@ -244,10 +290,20 @@
       popupStyles.href = 'popup-readability.css?v=20260720-5';
       document.head.append(popupStyles);
     }
+    if (!document.querySelector('link[href^="experience.css"]')) {
+      const experienceStyles = document.createElement('link');
+      experienceStyles.rel = 'stylesheet';
+      experienceStyles.href = 'experience.css?v=20260720-2';
+      document.head.append(experienceStyles);
+    }
     import('./anonymous-feedback.js?v=20260720-2');
+    import('./space-atmosphere.js?v=20260720-1');
     buildLearningSection();
     buildTopGuide();
     buildHeroContext();
+    buildHeroOrbit();
+    buildResources();
+    tuneArchiveSearch();
     const cards = document.querySelector('#cards');
     if (cards) new MutationObserver(decorateProjectCards).observe(cards, { childList: true });
     decorateProjectCards();
