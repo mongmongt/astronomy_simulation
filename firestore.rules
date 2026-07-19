@@ -26,25 +26,29 @@ service cloud.firestore {
     }
     match /feedback/{feedbackId} {
       allow read: if isTeacher() || resource.data.status == 'published';
-      allow create: if isGoogleUser()
+      allow create: if signedIn()
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.projectId is string
         && request.resource.data.type in ['question', 'guestbook']
         && request.resource.data.content is string
         && request.resource.data.content.size() > 0
-        && request.resource.data.content.size() <= 1000;
+        && request.resource.data.content.size() <= 1000
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 20;
       allow update, delete: if isTeacher();
     }
     match /siteFeedback/{feedbackId} {
       allow read: if isTeacher() || resource.data.status == 'published';
-      allow create: if isGoogleUser()
+      allow create: if signedIn()
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.type in ['impression', 'suggestion', 'question']
         && request.resource.data.content is string
         && request.resource.data.content.size() > 0
-        && request.resource.data.content.size() <= 1000;
+        && request.resource.data.content.size() <= 1000
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 20;
       allow update, delete: if isTeacher();
     }
     match /notices/{noticeId} {
