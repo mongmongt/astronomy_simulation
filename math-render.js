@@ -153,6 +153,7 @@
 
   function appendProjectReflection() {
     const grid = root?.querySelector('.modal-grid');
+    const community = root?.querySelector('.community');
     const identity = root?.querySelector('.modal-top p')?.textContent || '';
     const studentId = identity.match(/\d{4}/)?.[0];
     const project = window.PROJECTS?.find(item => item.studentId === studentId);
@@ -161,7 +162,8 @@
     section.className = 'student-reflection';
     section.innerHTML = '<h4>학생 소감</h4><p></p>';
     section.querySelector('p').textContent = project.reflection;
-    grid.append(section);
+    if (community) community.before(section);
+    else grid.after(section);
   }
 
   function buildTopGuide() {
@@ -172,6 +174,15 @@
     guide.className = 'top-explore-guide';
     guide.innerHTML = '<span>HOW TO EXPLORE</span><b>조작하고 · 관찰하고 · 설명해 보세요</b><p>변인을 바꾸고 결과의 변화, 과학 원리, 모델의 한계를 차례로 탐색합니다.</p>';
     actions.after(guide);
+  }
+
+  function buildHeroContext() {
+    const intro = document.querySelector('.hero .intro');
+    if (!intro || document.querySelector('.hero-context')) return;
+    const note = document.createElement('p');
+    note.className = 'hero-context';
+    note.textContent = '학생들이 직접 만든 작품이므로 과학적으로 완벽하지 않을 수 있습니다. 하지만 천문학 현상을 탐구하고 이해하는 데 작은 출발점이 되기를 바랍니다. 사용해 보신 뒤 좋았던 점이나 궁금한 점은 좋아요, 질문, 피드백으로 남겨 주세요.';
+    intro.after(note);
   }
 
   function buildLearningSection() {
@@ -208,8 +219,15 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    if (!document.querySelector('link[href="popup-readability.css"]')) {
+      const popupStyles = document.createElement('link');
+      popupStyles.rel = 'stylesheet';
+      popupStyles.href = 'popup-readability.css';
+      document.head.append(popupStyles);
+    }
     buildLearningSection();
     buildTopGuide();
+    buildHeroContext();
     const cards = document.querySelector('#cards');
     if (cards) new MutationObserver(decorateProjectCards).observe(cards, { childList: true });
     decorateProjectCards();

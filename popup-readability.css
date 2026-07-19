@@ -1,0 +1,21 @@
+/* Accessible, presentation-sized project detail view. */
+#modal{width:min(1360px,97vw);max-height:95vh;overflow:auto}
+#modal .modal-top{padding:44px 82px 32px 48px}
+#modal .modal-top h2{font-size:clamp(38px,3.2vw,48px);line-height:1.2}
+#modal .modal-top p{font-size:18px;line-height:1.7}
+#modal .modal-grid{display:grid;columns:auto;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px 52px;padding:34px 48px 22px}
+#modal .modal-grid section,#modal .modal-grid .inquiry{break-inside:auto;display:block;margin:0}
+#modal .modal-grid section:nth-child(2){grid-column:1/-1}
+#modal .modal-grid section{border-top:1px solid rgba(164,177,234,.38);padding-top:18px}
+#modal .modal-grid h4{font-size:15px;letter-spacing:1.4px;margin:0 0 15px}
+#modal .modal-grid p{font-size:19px;line-height:2;color:#e0e4f5}
+#modal .modal-grid .inquiry{align-self:start;margin-top:2px}
+#modal .katex-display{overflow-x:hidden!important;overflow-y:visible!important;padding:11px 0;margin:.85em 0;text-align:left!important}
+#modal .katex-display>.katex{font-size:1.5em;text-align:left!important}
+#modal .katex{font-size:1.16em}
+#modal .launch{font-size:16px;padding:15px 20px}
+.student-reflection{margin:8px 48px 34px;padding:26px 30px!important;border:1px solid rgba(128,147,236,.48)!important;background:linear-gradient(135deg,rgba(76,89,161,.22),rgba(76,89,161,.06))!important}
+.student-reflection h4{font-size:15px!important;letter-spacing:1.4px;margin:0 0 15px!important;color:#f5c260}.student-reflection h4:after{content:''!important}
+.student-reflection p{margin:0!important;font-size:19px!important;line-height:2!important;color:#f2f4ff!important}
+.hero-context{width:min(680px,96%);margin:16px 0 27px;padding:14px 17px;border-left:2px solid rgba(245,194,96,.8);background:rgba(24,33,73,.52);color:#d8def6;font-size:16px;line-height:1.85}
+@media(max-width:760px){#modal{width:100vw;max-height:100vh;border:0}#modal .modal-top{padding:34px 50px 25px 25px}#modal .modal-grid{grid-template-columns:1fr;gap:27px;padding:26px 25px 18px}#modal .modal-grid section:nth-child(2){grid-column:auto}#modal .modal-grid p{font-size:17px;line-height:1.9}#modal .modal-grid h4{font-size:14px}.student-reflection{margin:6px 25px 26px;padding:22px!important}.student-reflection p{font-size:17px!important}}
