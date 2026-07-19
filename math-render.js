@@ -90,6 +90,7 @@
       return;
     }
     attempts = 0;
+    appendProjectReflection();
     normalizeLooseEquations();
     window.renderMathInElement(root, {
       delimiters: [
@@ -150,6 +151,29 @@
     });
   }
 
+  function appendProjectReflection() {
+    const grid = root?.querySelector('.modal-grid');
+    const identity = root?.querySelector('.modal-top p')?.textContent || '';
+    const studentId = identity.match(/\d{4}/)?.[0];
+    const project = window.PROJECTS?.find(item => item.studentId === studentId);
+    if (!grid || !project?.reflection || grid.querySelector('.student-reflection')) return;
+    const section = document.createElement('section');
+    section.className = 'student-reflection';
+    section.innerHTML = '<h4>학생 소감</h4><p></p>';
+    section.querySelector('p').textContent = project.reflection;
+    grid.append(section);
+  }
+
+  function buildTopGuide() {
+    const hero = document.querySelector('.hero');
+    const actions = hero?.querySelector('.hero-actions');
+    if (!hero || !actions || hero.querySelector('.top-explore-guide')) return;
+    const guide = document.createElement('aside');
+    guide.className = 'top-explore-guide';
+    guide.innerHTML = '<span>HOW TO EXPLORE</span><b>조작하고 · 관찰하고 · 설명해 보세요</b><p>변인을 바꾸고 결과의 변화, 과학 원리, 모델의 한계를 차례로 탐색합니다.</p>';
+    actions.after(guide);
+  }
+
   function buildLearningSection() {
     const about = document.querySelector('.about');
     if (!about || about.dataset.enhanced) return;
@@ -162,32 +186,30 @@
         <blockquote>“값을 바꾸고, 변화를 관찰하고, 모델의 한계를 설명한다.”</blockquote>
       </div>
       <div class="learning-content">
-        <section class="learning-panel">
-          <p class="eyebrow">HOW TO EXPLORE</p>
-          <h3>이 아카이브를 보는 방법</h3>
-          <ol class="learning-path">
-            <li><b>01</b><span><strong>조작 변인</strong>을 찾아 값을 바꿔 보세요.</span></li>
-            <li><b>02</b><span>그래프·궤도·밝기 등 <strong>결과의 변화</strong>를 관찰하세요.</span></li>
-            <li><b>03</b><span><strong>과학 원리와 수식</strong>이 결과를 어떻게 설명하는지 읽어 보세요.</span></li>
-            <li><b>04</b><span>마지막으로 <strong>모델의 한계</strong>와 실제 우주의 차이를 생각해 보세요.</span></li>
-          </ol>
-        </section>
         <section class="learning-panel teacher-note">
           <p class="eyebrow">TEACHER'S NOTE</p>
           <h3>수업 설계의 핵심</h3>
           <p>이 수업은 ‘조작 → 변화 관찰’이 일어나는 천문학 실험실을 만드는 활동입니다. 학생들은 과학적 원리와 물리량을 코드로 연결하고, 극단값 점검과 한계 분석을 통해 자신의 모델을 검증했습니다.</p>
-          <div class="assessment-grid"><span><b>30</b>지구과학 이론</span><span><b>30</b>시뮬레이션 구현</span><span><b>20</b>수행 과정</span><span><b>20</b>산출물 소개</span></div>
+          <div class="assessment-grid"><span>지구과학 이론</span><span>시뮬레이션 구현</span><span>탐구 과정 기록</span><span>산출물 소개와 한계</span></div>
         </section>
         <section class="reflection-note">
           <p class="eyebrow">STUDENT VOICES</p>
           <h3>학생의 한마디</h3>
-          <p>학생 소감은 공개 동의와 개인정보 검토를 거쳐 순차적으로 소개됩니다.</p>
+          <div id="studentVoices"></div>
         </section>
       </div>`;
+    const voiceIds = ['2102', '2103', '2104'];
+    const voices = about.querySelector('#studentVoices');
+    voiceIds.map(id => window.PROJECTS?.find(item => item.studentId === id)?.reflection).filter(Boolean).forEach(text => {
+      const item = document.createElement('blockquote');
+      item.textContent = `“${text.split(/(?<=[.!?])\s/)[0]}”`;
+      voices.append(item);
+    });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     buildLearningSection();
+    buildTopGuide();
     const cards = document.querySelector('#cards');
     if (cards) new MutationObserver(decorateProjectCards).observe(cards, { childList: true });
     decorateProjectCards();
