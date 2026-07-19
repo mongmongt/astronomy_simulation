@@ -72,7 +72,8 @@
         '$$v_{\\mathrm{obs}}=v_{\\mathrm{sys}}-v_{\\mathrm{rot}}\\sin(i)\\cos(\\theta)$$'],
       [/\$\$\u0394\u03bb = \u03bb0 \u00d7 \(v_obs \/ c\) \(c = 300,000 km\/s\)\$\$/g,
         '$$\\Delta\\lambda=\\lambda_0\\left(\\frac{v_{\\mathrm{obs}}}{c}\\right),\\quad c=300{,}000\\,\\mathrm{km\\,s^{-1}}$$'],
-      [/V = \ub8e8\ud2b8\(GM\/r\)/g, '$$V=\\sqrt{\\frac{GM}{r}}$$'],
+      [/\$\$V = \ub8e8\ud2b8\(GM\/r\)\$\$/g, '$$V=\\sqrt{\\frac{GM}{r}}$$'],
+      [/V = \ub8e8\ud2b8\(GM\/r\)/g, '$V=\\sqrt{\\frac{GM}{r}}$'],
       [/V = \u221a\(GM\/r\)/g, '$$V=\\sqrt{\\frac{GM}{r}}$$']
     ];
     const normalized = fixes
@@ -140,9 +141,22 @@
     const holder = document.querySelector('#cards');
     if (!holder || !window.PROJECTS) return;
     holder.querySelectorAll('.card').forEach(card => {
-      if (card.querySelector('.control-badges')) return;
       const project = window.PROJECTS.find(item => item.id === card.dataset.id);
       if (!project) return;
+      if (!card.dataset.reordered) {
+        const title = card.querySelector('h3');
+        const student = card.querySelector('.student');
+        const category = card.querySelector('.tag');
+        card.querySelector('.project-num')?.remove();
+        if (title && student && category) {
+          student.textContent = `STUDENT ${project.studentId}`;
+          card.prepend(title);
+          title.after(student);
+          student.after(category);
+        }
+        card.dataset.reordered = 'true';
+      }
+      if (card.querySelector('.control-badges')) return;
       const labels = controlBadges(project);
       const badge = document.createElement('div');
       badge.className = 'control-badges';
@@ -157,12 +171,14 @@
     const identity = root?.querySelector('.modal-top p')?.textContent || '';
     const studentId = (identity.match(/\d{4}/g) || []).at(-1);
     const project = window.PROJECTS?.find(item => item.studentId === studentId);
-    if (!grid || !project?.reflection || grid.querySelector('.student-reflection')) return;
+    if (!grid || !project?.reflection || root.querySelector('.student-reflection')) return;
     const section = document.createElement('section');
     section.className = 'student-reflection';
     section.innerHTML = '<h4>학생 소감</h4><p></p>';
     section.querySelector('p').textContent = project.reflection;
-    if (community) community.before(section);
+    const inquiry = grid.querySelector('.inquiry');
+    if (inquiry) inquiry.before(section);
+    else if (community) community.before(section);
     else grid.after(section);
   }
 
@@ -222,7 +238,7 @@
     if (!document.querySelector('link[href^="popup-readability.css"]')) {
       const popupStyles = document.createElement('link');
       popupStyles.rel = 'stylesheet';
-      popupStyles.href = 'popup-readability.css?v=20260720-3';
+      popupStyles.href = 'popup-readability.css?v=20260720-4';
       document.head.append(popupStyles);
     }
     import('./anonymous-feedback.js?v=20260720-2');
