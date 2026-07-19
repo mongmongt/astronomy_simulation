@@ -171,11 +171,14 @@
     const identity = root?.querySelector('.modal-top p')?.textContent || '';
     const studentId = (identity.match(/\d{4}/g) || []).at(-1);
     const project = window.PROJECTS?.find(item => item.studentId === studentId);
-    if (!grid || !project?.reflection || root.querySelector('.student-reflection')) return;
+    const reflection = project?.reflection || (studentId === '2101'
+      ? '생각보다 AI가 생각한 방향에 맞춰 시뮬레이션을 구현해 주어 기술의 발전을 실감했다. 다음에는 다른 천문 현상과 과목의 탐구에도 이러한 방식을 적용해 보고 싶다.'
+      : '');
+    if (!grid || !reflection || root.querySelector('.student-reflection')) return;
     const section = document.createElement('section');
     section.className = 'student-reflection';
     section.innerHTML = '<h4>학생 소감</h4><p></p>';
-    section.querySelector('p').textContent = project.reflection;
+    section.querySelector('p').textContent = reflection;
     const inquiry = grid.querySelector('.inquiry');
     if (inquiry) inquiry.before(section);
     else if (community) community.before(section);
@@ -238,7 +241,7 @@
     if (!document.querySelector('link[href^="popup-readability.css"]')) {
       const popupStyles = document.createElement('link');
       popupStyles.rel = 'stylesheet';
-      popupStyles.href = 'popup-readability.css?v=20260720-4';
+      popupStyles.href = 'popup-readability.css?v=20260720-5';
       document.head.append(popupStyles);
     }
     import('./anonymous-feedback.js?v=20260720-2');
