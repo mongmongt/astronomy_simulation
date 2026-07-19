@@ -197,12 +197,11 @@
 
   function buildHeroOrbit() {
     const hero = document.querySelector('.hero');
-    if (!hero || hero.querySelector('.hero-orbit')) return;
-    const orbit = document.createElement('div');
-    orbit.className = 'hero-orbit';
-    orbit.setAttribute('aria-hidden', 'true');
-    orbit.innerHTML = '<i class="hero-sun"></i><i class="hero-planet"></i>';
-    hero.append(orbit);
+    if (!hero || hero.querySelector('.hero-photo-caption')) return;
+    const caption = document.createElement('p');
+    caption.className = 'hero-photo-caption';
+    caption.textContent = 'BUSAN SCIENCE HIGH SCHOOL · STAR TRAILS';
+    hero.append(caption);
   }
 
   function buildResources() {
@@ -293,7 +292,7 @@
     if (!document.querySelector('link[href^="experience.css"]')) {
       const experienceStyles = document.createElement('link');
       experienceStyles.rel = 'stylesheet';
-      experienceStyles.href = 'experience.css?v=20260720-2';
+      experienceStyles.href = 'experience.css?v=20260720-3';
       document.head.append(experienceStyles);
     }
     import('./anonymous-feedback.js?v=20260720-2');
